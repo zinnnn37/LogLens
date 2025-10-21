@@ -16,7 +16,7 @@ public class JpaRepositoryAutoConfiguration {
 
     @Bean
     @ConditionalOnProperty(
-            prefix = "holistic.trace.repository.jpa",
+            prefix = "loglens.repository.jpa",
             name = "enabled",
             havingValue = "true",
             matchIfMissing = true
