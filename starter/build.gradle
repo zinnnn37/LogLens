@@ -1,0 +1,39 @@
+plugins {
+    id 'io.spring.dependency-management'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom 'org.springframework.boot:spring-boot-dependencies:3.5.6'
+    }
+}
+
+dependencies {
+    // Spring Boot
+    api 'org.springframework.boot:spring-boot-starter-aop'
+    api 'org.springframework.boot:spring-boot-starter-web'
+    api 'org.springframework.boot:spring-boot-starter-webflux'
+    api 'org.springframework.boot:spring-boot-autoconfigure'
+
+    compileOnly 'org.springframework.data:spring-data-commons'
+    // Configuration Processor
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    // Jackson
+    api 'com.fasterxml.jackson.core:jackson-databind'
+    api 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+// 실행 불가능한 일반 라이브러리 jar로 빌드
+jar {
+    enabled = true
+    archiveClassifier = ''
+}
+
+// bootJar 비활성화 (Spring Boot Plugin이 apply되지 않아서 필요 없음)
+// bootJar {
+//     enabled = false
+// }

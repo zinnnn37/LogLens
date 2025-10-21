@@ -1,0 +1,36 @@
+plugins {
+    id 'java'
+    id 'io.spring.dependency-management'
+}
+
+group = 'a306'
+version = '1.1.0'
+
+repositories {
+    mavenCentral()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom 'org.springframework.boot:spring-boot-dependencies:3.5.6'
+    }
+}
+
+dependencies {
+    // starter 의존
+    api project(':starter')
+
+    // 테스트
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    testImplementation 'com.h2database:h2'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+// 일반 jar로 빌드
+jar {
+    enabled = true
+}

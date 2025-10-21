@@ -1,0 +1,6 @@
+rootProject.name = 'dependency-logger-starter'
+
+include 'core'
+include 'starter'
+
+include 'repository-jpa'
