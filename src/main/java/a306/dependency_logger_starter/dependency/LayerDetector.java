@@ -1,6 +1,5 @@
-package a306.util;
+package a306.dependency_logger_starter.dependency;
 
-import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;

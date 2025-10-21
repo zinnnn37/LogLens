@@ -1,6 +1,6 @@
-package a306.client;
+package a306.dependency_logger_starter.dependency.client;
 
-import a306.dto.ProjectDependencyInfo;
+import a306.dependency_logger_starter.dependency.dto.ProjectDependencyInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;

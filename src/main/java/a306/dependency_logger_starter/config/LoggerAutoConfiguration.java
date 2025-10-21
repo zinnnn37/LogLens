@@ -1,7 +1,8 @@
-package a306.config;
+package a306.dependency_logger_starter.config;
 
-import a306.aspect.MethodLoggingAspect;
-import a306.client.DependencyLogSender;
+import a306.dependency_logger_starter.dependency.DependencyCollector;
+import a306.dependency_logger_starter.dependency.client.DependencyLogSender;
+import a306.dependency_logger_starter.logging.aspect.MethodLoggingAspect;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.beans.factory.annotation.Value;

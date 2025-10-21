@@ -1,55 +1,54 @@
 plugins {
     id 'java-library'
-    id 'org.springframework.boot' version '3.5.6' apply false
-    id 'io.spring.dependency-management' version '1.1.7' apply false
+    id 'org.springframework.boot' version '3.5.6'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'maven-publish'
 }
 
-allprojects {
-    group = 'a306'
-    version = '1.1.0'
+group = 'a306'
+version = '1.1.0'
 
-    repositories {
-        mavenCentral()
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
-subprojects {
-    apply plugin: 'java-library'
-    apply plugin: 'maven-publish'
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    compileOnly 'org.springframework.data:spring-data-commons'
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
-    java {
-        toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
-        }
-    }
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
 
-    dependencies {
-        // 공통 의존성
-        compileOnly 'org.projectlombok:lombok:1.18.30'
-        annotationProcessor 'org.projectlombok:lombok:1.18.30'
+test {
+    useJUnitPlatform()
+}
 
-        testImplementation platform('org.junit:junit-bom:5.10.0')
-        testImplementation 'org.junit.jupiter:junit-jupiter'
-        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    }
+// 로컬 Maven 배포 설정
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
 
-    test {
-        useJUnitPlatform()
-    }
-
-    // 로컬 Maven 배포 설정
-    publishing {
-        publications {
-            mavenJava(MavenPublication) {
-                from components.java
-
-                versionMapping {
-                    usage('java-api') {
-                        fromResolutionOf('runtimeClasspath')
-                    }
-                    usage('java-runtime') {
-                        fromResolutionResult()
-                    }
+            versionMapping {
+                usage('java-api') {
+                    fromResolutionOf('runtimeClasspath')
+                }
+                usage('java-runtime') {
+                    fromResolutionResult()
                 }
             }
         }

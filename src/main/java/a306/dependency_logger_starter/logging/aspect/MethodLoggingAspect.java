@@ -1,6 +1,5 @@
-package a306.aspect;
+package a306.dependency_logger_starter.logging.aspect;
 
-import a306.util.LayerDetector;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +24,7 @@ import java.util.*;
 
 /**
  * 메서드 실행 로깅 Aspect (HTTP 정보 포함)
+ * layer 정보 제거 - component_name으로 대체
  */
 @Aspect
 @Slf4j
@@ -74,7 +74,7 @@ public class MethodLoggingAspect {
     /**
      * @LogMethodExecution 어노테이션
      */
-    @Around("@annotation(a306.annotation.LogMethodExecution)")
+    @Around("@annotation(a306.dependency_logger_starter.logging.annotation.LogMethodExecution)")
     public Object logAnnotatedMethod(ProceedingJoinPoint joinPoint) throws Throwable {
         return logMethodExecution(joinPoint);
     }
@@ -89,7 +89,7 @@ public class MethodLoggingAspect {
 
         String methodName = signature.getMethod().getName();
         String logger = getFullClassName(targetClass);
-        String layer = LayerDetector.detectLayer(targetClass);
+        String componentName = extractComponentName(targetClass);
 
         // HTTP 정보 추출
         HttpInfo httpInfo = extractHttpInfo();
@@ -97,8 +97,8 @@ public class MethodLoggingAspect {
         // 파라미터 수집
         Map<String, Object> parameters = collectParameters(signature, joinPoint.getArgs());
 
-        // REQUEST 로그 출력
-        logRequest(logger, methodName, layer, parameters, httpInfo);
+        // REQUEST 로그 출력 (layer 대신 componentName)
+        logRequest(logger, methodName, componentName, parameters, httpInfo);
 
         Object result = null;
         Throwable exception = null;
@@ -122,11 +122,25 @@ public class MethodLoggingAspect {
                 httpInfo.updateStatusCode();
             }
 
-            // RESPONSE 로그 출력
-            logResponse(logger, methodName, layer, responseData, executionTime, exception, httpInfo);
+            // RESPONSE 로그 출력 (layer 대신 componentName)
+            logResponse(logger, methodName, componentName, responseData, executionTime, exception, httpInfo);
         }
 
         return result;
+    }
+
+    /**
+     * 컴포넌트 이름 추출 (프록시 처리)
+     */
+    private String extractComponentName(Class<?> targetClass) {
+        String name = targetClass.getSimpleName();
+
+        // CGLIB 프록시 suffix 제거 ($$EnhancerBySpringCGLIB$$)
+        if (name.contains("$$")) {
+            name = name.substring(0, name.indexOf("$$"));
+        }
+
+        return name;
     }
 
     /**
@@ -155,7 +169,7 @@ public class MethodLoggingAspect {
     /**
      * REQUEST 로그 출력
      */
-    private void logRequest(String logger, String methodName, String layer,
+    private void logRequest(String logger, String methodName, String componentName,
                             Map<String, Object> parameters, HttpInfo httpInfo) {
         try {
             Map<String, Object> logEntry = new LinkedHashMap<>();
@@ -164,7 +178,9 @@ public class MethodLoggingAspect {
             logEntry.put("level", "INFO");
             logEntry.put("logger", logger);
             logEntry.put("message", "Request received: " + methodName);
-            logEntry.put("layer", layer);
+
+            // ✅ layer 대신 component_name 사용
+            logEntry.put("component_name", componentName);
 
             Map<String, Object> request = new LinkedHashMap<>();
 
@@ -197,7 +213,7 @@ public class MethodLoggingAspect {
     /**
      * RESPONSE 로그 출력
      */
-    private void logResponse(String logger, String methodName, String layer,
+    private void logResponse(String logger, String methodName, String componentName,
                              Object responseData, Long executionTime, Throwable exception,
                              HttpInfo httpInfo) {
         try {
@@ -205,7 +221,10 @@ public class MethodLoggingAspect {
             logEntry.put("@timestamp", LocalDateTime.now().atZone(ZoneOffset.UTC).format(ISO_FORMATTER));
             logEntry.put("trace_id", null); // TODO: TraceContext 추가 시
             logEntry.put("logger", logger);
-            logEntry.put("layer", layer);
+
+            // ✅ layer 대신 component_name 사용
+            logEntry.put("component_name", componentName);
+
             logEntry.put("request", null);
             logEntry.put("execution_time_ms", executionTime);
 

@@ -1,10 +1,9 @@
-package a306.config;
+package a306.dependency_logger_starter.dependency;
 
-import a306.client.DependencyLogSender;
-import a306.dto.Component;
-import a306.dto.DependencyRelation;
-import a306.dto.ProjectDependencyInfo;
-import a306.util.LayerDetector;
+import a306.dependency_logger_starter.dependency.client.DependencyLogSender;
+import a306.dependency_logger_starter.dependency.dto.Component;
+import a306.dependency_logger_starter.dependency.dto.DependencyRelation;
+import a306.dependency_logger_starter.dependency.dto.ProjectDependencyInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

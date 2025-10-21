@@ -1,4 +1,4 @@
-package a306.dto;
+package a306.dependency_logger_starter.dependency.dto;
 
 /**
  * 의존성 관계 (from → to)

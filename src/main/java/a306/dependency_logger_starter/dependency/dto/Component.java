@@ -1,4 +1,4 @@
-package a306.dto;
+package a306.dependency_logger_starter.dependency.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 

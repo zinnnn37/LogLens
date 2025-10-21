@@ -1,4 +1,4 @@
-package a306.annotation;
+package a306.dependency_logger_starter.logging.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
