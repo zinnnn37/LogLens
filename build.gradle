@@ -19,11 +19,13 @@ java {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-aop'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-webflux'
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    // api로 변경 (라이브러리니까 의존성 노출)
+    api 'org.springframework.boot:spring-boot-starter-aop'
+    api 'org.springframework.boot:spring-boot-starter-web'
+    api 'org.springframework.boot:spring-boot-starter-webflux'
+    api 'com.fasterxml.jackson.core:jackson-databind'
+    api 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
     compileOnly 'org.springframework.data:spring-data-commons'
     compileOnly 'org.projectlombok:lombok:1.18.30'
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
@@ -33,15 +35,41 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+// ========================================
+// JAR 설정 (중요!)
+// ========================================
+
+// 일반 JAR 생성 활성화
+jar {
+    enabled = true
+}
+
+// Spring Boot 실행 JAR 비활성화
+bootJar {
+    enabled = false
+}
+
+// ========================================
+// 테스트
+// ========================================
+
 test {
     useJUnitPlatform()
 }
 
-// 로컬 Maven 배포 설정
+// ========================================
+// Maven 배포 설정
+// ========================================
+
 publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
+
+            // 명시적으로 groupId, artifactId, version 설정
+            groupId = 'a306'
+            artifactId = 'loglens-spring-boot-starter'
+            version = '1.1.0'
 
             versionMapping {
                 usage('java-api') {
