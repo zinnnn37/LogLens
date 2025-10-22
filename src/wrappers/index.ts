@@ -1,0 +1,1 @@
+export { withLogLens } from './trace';

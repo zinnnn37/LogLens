@@ -116,4 +116,4 @@ function withLogLens<T extends (...args: any[]) => Promise<any>>(
   }) as T;
 }
 
-export default withLogLens;
+export { withLogLens };
