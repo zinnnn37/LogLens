@@ -14,29 +14,10 @@ public record SuccessResponse<T>(
         @NotNull String code,
         @NotNull String message,
         @NotNull int status,
-        @JsonInclude(NON_NULL) T data, // 추가 에러 상세 정보 (null인 경우 JSON에서 제외)
+        @JsonInclude(NON_NULL) T data,
         @NotNull String timestamp
 
 ) implements BaseResponse{
-
-    public static <T> SuccessResponse<T> of(final String code, final String message, final int status, final T data) {
-        return SuccessResponse.<T>builder()
-                .code(code)
-                .message(message)
-                .status(status)
-                .data(data)
-                .timestamp(TimestampUtils.now())
-                .build();
-    }
-
-    public static SuccessResponse<?> of(final String code, final String message, final int status) {
-        return SuccessResponse.builder()
-                .code(code)
-                .message(message)
-                .status(status)
-                .timestamp(TimestampUtils.now())
-                .build();
-    }
 
     public static <T> SuccessResponse<T> of(final SuccessCode successCode, final T data) {
         return SuccessResponse.<T>builder()
