@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Mail, Lock } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Field,
@@ -15,9 +16,11 @@ export const LoginForm = ({
   className,
   ...props
 }: React.ComponentProps<'form'>) => {
+  const [showPassword, setShowPassword] = useState(false);
+
   return (
     <form className={cn('flex flex-col', className)} {...props}>
-      <FieldGroup className="gap-4 font-[YiSunShin]">
+      <FieldGroup className="font-yisunsin gap-4">
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">로그인</h1>
           <p className="text-muted-foreground mt-2 mb-5 text-sm text-balance">
@@ -43,12 +46,25 @@ export const LoginForm = ({
               비밀번호
             </FieldLabel>
           </div>
-          <Input
-            id="password"
-            type="password"
-            required
-            className="rounded-[15px]"
-          />
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              required
+              className="rounded-[15px] pr-10"
+            />
+            <button
+              type="button"
+              onMouseDown={() => setShowPassword(true)}
+              onMouseUp={() => setShowPassword(false)}
+              onMouseLeave={() => setShowPassword(false)}
+              onTouchStart={() => setShowPassword(true)}
+              onTouchEnd={() => setShowPassword(false)}
+              className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
         </Field>
         <Field>
           <Button

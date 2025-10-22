@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
   validateEmail,
@@ -7,7 +8,7 @@ import {
 } from '@/lib/authValidation';
 import { useFormValidation } from '@/hooks/useFormValidation';
 import { Button } from '@/components/ui/button';
-import { User, Mail, Lock } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import {
   Field,
   FieldDescription,
@@ -22,6 +23,9 @@ export const SignupForm = ({
   className,
   ...props
 }: React.ComponentProps<'form'>) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const { values, errors, touched, isValid, setFieldValue, setFieldTouched } =
     useFormValidation(
       {
@@ -47,7 +51,12 @@ export const SignupForm = ({
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFieldValue(e.target.id, e.target.value);
+    const fieldId = e.target.id;
+    setFieldValue(fieldId, e.target.value);
+    // 이미 터치된 필드이거나, 값이 있는 경우 즉시 유효성 검사
+    if (touched[fieldId] || e.target.value) {
+      setFieldTouched(fieldId);
+    }
   };
 
   const handleBlur = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,7 +69,7 @@ export const SignupForm = ({
       onSubmit={handleSubmit}
       {...props}
     >
-      <FieldGroup className="gap-4 font-[YiSunShin]">
+      <FieldGroup className="font-yisunsin gap-4">
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">회원가입</h1>
           <p className="text-muted-foreground mt-2 mb-5 text-sm text-balance">
@@ -82,7 +91,10 @@ export const SignupForm = ({
             value={values.name}
             onChange={handleChange}
             onBlur={handleBlur}
-            className="rounded-[15px]"
+            className={cn(
+              'rounded-[15px]',
+              touched.name && errors.name && 'bg-destructive/10',
+            )}
           />
         </Field>
         <Field>
@@ -100,7 +112,10 @@ export const SignupForm = ({
             value={values.email}
             onChange={handleChange}
             onBlur={handleBlur}
-            className="rounded-[15px]"
+            className={cn(
+              'rounded-[15px]',
+              touched.email && errors.email && 'bg-destructive/10',
+            )}
           />
         </Field>
         <Field>
@@ -111,14 +126,30 @@ export const SignupForm = ({
               <p className="text-destructive text-xs">{errors.password}</p>
             )}
           </FieldLabel>
-          <Input
-            id="password"
-            type="password"
-            value={values.password}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className="rounded-[15px]"
-          />
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              value={values.password}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={cn(
+                'rounded-[15px] pr-10',
+                touched.password && errors.password && 'bg-destructive/10',
+              )}
+            />
+            <button
+              type="button"
+              onMouseDown={() => setShowPassword(true)}
+              onMouseUp={() => setShowPassword(false)}
+              onMouseLeave={() => setShowPassword(false)}
+              onTouchStart={() => setShowPassword(true)}
+              onTouchEnd={() => setShowPassword(false)}
+              className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
         </Field>
         <Field>
           <FieldLabel htmlFor="confirm-password">
@@ -130,14 +161,32 @@ export const SignupForm = ({
               </p>
             )}
           </FieldLabel>
-          <Input
-            id="confirm-password"
-            type="password"
-            value={values['confirm-password']}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className="rounded-[15px]"
-          />
+          <div className="relative">
+            <Input
+              id="confirm-password"
+              type={showConfirmPassword ? 'text' : 'password'}
+              value={values['confirm-password']}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={cn(
+                'rounded-[15px] pr-10',
+                touched['confirm-password'] &&
+                  errors['confirm-password'] &&
+                  'bg-destructive/10',
+              )}
+            />
+            <button
+              type="button"
+              onMouseDown={() => setShowConfirmPassword(true)}
+              onMouseUp={() => setShowConfirmPassword(false)}
+              onMouseLeave={() => setShowConfirmPassword(false)}
+              onTouchStart={() => setShowConfirmPassword(true)}
+              onTouchEnd={() => setShowConfirmPassword(false)}
+              className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
+            >
+              {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
         </Field>
         <Field>
           <Button
