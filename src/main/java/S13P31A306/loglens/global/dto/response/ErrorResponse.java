@@ -19,25 +19,6 @@ public record ErrorResponse<T>(
         @NotNull String timestamp
 ) implements BaseResponse {
 
-    public static <T> ErrorResponse<T> of(final String code, final String message, final int status, final T details) {
-        return ErrorResponse.<T>builder()
-                .code(code)
-                .message(message)
-                .status(status)
-                .details(details)
-                .timestamp(TimestampUtils.now())
-                .build();
-    }
-
-    public static ErrorResponse<?> of(final String code, final String message, final int status) {
-        return ErrorResponse.builder()
-                .code(code)
-                .message(message)
-                .status(status)
-                .timestamp(TimestampUtils.now())
-                .build();
-    }
-
     public static <T> ErrorResponse<T> of(final ErrorCode errorCode, final T details) {
         return ErrorResponse.<T>builder()
                 .code(errorCode.getCode())
