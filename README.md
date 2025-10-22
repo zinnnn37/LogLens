@@ -97,7 +97,7 @@ JSON 형태로 구조화된 로그를 메모리에 저장하고 조회, 전송, 
 
 ### ⚠️ 1. name 혹은 logger 옵션 지정
 
-옵션 없이 사용하면 익명 함수의 이름이 모두 `function`으로 표시됩니다.  
+옵션 없이 사용하면 익명 함수의 이름이 모두 `anonymous` 혹은 `function`으로 표시됩니다.  
 원활한 디버깅을 위해 `{ name: '함수이름', logger: '분류.함수이름' }` 옵션을 전달하세요.
 
 ```ts
@@ -179,9 +179,9 @@ const function1 = withLogLens(
 
 ## 문제 해결
 
-**모든 로그가 'function'으로 나와요**  
+**모든 로그가 'anonymous' || 'function'으로 나와요**  
 → 무기명 함수의 경우 `function.name`으로 함수 이름을 가져올 수 없습니다
-  `withLogLens(fn, { logger: '이름' })` 옵션을 추가해주세요
+  `withLogLens(fn, { name: '이름', logger: '분류.이름' })` 옵션을 추가해주세요
 
 **메모리가 계속 증가해요**  
 → `maxLogs` 설정 또는 주기적으로 `LogCollector.clear()`를 호출해주세요
