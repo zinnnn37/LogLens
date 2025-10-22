@@ -13,6 +13,8 @@ export default defineConfig({
       fileName: (format) => `index.${format}.js`,
     },
     rollupOptions: {
+      // 번들에서 react 제외
+      external: ['react', 'react-dom', 'react/jsx-runtime'],
       output: {
         // 이렇게 하면 require() 사용 시 default 객체 없이 바로 접근 가능
         exports: 'named',
