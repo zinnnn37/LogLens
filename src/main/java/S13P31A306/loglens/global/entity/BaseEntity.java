@@ -1,13 +1,12 @@
 package S13P31A306.loglens.global.entity;
 
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 import lombok.Getter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-import jakarta.persistence.Column;
 
 // @formatter:off
 /**
@@ -21,6 +20,10 @@ import jakarta.persistence.Column;
 @Getter
 public abstract class BaseEntity {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -29,5 +32,4 @@ public abstract class BaseEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    // delete 컬럼 고민
 }
