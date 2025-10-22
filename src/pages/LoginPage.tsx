@@ -5,11 +5,11 @@ import LoginIllust from '@/assets/images/LoginIllust.png';
 const LoginPage = () => {
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
-      <div className="bg-muted relative hidden lg:block">
+      <div className="bg-secondary relative hidden lg:block">
         <img
           src={LoginIllust}
           alt="Image"
-          className="bg-secondary absolute inset-0 h-full w-full object-cover p-40 dark:brightness-[0.2] dark:grayscale"
+          className="h-full w-full object-contain p-40 dark:brightness-[0.2] dark:grayscale"
         />
       </div>
       <div className="flex flex-col gap-4 p-6 md:p-10">
