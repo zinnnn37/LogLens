@@ -19,7 +19,7 @@ import type { LogLensOptions } from '../core/types';
  *
  * await fetchUser('123');
  */
-export function useLogLens<T extends (...args: any[]) => any>(
+function useLogLens<T extends (...args: any[]) => any>(
   fn: T,
   options?: LogLensOptions,
   deps: any[] = [],
@@ -30,3 +30,5 @@ export function useLogLens<T extends (...args: any[]) => any>(
     deps,
   );
 }
+
+export { useLogLens };
