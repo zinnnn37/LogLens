@@ -22,7 +22,7 @@ export const LoginForm = ({
     <form className={cn('flex flex-col', className)} {...props}>
       <FieldGroup className="font-yisunsin gap-4">
         <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold">로그인</h1>
+          <h1 className="font-pretendard text-2xl font-bold">로그인</h1>
           <p className="text-muted-foreground mt-2 mb-5 text-sm text-balance">
             로그인해서 프로젝트를 관리해보세요
           </p>

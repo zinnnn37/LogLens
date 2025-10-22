@@ -38,8 +38,8 @@ export const SignupForm = ({
         'name': validateName,
         'email': validateEmail,
         'password': validatePassword,
-        'confirm-password': value =>
-          validatePasswordMatch(values.password, value),
+        'confirm-password': (value, allValues) =>
+          validatePasswordMatch(allValues?.password || '', value),
       },
     );
 
@@ -57,6 +57,10 @@ export const SignupForm = ({
     if (touched[fieldId] || e.target.value) {
       setFieldTouched(fieldId);
     }
+    // 비밀번호 필드가 변경되면 비밀번호 확인 필드도 재검증
+    if (fieldId === 'password' && touched['confirm-password']) {
+      setFieldTouched('confirm-password');
+    }
   };
 
   const handleBlur = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,7 +75,7 @@ export const SignupForm = ({
     >
       <FieldGroup className="font-yisunsin gap-4">
         <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold">회원가입</h1>
+          <h1 className="font-pretendard text-2xl font-bold">회원가입</h1>
           <p className="text-muted-foreground mt-2 mb-5 text-sm text-balance">
             로그인해서 프로젝트를 관리해보세요
           </p>
@@ -91,6 +95,7 @@ export const SignupForm = ({
             value={values.name}
             onChange={handleChange}
             onBlur={handleBlur}
+            aria-invalid={touched.name && Boolean(errors.name)}
             className={cn(
               'rounded-[15px]',
               touched.name && errors.name && 'bg-destructive/10',
@@ -112,6 +117,7 @@ export const SignupForm = ({
             value={values.email}
             onChange={handleChange}
             onBlur={handleBlur}
+            aria-invalid={touched.email && Boolean(errors.email)}
             className={cn(
               'rounded-[15px]',
               touched.email && errors.email && 'bg-destructive/10',
@@ -133,6 +139,7 @@ export const SignupForm = ({
               value={values.password}
               onChange={handleChange}
               onBlur={handleBlur}
+              aria-invalid={touched.password && Boolean(errors.password)}
               className={cn(
                 'rounded-[15px] pr-10',
                 touched.password && errors.password && 'bg-destructive/10',
@@ -168,6 +175,10 @@ export const SignupForm = ({
               value={values['confirm-password']}
               onChange={handleChange}
               onBlur={handleBlur}
+              aria-invalid={
+                touched['confirm-password'] &&
+                Boolean(errors['confirm-password'])
+              }
               className={cn(
                 'rounded-[15px] pr-10',
                 touched['confirm-password'] &&

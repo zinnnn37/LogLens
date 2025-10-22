@@ -75,19 +75,22 @@
 @font-face {
   font-family: 'YiSunShin';
   font-weight: 300;
-  src: url('/fonts/이순신돋움체L.TTF') format('truetype');
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/YiSunShinDotumM.woff')
+    format('woff');
 }
 
 @font-face {
   font-family: 'YiSunShin';
   font-weight: 400;
-  src: url('/fonts/이순신돋움체M.TTF') format('truetype');
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/YiSunShinDotumM.woff')
+    format('woff');
 }
 
 @font-face {
   font-family: 'YiSunShin';
   font-weight: 700;
-  src: url('/fonts/이순신돋움체B.TTF') format('truetype');
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/YiSunShinDotumM.woff')
+    format('woff');
 }
 
 :root {
