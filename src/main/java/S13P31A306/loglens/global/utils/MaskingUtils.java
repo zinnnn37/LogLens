@@ -2,7 +2,8 @@ package S13P31A306.loglens.global.utils;
 
 import S13P31A306.loglens.global.annotation.ExcludeFromLogging;
 import S13P31A306.loglens.global.annotation.Sensitive;
-import S13P31A306.loglens.global.constants.Messages;
+import S13P31A306.loglens.global.constants.LogMessages;
+import S13P31A306.loglens.global.constants.SystemMessages;
 import java.lang.reflect.Field;
 import java.util.Objects;
 import java.util.StringJoiner;
@@ -16,7 +17,7 @@ public final class MaskingUtils {
     private static final String FIELD_FORMAT = "%s=%s";
 
     private MaskingUtils() {
-        throw new IllegalStateException(Messages.UTILITY_CLASS_ERROR.message());
+        throw new IllegalStateException(SystemMessages.UTILITY_CLASS_ERROR.message());
     }
 
     /**
@@ -80,10 +81,10 @@ public final class MaskingUtils {
             }
 
             Object value = field.get(target);
-            String displayValue = isSensitive(field) ? Messages.LOG_MASKED_VALUE.message() : String.valueOf(value);
+            String displayValue = isSensitive(field) ? LogMessages.LOG_MASKED_VALUE.message() : String.valueOf(value);
             return formatKeyValue(field.getName(), displayValue);
         } catch (IllegalAccessException e) {
-            return formatKeyValue(field.getName(), Messages.LOG_ERROR_VALUE.message());
+            return formatKeyValue(field.getName(), LogMessages.LOG_ERROR_VALUE.message());
         }
     }
 
@@ -96,7 +97,7 @@ public final class MaskingUtils {
     }
 
     private static String formatExcluded(final Field field) {
-        return formatKeyValue(field.getName(), Messages.LOG_EXCLUDED_VALUE.message());
+        return formatKeyValue(field.getName(), LogMessages.LOG_EXCLUDED_VALUE.message());
     }
 
     private static String formatKeyValue(final String key, final String value) {
