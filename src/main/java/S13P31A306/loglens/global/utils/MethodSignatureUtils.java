@@ -2,7 +2,8 @@ package S13P31A306.loglens.global.utils;
 
 import S13P31A306.loglens.global.annotation.ExcludeFromLogging;
 import S13P31A306.loglens.global.annotation.Sensitive;
-import S13P31A306.loglens.global.constants.Messages;
+import S13P31A306.loglens.global.constants.LogMessages;
+import S13P31A306.loglens.global.constants.SystemMessages;
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.Objects;
@@ -21,7 +22,7 @@ public final class MethodSignatureUtils {
     private static final String PARAMETER_FORMAT = "%s=%s";
 
     private MethodSignatureUtils() {
-        throw new IllegalStateException(Messages.UTILITY_CLASS_ERROR.message());
+        throw new IllegalStateException(SystemMessages.UTILITY_CLASS_ERROR.message());
     }
 
     /**
@@ -65,9 +66,9 @@ public final class MethodSignatureUtils {
             String argString;
 
             if (isExcluded(annotations)) {
-                argString = Messages.LOG_EXCLUDED_VALUE.message();
+                argString = LogMessages.LOG_EXCLUDED_VALUE.message();
             } else if (isSensitive(annotations)) {
-                argString = Messages.LOG_MASKED_VALUE.message();
+                argString = LogMessages.LOG_MASKED_VALUE.message();
             } else {
                 argString = convertArgToString(arg);
             }
@@ -104,8 +105,8 @@ public final class MethodSignatureUtils {
      * 주어진 클래스가 스프링 또는 아파치 패키지에 속하는지 확인합니다.
      */
     private static boolean isNotSpringOrApachePackage(final String className) {
-        return !className.startsWith(Messages.SPRING_PACKAGE.message())
-                && !className.startsWith(Messages.APACHE_PACKAGE.message());
+        return !className.startsWith(LogMessages.SPRING_PACKAGE.message())
+                && !className.startsWith(LogMessages.APACHE_PACKAGE.message());
     }
 
     /**
@@ -116,7 +117,7 @@ public final class MethodSignatureUtils {
             // MaskingUtils를 통한 마스킹 처리
             return MaskingUtils.mask(arg);
         } catch (Exception e) {
-            return Messages.LOG_ARG_CONVERSION_FAILED.message();
+            return LogMessages.LOG_ARG_CONVERSION_FAILED.message();
         }
     }
 }
