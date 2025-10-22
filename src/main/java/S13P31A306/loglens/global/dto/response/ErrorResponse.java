@@ -15,7 +15,7 @@ public record ErrorResponse<T>(
         @NotNull String code,
         @NotNull String message,
         @NotNull int status,
-        @JsonInclude(NON_NULL) T data,
+        @JsonInclude(NON_NULL) T details,
         @NotNull String timestamp
 ) implements BaseResponse {
 
@@ -24,7 +24,7 @@ public record ErrorResponse<T>(
                 .code(code)
                 .message(message)
                 .status(status)
-                .data(details)
+                .details(details)
                 .timestamp(TimestampUtils.now())
                 .build();
     }
@@ -38,12 +38,12 @@ public record ErrorResponse<T>(
                 .build();
     }
 
-    public static <T> ErrorResponse<T> of(final ErrorCode errorCode, final T data) {
+    public static <T> ErrorResponse<T> of(final ErrorCode errorCode, final T details) {
         return ErrorResponse.<T>builder()
                 .code(errorCode.getCode())
                 .message(errorCode.getMessage())
                 .status(errorCode.getStatus())
-                .data(data)
+                .details(details)
                 .timestamp(TimestampUtils.now())
                 .build();
     }
