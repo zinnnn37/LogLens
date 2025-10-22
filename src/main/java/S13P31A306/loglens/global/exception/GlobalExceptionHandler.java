@@ -113,7 +113,7 @@ public class GlobalExceptionHandler {
         return fieldErrors.stream()
                 .map(error -> {
                     String errorCodeString = error.getDefaultMessage();
-                    ErrorCode errorCode = ErrorCode.safeValueOf(errorCodeString)
+                    ErrorCode errorCode = GlobalErrorCode.safeValueOf(errorCodeString)
                             .orElse(GlobalErrorCode.VALIDATION_ERROR);
 
                     return new ValidationErrorDetail(
