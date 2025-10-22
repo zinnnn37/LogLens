@@ -18,8 +18,19 @@ class LogCollector {
   /**
    * 설정 초기화
    */
-  static init(config: Partial<CollectorConfig>): void {
-    this.config = { ...this.config, ...config };
+  static init(config: Partial<CollectorConfig> | null): void {
+    if (config === null) {
+      this.config = {
+        maxLogs: 1000,
+        autoFlush: {
+          enabled: false,
+          interval: 60000,
+          endpoint: '',
+        },
+      };
+    } else {
+      this.config = { ...this.config, ...config };
+    }
 
     if (this.config.autoFlush?.enabled) {
       this.startAutoFlush();
@@ -138,4 +149,4 @@ class LogCollector {
   }
 }
 
-export default LogCollector;
+export { LogCollector };
