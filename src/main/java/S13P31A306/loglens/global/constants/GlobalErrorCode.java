@@ -27,13 +27,9 @@ public enum GlobalErrorCode implements ErrorCode {
 
     // 401 Unauthorized
     UNAUTHORIZED("G401", "인증이 필요합니다", 401),
-    AUTH_INVALID_ID_TOKEN("G401-1", "유효하지 않은 토큰입니다", 401),
-    EXPIRED_TOKEN("G401-2", "만료된 토큰입니다", 401),
-    TOKEN_SIGNATURE_INVALID("G401-3", "토큰 서명이 유효하지 않습니다", 401),
 
     // 403 Forbidden
     FORBIDDEN("G403", "접근 권한이 없습니다", 403),
-    USER_DELETED("G403-1", "탈퇴된 회원입니다.", 403),
 
     // 404 Not Found
     NOT_FOUND("G404", "요청한 리소스를 찾을 수 없습니다", 404),
@@ -44,7 +40,6 @@ public enum GlobalErrorCode implements ErrorCode {
 
     // 409 Conflict
     CONFLICT("G409", "리소스 충돌이 발생했습니다", 409),
-    PROJECT_NAME_DUPLICATE("PJ409", "프로젝트 이름이 중복되었습니다.", 409),
 
     // 429 Too Many Requests
     TOO_MANY_REQUESTS("G429", "요청이 너무 많습니다", 429),
