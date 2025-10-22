@@ -6,7 +6,6 @@ import S13P31A306.loglens.global.dto.response.BaseResponse;
 import S13P31A306.loglens.global.dto.response.ErrorResponse;
 import S13P31A306.loglens.global.dto.response.ValidationErrorDetail;
 import S13P31A306.loglens.global.dto.response.ValidationErrorResponse;
-import S13P31A306.loglens.global.utils.PathUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -149,9 +148,17 @@ public class GlobalExceptionHandler {
         return e.getConstraintViolations()
                 .stream()
                 .collect(Collectors.toMap(
-                        violation -> PathUtils.extractLeafProperty(violation.getPropertyPath().toString()),
+                        violation -> extractLeafProperty(violation.getPropertyPath().toString()),
                         ConstraintViolation::getMessage,
                         (first, second) -> first
                 ));
+    }
+
+    /**
+     * 경로 문자열에서 마지막 필드명만 추출
+     */
+    private String extractLeafProperty(final String path) {
+        final var lastDot = path.lastIndexOf('.');
+        return (lastDot != -1) ? path.substring(lastDot + 1) : path;
     }
 }
