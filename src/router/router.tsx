@@ -18,10 +18,6 @@ export const router = createBrowserRouter([
         element: <Home />,
       },
       {
-        path: ROUTE_PATH.LOGIN,
-        element: <Login />,
-      },
-      {
         path: ROUTE_PATH.NOT_FOUND,
         element: <NotFound />,
       },

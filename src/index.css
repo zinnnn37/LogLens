@@ -3,14 +3,112 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@font-face {
+  font-family: 'Pretendard';
+  font-weight: 100;
+  src: url('/fonts/PRETENDARD-THIN.OTF') format('opentype');
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  font-weight: 200;
+  src: url('/fonts/PRETENDARD-EXTRALIGHT.OTF') format('opentype');
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  font-weight: 300;
+  src: url('/fonts/PRETENDARD-LIGHT.OTF') format('opentype');
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  font-weight: 400;
+  src: url('/fonts/PRETENDARD-REGULAR.OTF') format('opentype');
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  font-weight: 500;
+  src: url('/fonts/PRETENDARD-MEDIUM.OTF') format('opentype');
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  font-weight: 600;
+  src: url('/fonts/PRETENDARD-SEMIBOLD.OTF') format('opentype');
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  font-weight: 700;
+  src: url('/fonts/PRETENDARD-BOLD.OTF') format('opentype');
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  font-weight: 800;
+  src: url('/fonts/PRETENDARD-EXTRABOLD.OTF') format('opentype');
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  font-weight: 900;
+  src: url('/fonts/PRETENDARD-BLACK.OTF') format('opentype');
+}
+
+@font-face {
+  font-family: 'GodoB';
+  src: url('/fonts/GODOB.TTF') format('truetype');
+}
+
+@font-face {
+  font-family: 'GodoM';
+  src: url('/fonts/GODOM.OTF') format('opentype');
+}
+
+@font-face {
+  font-family: 'NoonNu';
+  src: url('/fonts/NOONNUBASICGOTHICREGULAR.OTF') format('opentype');
+}
+
+@font-face {
+  font-family: 'YiSunShin';
+  font-weight: 300;
+  src: url('/fonts/이순신돋움체L.TTF') format('truetype');
+}
+
+@font-face {
+  font-family: 'YiSunShin';
+  font-weight: 400;
+  src: url('/fonts/이순신돋움체M.TTF') format('truetype');
+}
+
+@font-face {
+  font-family: 'YiSunShin';
+  font-weight: 700;
+  src: url('/fonts/이순신돋움체B.TTF') format('truetype');
+}
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family:
+    'Pretendard',
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    Roboto,
+    'Helvetica Neue',
+    'Segoe UI',
+    'Apple SD Gothic Neo',
+    'Noto Sans KR',
+    'Malgun Gothic',
+    sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  background-color: #ffffff;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -23,10 +121,10 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: oklch(0.576 0.143 251.802);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.678 0.099 247.858);
+  --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
@@ -34,7 +132,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.576 0.143 251.802);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -42,12 +140,12 @@
   --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary: oklch(0.576 0.143 251.802);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-ring: oklch(0.576 0.143 251.802);
 }
 
 @theme inline {
@@ -95,9 +193,9 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
+  --primary: oklch(0.678 0.099 247.858);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.576 0.143 251.802);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
@@ -106,7 +204,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.678 0.099 247.858);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -114,12 +212,12 @@
   --chart-5: oklch(0.645 0.246 16.439);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary: oklch(0.678 0.099 247.858);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.678 0.099 247.858);
 }
 
 @layer base {
