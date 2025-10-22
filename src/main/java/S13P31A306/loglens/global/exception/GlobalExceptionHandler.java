@@ -130,7 +130,7 @@ public class GlobalExceptionHandler {
      * 에러 응답 공통 생성 로직 - details 포함
      */
     private ResponseEntity<BaseResponse> buildErrorResponse(final ErrorCode code, final Object details) {
-        var body = ErrorResponse.of(code.getCode(), code.getMessage(), code.getStatus(), details);
+        var body = ErrorResponse.of(code, details);
         return ResponseEntity.status(code.getStatus()).body(body);
     }
 
@@ -138,7 +138,7 @@ public class GlobalExceptionHandler {
      * 에러 응답 공통 생성 로직 - details 없음
      */
     private ResponseEntity<BaseResponse> buildErrorResponse(final ErrorCode code) {
-        var body = ErrorResponse.of(code.getCode(), code.getMessage(), code.getStatus());
+        var body = ErrorResponse.of(code);
         return ResponseEntity.status(code.getStatus()).body(body);
     }
 
