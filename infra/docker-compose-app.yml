@@ -1,0 +1,35 @@
+# docker-compose-app.yml
+# Blue/Green 배포를 위한 템플릿 (포트가 8080 또는 8081로 변경됨)
+version: '3.8'
+
+services:
+  app:
+    image: loglens-app:latest
+    container_name: loglens-app-blue  # 또는 loglens-app-green
+    ports:
+      - "8080:8080"  # Blue: 8080:8080, Green: 8081:8080
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://loglens-mysql:3306/loglens
+      - SPRING_DATASOURCE_USERNAME=gonagi
+      - SPRING_DATASOURCE_PASSWORD=Loglens306#)^
+      - SPRING_REDIS_HOST=loglens-redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_REDIS_PASSWORD=your-redis-password
+    restart: unless-stopped
+    networks:
+      - loglens-network
+    depends_on:
+      - mysql
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+networks:
+  loglens-network:
+    name: loglens-network    # 👈 명시적으로 이름 지정
+    driver: bridge
