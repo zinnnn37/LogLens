@@ -2,6 +2,16 @@ package S13P31A306.loglens.global.constants;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * @deprecated 이 enum은 단일 책임 원칙 위반으로 인해 분리되었습니다.
+ * 대신 다음을 사용하세요:
+ * <ul>
+ *   <li>{@link SystemMessages} - 시스템 공통 메시지</li>
+ *   <li>{@link LogMessages} - 로깅 관련 메시지</li>
+ * </ul>
+ * 이 클래스는 향후 버전에서 제거될 예정입니다.
+ */
+@Deprecated(since = "1.0", forRemoval = true)
 @RequiredArgsConstructor
 public enum Messages {
     // 유효성 검증 메시지
@@ -15,7 +25,6 @@ public enum Messages {
     // 서버 URL 정보
     LOCAL_SERVER_URL("http://localhost:8080"),
     PROD_SERVER_URL("https://api.fintech-osm.store"),
-
     // 보안 인증 관련
     SECURITY_SCHEME_NAME("BearerAuthentication"),
     BEARER_FORMAT("JWT"),
