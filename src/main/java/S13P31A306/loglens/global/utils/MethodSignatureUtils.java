@@ -97,7 +97,7 @@ public final class MethodSignatureUtils {
      * 유효(null이 아니고 spring/apache 패키지가 아닌 경우)한 인자인지 확인합니다.
      */
     private static boolean isValidArgument(final Object arg) {
-        return Objects.isNull(arg) || isNotSpringOrApachePackage(arg.getClass().getName());
+        return Objects.nonNull(arg) && isNotSpringOrApachePackage(arg.getClass().getName());
     }
 
     /**
