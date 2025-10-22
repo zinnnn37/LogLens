@@ -1,5 +1,9 @@
 package a306.dependency_logger_starter.logging.aspect;
 
+import a306.dependency_logger_starter.logging.annotation.ExcludeValue;
+import a306.dependency_logger_starter.logging.annotation.Sensitive;
+import a306.dependency_logger_starter.logging.util.TypeChecker;
+import a306.dependency_logger_starter.logging.util.ValueProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -8,14 +12,13 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.reflect.Array;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -23,8 +26,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 메서드 실행 로깅 Aspect (HTTP 정보 포함)
- * layer 정보 제거 - component_name으로 대체
+ * 메서드 실행 로깅 Aspect
+ * @Sensitive, @ExcludeValue 어노테이션 기반 마스킹
  */
 @Aspect
 @Slf4j
@@ -33,13 +36,6 @@ public class MethodLoggingAspect {
 
     private final ObjectMapper objectMapper;
 
-    @Value("${spring.application.name:unknown-project}")
-    private String projectName;
-
-    // 상수
-    private static final int MAX_COLLECTION_SIZE = 100;
-    private static final int MAX_STRING_LENGTH = 500;
-    private static final int MAX_FIELD_LENGTH = 200;
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_INSTANT;
 
     /**
@@ -66,6 +62,9 @@ public class MethodLoggingAspect {
         return logMethodExecution(joinPoint);
     }
 
+    /**
+     * JPA Repository 메서드
+     */
     @Around("target(org.springframework.data.repository.Repository)")
     public Object logJpaRepositoryMethods(ProceedingJoinPoint joinPoint) throws Throwable {
         return logMethodExecution(joinPoint);
@@ -88,41 +87,30 @@ public class MethodLoggingAspect {
         Class<?> targetClass = ClassUtils.getUserClass(joinPoint.getTarget().getClass());
 
         String methodName = signature.getMethod().getName();
-        String logger = getFullClassName(targetClass);
+        String logger = targetClass.getName();
         String componentName = extractComponentName(targetClass);
 
-        // HTTP 정보 추출
         HttpInfo httpInfo = extractHttpInfo();
-
-        // 파라미터 수집
         Map<String, Object> parameters = collectParameters(signature, joinPoint.getArgs());
 
-        // REQUEST 로그 출력 (layer 대신 componentName)
         logRequest(logger, methodName, componentName, parameters, httpInfo);
 
         Object result = null;
         Throwable exception = null;
 
         try {
-            // 메서드 실행
             result = joinPoint.proceed();
-
         } catch (Throwable e) {
             exception = e;
             throw e;
-
         } finally {
             long executionTime = System.currentTimeMillis() - startTime;
-
-            // 응답 수집
             Object responseData = (exception == null) ? collectResponse(result) : null;
 
-            // 응답 상태 코드 업데이트
             if (httpInfo != null) {
                 httpInfo.updateStatusCode();
             }
 
-            // RESPONSE 로그 출력 (layer 대신 componentName)
             logResponse(logger, methodName, componentName, responseData, executionTime, exception, httpInfo);
         }
 
@@ -135,7 +123,7 @@ public class MethodLoggingAspect {
     private String extractComponentName(Class<?> targetClass) {
         String name = targetClass.getSimpleName();
 
-        // CGLIB 프록시 suffix 제거 ($$EnhancerBySpringCGLIB$$)
+        // CGLIB 프록시 suffix 제거
         if (name.contains("$$")) {
             name = name.substring(0, name.indexOf("$$"));
         }
@@ -154,14 +142,14 @@ public class MethodLoggingAspect {
             if (attributes != null) {
                 HttpServletRequest request = attributes.getRequest();
                 return new HttpInfo(
-                        request.getMethod(),           // GET, POST, PUT, DELETE
-                        request.getRequestURI(),       // /users/1
-                        request.getQueryString(),      // ?page=1&size=10
-                        attributes                     // 나중에 상태 코드 추출용
+                        request.getMethod(),
+                        request.getRequestURI(),
+                        request.getQueryString(),
+                        attributes
                 );
             }
         } catch (Exception e) {
-            log.debug("HTTP 정보 추출 실패 (Service/Repository 계층일 수 있음): {}", e.getMessage());
+            log.debug("HTTP 정보 추출 실패: {}", e.getMessage());
         }
         return null;
     }
@@ -174,17 +162,14 @@ public class MethodLoggingAspect {
         try {
             Map<String, Object> logEntry = new LinkedHashMap<>();
             logEntry.put("@timestamp", LocalDateTime.now().atZone(ZoneOffset.UTC).format(ISO_FORMATTER));
-            logEntry.put("trace_id", null); // TODO: TraceContext 추가 시
+            logEntry.put("trace_id", null);
             logEntry.put("level", "INFO");
             logEntry.put("logger", logger);
             logEntry.put("message", "Request received: " + methodName);
-
-            // ✅ layer 대신 component_name 사용
             logEntry.put("component_name", componentName);
 
             Map<String, Object> request = new LinkedHashMap<>();
 
-            // HTTP 정보 추가
             if (httpInfo != null) {
                 Map<String, Object> http = new LinkedHashMap<>();
                 http.put("method", httpInfo.method);
@@ -198,12 +183,10 @@ public class MethodLoggingAspect {
             request.put("method", methodName);
             request.put("parameters", parameters);
             logEntry.put("request", request);
-
             logEntry.put("response", null);
             logEntry.put("execution_time_ms", null);
 
-            String json = objectMapper.writeValueAsString(logEntry);
-            log.info("{}", json);
+            log.info("{}", objectMapper.writeValueAsString(logEntry));
 
         } catch (Exception e) {
             log.error("REQUEST 로그 출력 실패", e);
@@ -219,17 +202,13 @@ public class MethodLoggingAspect {
         try {
             Map<String, Object> logEntry = new LinkedHashMap<>();
             logEntry.put("@timestamp", LocalDateTime.now().atZone(ZoneOffset.UTC).format(ISO_FORMATTER));
-            logEntry.put("trace_id", null); // TODO: TraceContext 추가 시
+            logEntry.put("trace_id", null);
             logEntry.put("logger", logger);
-
-            // ✅ layer 대신 component_name 사용
             logEntry.put("component_name", componentName);
-
             logEntry.put("request", null);
             logEntry.put("execution_time_ms", executionTime);
 
             if (exception != null) {
-                // 에러 발생
                 logEntry.put("level", "ERROR");
                 logEntry.put("message", "Failed to " + methodName + ": " + exception.getMessage());
 
@@ -238,20 +217,16 @@ public class MethodLoggingAspect {
                 exceptionInfo.put("message", exception.getMessage());
                 exceptionInfo.put("stacktrace", getStackTrace(exception));
                 logEntry.put("exception", exceptionInfo);
-
                 logEntry.put("response", null);
 
-                String json = objectMapper.writeValueAsString(logEntry);
-                log.error("{}", json);
+                log.error("{}", objectMapper.writeValueAsString(logEntry));
 
             } else {
-                // 정상 완료
                 logEntry.put("level", "INFO");
                 logEntry.put("message", "Response completed: " + methodName);
 
                 Map<String, Object> response = new LinkedHashMap<>();
 
-                // HTTP 정보 추가
                 if (httpInfo != null) {
                     Map<String, Object> http = new LinkedHashMap<>();
                     http.put("method", httpInfo.method);
@@ -266,8 +241,7 @@ public class MethodLoggingAspect {
                 response.put("result", responseData);
                 logEntry.put("response", response);
 
-                String json = objectMapper.writeValueAsString(logEntry);
-                log.info("{}", json);
+                log.info("{}", objectMapper.writeValueAsString(logEntry));
             }
 
         } catch (Exception e) {
@@ -276,7 +250,7 @@ public class MethodLoggingAspect {
     }
 
     /**
-     * 파라미터 수집
+     * 파라미터 수집 (어노테이션 기반)
      */
     private Map<String, Object> collectParameters(MethodSignature signature, Object[] args) {
         Map<String, Object> parameters = new LinkedHashMap<>();
@@ -287,79 +261,35 @@ public class MethodLoggingAspect {
 
         String[] parameterNames = signature.getParameterNames();
         Class<?>[] parameterTypes = signature.getParameterTypes();
+        Annotation[][] parameterAnnotations = signature.getMethod().getParameterAnnotations();
 
         for (int i = 0; i < args.length; i++) {
             String paramName = (parameterNames != null && i < parameterNames.length)
                     ? parameterNames[i]
                     : "arg" + i;
 
-            Class<?> paramType = parameterTypes[i];
-
             // Framework 객체 제외
-            if (isFrameworkClass(paramType)) {
+            if (TypeChecker.isFrameworkClass(parameterTypes[i])) {
                 continue;
             }
 
-            Object paramValue = args[i];
-            Object processedValue = processParameterValue(paramName, paramValue);
-            parameters.put(paramName, processedValue);
+            // 어노테이션 체크
+            Annotation[] annotations = parameterAnnotations[i];
+
+            if (hasAnnotation(annotations, ExcludeValue.class)) {
+                parameters.put(paramName, ValueProcessor.getExcludedValue());
+                continue;
+            }
+
+            if (hasAnnotation(annotations, Sensitive.class)) {
+                parameters.put(paramName, ValueProcessor.getMaskedValue());
+                continue;
+            }
+
+            parameters.put(paramName, ValueProcessor.processValue(args[i]));
         }
 
         return parameters;
-    }
-
-    /**
-     * 파라미터 값 처리 (타입별)
-     */
-    private Object processParameterValue(String paramName, Object value) {
-        if (value == null) {
-            return null;
-        }
-
-        // 민감 정보 체크
-        if (isSensitiveField(paramName)) {
-            return "[REDACTED]";
-        }
-
-        Class<?> valueClass = value.getClass();
-
-        // 1. Primitive/Wrapper/String
-        if (isPrimitiveOrWrapper(valueClass) || value instanceof String) {
-            return sanitizeStringValue(value);
-        }
-
-        // 2. Enum
-        if (value instanceof Enum) {
-            return ((Enum<?>) value).name();
-        }
-
-        // 3. Collection (List, Set)
-        if (value instanceof Collection) {
-            return processCollection((Collection<?>) value);
-        }
-
-        // 4. Map
-        if (value instanceof Map) {
-            return processMap((Map<?, ?>) value);
-        }
-
-        // 5. Array
-        if (valueClass.isArray()) {
-            return processArray(value);
-        }
-
-        // 6. Entity
-        if (isEntity(valueClass)) {
-            return processEntity(value);
-        }
-
-        // 7. DTO/POJO
-        if (isDto(valueClass)) {
-            return processDtoToPrimitive(value);
-        }
-
-        // 8. 기타 (toString)
-        return truncateString(value.toString(), MAX_FIELD_LENGTH);
     }
 
     /**
@@ -370,7 +300,6 @@ public class MethodLoggingAspect {
             return null;
         }
 
-        // void 메서드
         if (result instanceof Void) {
             return "void";
         }
@@ -380,336 +309,49 @@ public class MethodLoggingAspect {
             try {
                 Method getBodyMethod = result.getClass().getMethod("getBody");
                 Object body = getBodyMethod.invoke(result);
-                return collectResponse(body); // 재귀
+                return collectResponse(body);
             } catch (Exception e) {
                 log.debug("ResponseEntity body 추출 실패", e);
             }
         }
 
-        Class<?> resultClass = result.getClass();
-
-        // Primitive/Wrapper/String
-        if (isPrimitiveOrWrapper(resultClass) || result instanceof String) {
-            return sanitizeStringValue(result);
-        }
-
-        // Enum
-        if (result instanceof Enum) {
-            return ((Enum<?>) result).name();
-        }
-
-        // Collection
+        // Collection 크기 체크 (3개 이상이면 요약)
         if (result instanceof Collection) {
             Collection<?> collection = (Collection<?>) result;
-            if (collection.size() > MAX_COLLECTION_SIZE) {
-                return collection.getClass().getSimpleName() + "[" + collection.size() + " items]";
+            if (collection.size() >= 3) {
+                return ValueProcessor.processValue(result);
             }
             return result;
         }
 
-        // Map
+        // Map 크기 체크 (3개 이상이면 요약)
         if (result instanceof Map) {
             Map<?, ?> map = (Map<?, ?>) result;
-            if (map.size() > MAX_COLLECTION_SIZE) {
-                return "Map[" + map.size() + " entries]";
+            if (map.size() >= 3) {
+                return ValueProcessor.processValue(result);
             }
             return result;
         }
 
-        // DTO/POJO
-        if (isDto(resultClass)) {
-            return processDtoToPrimitive(result);
-        }
-
-        // 큰 객체 (1000자 초과)
+        // 큰 객체 처리
         String resultStr = result.toString();
         if (resultStr.length() > 1000) {
-            return resultClass.getSimpleName() + " [truncated]";
+            return result.getClass().getSimpleName() + " [truncated]";
         }
 
-        return result;
+        return ValueProcessor.processValue(result);
     }
 
     /**
-     * Collection 처리
+     * 어노테이션 존재 여부 체크
      */
-    private Object processCollection(Collection<?> collection) {
-        if (collection.isEmpty()) {
-            return List.of();
-        }
-
-        List<Object> processed = new ArrayList<>();
-        int count = 0;
-
-        for (Object item : collection) {
-            if (count >= MAX_COLLECTION_SIZE) {
-                processed.add("... (" + (collection.size() - MAX_COLLECTION_SIZE) + " more items)");
-                break;
-            }
-            processed.add(processParameterValue("item", item));
-            count++;
-        }
-
-        return processed;
-    }
-
-    /**
-     * Map 처리
-     */
-    private Object processMap(Map<?, ?> map) {
-        if (map.isEmpty()) {
-            return Map.of();
-        }
-
-        Map<String, Object> processed = new LinkedHashMap<>();
-        int count = 0;
-
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            if (count >= MAX_COLLECTION_SIZE) {
-                processed.put("...", "(" + (map.size() - MAX_COLLECTION_SIZE) + " more entries)");
-                break;
-            }
-
-            String key = String.valueOf(entry.getKey());
-            Object value = entry.getValue();
-            processed.put(key, processParameterValue(key, value));
-            count++;
-        }
-
-        return processed;
-    }
-
-    /**
-     * Array 처리
-     */
-    private Object processArray(Object array) {
-        int length = Array.getLength(array);
-
-        if (length == 0) {
-            return List.of();
-        }
-
-        List<Object> processed = new ArrayList<>();
-
-        for (int i = 0; i < Math.min(length, MAX_COLLECTION_SIZE); i++) {
-            Object item = Array.get(array, i);
-            processed.add(processParameterValue("item", item));
-        }
-
-        if (length > MAX_COLLECTION_SIZE) {
-            processed.add("... (" + (length - MAX_COLLECTION_SIZE) + " more items)");
-        }
-
-        return processed;
-    }
-
-    /**
-     * Entity 처리
-     */
-    private Object processEntity(Object entity) {
-        try {
-            Method getIdMethod = entity.getClass().getMethod("getId");
-            Object id = getIdMethod.invoke(entity);
-            return entity.getClass().getSimpleName() + "(id=" + id + ")";
-        } catch (Exception e) {
-            return entity.getClass().getSimpleName() + "(?)";
-        }
-    }
-
-    /**
-     * DTO를 Map으로 변환
-     */
-    private Object processDtoToPrimitive(Object dto) {
-        try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> map = objectMapper.convertValue(dto, Map.class);
-
-            Map<String, Object> sanitized = new LinkedHashMap<>();
-
-            for (Map.Entry<String, Object> entry : map.entrySet()) {
-                String fieldName = entry.getKey();
-                Object fieldValue = entry.getValue();
-
-                if (isSensitiveField(fieldName)) {
-                    sanitized.put(fieldName, "[REDACTED]");
-                } else {
-                    sanitized.put(fieldName, sanitizeFieldValue(fieldValue));
-                }
-            }
-
-            return sanitized;
-
-        } catch (Exception e) {
-            log.debug("DTO 변환 실패: {}", dto.getClass().getName(), e);
-            return truncateString(dto.toString(), MAX_FIELD_LENGTH);
-        }
-    }
-
-    /**
-     * 필드 값 정리
-     */
-    private Object sanitizeFieldValue(Object value) {
-        if (value == null) {
-            return null;
-        }
-
-        // Primitive/Wrapper/String
-        if (isPrimitiveOrWrapper(value.getClass()) || value instanceof String) {
-            return truncateString(String.valueOf(value), MAX_STRING_LENGTH);
-        }
-
-        // Collection
-        if (value instanceof Collection) {
-            Collection<?> collection = (Collection<?>) value;
-            if (collection.size() > 10) {
-                return collection.getClass().getSimpleName() + "[" + collection.size() + " items]";
-            }
-            return value;
-        }
-
-        // Map
-        if (value instanceof Map) {
-            Map<?, ?> map = (Map<?, ?>) value;
-            if (map.size() > 10) {
-                return "Map[" + map.size() + " entries]";
-            }
-            return value;
-        }
-
-        // 중첩 DTO
-        return value.getClass().getSimpleName() + "[nested]";
-    }
-
-    /**
-     * Framework 클래스 체크
-     */
-    private boolean isFrameworkClass(Class<?> clazz) {
-        if (clazz == null) {
-            return false;
-        }
-
-        String className = clazz.getName();
-
-        return className.startsWith("javax.servlet.") ||
-                className.startsWith("jakarta.servlet.") ||
-                className.startsWith("org.springframework.web.") ||
-                className.startsWith("org.springframework.http.") ||
-                className.startsWith("org.springframework.ui.") ||
-                className.startsWith("org.springframework.validation.");
-    }
-
-    /**
-     * Primitive 또는 Wrapper 타입 체크
-     */
-    private boolean isPrimitiveOrWrapper(Class<?> clazz) {
-        return clazz.isPrimitive() ||
-                clazz == Boolean.class ||
-                clazz == Byte.class ||
-                clazz == Short.class ||
-                clazz == Integer.class ||
-                clazz == Long.class ||
-                clazz == Float.class ||
-                clazz == Double.class ||
-                clazz == Character.class;
-    }
-
-    /**
-     * Entity 체크
-     */
-    private boolean isEntity(Class<?> clazz) {
-        try {
-            // Jakarta (Spring Boot 3.x)
-            Class<?> entityAnnotation = Class.forName("jakarta.persistence.Entity");
-            if (clazz.isAnnotationPresent((Class) entityAnnotation)) {
+    private boolean hasAnnotation(Annotation[] annotations, Class<? extends Annotation> annotationClass) {
+        for (Annotation annotation : annotations) {
+            if (annotation.annotationType() == annotationClass) {
                 return true;
             }
-        } catch (ClassNotFoundException e) {
-            // Jakarta 없음
         }
-
-        try {
-            // Javax (Spring Boot 2.x)
-            Class<?> entityAnnotation = Class.forName("javax.persistence.Entity");
-            if (clazz.isAnnotationPresent((Class) entityAnnotation)) {
-                return true;
-            }
-        } catch (ClassNotFoundException e) {
-            // Javax 없음
-        }
-
         return false;
-    }
-
-    /**
-     * DTO/POJO 체크
-     */
-    private boolean isDto(Class<?> clazz) {
-        String packageName = clazz.getPackage() != null ? clazz.getPackage().getName() : "";
-
-        // Java/Spring 기본 패키지 제외
-        if (packageName.startsWith("java.") ||
-                packageName.startsWith("javax.") ||
-                packageName.startsWith("jakarta.") ||
-                packageName.startsWith("org.springframework.")) {
-            return false;
-        }
-
-        // Entity가 아니면 DTO로 간주
-        return !isEntity(clazz);
-    }
-
-    /**
-     * 민감 필드 체크
-     */
-    private boolean isSensitiveField(String fieldName) {
-        if (fieldName == null) {
-            return false;
-        }
-
-        String lowerFieldName = fieldName.toLowerCase();
-
-        return lowerFieldName.contains("password") ||
-                lowerFieldName.contains("passwd") ||
-                lowerFieldName.contains("pwd") ||
-                lowerFieldName.contains("token") ||
-                lowerFieldName.contains("secret") ||
-                lowerFieldName.contains("apikey") ||
-                lowerFieldName.contains("api_key") ||
-                lowerFieldName.contains("authorization");
-    }
-
-    /**
-     * 문자열 값 정리
-     */
-    private Object sanitizeStringValue(Object value) {
-        if (value == null) {
-            return null;
-        }
-
-        String str = String.valueOf(value);
-        return truncateString(str, MAX_STRING_LENGTH);
-    }
-
-    /**
-     * 문자열 자르기
-     */
-    private String truncateString(String str, int maxLength) {
-        if (str == null) {
-            return null;
-        }
-
-        if (str.length() <= maxLength) {
-            return str;
-        }
-
-        return str.substring(0, maxLength) + "... [truncated]";
-    }
-
-    /**
-     * 전체 클래스 경로 반환
-     */
-    private String getFullClassName(Class<?> clazz) {
-        return clazz.getName();
     }
 
     /**
@@ -739,9 +381,6 @@ public class MethodLoggingAspect {
             this.statusCode = null;
         }
 
-        /**
-         * 응답 시점에 상태 코드 업데이트
-         */
         void updateStatusCode() {
             try {
                 if (attributes != null && attributes.getResponse() != null) {
