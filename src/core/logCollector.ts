@@ -1,5 +1,6 @@
 // src/core/logCollector.ts
 
+import { LogFormatter } from '../utils/logFormatter';
 import type { LogEntry, CollectorConfig } from './types';
 
 class LogCollector {
@@ -30,6 +31,9 @@ class LogCollector {
    */
   static addLog(log: LogEntry): void {
     this.logs.push(log);
+
+    const formatted = LogFormatter.toConsole(log);
+    console.log(formatted);
 
     if (this.logs.length > (this.config.maxLogs || 1000)) {
       this.logs.shift();
