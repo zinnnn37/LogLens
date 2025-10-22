@@ -228,3 +228,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .font-pretendard {
+    font-family: 'Pretendard', sans-serif;
+  }
+  .font-yisunsin {
+    font-family: 'YiSunShin', sans-serif;
+  }
+  .font-godoB {
+    font-family: 'GodoB', sans-serif;
+  }
+  .font-godoM {
+    font-family: 'GodoM', sans-serif;
+  }
+  .font-noonnu {
+    font-family: 'NoonNu', sans-serif;
+  }
+}

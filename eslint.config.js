@@ -153,10 +153,12 @@ export default tseslint.config([
   { files: ['**/*.types.ts'], rules: {} },
   { files: ['src/vite-env.d.ts'], rules: {} },
 
-  // 필요 시 UI 폴더만 규칙 완화
+  // shadcn UI 컴포넌트는 검사 제외
   {
-    files: ['src/shared/components/ui/**/*.{ts,tsx}'],
+    files: ['src/components/ui/**/*.{ts,tsx}'],
     rules: {
+      'func-style': 'off',
+      'react/function-component-definition': 'off',
       'react-refresh/only-export-components': 'off',
     },
   },

@@ -3,7 +3,7 @@ node_modules/
 dist/
 
 # shadcn/ui components (외부 라이브러리 코드)
-src/shared/components/ui/
+src/components/ui/
 
 # Build outputs
 .next/
