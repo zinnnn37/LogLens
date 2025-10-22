@@ -45,31 +45,27 @@ public class DependencyCollector {
         Map<String, Component> componentMap = new LinkedHashMap<>();
         List<DependencyRelation> relations = new ArrayList<>();
 
-        // 1. Controller 수집
+        // 1. Controller (어노테이션 기반)
         collectBeansWithAnnotation(RestController.class, componentMap, relations);
 
-        // 2. Service 수집
+        // 2. Service (어노테이션 기반)
         collectBeansWithAnnotation(Service.class, componentMap, relations);
 
-        // 3. Repository 수집
-        collectBeansWithAnnotation(Repository.class, componentMap, relations);
+        // 3-1. Interface-based Repository (JPA, MyBatis 등)
+        collectInterfaceBasedRepositories(componentMap, relations);
 
-        log.info("✅ 의존성 수집 완료! (컴포넌트: {}, 관계: {})",
+        // 3-2. Class-based Repository (JDBC, Custom 등)
+        collectClassBasedRepositories(componentMap, relations);
+
+        log.info("✅ 수집 완료! (컴포넌트: {}, 관계: {})",
                 componentMap.size(), relations.size());
 
-        // 4. 한 번에 전송
+        // 전송
         ProjectDependencyInfo projectInfo = new ProjectDependencyInfo(
                 projectName,
                 new ArrayList<>(componentMap.values()),
                 relations
         );
-
-        try {
-            log.debug("전송 데이터: {}", objectMapper.writeValueAsString(projectInfo));
-        } catch (Exception e) {
-            log.error("JSON 변환 실패", e);
-        }
-
         sender.sendProjectDependencies(projectInfo);
     }
 
@@ -83,97 +79,170 @@ public class DependencyCollector {
 
         Map<String, Object> beans = applicationContext.getBeansWithAnnotation(annotationClass);
 
-        // ===== 디버깅: beans 전체 출력 =====
-        log.info("🔍 {} 어노테이션으로 찾은 Bean 개수: {}",
-                annotationClass.getSimpleName(), beans.size());
-
-        for (Map.Entry<String, Object> entry : beans.entrySet()) {
-            String beanName = entry.getKey();
-            Object bean = entry.getValue();
-            Class<?> beanClass = bean.getClass();
-            Class<?> userClass = ClassUtils.getUserClass(beanClass);
-
-            log.info("  📦 Bean Name: {}", beanName);
-            log.info("     - Bean Class: {}", beanClass.getName());
-            log.info("     - User Class: {}", userClass.getName());
-            log.info("     - Is Proxy?: {}", isProxyClass(userClass));
-        }
-        log.info("==========================================");
-        // ===== 디버깅 끝 =====
+        log.debug("🔍 {} Bean 수집: {} 개", annotationClass.getSimpleName(), beans.size());
 
         for (Map.Entry<String, Object> entry : beans.entrySet()) {
             Object bean = entry.getValue();
             Class<?> targetClass = ClassUtils.getUserClass(bean.getClass());
 
-            // 프록시인 경우 인터페이스 찾기
-            if (isProxyClass(targetClass)) {
-                log.debug("⚠️ 프록시 감지: {} → 인터페이스 추출 시도", targetClass.getSimpleName());
-
-                // 프록시의 인터페이스들 확인
-                Class<?>[] interfaces = bean.getClass().getInterfaces();
-                targetClass = null;
-
-                for (Class<?> intf : interfaces) {
-                    // Spring 내부 인터페이스 제외
-                    if (!intf.getName().startsWith("org.springframework") &&
-                            !intf.getName().startsWith("java.")) {
-                        targetClass = intf;
-                        log.debug("  ✅ 인터페이스 찾음: {}", targetClass.getName());
-                        break;
-                    }
-                }
-
-                if (targetClass == null) {
-                    log.warn("  ❌ 유효한 인터페이스를 찾지 못함. 스킵.");
-                    continue;
-                }
-            }
-
             String componentKey = getComponentKey(targetClass);
 
-            // 중복 체크
-            boolean alreadyCollected = componentMap.containsKey(componentKey);
-
-            if (alreadyCollected) {
-                log.debug("⏭️ 이미 수집된 컴포넌트 발견: {} → 의존성만 추가 분석", targetClass.getSimpleName());
-            } else {
-                log.info("🔍 의존성 수집: {}", targetClass.getSimpleName());
-
-                // 컴포넌트 생성
-                Component component = new Component(
-                        targetClass.getSimpleName(),
-                        targetClass.getSimpleName(),
-                        targetClass.getPackage().getName(),
-                        LayerDetector.detectLayer(targetClass)
-                );
-
-                componentMap.put(componentKey, component);
-                log.info("  📦 컴포넌트: {} ({})", component.name(), component.layer());
+            // ✅ 중복 체크 추가
+            if (componentMap.containsKey(componentKey)) {
+                log.debug("⏭️ 이미 수집됨: {}", targetClass.getSimpleName());
+                continue;
             }
 
-            // 의존성 수집 (중복이어도 항상 실행!)
-            Component currentComponent = componentMap.get(componentKey);
-            List<Component> dependencies = collectDependenciesForBean(bean, targetClass, componentMap);
+            // 컴포넌트 생성
+            Component component = new Component(
+                    targetClass.getSimpleName(),
+                    targetClass.getSimpleName(),
+                    targetClass.getPackage().getName(),
+                    LayerDetector.detectLayer(targetClass)
+            );
 
-            log.info("  ➡️ 의존성 개수: {}", dependencies.size());
+            componentMap.put(componentKey, component);
+            log.debug("📦 수집: {}", component.name());
+
+            // 의존성 수집
+            List<Component> dependencies = collectDependenciesForBean(
+                    bean, targetClass, componentMap);
 
             // 관계 추가
             for (Component dep : dependencies) {
                 DependencyRelation relation = new DependencyRelation(
-                        currentComponent.name(),
+                        component.name(),
                         dep.name()
                 );
 
-                // 중복 관계 체크
-                boolean relationExists = relations.stream()
-                        .anyMatch(r -> r.from().equals(relation.from()) && r.to().equals(relation.to()));
-
-                if (!relationExists) {
+                if (!relationExists(relations, relation)) {
                     relations.add(relation);
-                    log.info("    - {} → {}", currentComponent.name(), dep.name());
+                    log.debug("  ➡️ {} → {}", component.name(), dep.name());
                 }
             }
         }
+    }
+
+    /**
+     * 인터페이스 기반 Repository 수집
+     * (Spring Data JPA, MongoDB, R2DBC 등)
+     */
+    private void collectInterfaceBasedRepositories(
+            Map<String, Component> componentMap,
+            List<DependencyRelation> relations) {
+
+        try {
+            // Spring Data Repository 마커 인터페이스로 Bean 찾기
+            Class<?> repositoryClass = Class.forName("org.springframework.data.repository.Repository");
+            Map<String, ?> beans = applicationContext.getBeansOfType(repositoryClass);
+
+            log.debug("🔍 Interface-based Repository 수집: {} 개", beans.size());
+
+            for (Map.Entry<String, ?> entry : beans.entrySet()) {
+                String beanName = entry.getKey();
+                Object bean = entry.getValue();
+
+                // 프록시에서 실제 인터페이스 추출
+                Class<?> repositoryInterface = extractRepositoryInterface(bean);
+
+                if (repositoryInterface == null) {
+                    log.warn("⚠️ Repository 인터페이스를 찾지 못함: {}", beanName);
+                    continue;
+                }
+
+                log.debug("📦 Repository 발견: {}", repositoryInterface.getSimpleName());
+
+                String componentKey = getComponentKey(repositoryInterface);
+
+                // 중복 체크 (Class-based Repository와 겹칠 수 있음)
+                if (componentMap.containsKey(componentKey)) {
+                    log.debug("⏭️ 이미 수집된 Repository: {}", repositoryInterface.getSimpleName());
+                    continue;
+                }
+
+                // 컴포넌트 생성
+                Component component = new Component(
+                        repositoryInterface.getSimpleName(),
+                        repositoryInterface.getSimpleName(),
+                        repositoryInterface.getPackage().getName(),
+                        LayerDetector.detectLayer(repositoryInterface)
+                );
+
+                componentMap.put(componentKey, component);
+                log.debug("  ✅ Interface-based Repository 수집: {}", component.name());
+
+                // ⚠️ 의존성 수집 스킵 - 인터페이스는 생성자 없음
+                log.debug("  ⏭️ 의존성 수집 스킵 (인터페이스)");
+            }
+
+        } catch (ClassNotFoundException e) {
+            // Spring Data가 없는 경우 (순수 JDBC만 사용)
+            log.debug("ℹ️ Spring Data Repository를 찾을 수 없음. JDBC 전용 프로젝트인 것으로 판단.");
+        }
+    }
+
+    private void collectClassBasedRepositories(
+            Map<String, Component> componentMap,
+            List<DependencyRelation> relations) {
+
+        collectBeansWithAnnotation(Repository.class, componentMap, relations);
+    }
+
+    /**
+     * 프록시 Bean에서 실제 Repository 인터페이스 추출
+     */
+    private Class<?> extractRepositoryInterface(Object bean) {
+        Class<?> beanClass = bean.getClass();
+        Class<?>[] interfaces = beanClass.getInterfaces();
+
+        log.debug("  🔍 인터페이스 탐색 중...");
+
+        for (Class<?> intf : interfaces) {
+            String interfaceName = intf.getName();
+
+            log.debug("    - {}", interfaceName);
+
+            // Spring/Java 내부 인터페이스 제외
+            if (interfaceName.startsWith("org.springframework.data.repository")) {
+                // 이건 Spring Data 마커 인터페이스 (CrudRepository, JpaRepository 등)
+                continue;
+            }
+
+            if (interfaceName.startsWith("org.springframework") ||
+                    interfaceName.startsWith("java.") ||
+                    interfaceName.startsWith("jdk.")) {
+                continue;
+            }
+
+            // 우리가 선언한 Repository 인터페이스!
+            log.debug("    ✅ 발견: {}", intf.getSimpleName());
+            return intf;
+        }
+
+        // 못 찾으면 상위 인터페이스까지 재귀 탐색
+        for (Class<?> intf : interfaces) {
+            if (intf.getName().startsWith("org.springframework.data.repository")) {
+                // 혹시 이 인터페이스가 우리 인터페이스를 확장했나?
+                Class<?>[] superInterfaces = intf.getInterfaces();
+                for (Class<?> superIntf : superInterfaces) {
+                    if (!superIntf.getName().startsWith("org.springframework") &&
+                            !superIntf.getName().startsWith("java.")) {
+                        log.debug("    ✅ 상위에서 발견: {}", superIntf.getSimpleName());
+                        return superIntf;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // 헬퍼 메서드
+    private boolean relationExists(List<DependencyRelation> relations,
+                                   DependencyRelation relation) {
+        return relations.stream()
+                .anyMatch(r -> r.from().equals(relation.from())
+                        && r.to().equals(relation.to()));
     }
 
     /**
