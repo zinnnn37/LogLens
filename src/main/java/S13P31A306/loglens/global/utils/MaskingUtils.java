@@ -1,6 +1,6 @@
 package S13P31A306.loglens.global.utils;
 
-import S13P31A306.loglens.global.annotation.ExcludeFromLogging;
+import S13P31A306.loglens.global.annotation.ExcludeValue;
 import S13P31A306.loglens.global.annotation.Sensitive;
 import S13P31A306.loglens.global.constants.LogMessages;
 import S13P31A306.loglens.global.constants.SystemMessages;
@@ -8,9 +8,6 @@ import java.lang.reflect.Field;
 import java.util.Objects;
 import java.util.StringJoiner;
 
-/**
- * `@Sensitive`는 마스킹 처리, `@ExcludeFromLogging`은 로그 제외 처리를 수행하는 필드 전용 유틸리티 클래스입니다.
- */
 public final class MaskingUtils {
 
     private static final String NULL_TEXT = "null";
@@ -89,7 +86,7 @@ public final class MaskingUtils {
     }
 
     private static boolean isExcluded(final Field field) {
-        return field.isAnnotationPresent(ExcludeFromLogging.class);
+        return field.isAnnotationPresent(ExcludeValue.class);
     }
 
     private static boolean isSensitive(final Field field) {
