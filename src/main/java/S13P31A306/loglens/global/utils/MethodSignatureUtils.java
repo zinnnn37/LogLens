@@ -1,6 +1,6 @@
 package S13P31A306.loglens.global.utils;
 
-import S13P31A306.loglens.global.annotation.ExcludeFromLogging;
+import S13P31A306.loglens.global.annotation.ExcludeValue;
 import S13P31A306.loglens.global.annotation.Sensitive;
 import S13P31A306.loglens.global.constants.LogMessages;
 import S13P31A306.loglens.global.constants.SystemMessages;
@@ -83,7 +83,7 @@ public final class MethodSignatureUtils {
      */
     private static boolean isExcluded(final Annotation[] annotations) {
         return Arrays.stream(annotations).anyMatch(a ->
-                a.annotationType() == ExcludeFromLogging.class || a.annotationType() == AuthenticationPrincipal.class
+                a.annotationType() == ExcludeValue.class || a.annotationType() == AuthenticationPrincipal.class
         );
     }
 
