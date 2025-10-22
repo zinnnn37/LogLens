@@ -3,7 +3,6 @@ package S13P31A306.loglens.global.utils;
 import S13P31A306.loglens.global.annotation.ExcludeValue;
 import S13P31A306.loglens.global.annotation.Sensitive;
 import S13P31A306.loglens.global.constants.LogMessages;
-import S13P31A306.loglens.global.constants.SystemMessages;
 import java.lang.reflect.Field;
 import java.util.Objects;
 import java.util.StringJoiner;
@@ -14,7 +13,7 @@ public final class MaskingUtils {
     private static final String FIELD_FORMAT = "%s=%s";
 
     private MaskingUtils() {
-        throw new IllegalStateException(SystemMessages.UTILITY_CLASS_ERROR.message());
+        throw new IllegalStateException();
     }
 
     /**

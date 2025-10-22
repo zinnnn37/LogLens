@@ -1,12 +1,11 @@
 package S13P31A306.loglens.global.utils;
 
-import S13P31A306.loglens.global.constants.SystemMessages;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 public final class TimestampUtils {
     private TimestampUtils() {
-        throw new IllegalStateException(SystemMessages.UTILITY_CLASS_ERROR.message());
+        throw new IllegalStateException();
     }
 
     /**

@@ -3,7 +3,6 @@ package S13P31A306.loglens.global.utils;
 import S13P31A306.loglens.global.annotation.ExcludeValue;
 import S13P31A306.loglens.global.annotation.Sensitive;
 import S13P31A306.loglens.global.constants.LogMessages;
-import S13P31A306.loglens.global.constants.SystemMessages;
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.Objects;
@@ -22,7 +21,7 @@ public final class MethodSignatureUtils {
     private static final String PARAMETER_FORMAT = "%s=%s";
 
     private MethodSignatureUtils() {
-        throw new IllegalStateException(SystemMessages.UTILITY_CLASS_ERROR.message());
+        throw new IllegalStateException();
     }
 
     /**

@@ -1,14 +1,13 @@
 package S13P31A306.loglens.global.dto.response;
 
 import S13P31A306.loglens.global.constants.ErrorCode;
-import S13P31A306.loglens.global.constants.SystemMessages;
 import S13P31A306.loglens.global.constants.SuccessCode;
 import org.springframework.http.ResponseEntity;
 
 public final class ApiResponseFactory {
 
     private ApiResponseFactory() {
-        throw new IllegalStateException(SystemMessages.UTILITY_CLASS_ERROR.message());
+        throw new IllegalStateException();
     }
     public static <T> ResponseEntity<SuccessResponse<T>> success(final SuccessCode successCode, final T data) {
         return ResponseEntity.status(successCode.getStatus()).body(SuccessResponse.of(successCode, data));

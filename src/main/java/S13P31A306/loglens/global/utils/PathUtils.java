@@ -1,10 +1,8 @@
 package S13P31A306.loglens.global.utils;
 
-import S13P31A306.loglens.global.constants.SystemMessages;
-
 public final class PathUtils {
     private PathUtils() {
-        throw new IllegalStateException(SystemMessages.UTILITY_CLASS_ERROR.message());
+        throw new IllegalStateException();
     }
 
     /**
