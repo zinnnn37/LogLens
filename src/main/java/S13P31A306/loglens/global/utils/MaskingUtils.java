@@ -100,4 +100,3 @@ public final class MaskingUtils {
         return String.format(FIELD_FORMAT, key, value);
     }
 }
-

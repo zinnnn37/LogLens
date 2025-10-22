@@ -47,6 +47,7 @@ public enum GlobalErrorCode implements ErrorCode {
     // 5xx
     INTERNAL_SERVER_ERROR("G500", "서버 내부 오류가 발생했습니다", 500),
     BAD_GATEWAY("G502", "잘못된 게이트웨이 응답입니다", 502);
+
     private final String code;
     private final String message;
     private final int status;
@@ -64,4 +65,3 @@ public enum GlobalErrorCode implements ErrorCode {
         }
     }
 }
-

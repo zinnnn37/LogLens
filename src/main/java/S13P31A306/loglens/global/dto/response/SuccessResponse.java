@@ -38,4 +38,3 @@ public record SuccessResponse<T>(
                 .build();
     }
 }
-
