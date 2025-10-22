@@ -1,9 +1,9 @@
 package S13P31A306.loglens.global.aop;
 
-import static S13P31A306.loglens.global.constants.Messages.LOG_COMPLETE_PREFIX;
-import static S13P31A306.loglens.global.constants.Messages.LOG_EXCEPTION_PREFIX;
-import static S13P31A306.loglens.global.constants.Messages.LOG_START_PREFIX;
-import static S13P31A306.loglens.global.constants.Messages.LOG_UNSUPPORTED_LEVEL;
+import static S13P31A306.loglens.global.constants.LogMessages.LOG_COMPLETE_PREFIX;
+import static S13P31A306.loglens.global.constants.LogMessages.LOG_EXCEPTION_PREFIX;
+import static S13P31A306.loglens.global.constants.LogMessages.LOG_START_PREFIX;
+import static S13P31A306.loglens.global.constants.LogMessages.LOG_UNSUPPORTED_LEVEL;
 
 import S13P31A306.loglens.global.exception.BusinessException;
 import S13P31A306.loglens.global.utils.TimestampUtils;
