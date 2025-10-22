@@ -1,5 +1,6 @@
 package S13P31A306.loglens.global.aop;
 
+import S13P31A306.loglens.global.utils.MethodSignatureUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -28,7 +29,7 @@ public class LoggerAspect {
     private static final String REPOSITORY_PATTERN = "@within(org.springframework.stereotype.Repository) || " +
                                                      "execution(* org.springframework.data.repository.Repository+.*(..))";
 
-    private final LogExecutionHandler executionHandler;
+    private final LogTrace logTrace;
 
     // ======= Pointcut =======
 
@@ -51,7 +52,7 @@ public class LoggerAspect {
      */
     @Around("controllerLayer()")
     public Object logController(final ProceedingJoinPoint joinPoint) throws Throwable {
-        return executionHandler.executeWithLevel(joinPoint, LogLevel.INFO);
+        return executeWithLevel(joinPoint, LogLevel.INFO);
     }
 
     /**
@@ -59,7 +60,7 @@ public class LoggerAspect {
      */
     @Around("serviceLayer()")
     public Object logService(final ProceedingJoinPoint joinPoint) throws Throwable {
-        return executionHandler.executeWithLevel(joinPoint, LogLevel.DEBUG);
+        return executeWithLevel(joinPoint, LogLevel.DEBUG);
     }
 
     /**
@@ -67,6 +68,21 @@ public class LoggerAspect {
      */
     @Around("repositoryLayer()")
     public Object logRepository(final ProceedingJoinPoint joinPoint) throws Throwable {
-        return executionHandler.executeWithLevel(joinPoint, LogLevel.TRACE);
+        return executeWithLevel(joinPoint, LogLevel.TRACE);
+    }
+
+    private Object executeWithLevel(final ProceedingJoinPoint joinPoint, final LogLevel level)
+            throws Throwable {
+        TraceStatus status = null;
+        try {
+            String methodSignature = MethodSignatureUtils.formatMethodSignature(joinPoint);
+            status = logTrace.begin(methodSignature, level);
+            Object result = joinPoint.proceed();
+            logTrace.end(status, level);
+            return result;
+        } catch (Exception e) {
+            logTrace.exception(status, e, level);
+            throw e;
+        }
     }
 }
