@@ -1,21 +1,27 @@
 // src/wrappers/trace.ts
 
 import TraceContext from '../core/traceContext';
-import LogCollector from '../core/logCollector';
+import { LogCollector } from '../core/logCollector';
 import type { LogLevel, LogLensOptions } from '../core/types';
 
 /**
  * 함수를 TraceID 관리 + 로그 수집으로 감싸기
  *
  * @example
- * 기본 사용 - 사용하고자 하는 함수를 withLogLens로 감싸기
+ * 비동기 함수
  * const fetchUser = withLogLens(async (userId) => {
  *   const response = await fetch(`/api/users/${userId}`);
  *   return response.json();
- * });
+ * }, { logger: 'API.fetchUser' });
  *
  * @example
- * 옵션 사용 - 파라미터에 옵션 객체 전달
+ * 동기 함수
+ * const calculateSum = withLogLens((a, b) => {
+ *   return a + b;
+ * }, { logger: 'Math.sum' });
+ *
+ * @example
+ * 옵션 사용
  * const updateUser = withLogLens(async (userId, data) => {
  *   const response = await fetch(`/api/users/${userId}`, {
  *     method: 'PUT',
@@ -23,21 +29,13 @@ import type { LogLevel, LogLensOptions } from '../core/types';
  *   });
  *   return response.json();
  * }, {
- *   level: 'INFO',
  *   logger: 'UserAPI',
  *   includeArgs: true,
  *   includeResult: true
  * });
- *
- * @example
- * TraceID만 관리 (로그 안 남김)
- * const login = withLogLens(async () => {
- *   await validate();
- *   await fetchUser();
- * }, { skipLog: true });
  */
 
-function withLogLens<T extends (...args: any[]) => Promise<any>>(
+function withLogLens<T extends (...args: any[]) => any>(
   fn: T,
   options?: LogLensOptions,
 ): T {
@@ -46,7 +44,7 @@ function withLogLens<T extends (...args: any[]) => Promise<any>>(
   const logger = options?.logger || fn.name || 'function';
   const level: LogLevel = options?.level || 'INFO';
 
-  return (async (...args: any[]) => {
+  return ((...args: any[]) => {
     // TraceID 추출
     const explicitTraceId = args.find((arg) => arg?._traceId)?._traceId;
     const traceId = TraceContext.startTrace(explicitTraceId);
@@ -68,28 +66,84 @@ function withLogLens<T extends (...args: any[]) => Promise<any>>(
     }
 
     try {
-      const result = await fn(...args);
-      const duration = Date.now() - startTime;
+      const result = fn(...args);
 
-      // 성공 로그
-      if (shouldLog) {
-        LogCollector.addLog({
-          '@timestamp': new Date().toISOString(),
-          trace_id: traceId,
-          level,
-          logger,
-          message: `${functionName} completed`,
-          context: {
-            ...(options?.includeResult ? { result } : {}),
-            ...(options?.context || {}),
-          },
-          duration_ms: duration,
-          layer: 'function',
-        });
+      // Promise인지 확인 (비동기 함수)
+      if (result instanceof Promise) {
+        return result
+          .then((value) => {
+            const duration = Date.now() - startTime;
+
+            // 성공 로그
+            if (shouldLog) {
+              LogCollector.addLog({
+                '@timestamp': new Date().toISOString(),
+                trace_id: traceId,
+                level,
+                logger,
+                message: `${functionName} completed`,
+                context: {
+                  ...(options?.includeResult ? { result: value } : {}),
+                  ...(options?.context || {}),
+                },
+                duration_ms: duration,
+                layer: 'function',
+              });
+            }
+
+            return value;
+          })
+          .catch((error: any) => {
+            const duration = Date.now() - startTime;
+
+            // 에러 로그
+            LogCollector.addLog({
+              '@timestamp': new Date().toISOString(),
+              trace_id: traceId,
+              level: 'ERROR',
+              logger,
+              message: `${functionName} failed`,
+              exception: {
+                type: error.constructor?.name || 'Error',
+                message: error.message || String(error),
+                stacktrace: error.stack || '',
+              },
+              context: options?.context,
+              duration_ms: duration,
+              layer: 'function',
+            });
+
+            throw error;
+          })
+          .finally(() => {
+            TraceContext.endTrace();
+          });
+      } else {
+        // 동기 함수
+        const duration = Date.now() - startTime;
+
+        // 성공 로그
+        if (shouldLog) {
+          LogCollector.addLog({
+            '@timestamp': new Date().toISOString(),
+            trace_id: traceId,
+            level,
+            logger,
+            message: `${functionName} completed`,
+            context: {
+              ...(options?.includeResult ? { result } : {}),
+              ...(options?.context || {}),
+            },
+            duration_ms: duration,
+            layer: 'function',
+          });
+        }
+
+        TraceContext.endTrace();
+        return result;
       }
-
-      return result;
     } catch (error: any) {
+      // 동기 함수에서 에러 발생
       const duration = Date.now() - startTime;
 
       // 에러 로그
@@ -109,9 +163,8 @@ function withLogLens<T extends (...args: any[]) => Promise<any>>(
         layer: 'function',
       });
 
-      throw error;
-    } finally {
       TraceContext.endTrace();
+      throw error;
     }
   }) as T;
 }
