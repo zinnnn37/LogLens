@@ -10,17 +10,11 @@ import {
  * 사이드바 Props
  * @extends ComponentProps<'aside'> - className, id 등 'aside' 태그의 모든 속성 상속
  *
- * [수정] 'An interface declaring no members' 경고를 피하기 위해
- * interface 대신 type 별칭과 intersection(&)을 사용합니다.
  */
 type SidebarProps = ComponentProps<'aside'> & {
   // 현재는 커스텀 prop이 없지만, 필요시 여기에 추가
 };
 
-/**
- * 네비게이션 링크 아이템을 위한 내부 컴포넌트 (반복 최소화)
- * @description 컨벤션에 따라 PascalCase로 작성된 컴포넌트
- */
 const NavLink = ({
   icon: Icon,
   children,
@@ -48,13 +42,11 @@ const NavHeading = ({ children }: { children: React.ReactNode }) => (
 
 /**
  * 메인 사이드바 컴포넌트
- * @description 컨벤션에 따라 화살표 함수로 정의
  */
 const Sidebar = ({ className, ...props }: SidebarProps) => {
   return (
     <aside
-      // h-screen, flex, flex-col, justify-between으로 전체 레이아웃 구성
-      className={`flex h-screen w-64 flex-col justify-between border-r border-sidebar-border  p-2 ${
+      className={`flex h-screen w-60 flex-col justify-between border-r border-sidebar-border  p-2 ${
         className || ''
       }`}
       {...props}
