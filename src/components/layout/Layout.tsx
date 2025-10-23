@@ -1,15 +1,22 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet } from "react-router-dom";
+import Sidebar from "@/components/Sidebar";
+import Header from "@/components/Header";
 
 const Layout = () => {
   return (
-    <div>
-      <header>
-        <nav>{/* 네비게이션 추가 예정 */}</nav>
-      </header>
-      <main>
-        <Outlet />
-      </main>
-      <footer>{/* 푸터 추가 예정 */}</footer>
+    <div className="flex h-screen bg-background">
+      {/* 사이드바 */}
+      <Sidebar />
+
+      <div className="flex flex-1 flex-col">
+        {/* 헤더 */}
+        <Header />
+
+        {/* 메인 콘텐츠 영역 */}
+        <main className="flex-1 p-6 overflow-y-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 };
