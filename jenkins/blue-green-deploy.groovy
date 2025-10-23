@@ -247,16 +247,35 @@ pipeline {
 
                     // .env 파일에서 AWS credentials와 설정 로드
                     sh """#!/bin/bash
-                        # .env 파일에서 환경 변수 로드 (bash의 set -a 대신 export 사용)
-                        while IFS='=' read -r key value; do
-                            # 주석과 빈 줄 무시
-                            if [[ ! \$key =~ ^# && -n \$key ]]; then
-                                # 따옴표 제거
-                                value="\${value%\\\"}"
-                                value="\${value#\\\"}"
+                        set -e
+
+                        echo "🔍 Loading environment variables from .env file..."
+
+                        # .env 파일에서 환경 변수 로드 (Windows 줄바꿈 문자 제거 및 안전한 파싱)
+                        while IFS= read -r line; do
+                            # Windows 줄바꿈 문자 제거
+                            line=\$(echo "\$line" | tr -d '\\r')
+
+                            # 빈 줄, 공백만 있는 줄, 주석 줄 제외
+                            if [[ -z "\$line" ]] || [[ "\$line" =~ ^[[:space:]]*\$ ]] || [[ "\$line" =~ ^[[:space:]]*# ]]; then
+                                continue
+                            fi
+
+                            # KEY=VALUE 형태로 파싱 (sed 사용)
+                            if echo "\$line" | grep -qE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*='; then
+                                # key 추출
+                                key=\$(echo "\$line" | sed -E 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)=.*/\\1/')
+                                # value 추출
+                                value=\$(echo "\$line" | sed -E 's/^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=//')
+
+                                # 값의 앞뒤 따옴표 제거 (큰따옴표와 작은따옴표 모두)
+                                value=\$(echo "\$value" | sed -e 's/^"//' -e 's/"\$//' -e "s/^'//" -e "s/'\$//")
+
                                 export "\$key=\$value"
                             fi
                         done < ${WORKSPACE}/.env
+
+                        echo "✅ Environment variables loaded"
 
                         # Target Group 결정
                         if [ "${env.DEPLOY_TARGET}" = "blue" ]; then
@@ -267,6 +286,20 @@ pipeline {
 
                         echo "🎯 Target Group: \$TG_NAME"
                         echo "🌍 Region: \${AWS_REGION}"
+
+                        # AWS CLI 설치 확인
+                        if ! command -v aws &> /dev/null; then
+                            echo "⚠️  AWS CLI not found in Jenkins container"
+                            echo "ℹ️  Installing AWS CLI..."
+
+                            # AWS CLI 설치 (Jenkins 컨테이너에서 임시로 설치)
+                            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+                            unzip -q /tmp/awscliv2.zip -d /tmp
+                            /tmp/aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update || true
+                            rm -rf /tmp/aws /tmp/awscliv2.zip
+
+                            echo "✅ AWS CLI installed"
+                        fi
 
                         # Target Group ARN 조회
                         echo "🔍 Looking up Target Group ARN..."
