@@ -46,7 +46,7 @@ describe('Logger Integration', () => {
     level1();
 
     const logs = LogCollector.getLogs();
-    expect(logs).toHaveLength(3);
+    expect(logs).toHaveLength(6);
 
     // 모두 동일한 traceId
     const traceId = logs[0].traceId;

@@ -72,7 +72,10 @@ describe('withLogLens', () => {
 
       slowFunc();
       const logs = LogCollector.getLogs();
-      expect(logs[0].executionTime).toBeGreaterThanOrEqual(0);
+      const completedLog = logs.find((log) =>
+        log.comment?.includes('completed'),
+      );
+      expect(completedLog?.executionTime).toBeGreaterThanOrEqual(0);
     });
   });
 
@@ -142,8 +145,7 @@ describe('withLogLens', () => {
 
       const calledLog = logs.find((log) => log.comment?.includes('called'));
       expect(calledLog).toBeDefined();
-      expect(Array.isArray(calledLog?.additionalInfo)).toBe(true);
-      expect(calledLog?.additionalInfo).toEqual([42, 'test']);
+      expect(calledLog?.additionalInfo).toEqual({ args: [42, 'test'] });
     });
 
     test('includeResult 옵션으로 결과를 로깅한다', () => {
@@ -238,7 +240,7 @@ describe('withLogLens', () => {
 
       outer();
       const logs = LogCollector.getLogs();
-      expect(logs.length).toBe(2);
+      expect(logs.length).toBe(4); // Outer called, Outer completed, Inner called, Inner completed
 
       const traceId = logs[0].traceId;
       logs.forEach((log) => {
