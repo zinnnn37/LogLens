@@ -8,9 +8,9 @@ pipeline {
     }
 
     environment {
-        JAVA_HOME = '/usr/lib/jvm/java-21-openjdk-amd64'
-        PATH = "${JAVA_HOME}/bin:${PATH}"
-        GIT_REPO = 'https://lab.ssafy.com/s13-final/S13P31A306.git'  // ✅ 수정
+        JAVA_HOME = '/opt/java/openjdk'
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+        GIT_REPO = 'https://lab.ssafy.com/s13-final/S13P31A306.git'
     }
 
     stages {
@@ -27,6 +27,8 @@ pipeline {
             steps {
                 echo "🔨 Building Spring Boot application with JDK 21"
                 sh '''
+                    echo "Java Version: $(java -version 2>&1 | head -n 1)"
+                    echo "JAVA_HOME: $JAVA_HOME"
                     chmod +x ./gradlew
                     ./gradlew clean build -x test --no-daemon
                 '''
