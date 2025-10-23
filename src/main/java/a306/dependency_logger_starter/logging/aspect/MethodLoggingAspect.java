@@ -184,6 +184,7 @@ public class MethodLoggingAspect {
             request.put("parameters", parameters);
             logEntry.put("request", request);
             logEntry.put("response", null);
+            logEntry.put("exception", null);
             logEntry.put("execution_time_ms", null);
 
             log.info("{}", objectMapper.writeValueAsString(logEntry));
@@ -224,7 +225,7 @@ public class MethodLoggingAspect {
             } else {
                 logEntry.put("level", "INFO");
                 logEntry.put("message", "Response completed: " + methodName);
-
+                logEntry.put("exception", null);
                 Map<String, Object> response = new LinkedHashMap<>();
 
                 if (httpInfo != null) {
