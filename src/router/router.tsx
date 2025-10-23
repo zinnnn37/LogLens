@@ -8,26 +8,28 @@ import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 
 export const router = createBrowserRouter([
+  // Layout 적용할 페이지 그룹
   {
-    path: '/',
     element: <Layout />,
     children: [
       {
-        index: true,
+        path: '/',
         element: <Home />,
       },
       {
         path: ROUTE_PATH.NOT_FOUND,
         element: <NotFound />,
       },
-      {
-        path: ROUTE_PATH.LOGIN,
-        element: <LoginPage />,
-      },
-      {
-        path: ROUTE_PATH.SIGNUP,
-        element: <SignupPage />,
-      },
     ],
+  },
+
+  // Layout 미적용 그룹
+  {
+    path: ROUTE_PATH.LOGIN,
+    element: <LoginPage />,
+  },
+  {
+    path: ROUTE_PATH.SIGNUP,
+    element: <SignupPage />,
   },
 ]);
