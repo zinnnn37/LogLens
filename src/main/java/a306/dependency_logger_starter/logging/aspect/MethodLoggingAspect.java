@@ -326,24 +326,6 @@ public class MethodLoggingAspect {
             }
         }
 
-        // Collection 크기 체크 (3개 이상이면 요약)
-        if (result instanceof Collection) {
-            Collection<?> collection = (Collection<?>) result;
-            if (collection.size() >= 3) {
-                return ValueProcessor.processValue(result);
-            }
-            return result;
-        }
-
-        // Map 크기 체크 (3개 이상이면 요약)
-        if (result instanceof Map) {
-            Map<?, ?> map = (Map<?, ?>) result;
-            if (map.size() >= 3) {
-                return ValueProcessor.processValue(result);
-            }
-            return result;
-        }
-
         // 큰 객체 처리
         String resultStr = result.toString();
         if (resultStr.length() > 1000) {
