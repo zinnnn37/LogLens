@@ -40,7 +40,8 @@ function withLogLens<T extends (...args: any[]) => any>(
   options?: LogLensOptions,
 ): T {
   // 함수 정의 시점에 이름 결정
-  const functionName = options?.name || fn.name || 'anonymous';
+  const functionName =
+    options?.name || options?.logger || fn.name || 'anonymous';
   const level: LogLevel = options?.level || 'INFO';
 
   return ((...args: any[]) => {

@@ -1,5 +1,7 @@
 # LogLens
 
+> ⚠️ **Disclaimer**: 이 라이브러리는 JavaScript의 런타임 특성상 진정한 AOP(Aspect-Oriented Programming)를 구현하지 않습니다. Java의 AspectJ나 Spring AOP처럼 모든 함수 호출을 자동으로 가로챌 수 없으며, 추적이 필요한 각 함수를 명시적으로 `withLogLens`로 래핑해야 합니다. 래핑되지 않은 함수는 추적되지 않습니다.
+
 TraceID 기반 함수 호출 추적 및 성능 측정 라이브러리
 
 ## 설치
@@ -34,8 +36,8 @@ npm install soo1-loglens
 ```ts
 options = {
   // 함수의 이름. 로그에 표시될 함수명을 지정
-  // 기본값: fn.name (함수 자체의 name 속성)
-  // ⚠️ 익명 함수의 경우 'function'으로 표시됨
+  // 기본값: options.logger || fn.name
+  // ⚠️ 익명 화살표 함수는 name을 가져올 수 없으므로 반드시 지정 필요
   name?: string;
 
   // 로그의 중요도 레벨
@@ -45,8 +47,8 @@ options = {
 
   // 로그에 표시될 로거 이름 (함수가 어디서 호출되었는지 식별용)
   // 예: 'API.fetchUser', 'Service.processData'
-  // 기본값: fn.name
-  // ⚠️ 익명 함수의 경우 'function'으로 표시됨
+  // name이 없으면 이 값이 함수 이름으로 사용됨
+  // ⚠️ name과 logger 중 최소 하나는 지정 권장
   logger?: string;
 
   // 함수에 전달된 인자를 로그에 포함할지 여부
@@ -95,21 +97,54 @@ JSON 형태로 구조화된 로그를 메모리에 저장하고 조회, 전송, 
 
 ## 중요 주의사항
 
-### ⚠️ 1. name 혹은 logger 옵션 지정
+### ⚠️ 1. 익명 화살표 함수는 name 또는 logger 필수
 
-옵션 없이 사용하면 익명 함수의 이름이 모두 `anonymous` 혹은 `function`으로 표시됩니다.  
-원활한 디버깅을 위해 `{ name: '함수이름', logger: '분류.함수이름' }` 옵션을 전달하세요.
+**익명 화살표 함수를 인라인으로 전달하면 함수 이름을 자동으로 가져올 수 없습니다.**  
+`name` 또는 `logger` 옵션을 반드시 지정하세요.
 
 ```ts
-const function1 = withLogLens(
-  async (param: Param) => {
-    const data = await fetchById(id);
-    return { data };
+// ❌ 나쁜 예 - 로그에 'anonymous'로 표시됨
+const fetchUser = withLogLens(
+  async (id: string) => {
+    return await api.get(`/users/${id}`);
+  }
+);
+
+// ✅ 좋은 예 1 - logger 지정 (name으로 사용됨)
+const fetchUser = withLogLens(
+  async (id: string) => {
+    return await api.get(`/users/${id}`);
   },
-  {
-    name: 'function1',
-    logger: 'Service.function1'
+  { logger: 'API.fetchUser' }
+);
+
+// ✅ 좋은 예 2 - name 지정
+const fetchUser = withLogLens(
+  async (id: string) => {
+    return await api.get(`/users/${id}`);
   },
+  { name: 'fetchUser', logger: 'API' }
+);
+
+// ✅ 좋은 예 3 - 함수를 먼저 선언
+const fetchUserImpl = async (id: string) => {
+  return await api.get(`/users/${id}`);
+};
+const fetchUser = withLogLens(fetchUserImpl, { logger: 'API.fetchUser' });
+```
+
+**React Hooks에서 사용 시**
+```ts
+// ❌ 나쁜 예
+const fetchData = useLogLens(
+  async () => { ... }
+);
+
+// ✅ 좋은 예
+const fetchData = useLogLens(
+  async () => { ... },
+  { logger: 'Component.fetchData' },
+  []
 );
 ```
 
@@ -127,17 +162,14 @@ const function1 = withLogLens(
 ### ⚠️ 4. 민감한 데이터 주의
 
 `includeArgs: true` 또는 `includeResult: true` 사용 시 함수의 인자와 결과가 로그에 기록됩니다.  
-비밀번호, 토큰 등 민감한 데이터가 포함된 함수에는 사용하지 마세요.
-
-### ⚠️ 5. 성능 오버헤드
-
-모든 함수를 래핑하면 성능에 영향을 줄 수 있습니다.  
-중요한 함수만 선택적으로 래핑하세요.
+비밀번호, 토큰 등 민감한 데이터가 포함된 함수에는 사용하지 마세요.  
+추후 자동 마스킹 기능이 추가될 예정입니다.
 
 ## 옵션
 
 **withLogLens 옵션**
-- `logger`: 로거 이름 (필수 권장)
+- `name`: 함수 이름 (익명 화살표 함수 사용 시 권장)
+- `logger`: 로거 이름 (name이 없으면 함수 이름으로 사용됨)
 - `level`: 로그 레벨 (`INFO`, `WARN`, `ERROR`)
 - `includeArgs`: 함수 인자 로깅 여부
 - `includeResult`: 함수 결과 로깅 여부
@@ -179,12 +211,30 @@ const function1 = withLogLens(
 
 ## 문제 해결
 
-**모든 로그가 'anonymous' || 'function'으로 나와요**  
-→ 무기명 함수의 경우 `function.name`으로 함수 이름을 가져올 수 없습니다
-  `withLogLens(fn, { name: '이름', logger: '분류.이름' })` 옵션을 추가해주세요
+**모든 로그가 'anonymous'로 나와요**  
+→ **익명 화살표 함수는 자동으로 이름을 가져올 수 없습니다.**  
+  `withLogLens(fn, { logger: '분류.함수이름' })` 또는 `withLogLens(fn, { name: '함수이름' })` 옵션을 추가해주세요.  
+  자세한 내용은 [주의사항 #1](#️-1-익명-화살표-함수는-name-또는-logger-필수)을 참고하세요.
 
 **메모리가 계속 증가해요**  
 → `maxLogs` 설정 또는 주기적으로 `LogCollector.clear()`를 호출해주세요
 
 **중첩 호출이 추적되지 않아요**  
-→ 모든 함수를 `withLogLens`로 래핑했는지 확인해주세요
+→ **withLogLens로 래핑된 함수만 추적됩니다.**  
+  최상위 함수만 래핑하면 내부에서 호출되는 함수들은 추적되지 않습니다.  
+  중첩 추적이 필요한 모든 함수를 각각 래핑해주세요.
+```ts
+  // ❌ 내부 호출 추적 안됨
+  const main = withLogLens(async () => {
+    await sub1();  // 추적 안됨
+    await sub2();  // 추적 안됨
+  });
+  
+  // ✅ 모두 래핑해야 추적됨
+  const sub1 = withLogLens(async () => {...}, { logger: 'sub1' });
+  const sub2 = withLogLens(async () => {...}, { logger: 'sub2' });
+  const main = withLogLens(async () => {
+    await sub1();  // 추적됨
+    await sub2();  // 추적됨
+  }, { logger: 'main' });
+```
