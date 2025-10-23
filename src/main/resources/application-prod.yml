@@ -1,0 +1,99 @@
+# ===================================================================
+# 'production' 프로필 전용 설정
+# ===================================================================
+spring:
+  # ===================================================================
+  # 데이터 소스 설정 (DataSource Configuration)
+  # ===================================================================
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # DB 연결 URL. 환경 변수가 없으면 기본값 사용
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:fintech-osm}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${DB_USERNAME:ssafy}
+    password: ${DB_PASSWORD:ssafy}
+    # Hikari Connection Pool 설정
+    hikari:
+      maximum-pool-size: 10 # 최대 커넥션 수
+      minimum-idle: 5      # 최소 유휴 커넥션 수
+
+  data:
+    redis: # Redis 설정
+      host: host.docker.internal
+
+  # ===================================================================
+  # JPA 및 Hibernate 설정
+  # ===================================================================
+  jpa:
+    # SQL 쿼리 출력 여부
+    show-sql: false
+    # DDL(Data Definition Language) 자동 생성 전략
+    hibernate:
+      ddl-auto: validate # 애플리케이션 시작 시 스키마 검증
+    # Hibernate 관련 추가 프로퍼티
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect # MySQL 8 방언 사용
+        format_sql: true                             # SQL을 보기 좋게 포맷팅
+
+# ===================================================================
+# OAuth2 Redirect URI (prod)
+# ===================================================================
+oauth2:
+  signup-redirect-uri: ${OAUTH2_KAKAO_REDIRECT_URI_PROD}
+  error-redirect-uri: ${OAUTH2_KAKAO_ERROR_REDIRECT_URI_PROD}
+
+# ===================================================================
+# Spring Boot Actuator 설정
+# ===================================================================
+#management:
+#  # Actuator 엔드포인트 관리 서버 설정
+#  #  server:
+#  #    port: 8080 # 관리용 포트 분리
+#  # address: 127.0.0.1                    # 로컬 호스트에서만 접근 허용
+#  # 개별 엔드포인트 활성화 설정
+#  endpoint:
+#    prometheus:
+#      enabled: true  # prometheus 엔드포인트 활성화
+#  # Actuator 엔드포인트 설정
+#  endpoints:
+#    web:
+#      base-path: /actuator # 기본 경로
+#      exposure:
+#        # 노출할 엔드포인트 목록
+#        include: health,info,metrics,prometheus
+#  # Prometheus 메트릭 설정
+#  prometheus:
+#    metrics:
+#      export:
+#        enabled: true  # prometheus 메트릭 export 활성화
+management: # Spring-Actuator 설정
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus # Spring-Actuator에서 외부로 노출할 엔드포인트
+  prometheus:
+    metrics: # 시스템이나 애플리케이션의 동작 상태를 수치로 표현한 정보
+      export:
+        enabled: true   # prometheus 엔드포인트 활성화 여부 *default = true
+#    binders:
+#      processor:
+#        enabled: false
+#      system:
+#        enabled: false
+
+# ===================================================================
+# 로깅 설정 (Logging Configuration)
+# ===================================================================
+logging:
+  level:
+    com.a306.osm: DEBUG
+    com.a306.osm.global.exception: DEBUG  # 예외 처리 상세 로깅
+    # Actuator 문제 진단을 위한 상세 로깅
+    org.springframework.web: DEBUG
+    org.springframework.boot.actuate: DEBUG
+    org.springframework.boot.actuate.endpoint: TRACE  # Actuator 엔드포인트 상세 추적
+    org.springframework.security: DEBUG
+    org.springframework.web.servlet.DispatcherServlet: DEBUG
+    org.springframework.web.servlet.mvc.method.annotation: DEBUG
+    org.springframework.web.servlet.resource: DEBUG
+    org.springframework.web.servlet.handler: TRACE  # 핸들러 매핑 상세 추적

@@ -37,18 +37,10 @@ pipeline {
     post {
         success {
             echo "🎉 Docker build completed successfully!"
-            // Job 3 트리거
-            build job: 'deploy-job',
-                    parameters: [
-                            string(name: 'SERVICE_NAME', value: "${params.SERVICE_NAME}")
-                    ],
-                    wait: false
+            echo "🚀 Blue-Green deployment will be triggered automatically by Jenkins pipeline configuration"
         }
         failure {
             echo "❌ Docker build failed!"
-        }
-        always {
-            cleanWs()
         }
     }
 }

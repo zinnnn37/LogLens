@@ -1,3 +1,78 @@
+# ===================================================================
+# 기본 애플리케이션 설정 (모든 프로필에 공통)
+# ===================================================================
 spring:
+#  config:
+#    import: "optional:classpath:/application-oauth2.yml"
   application:
-    name: loglens
+    name: osm
+  profiles:
+    # 활성 프로필 지정. 환경 변수 SPRING_PROFILES_ACTIVE가 없으면 'dev' 사용
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  data:
+    redis: # Redis 설정
+      host: localhost
+      port: 6379
+
+server:
+  # 내장 WAS 포트. 환경 변수 SERVER_PORT가 없으면 8080 사용
+  port: ${SERVER_PORT:8080}
+  # 우아한 종료(Graceful Shutdown) 활성화
+  shutdown: graceful
+
+# ===================================================================
+# 로깅 설정 (Logging Configuration)
+# ===================================================================
+logging:
+  level:
+    # 전역 로깅 레벨 설정
+    root: WARN
+    # 특정 라이브러리 로깅 레벨 설정
+    org.springframework.jdbc: INFO
+    # --- Hibernate SQL 로깅 비활성화 (성능 및 로그 가독성) ---
+    # JPA(show-sql=true)와 별개로 Hibernate가 출력하는 SQL 로그 제어
+    org.hibernate.SQL: OFF                # 실행되는 SQL 쿼리 로그
+    org.hibernate.orm.jdbc.bind: OFF      # SQL 바인딩 파라미터 로그
+    org.hibernate.orm.jdbc.extract: OFF   # SQL 결과 추출 로그
+    org.hibernate.type.descriptor.sql: OFF # SQL 타입 디스크립터 로그
+    org.hibernate.engine.jdbc.spi.SqlExceptionHelper: OFF # SQL 예외 로그
+    org.hibernate.stat: OFF               # Hibernate 통계 로그
+    # SSE 알림 서비스 디버그 로그
+    com.a306.osm.domain.notification.service.impl.SseNotificationServiceImpl: DEBUG
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-validity-in-seconds: 3600   # 1시간
+  #  access-token-validity-in-seconds: 180   # 3분
+  refresh-token-validity-in-seconds: 604800 # 7일
+
+#oauth2:
+#  success-redirect-uri: https://fintech-osm.store/oauth/redirect
+
+management: # Spring-Actuator 설정
+  endpoint:
+    prometheus:
+      enabled: true  # prometheus 엔드포인트 활성화
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus, metrics, info # Spring-Actuator에서 외부로 노출할 엔드포인트
+  prometheus:
+    metrics: # 시스템이나 애플리케이션의 동작 상태를 수치로 표현한 정보
+      export:
+        enabled: true   # prometheus 메트릭 export 활성화
+
+# ===================================================================
+# AI 서비스 연동 설정 (AI Service Integration)
+# ===================================================================
+#ai:
+#  fastapi:
+#    base-url: http://localhost:8000  # FastAPI 서버 주소
+#    timeout: 30000                   # 타임아웃 (밀리초)
+
+# ===================================================================
+# LLM 설정 (LLM Configuration)
+# ===================================================================
+llm:
+  api:
+    key: ${LLM_API_KEY:}

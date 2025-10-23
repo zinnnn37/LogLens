@@ -1,5 +1,7 @@
 # docker-compose-app.yml
 # Blue/Green 배포를 위한 템플릿 (포트가 8080 또는 8081로 변경됨)
+# ci/cd 파이프라인에서는 사용되지 않고 이해를 돕기 위한 템플릿임
+
 version: '3.8'
 
 services:

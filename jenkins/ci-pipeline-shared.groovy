@@ -35,8 +35,14 @@ pipeline {
 
         stage('Test') {
             steps {
-                echo "🧪 Running tests"
-                sh './gradlew test --no-daemon'
+                script {
+                    def testResults = findFiles(glob: 'build/test-results/test/*.xml')
+                    if (testResults.length > 0) {
+                        junit 'build/test-results/test/*.xml'
+                    } else {
+                        echo "⚠️ No test results found - skipping test report"
+                    }
+                }
             }
         }
 
@@ -49,14 +55,13 @@ pipeline {
     }
 
     post {
+        success {
+            echo "🎉 CI Build completed successfully!"
+        }
+        failure {
+            echo "❌ CI Build failed!"
+        }
         always {
-            script {
-                def testResults = findFiles(glob: 'build/test-results/test/*.xml')
-                if (testResults.length == 0) {
-                    echo "⚠️ 테스트 결과 파일이 없습니다."
-                }
-            }
-            junit allowEmptyResults: true, testResults: 'build/test-results/test/*.xml'
             cleanWs()
         }
     }

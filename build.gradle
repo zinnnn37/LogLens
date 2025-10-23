@@ -25,20 +25,62 @@ repositories {
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
     implementation 'org.springframework.boot:spring-boot-starter-aop'
-    implementation 'org.springframework.boot:spring-boot-starter-security'
-    implementation 'jakarta.validation:jakarta.validation-api:3.1.1'
     implementation 'io.swagger.core.v3:swagger-models:2.2.+'
     implementation 'io.swagger.core.v3:swagger-annotations:2.2.20'
 	compileOnly 'org.projectlombok:lombok'
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
-	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+	// Spring Boot 기본 의존성
+	implementation 'org.springframework.boot:spring-boot-starter-web'            // 웹 애플리케이션 구축을 위한 스타터
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'       // FastAPI 등 외부 서비스 연동
+
+	// 유효성 검사 관련 의존성
+	implementation 'jakarta.validation:jakarta.validation-api:3.1.1'             // Jakarta Bean Validation API
+
+	// 인증 및 인가
+	implementation 'org.springframework.boot:spring-boot-starter-security'      // 스프링 시큐리티 (인증 및 인가)
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client' // OAuth2 클라이언트
+	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'                           // JWT(JSON Web Token) 생성을 위한 API
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.16.0'        // JSON 데이터 바인딩
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'                             // JWT 구현체
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'                          // JWT와 Jackson 연동
+
+	// 데이터베이스 관련 의존성
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'       // JPA를 사용한 데이터 접근
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis:3.5.3' // Redis 캐시 및 데이터 저장소 연동
+	implementation 'com.h2database:h2'                                              // 개발용 인메모리 데이터베이스
+	runtimeOnly 'com.mysql:mysql-connector-j'                                    // MySQL 데이터베이스 드라이버
+
+	// 개발 도구 및 유틸리티
+	compileOnly 'org.projectlombok:lombok'                                       // 보일러플레이트 코드 감소
+	annotationProcessor 'org.projectlombok:lombok'                               // Lombok 어노테이션 처리
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'              // 개발 편의를 위한 도구
+
+	// 매핑 관련 의존성
+	implementation 'org.mapstruct:mapstruct:1.6.3'                              // 객체 간 매핑 자동화
+	annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'               // 객체 간 매핑 자동화
+
+	// 모니터링 도구
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'      // 애플리케이션의 헬스 체크 및 메트릭 엔드포인트 제공
+	implementation 'io.micrometer:micrometer-registry-prometheus'               // Prometheus 형식으로 메트릭 데이터를 노출 (Spring Boot 3.5 기본)
+
+	// 문서화 및 API 명세 도구
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'     // Swagger UI 기반 OpenAPI 3 문서 자동 생성
+
+	// 테스트 관련 의존성
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'       // 스프링 부트 테스트 프레임워크
+	// Notification 도메인 테스트에서 @WithMockUser, SecurityMockMvcRequestPostProcessors.user() 사용을 위해 추가
+	testImplementation 'org.springframework.security:spring-security-test'       // 스프링 시큐리티 테스트
+	testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'    // API 문서화
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+// plain JAR 생성 비활성화 (실행 불가능한 라이브러리 JAR 제외)
+tasks.named('jar') {
+	enabled = false
 }

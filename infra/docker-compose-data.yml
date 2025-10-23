@@ -1,39 +1,67 @@
 # docker-compose-data.yml
+# MySQL과 Redis를 관리하는 Docker Compose 파일
+
 version: '3.8'
+
 services:
-  loglens-mysql:
+  mysql:
     image: mysql:8.0
     container_name: loglens-mysql
-    networks:
-      - loglens-network
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: dogy
+      MYSQL_DATABASE: loglens
+      MYSQL_USER: gonagi
+      MYSQL_PASSWORD: 'Loglens306#)^'
     ports:
       - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d
     restart: unless-stopped
-
-  loglens-redis:
-    image: redis:7-alpine
-    container_name: loglens-redis
     networks:
       - loglens-network
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "gonagi", "-pLoglens306#)^"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: loglens-redis
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
+    # Redis 비밀번호 설정: Loglens306#)^
+    # --requirepass로 비밀번호 보호 활성화
+    # --appendonly yes로 데이터 영속성 보장
+    command: >
+      sh -c '
+      redis-server 
+      --appendonly yes 
+      --requirepass "Loglens306#)^"
+      '
     restart: unless-stopped
-
-networks:
-  loglens-network:
-    name: loglens-network    # 👈 명시적으로 이름 지정
-    driver: bridge
+    networks:
+      - loglens-network
+    # Redis healthcheck: 비밀번호 인증 후 ping 테스트
+    # -a 옵션으로 비밀번호 전달
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "Loglens306#)^", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 volumes:
   mysql-data:
+    driver: local
   redis-data:
+    driver: local
+
+networks:
+  loglens-network:
+    name: loglens-network
+    driver: bridge
