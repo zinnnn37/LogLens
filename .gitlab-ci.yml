@@ -1,0 +1,19 @@
+stages:
+  - test
+  - deploy
+
+test:
+  stage: test
+  script:
+    - npm ci
+    - npm run build  # 빌드 테스트
+    - npm test       # 유닛 테스트
+  only:
+    - npm/main
+
+publish:
+  stage: deploy
+  script:
+    - npm publish
+  only:
+    - npm/main
