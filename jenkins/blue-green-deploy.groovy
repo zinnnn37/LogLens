@@ -21,22 +21,16 @@ pipeline {
                 withCredentials([
                         file(credentialsId: 'dev-env', variable: 'ENV_FILE')
                 ]) {
-                    sh '''
+                    sh '''#!/bin/bash
                         # Jenkins workspace에 .env 파일 복사
                         cp ${ENV_FILE} ${WORKSPACE}/.env
                         echo "✅ Environment file prepared"
                         
-                        # .env 파일에서 AWS 설정 로드 (source 명령 사용)
-                        set -a
-                        source ${WORKSPACE}/.env
-                        set +a
-                        
                         # 환경변수 확인 (민감정보는 마스킹됨)
-                        echo "📊 Environment variables loaded:"
-                        echo "AWS_REGION: ${AWS_REGION}"
-                        echo "BLUE_TG: ${BLUE_TG}"
-                        echo "GREEN_TG: ${GREEN_TG}"
-                        echo "ALB_LISTENER_ARN: ${ALB_LISTENER_ARN:0:50}..."
+                        echo "📊 Environment variables loaded"
+                        grep "^AWS_REGION=" ${WORKSPACE}/.env || echo "AWS_REGION not found"
+                        grep "^BLUE_TG=" ${WORKSPACE}/.env || echo "BLUE_TG not found"
+                        grep "^GREEN_TG=" ${WORKSPACE}/.env || echo "GREEN_TG not found"
                     '''
                 }
             }
@@ -45,7 +39,7 @@ pipeline {
         stage('Start Data Services') {
             steps {
                 echo "🐠 Starting MySQL & Redis with environment file"
-                sh '''
+                sh '''#!/bin/bash
                     # .env 파일을 infra 디렉토리로 복사
                     mkdir -p infra
                     cp ${WORKSPACE}/.env infra/.env
@@ -87,7 +81,7 @@ pipeline {
         stage('Determine Target Environment') {
             steps {
                 script {
-                    sh '''
+                    sh '''#!/bin/bash
                         BLUE_RUNNING=$(docker ps -q -f name=loglens-app-blue -f status=running)
                         GREEN_RUNNING=$(docker ps -q -f name=loglens-app-green -f status=running)
                         
@@ -115,7 +109,7 @@ pipeline {
                     def containerName = "loglens-app-${env.DEPLOY_TARGET}"
                     def port = env.DEPLOY_TARGET == 'blue' ? env.BLUE_PORT : env.GREEN_PORT
 
-                    sh """
+                    sh """#!/bin/bash
                         # 기존 컨테이너 정리
                         if [ \$(docker ps -aq -f name=${containerName}) ]; then
                             echo "🗑️ Removing old container: ${containerName}"
@@ -147,7 +141,7 @@ pipeline {
 
                     echo "🏥 Running health check on port ${port}"
                     timeout(time: 5, unit: 'MINUTES') {
-                        sh """
+                        sh """#!/bin/bash
                             for i in {1..30}; do
                                 echo "Health check attempt \$i/30..."
                                 
@@ -178,11 +172,17 @@ pipeline {
                     echo "🔄 Switching traffic to ${env.DEPLOY_TARGET}"
 
                     // .env 파일에서 AWS credentials와 설정 로드
-                    sh '''
-                        # .env 파일에서 환경 변수 로드
-                        set -a
-                        source ${WORKSPACE}/.env
-                        set +a
+                    sh '''#!/bin/bash
+                        # .env 파일에서 환경 변수 로드 (bash의 set -a 대신 export 사용)
+                        while IFS='=' read -r key value; do
+                            # 주석과 빈 줄 무시
+                            if [[ ! $key =~ ^# && -n $key ]]; then
+                                # 따옴표 제거
+                                value="${value%\"}"
+                                value="${value#\"}"
+                                export "$key=$value"
+                            fi
+                        done < ${WORKSPACE}/.env
                         
                         # Target Group 결정
                         if [ "${DEPLOY_TARGET}" = "blue" ]; then
@@ -194,17 +194,13 @@ pipeline {
                         echo "🎯 Target Group: $TG_NAME"
                         echo "🌍 Region: ${AWS_REGION}"
                         
-                        # AWS CLI 설정 (환경 변수 사용)
-                        export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
-                        export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
-                        export AWS_DEFAULT_REGION="${AWS_REGION}"
-                        
                         # Target Group ARN 조회
                         echo "🔍 Looking up Target Group ARN..."
                         TG_ARN=$(aws elbv2 describe-target-groups \
                             --names "$TG_NAME" \
                             --query 'TargetGroups[0].TargetGroupArn' \
-                            --output text)
+                            --output text \
+                            --region ${AWS_REGION})
                         
                         if [ -z "$TG_ARN" ] || [ "$TG_ARN" = "None" ]; then
                             echo "❌ Failed to find Target Group: $TG_NAME"
@@ -217,7 +213,8 @@ pipeline {
                         echo "🔧 Modifying ALB Listener..."
                         aws elbv2 modify-listener \
                             --listener-arn "${ALB_LISTENER_ARN}" \
-                            --default-actions Type=forward,TargetGroupArn="$TG_ARN"
+                            --default-actions Type=forward,TargetGroupArn="$TG_ARN" \
+                            --region ${AWS_REGION}
                         
                         if [ $? -eq 0 ]; then
                             echo "✅ Traffic switched to ${DEPLOY_TARGET} successfully"
@@ -237,7 +234,7 @@ pipeline {
                     def oldContainer = "loglens-app-${oldEnvironment}"
 
                     timeout(time: 2, unit: 'MINUTES') {
-                        sh """
+                        sh """#!/bin/bash
                             echo "🧹 Cleaning up old environment: ${oldContainer}"
                             
                             if [ \$(docker ps -aq -f name=${oldContainer}) ]; then
@@ -271,17 +268,21 @@ pipeline {
             echo "❌ Deployment failed!"
             script {
                 // 실패 시 롤백 로직
-                def containerName = "loglens-app-${env.DEPLOY_TARGET}"
-                sh """
-                    echo "🔙 Rolling back deployment..."
-                    docker stop ${containerName} || true
-                    docker rm ${containerName} || true
-                """
+                if (env.DEPLOY_TARGET) {
+                    def containerName = "loglens-app-${env.DEPLOY_TARGET}"
+                    sh """#!/bin/bash
+                        echo "🔙 Rolling back deployment..."
+                        docker stop ${containerName} || true
+                        docker rm ${containerName} || true
+                    """
+                } else {
+                    echo "⚠️ DEPLOY_TARGET not set, skipping rollback"
+                }
             }
         }
         always {
             // .env 파일 제거 (보안)
-            sh '''
+            sh '''#!/bin/bash
                 rm -f ${WORKSPACE}/.env
                 rm -f infra/.env
                 echo "🔒 Environment file cleaned up"
