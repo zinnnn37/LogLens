@@ -62,7 +62,7 @@ class LogCollector {
    * 특정 TraceID의 로그만 조회
    */
   static getLogsByTraceId(traceId: string): LogEntry[] {
-    return this.logs.filter((log) => log.trace_id === traceId);
+    return this.logs.filter((log) => log.traceId === traceId);
   }
 
   /**

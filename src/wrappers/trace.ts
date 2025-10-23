@@ -41,7 +41,6 @@ function withLogLens<T extends (...args: any[]) => any>(
 ): T {
   // 함수 정의 시점에 이름 결정
   const functionName = options?.name || fn.name || 'anonymous';
-  const logger = options?.logger || fn.name || 'function';
   const level: LogLevel = options?.level || 'INFO';
 
   return ((...args: any[]) => {
@@ -55,13 +54,18 @@ function withLogLens<T extends (...args: any[]) => any>(
     // 함수 실행 전 로그
     if (shouldLog && options?.includeArgs) {
       LogCollector.addLog({
-        '@timestamp': new Date().toISOString(),
-        trace_id: traceId,
-        level,
-        logger,
-        message: `${functionName} called`,
-        context: { args },
-        layer: 'function',
+        timestamp: new Date().toISOString(),
+        traceId: traceId,
+        sourceType: 'FRONT',
+        logLevel: level,
+        comment: `${functionName} called`,
+        methodName: functionName,
+        className: null,
+        stackTrace: null,
+        requestData: null,
+        responseData: null,
+        executionTime: null,
+        additionalInfo: args,
       });
     }
 
@@ -77,17 +81,21 @@ function withLogLens<T extends (...args: any[]) => any>(
             // 성공 로그
             if (shouldLog) {
               LogCollector.addLog({
-                '@timestamp': new Date().toISOString(),
-                trace_id: traceId,
-                level,
-                logger,
-                message: `${functionName} completed`,
-                context: {
+                timestamp: new Date().toISOString(),
+                traceId: traceId,
+                logLevel: level,
+                sourceType: 'FRONT',
+                comment: `${functionName} completed`,
+                methodName: functionName,
+                className: null,
+                stackTrace: null,
+                requestData: null,
+                responseData: null,
+                executionTime: duration,
+                additionalInfo: {
                   ...(options?.includeResult ? { result: value } : {}),
                   ...(options?.context || {}),
                 },
-                duration_ms: duration,
-                layer: 'function',
               });
             }
 
@@ -98,19 +106,20 @@ function withLogLens<T extends (...args: any[]) => any>(
 
             // 에러 로그
             LogCollector.addLog({
-              '@timestamp': new Date().toISOString(),
-              trace_id: traceId,
-              level: 'ERROR',
-              logger,
-              message: `${functionName} failed`,
-              exception: {
-                type: error.constructor?.name || 'Error',
-                message: error.message || String(error),
-                stacktrace: error.stack || '',
+              timestamp: new Date().toISOString(),
+              traceId: traceId,
+              logLevel: 'ERROR',
+              sourceType: 'FRONT',
+              comment: `${functionName} failed`,
+              methodName: functionName,
+              className: null,
+              stackTrace: null,
+              requestData: null,
+              responseData: null,
+              executionTime: duration,
+              additionalInfo: {
+                ...(options?.context || {}),
               },
-              context: options?.context,
-              duration_ms: duration,
-              layer: 'function',
             });
 
             throw error;
@@ -125,17 +134,21 @@ function withLogLens<T extends (...args: any[]) => any>(
         // 성공 로그
         if (shouldLog) {
           LogCollector.addLog({
-            '@timestamp': new Date().toISOString(),
-            trace_id: traceId,
-            level,
-            logger,
-            message: `${functionName} completed`,
-            context: {
+            timestamp: new Date().toISOString(),
+            traceId,
+            sourceType: 'FRONT',
+            logLevel: level,
+            comment: `${functionName} completed`,
+            methodName: functionName,
+            className: null,
+            stackTrace: null,
+            requestData: null,
+            responseData: null,
+            executionTime: duration,
+            additionalInfo: {
               ...(options?.includeResult ? { result } : {}),
               ...(options?.context || {}),
             },
-            duration_ms: duration,
-            layer: 'function',
           });
         }
 
@@ -148,19 +161,22 @@ function withLogLens<T extends (...args: any[]) => any>(
 
       // 에러 로그
       LogCollector.addLog({
-        '@timestamp': new Date().toISOString(),
-        trace_id: traceId,
-        level: 'ERROR',
-        logger,
-        message: `${functionName} failed`,
-        exception: {
+        timestamp: new Date().toISOString(),
+        traceId: traceId,
+        logLevel: 'ERROR',
+        sourceType: 'FRONT',
+        comment: `${functionName} failed`,
+        methodName: functionName,
+        className: null,
+        stackTrace: null,
+        requestData: null,
+        responseData: null,
+        executionTime: duration,
+        additionalInfo: {
           type: error.constructor?.name || 'Error',
           message: error.message || String(error),
           stacktrace: error.stack || '',
         },
-        context: options?.context,
-        duration_ms: duration,
-        layer: 'function',
       });
 
       TraceContext.endTrace();

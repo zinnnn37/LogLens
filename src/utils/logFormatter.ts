@@ -24,32 +24,34 @@ class LogFormatter {
     const indent: string = '|'.repeat(depth);
     const arrow: string = '→';
 
-    const color: string = this.COLORS[logEntry.level];
+    const color: string = this.COLORS[logEntry.logLevel];
     const reset: string = this.COLORS.RESET;
     const gray: string = this.COLORS.GRAY;
 
     // 로그 레벨 우측 정렬
-    const level = `${color}[${logEntry.level.padStart(
+    const level = `${color}[${logEntry.logLevel.padStart(
       this.LEVEL_WIDTH,
     )}]${reset}`;
 
     // Duration 색상
-    const durationColor = this.getDurationColor(logEntry.duration_ms);
+    const durationColor: string | null = this.getDurationColor(
+      logEntry.executionTime,
+    );
     const duration =
-      logEntry.duration_ms !== undefined
-        ? `${durationColor}(${logEntry.duration_ms
+      logEntry.executionTime !== null
+        ? `${durationColor}(${logEntry.executionTime
             .toString()
             .padStart(5)}ms)${reset}`
         : `${gray}(    - )${reset}`;
 
-    return `${level} ${indent}${arrow} ${logEntry.logger} ${duration}`;
+    return `${level} ${indent}${arrow} ${logEntry.methodName} ${duration}`;
   }
 
   /**
    * Duration 기반 색상 선택
    */
-  private static getDurationColor(ms?: number): string {
-    if (ms === undefined) return this.COLORS.GRAY;
+  private static getDurationColor(ms: number | null): string {
+    if (ms === null) return this.COLORS.GRAY;
     if (ms > 1000) return this.COLORS.ERROR;
     if (ms > 100) return this.COLORS.WARN;
     return this.COLORS.GREEN;

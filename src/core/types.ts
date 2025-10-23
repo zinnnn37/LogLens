@@ -1,29 +1,25 @@
 // src/core/types.ts
 
-export type LogLevel = 'INFO' | 'WARN' | 'ERROR';
+export type LogLevel = 'ERROR' | 'WARN' | 'INFO';
 
 export type LogEntry = {
-  '@timestamp': string;
-  trace_id: string;
-  level: LogLevel;
-  logger: string; // 어디서 로그가 발생했는지
-  message: string;
-  exception?: {
-    type: string;
-    message: string;
-    stacktrace: string;
-  };
-  layer: string;
-  request?: {
-    method?: string;
-    uri?: string;
-    user_id?: string;
-  };
-  context?: Record<string, any>;
-  duration_ms?: number;
+  // logs 테이블
+  traceId: string | null;
+  logLevel: LogLevel;
+  sourceType: 'FRONT';
+  timestamp: string;
+  comment: string | null;
+
+  // log_details 테이블
+  methodName: string | null;
+  className: string | null;
+  stackTrace: string | null;
+  requestData: object | null;
+  responseData: object | null;
+  executionTime: number | null;
+  additionalInfo: object | null;
 };
 
-// 사용자 명시 가능한 옵션들
 export type LogLensOptions = {
   name?: string;
   level?: LogLevel;
@@ -35,10 +31,10 @@ export type LogLensOptions = {
 };
 
 export type CollectorConfig = {
-  maxLogs?: number;
+  maxLogs?: number; // 최대 보관 로그 수
   autoFlush?: {
-    enabled: boolean;
-    interval: number;
-    endpoint: string;
+    enabled: boolean; // 자동 전송 활성화
+    interval: number; // 전송 주기 (ms)
+    endpoint: string; // 백엔드 엔드포인트
   };
 };
