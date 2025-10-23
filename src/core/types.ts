@@ -38,3 +38,10 @@ export type CollectorConfig = {
     endpoint: string; // 백엔드 엔드포인트
   };
 };
+
+export type MaskConfig = {
+  sensitive?: string[];
+  sensitivePatterns?: string[];
+  exclude?: string[];
+  excludePatterns?: string[];
+};
