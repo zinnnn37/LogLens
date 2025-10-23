@@ -17,8 +17,9 @@ spring:
       minimum-idle: 5      # 최소 유휴 커넥션 수
 
   data:
-    redis: # Redis 설정
-      host: host.docker.internal
+    redis:
+      host: loglens-redis
+      port: 6379
 
   # ===================================================================
   # JPA 및 Hibernate 설정
