@@ -17,7 +17,7 @@ publish:
   tags:
     - npm
   script:
-    - echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
+    - npm config set //registry.npmjs.org/:_authToken $env:NPM_TOKEN
     - npm publish
   only:
     - npm/main
