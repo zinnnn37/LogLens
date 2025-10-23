@@ -1,10 +1,5 @@
 import type { ComponentProps } from 'react';
-import {
-  PlusSquare,
-  Settings,
-  MessageSquare,
-  LogOut,
-} from 'lucide-react';
+import { PlusSquare, Settings, MessageSquare, LogOut } from 'lucide-react';
 
 /**
  * 사이드바 Props
@@ -24,7 +19,7 @@ const NavLink = ({
 }) => (
   <a
     href="#"
-    className="flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+    className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex items-center gap-3 rounded-lg px-3 py-2 transition-all"
   >
     <Icon className="h-4 w-4" />
     {children}
@@ -35,7 +30,7 @@ const NavLink = ({
  * 섹션 제목을 위한 내부 컴포넌트
  */
 const NavHeading = ({ children }: { children: React.ReactNode }) => (
-  <h2 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+  <h2 className="text-muted-foreground mb-2 px-3 text-xs font-semibold tracking-wider uppercase">
     {children}
   </h2>
 );
@@ -46,7 +41,7 @@ const NavHeading = ({ children }: { children: React.ReactNode }) => (
 const Sidebar = ({ className, ...props }: SidebarProps) => {
   return (
     <aside
-      className={`flex h-screen w-60 flex-col justify-between border-r border-sidebar-border  p-2 ${
+      className={`border-sidebar-border flex h-screen w-60 flex-col justify-between border-r p-2 ${
         className || ''
       }`}
       {...props}
@@ -89,7 +84,7 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
       {/* 2. 하단 그룹 (AI Chat + Logout) */}
       <div>
         {/* 구분선 */}
-        <hr className="my-4 border-sidebar-border" />
+        <hr className="border-sidebar-border my-4" />
 
         <nav className="flex flex-col gap-1">
           <NavLink icon={MessageSquare}>AI Chat</NavLink>
