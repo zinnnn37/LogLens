@@ -52,7 +52,7 @@ function withLogLens<T extends (...args: any[]) => any>(
     const shouldLog = !options?.skipLog;
 
     // 함수 실행 전 로그
-    if (shouldLog && options?.includeArgs) {
+    if (shouldLog) {
       LogCollector.addLog({
         timestamp: new Date().toISOString(),
         traceId: traceId,
@@ -65,7 +65,7 @@ function withLogLens<T extends (...args: any[]) => any>(
         requestData: null,
         responseData: null,
         executionTime: null,
-        additionalInfo: args,
+        additionalInfo: options?.includeArgs ? { args } : null,
       });
     }
 
