@@ -2,6 +2,7 @@ package a306.dependency_logger_starter.config;
 
 import a306.dependency_logger_starter.dependency.DependencyCollector;
 import a306.dependency_logger_starter.dependency.client.DependencyLogSender;
+import a306.dependency_logger_starter.logging.aspect.ExceptionHandlerLoggingAspect;
 import a306.dependency_logger_starter.logging.aspect.MethodLoggingAspect;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -62,5 +63,20 @@ public class LoggerAutoConfiguration {
     )
     public MethodLoggingAspect methodLoggingAspect(ObjectMapper objectMapper) {
         return new MethodLoggingAspect(objectMapper);
+    }
+
+    /**
+     * Exception Handler 로깅 Aspect
+     * 사용자의 @ExceptionHandler 메서드 실행 시 예외를 자동으로 로깅
+     */
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "dependency.logger.exception-handler",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    public ExceptionHandlerLoggingAspect exceptionHandlerLoggingAspect(ObjectMapper objectMapper) {
+        return new ExceptionHandlerLoggingAspect(objectMapper);
     }
 }
