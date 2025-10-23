@@ -3,14 +3,14 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'BRANCH_NAME', defaultValue: 'master', description: '빌드할 브랜치')
+        string(name: 'BRANCH_NAME', defaultValue: 'be/develop', description: '빌드할 브랜치')
         string(name: 'SERVICE_NAME', defaultValue: 'loglens', description: '서비스 이름')
     }
 
     environment {
         JAVA_HOME = '/usr/lib/jvm/java-21-openjdk-amd64'
         PATH = "${JAVA_HOME}/bin:${PATH}"
-        GIT_REPO = 'https://gitlab.com/your-org/loglens.git'
+        GIT_REPO = 'https://lab.ssafy.com/s13-final/S13P31A306.git'  // ✅ 수정
     }
 
     stages {
@@ -19,7 +19,7 @@ pipeline {
                 echo "📦 Checking out ${params.BRANCH_NAME} branch"
                 git branch: "${params.BRANCH_NAME}",
                         url: "${GIT_REPO}",
-                        credentialsId: 'gitlab-credentials'
+                        credentialsId: 'gitlab_username_with_pw'
             }
         }
 

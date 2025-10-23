@@ -1,4 +1,4 @@
-// deploy-job.groovy - Part 1
+// deploy-job.groovy
 pipeline {
     agent any
 
@@ -19,28 +19,41 @@ pipeline {
     }
 
     stages {
-        stage('Start Data Services') {
+        stage('Prepare Environment') {
             steps {
-                echo "🐠 Starting MySQL & Redis with credentials"
+                echo "📋 Preparing environment file from credentials"
                 withCredentials([
-                        string(credentialsId: 'MYSQL_ROOT_PASSWORD', variable: 'MYSQL_ROOT_PASSWORD'),
-                        string(credentialsId: 'MYSQL_DATABASE', variable: 'MYSQL_DATABASE'),
-                        string(credentialsId: 'MYSQL_USER', variable: 'MYSQL_USER'),
-                        string(credentialsId: 'MYSQL_PASSWORD', variable: 'MYSQL_PASSWORD'),
-                        string(credentialsId: 'REDIS_PASSWORD', variable: 'REDIS_PASSWORD')
+                        file(credentialsId: 'dev-env', variable: 'ENV_FILE')
                 ]) {
                     sh '''
-                        cd infra/
-                        export MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-                        export MYSQL_DATABASE=${MYSQL_DATABASE}
-                        export MYSQL_USER=${MYSQL_USER}
-                        export MYSQL_PASSWORD=${MYSQL_PASSWORD}
-                        export REDIS_PASSWORD=${REDIS_PASSWORD}
+                        # Jenkins workspace에 .env 파일 복사
+                        cp ${ENV_FILE} ${WORKSPACE}/.env
+                        echo "✅ Environment file prepared"
                         
-                        docker compose -f docker-compose-data.yml up -d
-                        echo "✅ Data services started"
+                        # 환경변수 확인 (민감정보는 마스킹됨)
+                        echo "Environment variables loaded:"
+                        grep -v PASSWORD ${WORKSPACE}/.env || true
                     '''
                 }
+            }
+        }
+
+        stage('Start Data Services') {
+            steps {
+                echo "🐠 Starting MySQL & Redis with environment file"
+                sh '''
+                    # .env 파일을 infra 디렉토리로 복사
+                    mkdir -p infra
+                    cp ${WORKSPACE}/.env infra/.env
+                    
+                    cd infra/
+                    
+                    # Docker Compose 실행 (env_file 사용)
+                    docker compose -f docker-compose-data.yml up -d
+                    
+                    echo "✅ Data services started"
+                    docker ps | grep loglens
+                '''
             }
         }
 
@@ -70,33 +83,31 @@ pipeline {
 
         stage('Deploy New Version') {
             steps {
-                withCredentials([
-                        string(credentialsId: 'MYSQL_USER', variable: 'MYSQL_USER'),
-                        string(credentialsId: 'MYSQL_PASSWORD', variable: 'MYSQL_PASSWORD'),
-                        string(credentialsId: 'REDIS_PASSWORD', variable: 'REDIS_PASSWORD')
-                ]) {
-                    script {
-                        def containerName = "loglens-app-${env.DEPLOY_TARGET}"
-                        def port = env.DEPLOY_TARGET == 'blue' ? env.BLUE_PORT : env.GREEN_PORT
+                script {
+                    def containerName = "loglens-app-${env.DEPLOY_TARGET}"
+                    def port = env.DEPLOY_TARGET == 'blue' ? env.BLUE_PORT : env.GREEN_PORT
 
-                        sh """
-                            if [ \$(docker ps -aq -f name=${containerName}) ]; then
-                                docker stop ${containerName} || true
-                                docker rm ${containerName} || true
-                            fi
-                            
-                            docker run -d --name ${containerName} --network loglens-network \
-                                -p ${port}:8080 -e SPRING_PROFILES_ACTIVE=prod \
-                                -e SPRING_DATASOURCE_URL=jdbc:mysql://loglens-mysql:3306/loglens \
-                                -e SPRING_DATASOURCE_USERNAME=${MYSQL_USER} \
-                                -e SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD} \
-                                -e SPRING_REDIS_HOST=loglens-redis -e SPRING_REDIS_PORT=6379 \
-                                -e SPRING_REDIS_PASSWORD=${REDIS_PASSWORD} \
-                                --restart unless-stopped ${IMAGE_NAME}
-                            
-                            echo "✅ ${containerName} deployed on port ${port}"
-                        """
-                    }
+                    sh """
+                        # 기존 컨테이너 정리
+                        if [ \$(docker ps -aq -f name=${containerName}) ]; then
+                            echo "🗑️ Removing old container: ${containerName}"
+                            docker stop ${containerName} || true
+                            docker rm ${containerName} || true
+                        fi
+                        
+                        # 새 컨테이너 배포 (env-file 사용)
+                        echo "🚀 Deploying ${containerName} on port ${port}"
+                        docker run -d \
+                            --name ${containerName} \
+                            --network loglens-network \
+                            -p ${port}:8080 \
+                            --env-file ${WORKSPACE}/.env \
+                            --restart unless-stopped \
+                            ${IMAGE_NAME}
+                        
+                        echo "✅ ${containerName} deployed successfully"
+                        docker ps | grep ${containerName}
+                    """
                 }
             }
         }
@@ -105,17 +116,23 @@ pipeline {
             steps {
                 script {
                     def port = env.DEPLOY_TARGET == 'blue' ? env.BLUE_PORT : env.GREEN_PORT
+
+                    echo "🏥 Running health check on port ${port}"
                     timeout(time: 5, unit: 'MINUTES') {
                         sh """
                             for i in {1..30}; do
+                                echo "Health check attempt \$i/30..."
+                                
                                 if curl -sf http://localhost:${port}/actuator/health; then
-                                    echo "✅ Health check passed"
+                                    echo "✅ Health check passed!"
                                     exit 0
                                 fi
-                                echo "Waiting... (\$i/30)"
+                                
+                                echo "⏳ Waiting... (\$i/30)"
                                 sleep 10
                             done
-                            echo "❌ Health check failed"
+                            
+                            echo "❌ Health check failed after 30 attempts"
                             exit 1
                         """
                     }
@@ -127,19 +144,58 @@ pipeline {
             steps {
                 script {
                     if (params.TRAFFIC_SWITCH_MODE == 'manual') {
-                        input message: 'Traffic을 전환하시겠습니까?', ok: '전환'
+                        input message: '새 버전으로 트래픽을 전환하시겠습니까?', ok: '전환'
                     }
 
+                    echo "🔄 Switching traffic to ${env.DEPLOY_TARGET}"
                     withAWS(credentials: 'aws-credentials', region: env.AWS_REGION) {
                         sh """
-                            TG=\$([ "${env.DEPLOY_TARGET}" = "blue" ] && echo "${BLUE_TG}" || echo "${GREEN_TG}")
-                            TG_ARN=\$(aws elbv2 describe-target-groups --names \$TG \
-                                --query 'TargetGroups[0].TargetGroupArn' --output text)
+                            # Target Group 결정
+                            if [ "${env.DEPLOY_TARGET}" = "blue" ]; then
+                                TG_NAME="${BLUE_TG}"
+                            else
+                                TG_NAME="${GREEN_TG}"
+                            fi
                             
-                            aws elbv2 modify-listener --listener-arn ${ALB_LISTENER_ARN} \
+                            # Target Group ARN 조회
+                            TG_ARN=\$(aws elbv2 describe-target-groups \
+                                --names \$TG_NAME \
+                                --query 'TargetGroups[0].TargetGroupArn' \
+                                --output text)
+                            
+                            echo "Target Group: \$TG_NAME"
+                            echo "Target Group ARN: \$TG_ARN"
+                            
+                            # ALB Listener 규칙 수정
+                            aws elbv2 modify-listener \
+                                --listener-arn ${ALB_LISTENER_ARN} \
                                 --default-actions Type=forward,TargetGroupArn=\$TG_ARN
                             
                             echo "✅ Traffic switched to ${env.DEPLOY_TARGET}"
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Cleanup Old Environment') {
+            steps {
+                script {
+                    def oldEnvironment = env.DEPLOY_TARGET == 'blue' ? 'green' : 'blue'
+                    def oldContainer = "loglens-app-${oldEnvironment}"
+
+                    timeout(time: 2, unit: 'MINUTES') {
+                        sh """
+                            echo "🧹 Cleaning up old environment: ${oldContainer}"
+                            
+                            if [ \$(docker ps -aq -f name=${oldContainer}) ]; then
+                                # Graceful shutdown (30초 대기)
+                                docker stop -t 30 ${oldContainer} || true
+                                docker rm ${oldContainer} || true
+                                echo "✅ Old container removed: ${oldContainer}"
+                            else
+                                echo "ℹ️ No old container to clean up"
+                            fi
                         """
                     }
                 }
@@ -149,13 +205,36 @@ pipeline {
 
     post {
         success {
-            echo "🎉 Deployment completed successfully!"
+            echo """
+                🎉 Deployment completed successfully!
+                
+                📊 Deployment Summary:
+                - Service: ${params.SERVICE_NAME}
+                - Target: ${env.DEPLOY_TARGET}
+                - Port: ${env.DEPLOY_TARGET == 'blue' ? env.BLUE_PORT : env.GREEN_PORT}
+                - Traffic Switch Mode: ${params.TRAFFIC_SWITCH_MODE}
+            """
         }
         failure {
             echo "❌ Deployment failed!"
+            script {
+                // 실패 시 롤백 로직 (옵션)
+                def containerName = "loglens-app-${env.DEPLOY_TARGET}"
+                sh """
+                    echo "🔙 Rolling back deployment..."
+                    docker stop ${containerName} || true
+                    docker rm ${containerName} || true
+                """
+            }
         }
         always {
-            sh 'rm -f infra/dev/.env || true'
+            // .env 파일 제거 (보안)
+            sh '''
+                rm -f ${WORKSPACE}/.env
+                rm -f infra/.env
+                echo "🔒 Environment file cleaned up"
+            '''
+            cleanWs()
         }
     }
 }
