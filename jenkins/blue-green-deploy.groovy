@@ -60,15 +60,15 @@ pipeline {
                         
                         if [ "$NEW_HASH" != "$OLD_HASH" ]; then
                             echo "⚠️ Environment variables changed, restarting data services..."
-                            docker compose -f docker-compose-data.yml down
-                            docker compose -f docker-compose-data.yml up -d
+                            docker-compose -f docker-compose-data.yml down
+                            docker-compose -f docker-compose-data.yml up -d
                             echo "$NEW_HASH" > /tmp/loglens-data-env.hash
                         else
                             echo "✅ No environment changes, skipping restart"
                         fi
                     else
                         echo "🚀 Starting data services for the first time..."
-                        docker compose -f docker-compose-data.yml up -d
+                        docker-compose -f docker-compose-data.yml up -d
                         md5sum .env | awk '{print $1}' > /tmp/loglens-data-env.hash
                     fi
                     
