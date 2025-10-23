@@ -23,7 +23,7 @@ public final class ValueProcessor {
     private static final String EXCLUDED_VALUE = "<excluded>";
 
     private ValueProcessor() {
-        throw new IllegalStateException("Utility class");
+        throw new IllegalStateException();
     }
 
     /**
