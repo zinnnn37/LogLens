@@ -16,8 +16,6 @@ import org.springframework.util.ClassUtils;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
@@ -87,13 +85,13 @@ public class MethodLoggingAspect {
         Class<?> targetClass = ClassUtils.getUserClass(joinPoint.getTarget().getClass());
 
         String methodName = signature.getMethod().getName();
-        String logger = targetClass.getName();
-        String componentName = extractComponentName(targetClass);
+        String packageName = targetClass.getName();
+        String layer = detectLayer(targetClass);
 
         HttpInfo httpInfo = extractHttpInfo();
         Map<String, Object> parameters = collectParameters(signature, joinPoint.getArgs());
 
-        logRequest(logger, methodName, componentName, parameters, httpInfo);
+        logRequest(packageName, layer, methodName, parameters, httpInfo);
 
         Object result = null;
         Throwable exception = null;
@@ -111,24 +109,34 @@ public class MethodLoggingAspect {
                 httpInfo.updateStatusCode();
             }
 
-            logResponse(logger, methodName, componentName, responseData, executionTime, exception, httpInfo);
+            logResponse(packageName, layer, methodName, responseData, executionTime, exception, httpInfo);
         }
 
         return result;
     }
 
     /**
-     * 컴포넌트 이름 추출 (프록시 처리)
+     * Layer 감지
      */
-    private String extractComponentName(Class<?> targetClass) {
-        String name = targetClass.getSimpleName();
-
-        // CGLIB 프록시 suffix 제거
-        if (name.contains("$$")) {
-            name = name.substring(0, name.indexOf("$$"));
+    private String detectLayer(Class<?> targetClass) {
+        if (targetClass.isAnnotationPresent(org.springframework.web.bind.annotation.RestController.class)) {
+            return "CONTROLLER";
+        }
+        if (targetClass.isAnnotationPresent(org.springframework.stereotype.Service.class)) {
+            return "SERVICE";
+        }
+        if (targetClass.isAnnotationPresent(org.springframework.stereotype.Repository.class)) {
+            return "REPOSITORY";
         }
 
-        return name;
+        // JPA Repository 체크
+        for (Class<?> interfaceClass : targetClass.getInterfaces()) {
+            if (interfaceClass.getName().contains("Repository")) {
+                return "REPOSITORY";
+            }
+        }
+
+        return "UNKNOWN";
     }
 
     /**
@@ -157,16 +165,17 @@ public class MethodLoggingAspect {
     /**
      * REQUEST 로그 출력
      */
-    private void logRequest(String logger, String methodName, String componentName,
+    private void logRequest(String packageName, String layer, String methodName,
                             Map<String, Object> parameters, HttpInfo httpInfo) {
         try {
             Map<String, Object> logEntry = new LinkedHashMap<>();
             logEntry.put("@timestamp", LocalDateTime.now().atZone(ZoneOffset.UTC).format(ISO_FORMATTER));
             logEntry.put("trace_id", null);
             logEntry.put("level", "INFO");
-            logEntry.put("logger", logger);
+            logEntry.put("package", packageName);
+            logEntry.put("layer", layer);
             logEntry.put("message", "Request received: " + methodName);
-            logEntry.put("component_name", componentName);
+            logEntry.put("execution_time_ms", null);
 
             Map<String, Object> request = new LinkedHashMap<>();
 
@@ -185,7 +194,6 @@ public class MethodLoggingAspect {
             logEntry.put("request", request);
             logEntry.put("response", null);
             logEntry.put("exception", null);
-            logEntry.put("execution_time_ms", null);
 
             log.info("{}", objectMapper.writeValueAsString(logEntry));
 
@@ -197,35 +205,36 @@ public class MethodLoggingAspect {
     /**
      * RESPONSE 로그 출력
      */
-    private void logResponse(String logger, String methodName, String componentName,
+    private void logResponse(String packageName, String layer, String methodName,
                              Object responseData, Long executionTime, Throwable exception,
                              HttpInfo httpInfo) {
         try {
             Map<String, Object> logEntry = new LinkedHashMap<>();
             logEntry.put("@timestamp", LocalDateTime.now().atZone(ZoneOffset.UTC).format(ISO_FORMATTER));
             logEntry.put("trace_id", null);
-            logEntry.put("logger", logger);
-            logEntry.put("component_name", componentName);
-            logEntry.put("request", null);
+            logEntry.put("package", packageName);
+            logEntry.put("layer", layer);
             logEntry.put("execution_time_ms", executionTime);
+            logEntry.put("request", null);
 
             if (exception != null) {
+                // 예외 발생 시
                 logEntry.put("level", "ERROR");
-                logEntry.put("message", "Failed to " + methodName + ": " + exception.getMessage());
+                logEntry.put("message", "Failed to execute " + methodName + ": " + exception.getMessage());
 
                 Map<String, Object> exceptionInfo = new LinkedHashMap<>();
                 exceptionInfo.put("type", exception.getClass().getName());
                 exceptionInfo.put("message", exception.getMessage());
                 exceptionInfo.put("stacktrace", getStackTrace(exception));
-                logEntry.put("exception", exceptionInfo);
                 logEntry.put("response", null);
+                logEntry.put("exception", exceptionInfo);
 
                 log.error("{}", objectMapper.writeValueAsString(logEntry));
 
             } else {
                 logEntry.put("level", "INFO");
                 logEntry.put("message", "Response completed: " + methodName);
-                logEntry.put("exception", null);
+
                 Map<String, Object> response = new LinkedHashMap<>();
 
                 if (httpInfo != null) {
@@ -241,6 +250,7 @@ public class MethodLoggingAspect {
                 response.put("method", methodName);
                 response.put("result", responseData);
                 logEntry.put("response", response);
+                logEntry.put("exception", null);
 
                 log.info("{}", objectMapper.writeValueAsString(logEntry));
             }
@@ -356,12 +366,32 @@ public class MethodLoggingAspect {
     }
 
     /**
-     * StackTrace 문자열 변환
+     * StackTrace 문자열 변환 (상위 3줄만)
      */
     private String getStackTrace(Throwable e) {
-        StringWriter sw = new StringWriter();
-        e.printStackTrace(new PrintWriter(sw));
-        return sw.toString();
+        if (e == null) {
+            return null;
+        }
+
+        StackTraceElement[] stackTrace = e.getStackTrace();
+
+        if (stackTrace == null || stackTrace.length == 0) {
+            return e.toString();
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(e.toString()).append("\n");
+
+        int limit = Math.min(3, stackTrace.length);
+        for (int i = 0; i < limit; i++) {
+            sb.append("\tat ").append(stackTrace[i].toString()).append("\n");
+        }
+
+        if (stackTrace.length > 3) {
+            sb.append("\t... ").append(stackTrace.length - 3).append(" more");
+        }
+
+        return sb.toString();
     }
 
     /**
