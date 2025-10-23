@@ -16,7 +16,7 @@ pipeline {
         stage('Copy Artifacts') {
             steps {
                 echo "📥 Copying artifacts from previous job"
-                copyArtifacts projectName: 'ci-build-job',
+                copyArtifacts projectName: 'BE-ci-build-job',
                         filter: 'build/libs/*.jar',
                         target: '.'
             }
