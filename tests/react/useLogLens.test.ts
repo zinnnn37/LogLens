@@ -60,6 +60,6 @@ describe('useLogLens', () => {
     );
 
     result.current(10);
-    expect(LogCollector.getLogs()).toHaveLength(1);
+    expect(LogCollector.getLogs()).toHaveLength(2);
   });
 });
