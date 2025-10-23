@@ -246,57 +246,57 @@ pipeline {
                     echo "🔄 Switching traffic to ${env.DEPLOY_TARGET}"
 
                     // .env 파일에서 AWS credentials와 설정 로드
-                    sh '''#!/bin/bash
+                    sh """#!/bin/bash
                         # .env 파일에서 환경 변수 로드 (bash의 set -a 대신 export 사용)
                         while IFS='=' read -r key value; do
                             # 주석과 빈 줄 무시
-                            if [[ ! $key =~ ^# && -n $key ]]; then
+                            if [[ ! \$key =~ ^# && -n \$key ]]; then
                                 # 따옴표 제거
-                                value="${value%\"}"
-                                value="${value#\"}"
-                                export "$key=$value"
+                                value="\${value%\\\"}"
+                                value="\${value#\\\"}"
+                                export "\$key=\$value"
                             fi
                         done < ${WORKSPACE}/.env
-                        
+
                         # Target Group 결정
-                        if [ "${DEPLOY_TARGET}" = "blue" ]; then
-                            TG_NAME="${BLUE_TG}"
+                        if [ "${env.DEPLOY_TARGET}" = "blue" ]; then
+                            TG_NAME="\${BLUE_TG}"
                         else
-                            TG_NAME="${GREEN_TG}"
+                            TG_NAME="\${GREEN_TG}"
                         fi
-                        
-                        echo "🎯 Target Group: $TG_NAME"
-                        echo "🌍 Region: ${AWS_REGION}"
-                        
+
+                        echo "🎯 Target Group: \$TG_NAME"
+                        echo "🌍 Region: \${AWS_REGION}"
+
                         # Target Group ARN 조회
                         echo "🔍 Looking up Target Group ARN..."
-                        TG_ARN=$(aws elbv2 describe-target-groups \
-                            --names "$TG_NAME" \
-                            --query 'TargetGroups[0].TargetGroupArn' \
-                            --output text \
-                            --region ${AWS_REGION})
-                        
-                        if [ -z "$TG_ARN" ] || [ "$TG_ARN" = "None" ]; then
-                            echo "❌ Failed to find Target Group: $TG_NAME"
+                        TG_ARN=\$(aws elbv2 describe-target-groups \\
+                            --names "\$TG_NAME" \\
+                            --query 'TargetGroups[0].TargetGroupArn' \\
+                            --output text \\
+                            --region \${AWS_REGION})
+
+                        if [ -z "\$TG_ARN" ] || [ "\$TG_ARN" = "None" ]; then
+                            echo "❌ Failed to find Target Group: \$TG_NAME"
                             exit 1
                         fi
-                        
-                        echo "✅ Target Group ARN: $TG_ARN"
-                        
+
+                        echo "✅ Target Group ARN: \$TG_ARN"
+
                         # ALB Listener 규칙 수정
                         echo "🔧 Modifying ALB Listener..."
-                        aws elbv2 modify-listener \
-                            --listener-arn "${ALB_LISTENER_ARN}" \
-                            --default-actions Type=forward,TargetGroupArn="$TG_ARN" \
-                            --region ${AWS_REGION}
-                        
-                        if [ $? -eq 0 ]; then
-                            echo "✅ Traffic switched to ${DEPLOY_TARGET} successfully"
+                        aws elbv2 modify-listener \\
+                            --listener-arn "\${ALB_LISTENER_ARN}" \\
+                            --default-actions Type=forward,TargetGroupArn="\$TG_ARN" \\
+                            --region \${AWS_REGION}
+
+                        if [ \$? -eq 0 ]; then
+                            echo "✅ Traffic switched to ${env.DEPLOY_TARGET} successfully"
                         else
                             echo "❌ Failed to switch traffic"
                             exit 1
                         fi
-                    '''
+                    """
                 }
             }
         }
