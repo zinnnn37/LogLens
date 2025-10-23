@@ -18,8 +18,9 @@ spring:
 
   data:
     redis:
-      host: loglens-redis
-      port: 6379
+      host: ${SPRING_REDIS_HOST:loglens-redis}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD}
 
   # ===================================================================
   # JPA 및 Hibernate 설정
