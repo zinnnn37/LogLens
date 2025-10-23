@@ -1,52 +1,89 @@
+// src/components/Sidebar.tsx
+import { useState } from 'react';
 import type { ComponentProps } from 'react';
 import { PlusSquare, Settings, MessageSquare, LogOut } from 'lucide-react';
 
-/**
- * 사이드바 Props
- * @extends ComponentProps<'aside'> - className, id 등 'aside' 태그의 모든 속성 상속
- *
- */
+import ProjectCreateModal from '@/components/modal/ProjectCreateModal';
+
+// --- Sidebar Props ---
 type SidebarProps = ComponentProps<'aside'> & {
-  // 현재는 커스텀 prop이 없지만, 필요시 여기에 추가
+  // 필요 시 확장
 };
 
+// 공통 스타일: 링크/버튼 모양 일치
+const itemBase =
+  'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-all';
+
+// a 태그 버전 (라우팅/외부 링크 등)
 const NavLink = ({
   icon: Icon,
   children,
+  href = '#',
 }: {
   icon: React.ElementType;
   children: React.ReactNode;
+  href?: string;
 }) => (
-  <a
-    href="#"
-    className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex items-center gap-3 rounded-lg px-3 py-2 transition-all"
-  >
+  <a href={href} className={itemBase}>
     <Icon className="h-4 w-4" />
     {children}
   </a>
 );
 
-/**
- * 섹션 제목을 위한 내부 컴포넌트
- */
+// 버튼 버전 (모달 트리거/액션 등)
+const NavButton = ({
+  icon: Icon,
+  children,
+  onClick,
+}: {
+  icon: React.ElementType;
+  children: React.ReactNode;
+  onClick?: () => void;
+}) => (
+  <button type="button" onClick={onClick} className={itemBase}>
+    <Icon className="h-4 w-4" />
+    {children}
+  </button>
+);
+
+// 섹션 헤딩
 const NavHeading = ({ children }: { children: React.ReactNode }) => (
   <h2 className="text-muted-foreground mb-2 px-3 text-xs font-semibold tracking-wider uppercase">
     {children}
   </h2>
 );
 
-/**
- * 메인 사이드바 컴포넌트
- */
 const Sidebar = ({ className, ...props }: SidebarProps) => {
+  // 프로젝트 생성 모달 Open 상태 관리
+  const [openCreate, setOpenCreate] = useState(false);
+
+  // TODO : 더미데이터, 추후 API 를 통하여 실제 값 불러오기
+  const handlePrepare = async (_payload: {
+    name: string;
+    description?: string;
+  }) => {
+    return {
+      apiKey: 'll_live_****************************',
+      installCmd:
+        'curl -fsSL https://get.loglens.sh | bash -s -- --project=example',
+      provisionId: 'provision-temp-123',
+    };
+  };
+
+  // TODO : 프로젝트 생성 API 함수 정의하기.
+  const handleCreate = async (_args: {
+    payload: { name: string; description?: string };
+    provisionId?: string;
+  }) => {
+    return { projectId: 'proj_temp_123' };
+  };
+
   return (
     <aside
-      className={`border-sidebar-border flex h-screen w-60 flex-col justify-between border-r p-2 ${
-        className || ''
-      }`}
+      className={`border-sidebar-border flex h-[100dvh] w-60 flex-col justify-between border-r p-2 ${className || ''}`}
       {...props}
     >
-      {/* 1. 상단 그룹 (로고 + 메뉴) */}
+      {/* 1) 상단 그룹 */}
       <div>
         {/* 로고 */}
         <div className="mb-3 flex h-14 items-center px-2">
@@ -56,20 +93,25 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
           </a>
         </div>
 
-        {/* 네비게이션 메뉴 */}
+        {/* 네비게이션 */}
         <nav className="flex flex-col gap-4">
-          {/* Projects 섹션 */}
+          {/* Projects */}
           <section>
             <NavHeading>Projects</NavHeading>
             <ul className="flex flex-col gap-1 text-[#6A6A6A]">
               <li>
-                <NavLink icon={PlusSquare}>새 프로젝트 생성</NavLink>
+                <NavButton
+                  icon={PlusSquare}
+                  onClick={() => setOpenCreate(true)}
+                >
+                  새 프로젝트 생성
+                </NavButton>
               </li>
-              {/* 추후에 프로젝트 조회한 결과 나열해주기 */}
+              {/* TODO: 프로젝트 목록 API 통해 불러와서 보여주기 */}
             </ul>
           </section>
 
-          {/* Support 섹션 */}
+          {/* Support */}
           <section>
             <NavHeading>Support</NavHeading>
             <ul className="flex flex-col gap-1">
@@ -81,16 +123,25 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
         </nav>
       </div>
 
-      {/* 2. 하단 그룹 (AI Chat + Logout) */}
+      {/* 2) 하단 그룹 */}
       <div>
-        {/* 구분선 */}
         <hr className="border-sidebar-border my-4" />
-
         <nav className="flex flex-col gap-1">
           <NavLink icon={MessageSquare}>AI Chat</NavLink>
           <NavLink icon={LogOut}>Log out</NavLink>
         </nav>
       </div>
+
+      {/* 프로젝트 생성 모달 */}
+      <ProjectCreateModal
+        open={openCreate}
+        onOpenChange={setOpenCreate}
+        onPrepare={handlePrepare}
+        onCreate={handleCreate}
+        onComplete={() => {
+          // TODO :생성 완료 시 사용자에게 알려줄 것 정의하기.
+        }}
+      />
     </aside>
   );
 };
