@@ -316,15 +316,18 @@ pipeline {
 
                         echo "✅ Target Group ARN: \$TG_ARN"
 
-                        # ALB Listener 규칙 수정
-                        echo "🔧 Modifying ALB Listener..."
-                        aws elbv2 modify-listener \\
-                            --listener-arn "\${ALB_LISTENER_ARN}" \\
-                            --default-actions Type=forward,TargetGroupArn="\$TG_ARN" \\
+                        # ALB Listener 규칙 수정 (특정 규칙의 대상 그룹 변경)
+                        echo "🔧 Modifying ALB Listener Rule..."
+                        echo "📋 Rule ARN: \${ALB_RULE_ARN}"
+
+                        aws elbv2 modify-rule \\
+                            --rule-arn "\${ALB_RULE_ARN}" \\
+                            --actions Type=forward,TargetGroupArn="\$TG_ARN" \\
                             --region \${AWS_REGION}
 
                         if [ \$? -eq 0 ]; then
                             echo "✅ Traffic switched to ${env.DEPLOY_TARGET} successfully"
+                            echo "ℹ️  Rule now forwards to: \$TG_NAME"
                         else
                             echo "❌ Failed to switch traffic"
                             exit 1
