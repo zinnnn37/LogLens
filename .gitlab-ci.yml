@@ -20,10 +20,10 @@ build:
   - loglens-runner
 
   before_script:
-    - npm ci --prefer-offline --no-audit
+    - bun install
 
   script:
-    - npm run build
+    - bun run build
     - echo "Build completed successfully!"
     - ls -la dist/  # 또는 build/
   
