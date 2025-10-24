@@ -1,0 +1,134 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "a306",
+    "module": "loglens-spring-boot-starter",
+    "version": "1.1.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14.3"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter-aop",
+          "version": {
+            "requires": "3.5.6"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter-web",
+          "version": {
+            "requires": "3.5.6"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter-webflux",
+          "version": {
+            "requires": "3.5.6"
+          }
+        },
+        {
+          "group": "com.fasterxml.jackson.core",
+          "module": "jackson-databind",
+          "version": {
+            "requires": "2.19.2"
+          }
+        },
+        {
+          "group": "com.fasterxml.jackson.datatype",
+          "module": "jackson-datatype-jsr310",
+          "version": {
+            "requires": "2.19.2"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "loglens-spring-boot-starter-1.1.0-plain.jar",
+          "url": "loglens-spring-boot-starter-1.1.0-plain.jar",
+          "size": 39065,
+          "sha512": "8624e8dc7b9d88817fc248b67c91a6cf7527dcbe13ca031458a1a11b798c0f9bbf12456ce7ec48742ff8c2c956feb86d191a7d2069705dcfca8b48f448ef7c11",
+          "sha256": "659d194b6cf5f818cab16199789e78f50992e81e0e9df2620942d9a761c656a8",
+          "sha1": "bda02371e67469bfe08757d5836635ef0fa63a99",
+          "md5": "bd6ceabadd52de4b03ab765ae3908b3e"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter-aop",
+          "version": {
+            "requires": "3.5.6"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter-web",
+          "version": {
+            "requires": "3.5.6"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter-webflux",
+          "version": {
+            "requires": "3.5.6"
+          }
+        },
+        {
+          "group": "com.fasterxml.jackson.core",
+          "module": "jackson-databind",
+          "version": {
+            "requires": "2.19.2"
+          }
+        },
+        {
+          "group": "com.fasterxml.jackson.datatype",
+          "module": "jackson-datatype-jsr310",
+          "version": {
+            "requires": "2.19.2"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "loglens-spring-boot-starter-1.1.0-plain.jar",
+          "url": "loglens-spring-boot-starter-1.1.0-plain.jar",
+          "size": 39065,
+          "sha512": "8624e8dc7b9d88817fc248b67c91a6cf7527dcbe13ca031458a1a11b798c0f9bbf12456ce7ec48742ff8c2c956feb86d191a7d2069705dcfca8b48f448ef7c11",
+          "sha256": "659d194b6cf5f818cab16199789e78f50992e81e0e9df2620942d9a761c656a8",
+          "sha1": "bda02371e67469bfe08757d5836635ef0fa63a99",
+          "md5": "bd6ceabadd52de4b03ab765ae3908b3e"
+        }
+      ]
+    }
+  ]
+}
