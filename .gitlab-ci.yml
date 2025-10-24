@@ -1,6 +1,5 @@
 stages:
   - test
-  - deploy
 
 test:
   stage: test
@@ -9,17 +8,5 @@ test:
   script:
     - npm ci
     - npm test
-  only:
-    - npm/main
-
-publish:
-  stage: deploy
-  tags:
-    - npm
-  script:
-    - npm ci
-    - npm run build
-    - npm config set //registry.npmjs.org/:_authToken $env:NPM_TOKEN
-    - npm publish
   only:
     - npm/main
