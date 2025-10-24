@@ -16,7 +16,9 @@ stages:
 build:
   stage: build
   image: node:24-alpine
-  
+  tags:
+  - loglens-runner
+
   before_script:
     - npm ci --prefer-offline --no-audit
 
@@ -40,6 +42,8 @@ build:
 deploy:
   stage: deploy
   image: amazon/aws-cli:latest
+  tags:
+  - loglens-runner
   dependencies:
     - build
 
