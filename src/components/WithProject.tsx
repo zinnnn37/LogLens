@@ -19,14 +19,21 @@ export interface WithProjectProps {
 }
 
 const formatK = (n: number) => {
-  if (n < 1000) {return `${n}`;}
+  if (n < 1000) {
+    return `${n}`;
+  }
   const k = n / 1000;
   return `${Number.isInteger(k) ? k.toFixed(0) : k.toFixed(1)}K`;
 };
 
 const DOT = ' • ';
 
-const WithProject = ({ projects, onSelect, onDelete, onEmptyAfterExit }: WithProjectProps) => {
+const WithProject = ({
+  projects,
+  onSelect,
+  onDelete,
+  onEmptyAfterExit,
+}: WithProjectProps) => {
   const list = projects ?? [];
 
   const [openInvite, setOpenInvite] = useState(false);
@@ -44,7 +51,9 @@ const WithProject = ({ projects, onSelect, onDelete, onEmptyAfterExit }: WithPro
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     const ok = window.confirm('정말 이 프로젝트를 삭제하시겠습니까?');
-    if (!ok) {return;}
+    if (!ok) {
+      return;
+    }
     try {
       setDeletingId(id);
       await onDelete?.(id);
@@ -58,7 +67,7 @@ const WithProject = ({ projects, onSelect, onDelete, onEmptyAfterExit }: WithPro
       <section className="min-w-0 flex-1">
         <div className="px-6 py-8">
           {/* 멤버 초대 처럼 일정 영역 할당하고 그 안에서 내부 스크롤 생성 */}
-          <div className="h-[60vh] min-h-[360px] max-h-[640px]">
+          <div className="h-[60vh] max-h-[640px] min-h-[360px]">
             <div className="h-full overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable]">
               <motion.div layout className="flex flex-col gap-4">
                 <AnimatePresence
@@ -70,7 +79,7 @@ const WithProject = ({ projects, onSelect, onDelete, onEmptyAfterExit }: WithPro
                     }
                   }}
                 >
-                  {list.map((p) => (
+                  {list.map(p => (
                     <motion.div
                       key={p.id}
                       layout="position"
@@ -85,19 +94,22 @@ const WithProject = ({ projects, onSelect, onDelete, onEmptyAfterExit }: WithPro
                       role="button"
                       tabIndex={0}
                       onClick={() => onSelect?.(p.id)}
-                      onKeyDown={(e) => {
+                      onKeyDown={e => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
                           onSelect?.(p.id);
                         }
                       }}
-                      className="focus:ring-ring/40 cursor-pointer rounded-xl bg-white px-5 py-4 shadow-sm transition hover:shadow-md focus:outline-none focus:ring-2 [will-change:transform,opacity]"
+                      className="focus:ring-ring/40 cursor-pointer rounded-xl bg-white px-5 py-4 shadow-sm transition [will-change:transform,opacity] hover:shadow-md focus:ring-2 focus:outline-none"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div className="min-w-0">
-                          <p className="text-foreground truncate font-semibold">{p.name}</p>
+                          <p className="text-foreground truncate font-semibold">
+                            {p.name}
+                          </p>
                           <p className="text-muted-foreground text-sm">
-                            멤버 {p.memberCount}명{DOT}오늘 로그 {formatK(p.todayLogCount)}건
+                            멤버 {p.memberCount}명{DOT}오늘 로그{' '}
+                            {formatK(p.todayLogCount)}건
                           </p>
                         </div>
 
@@ -105,7 +117,7 @@ const WithProject = ({ projects, onSelect, onDelete, onEmptyAfterExit }: WithPro
                           <Button
                             variant="secondary"
                             className="gap-2"
-                            onClick={(e) => {
+                            onClick={e => {
                               e.stopPropagation();
                               setOpenInvite(true);
                             }}
@@ -122,10 +134,12 @@ const WithProject = ({ projects, onSelect, onDelete, onEmptyAfterExit }: WithPro
                               whileTap={{ scale: 0.96 }}
                               aria-label={`${p.name} 프로젝트 삭제`}
                               disabled={deletingId === p.id}
-                              onClick={(e) => handleDelete(e, p.id)}
+                              onClick={e => handleDelete(e, p.id)}
                             >
                               <Trash2 className="h-4 w-4" />
-                              {deletingId === p.id ? '삭제 중…' : '프로젝트 삭제'}
+                              {deletingId === p.id
+                                ? '삭제 중…'
+                                : '프로젝트 삭제'}
                             </motion.button>
                           </Button>
                         </div>

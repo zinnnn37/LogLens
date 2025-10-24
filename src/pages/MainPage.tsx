@@ -19,7 +19,9 @@ const MainPage = () => {
   const [showEmptyMain, setShowEmptyMain] = useState(true);
 
   useEffect(() => {
-    if (projects.length > 0) {setShowEmptyMain(false);}
+    if (projects.length > 0) {
+      setShowEmptyMain(false);
+    }
   }, [projects.length]);
 
   const [openCreate, setOpenCreate] = useState(false);
@@ -64,7 +66,9 @@ const MainPage = () => {
             className="max-w-[280px] object-contain md:max-w-[400px]"
           />
           <div>
-            <h2 className="text-foreground mb-1 text-lg font-semibold">프로젝트가 없습니다</h2>
+            <h2 className="text-foreground mb-1 text-lg font-semibold">
+              프로젝트가 없습니다
+            </h2>
             <p className="text-muted-foreground text-sm">
               로그 모니터링을 시작하려면
               <br />첫 프로젝트를 생성하세요.

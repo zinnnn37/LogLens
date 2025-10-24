@@ -48,12 +48,16 @@ const MemberInviteModal = ({ open, onOpenChange }: MemberInviteModalProps) => {
   }, [open, seed]);
 
   useEffect(() => {
-    if (members.length > 0) {setShowEmpty(false);}
+    if (members.length > 0) {
+      setShowEmpty(false);
+    }
   }, [members.length]);
 
   const handleInvite = () => {
     const trimmed = email.trim();
-    if (!trimmed) {return;}
+    if (!trimmed) {
+      return;
+    }
     setMembers(prev => [
       ...prev,
       {
@@ -72,7 +76,7 @@ const MemberInviteModal = ({ open, onOpenChange }: MemberInviteModalProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* ✨ DialogContent의 round는 여기서 제어됨 */}
-      <DialogContent className="sm:max-w-2xl w-[600px] h-[450px] rounded-2xl">
+      <DialogContent className="h-[450px] w-[600px] rounded-2xl sm:max-w-2xl">
         <div className="flex h-full flex-col gap-4 overflow-hidden">
           <DialogHeader className="shrink-0">
             <DialogTitle className="text-xl">프로젝트 멤버</DialogTitle>
@@ -84,22 +88,41 @@ const MemberInviteModal = ({ open, onOpenChange }: MemberInviteModalProps) => {
               <AnimatePresence
                 initial={false}
                 onExitComplete={() => {
-                  if (members.length === 0) {setShowEmpty(true);}
+                  if (members.length === 0) {
+                    setShowEmpty(true);
+                  }
                 }}
               >
                 {members.map(m => (
                   <motion.div
                     key={m.id}
                     layout
-                    initial={{ opacity: 0, y: 8, scale: 0.98, filter: 'blur(2px)' }}
-                    animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-                    exit={{ opacity: 0, y: -10, scale: 0.97, filter: 'blur(2px)' }}
+                    initial={{
+                      opacity: 0,
+                      y: 8,
+                      scale: 0.98,
+                      filter: 'blur(2px)',
+                    }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      scale: 1,
+                      filter: 'blur(0px)',
+                    }}
+                    exit={{
+                      opacity: 0,
+                      y: -10,
+                      scale: 0.97,
+                      filter: 'blur(2px)',
+                    }}
                     transition={{ duration: 0.18, ease: 'easeOut' }}
                     className="flex items-center justify-between rounded-2xl bg-[#D5E3F2]/40 px-6 py-2"
                   >
                     <div className="flex min-w-0 flex-1 items-center justify-between gap-6">
                       <p className="truncate font-semibold">{m.name}</p>
-                      <p className="text-muted-foreground truncate">{m.email}</p>
+                      <p className="text-muted-foreground truncate">
+                        {m.email}
+                      </p>
                     </div>
                     <Button
                       variant="ghost"
@@ -120,7 +143,7 @@ const MemberInviteModal = ({ open, onOpenChange }: MemberInviteModalProps) => {
                   initial={{ opacity: 0, scale: 0.98, y: 4 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   transition={{ duration: 0.25, ease: 'easeOut' }}
-                  className="text-muted-foreground select-none px-2 py-8 text-center text-sm"
+                  className="text-muted-foreground px-2 py-8 text-center text-sm select-none"
                 >
                   멤버가 없습니다.
                 </motion.div>
@@ -129,14 +152,16 @@ const MemberInviteModal = ({ open, onOpenChange }: MemberInviteModalProps) => {
           </div>
 
           {/* 하단 입력 영역 */}
-          <div className="mt-6 flex items-center gap-3 shrink-0">
+          <div className="mt-6 flex shrink-0 items-center gap-3">
             <Input
               type="email"
               placeholder="초대할 이메일을 입력해주세요"
               value={email}
               onChange={e => setEmail(e.target.value)}
               onKeyDown={e => {
-                if (e.key === 'Enter') {handleInvite();}
+                if (e.key === 'Enter') {
+                  handleInvite();
+                }
               }}
               className="h-12 rounded-2xl"
             />
