@@ -20,43 +20,27 @@ build:
   - loglens-runner
 
   before_script:
-    - bun install
-
-  script:
-    - bun run build
-    - echo "Build completed successfully!"
-    - ls -la dist/  # 또는 build/
-  
-  artifacts:
-    paths:
-      - dist/
-    expire_in: 1 hour
-  
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "fe/develop"'
-    - if: '$CI_COMMIT_BRANCH == "fe/main"'
-
-# ============================================
-# DEPLOY STAGE
-# ============================================
-deploy:
-  stage: deploy
-  image: amazon/aws-cli:latest
-  tags:
-  - loglens-runner
-  dependencies:
-    - build
-
-  before_script:
-    - aws configure set region "$AWS_REGION"
+    - echo "Setting AWS region to ${AWS_REGION}"
+    - aws configure set region "${AWS_REGION}"
 
   script:
     - echo "Syncing to S3 bucket ${S3_BUCKET} ..."
-    - aws s3 sync dist/ "s3://${S3_BUCKET}" --delete --cache-control "public, max-age=31536000" --exclude "index.html" --exclude "*.map"
+    - aws s3 sync dist/ "s3://${S3_BUCKET}" \
+        --delete \
+        --cache-control "public, max-age=31536000" \
+        --exclude "index.html" \
+        --exclude "*.map"
+    
     - echo "Uploading index.html with no-cache headers..."
-    - aws s3 cp dist/index.html "s3://${S3_BUCKET}/index.html" --cache-control "no-cache, no-store, must-revalidate" --content-type "text/html"
+    - aws s3 cp dist/index.html "s3://${S3_BUCKET}/index.html" \
+        --cache-control "no-cache, no-store, must-revalidate" \
+        --content-type "text/html"
+    
     - echo "Invalidating CloudFront cache..."
-    - aws cloudfront create-invalidation --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" --paths "/index.html"
+    - aws cloudfront create-invalidation \
+        --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+        --paths "/index.html"
+    
     - echo "Deployment finished successfully!"
   
   environment:
