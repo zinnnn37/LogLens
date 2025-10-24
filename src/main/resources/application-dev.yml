@@ -1,0 +1,49 @@
+# ===================================================================
+# 'dev' 프로필 전용 설정 (개발 환경)
+# ===================================================================
+spring:
+  # ===================================================================
+  # 데이터 소스 설정 (H2 In-Memory DataSource)
+  # ===================================================================
+  datasource:
+    url: jdbc:h2:mem:devdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  # ===================================================================
+  # JPA 및 Hibernate 설정
+  # ===================================================================
+  jpa:
+    show-sql: true # 실행되는 SQL 쿼리를 로그로 출력
+    hibernate:
+      ddl-auto: create # 애플리케이션 시작 시 스키마를 새로 생성
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect # H2 데이터베이스 방언 사용
+        format_sql: true # SQL을 보기 좋게 포맷팅
+
+  # ===================================================================
+  # H2 데이터베이스 콘솔 설정
+  # ===================================================================
+  h2:
+    console:
+      enabled: true # H2 콘솔 활성화
+      path: /h2-console # H2 콘솔 접속 경로
+
+# ===================================================================
+# OAuth2 Redirect URI (dev)
+# ===================================================================
+oauth2:
+  signup-redirect-uri: ${OAUTH2_KAKAO_REDIRECT_URI_DEV}
+  error-redirect-uri: ${OAUTH2_KAKAO_ERROR_REDIRECT_URI_DEV}
+
+# ===================================================================
+# 로깅 설정 (개발 환경에 맞게 상세 설정)
+# ===================================================================
+logging:
+  level:
+    com.a306.osm: TRACE
+    org.hibernate.SQL: DEBUG # Hibernate가 실행하는 SQL 로그 출력
+    org.hibernate.type.descriptor.sql: TRACE # SQL 바인딩 파라미터 로그 출력
+    org.springframework.security: DEBUG
