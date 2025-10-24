@@ -48,25 +48,25 @@ deploy:
 
   script:
     - echo "📤 Syncing to S3 bucket: $S3_BUCKET ..."
-    - |
-      aws s3 sync dist/ s3://$S3_BUCKET \
-        --delete \
-        --cache-control "public, max-age=31536000" \
-        --exclude "index.html" \
-        --exclude "*.map"
-    
+    - >
+      aws s3 sync dist/ s3://$S3_BUCKET
+      --delete
+      --cache-control "public, max-age=31536000"
+      --exclude "index.html"
+      --exclude "*.map"
+
     - echo "📄 Uploading index.html (no-cache)..."
-    - |
-      aws s3 cp dist/index.html s3://$S3_BUCKET/index.html \
-        --cache-control "no-cache, no-store, must-revalidate" \
-        --content-type "text/html"
-    
+    - >
+      aws s3 cp dist/index.html s3://$S3_BUCKET/index.html
+      --cache-control "no-cache, no-store, must-revalidate"
+      --content-type "text/html"
+
     - echo "🔄 Invalidating CloudFront cache..."
-    - |
-      aws cloudfront create-invalidation \
-        --distribution-id $CLOUDFRONT_DISTRIBUTION_ID \
-        --paths "/index.html"
-    
+    - >
+      aws cloudfront create-invalidation
+      --distribution-id $CLOUDFRONT_DISTRIBUTION_ID
+      --paths "/index.html"
+
     - echo "🎉 Deployment finished successfully!"
   
   environment:
