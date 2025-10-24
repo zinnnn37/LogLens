@@ -15,7 +15,7 @@ stages:
 # ============================================
 build:
   stage: build
-  image: node:24-alpine
+  image: oven/bun:1
   tags:
   - loglens-runner
 
