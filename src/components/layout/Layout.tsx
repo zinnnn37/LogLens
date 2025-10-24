@@ -13,7 +13,7 @@ const Layout = () => {
         <Header />
 
         {/* 메인 콘텐츠 영역 */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto bg-[#F9F8FD] p-6">
           <Outlet />
         </main>
       </div>
