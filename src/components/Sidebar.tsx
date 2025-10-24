@@ -12,7 +12,7 @@ type SidebarProps = ComponentProps<'aside'> & {
 
 // 공통 스타일: 링크/버튼 모양 일치
 const itemBase =
-  'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-all';
+  'text-[#6A6A6A] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-all';
 
 // a 태그 버전 (라우팅/외부 링크 등)
 const NavLink = ({
@@ -23,12 +23,14 @@ const NavLink = ({
   icon: React.ElementType;
   children: React.ReactNode;
   href?: string;
-}) => (
-  <a href={href} className={itemBase}>
-    <Icon className="h-4 w-4" />
-    {children}
-  </a>
-);
+}) => {
+  return (
+    <a href={href} className={itemBase}>
+      <Icon className="text-primary h-4 w-4" />
+      {children}
+    </a>
+  );
+};
 
 // 버튼 버전 (모달 트리거/액션 등)
 const NavButton = ({
@@ -39,19 +41,23 @@ const NavButton = ({
   icon: React.ElementType;
   children: React.ReactNode;
   onClick?: () => void;
-}) => (
-  <button type="button" onClick={onClick} className={itemBase}>
-    <Icon className="h-4 w-4" />
-    {children}
-  </button>
-);
+}) => {
+  return (
+    <button type="button" onClick={onClick} className={itemBase}>
+      <Icon className="text-primary h-4 w-4" />
+      {children}
+    </button>
+  );
+};
 
 // 섹션 헤딩
-const NavHeading = ({ children }: { children: React.ReactNode }) => (
-  <h2 className="text-muted-foreground mb-2 px-3 text-xs font-semibold tracking-wider uppercase">
-    {children}
-  </h2>
-);
+const NavHeading = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <h2 className="text-muted-foreground mb-2 px-3 text-xs font-semibold tracking-wider uppercase">
+      {children}
+    </h2>
+  );
+};
 
 const Sidebar = ({ className, ...props }: SidebarProps) => {
   // 프로젝트 생성 모달 Open 상태 관리
@@ -84,10 +90,10 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
       {...props}
     >
       {/* 1) 상단 그룹 */}
-      <div>
+      <div className="font-godoM">
         {/* 로고 */}
         <div className="mb-3 flex h-14 items-center px-2">
-          <a href="/" className="text-4xl font-bold">
+          <a href="/" className="font-pretendard text-4xl font-bold">
             <span className="text-[#1C1C1C]">Log</span>
             <span className="text-[#6A91BE]">Lens</span>
           </a>
@@ -97,7 +103,9 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
         <nav className="flex flex-col gap-4">
           {/* Projects */}
           <section>
-            <NavHeading>Projects</NavHeading>
+            <NavHeading>
+              <p className="font-pretendard">projects</p>
+            </NavHeading>
             <ul className="flex flex-col gap-1 text-[#6A6A6A]">
               <li>
                 <NavButton
@@ -113,7 +121,9 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
 
           {/* Support */}
           <section>
-            <NavHeading>Support</NavHeading>
+            <NavHeading>
+              <p className="font-pretendard">Support</p>
+            </NavHeading>
             <ul className="flex flex-col gap-1">
               <li>
                 <NavLink icon={Settings}>Jira API 연결</NavLink>
@@ -126,7 +136,7 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
       {/* 2) 하단 그룹 */}
       <div>
         <hr className="border-sidebar-border my-4" />
-        <nav className="flex flex-col gap-1">
+        <nav className="font-godoM flex flex-col gap-1">
           <NavLink icon={MessageSquare}>AI Chat</NavLink>
           <NavLink icon={LogOut}>Log out</NavLink>
         </nav>

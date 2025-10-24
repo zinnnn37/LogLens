@@ -1,11 +1,5 @@
 import type { ComponentProps } from 'react';
-import {
-  History,
-  LayoutDashboard,
-  Network,
-  ArrowRightLeft,
-  MessageSquare,
-} from 'lucide-react';
+import { History, Bot, Workflow, Blocks, ChartColumnBig } from 'lucide-react';
 
 /**
  * 헤더 Props
@@ -23,7 +17,7 @@ const HeaderLink = ({
 }) => (
   <a
     href="#"
-    className="text-foreground hover:text-primary flex items-center gap-1.5 text-sm transition-colors"
+    className="hover:text-primary flex items-center gap-1.5 text-sm text-gray-600 transition-colors"
   >
     <Icon className="h-4 w-4" />
     {children}
@@ -43,21 +37,21 @@ const Header = ({ className, ...props }: HeaderProps) => {
     >
       <nav>
         {/* 메뉴 항목 리스트 */}
-        <ul className="flex items-center gap-6">
+        <ul className="font-godoM flex items-center gap-6">
           <li>
             <HeaderLink icon={History}>로그 내역</HeaderLink>
           </li>
           <li>
-            <HeaderLink icon={LayoutDashboard}>대시보드</HeaderLink>
+            <HeaderLink icon={Blocks}>대시보드</HeaderLink>
           </li>
           <li>
-            <HeaderLink icon={Network}>의존성 그래프</HeaderLink>
+            <HeaderLink icon={ChartColumnBig}>의존성 그래프</HeaderLink>
           </li>
           <li>
-            <HeaderLink icon={ArrowRightLeft}>요청 흐름</HeaderLink>
+            <HeaderLink icon={Workflow}>요청 흐름</HeaderLink>
           </li>
           <li>
-            <HeaderLink icon={MessageSquare}>AI Chat</HeaderLink>
+            <HeaderLink icon={Bot}>AI Chat</HeaderLink>
           </li>
         </ul>
       </nav>
