@@ -1,7 +1,7 @@
 {
   "formatVersion": "1.1",
   "component": {
-    "group": "a306",
+    "group": "com.loglens",
     "module": "loglens-spring-boot-starter",
     "version": "1.1.0",
     "attributes": {
@@ -64,11 +64,11 @@
         {
           "name": "loglens-spring-boot-starter-1.1.0-plain.jar",
           "url": "loglens-spring-boot-starter-1.1.0-plain.jar",
-          "size": 39065,
-          "sha512": "8624e8dc7b9d88817fc248b67c91a6cf7527dcbe13ca031458a1a11b798c0f9bbf12456ce7ec48742ff8c2c956feb86d191a7d2069705dcfca8b48f448ef7c11",
-          "sha256": "659d194b6cf5f818cab16199789e78f50992e81e0e9df2620942d9a761c656a8",
-          "sha1": "bda02371e67469bfe08757d5836635ef0fa63a99",
-          "md5": "bd6ceabadd52de4b03ab765ae3908b3e"
+          "size": 38664,
+          "sha512": "305a432f744bb894563e4c58241ca195f3c20a0d1ebd64523c9c27b1cbfa588880c0b4bab3d9ab2f4fb1f907658be725d69c02716a2e92d61ebfdf3609863597",
+          "sha256": "b9fbd683a0d777ec215b0c8f2e8ffc57132ea5c2c30625ad28409392726e5822",
+          "sha1": "f02c3e869e53355db6f9759b11f91d6798c029c2",
+          "md5": "b0d85f456a1e58da6f82a398861d9e5a"
         }
       ]
     },
@@ -122,11 +122,11 @@
         {
           "name": "loglens-spring-boot-starter-1.1.0-plain.jar",
           "url": "loglens-spring-boot-starter-1.1.0-plain.jar",
-          "size": 39065,
-          "sha512": "8624e8dc7b9d88817fc248b67c91a6cf7527dcbe13ca031458a1a11b798c0f9bbf12456ce7ec48742ff8c2c956feb86d191a7d2069705dcfca8b48f448ef7c11",
-          "sha256": "659d194b6cf5f818cab16199789e78f50992e81e0e9df2620942d9a761c656a8",
-          "sha1": "bda02371e67469bfe08757d5836635ef0fa63a99",
-          "md5": "bd6ceabadd52de4b03ab765ae3908b3e"
+          "size": 38664,
+          "sha512": "305a432f744bb894563e4c58241ca195f3c20a0d1ebd64523c9c27b1cbfa588880c0b4bab3d9ab2f4fb1f907658be725d69c02716a2e92d61ebfdf3609863597",
+          "sha256": "b9fbd683a0d777ec215b0c8f2e8ffc57132ea5c2c30625ad28409392726e5822",
+          "sha1": "f02c3e869e53355db6f9759b11f91d6798c029c2",
+          "md5": "b0d85f456a1e58da6f82a398861d9e5a"
         }
       ]
     }
