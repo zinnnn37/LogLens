@@ -58,12 +58,12 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
 
-                        // 그 외 모든 요청은 인증 필요
-                        .anyRequest().authenticated()
-                )
+                        // 그 외 모든 요청은 인증 없이 접근 허용 (개발 단계)
+                        .anyRequest().permitAll()
+                );
 
-                // HTTP Basic 인증 활성화 (개발 단계)
-                .httpBasic(httpBasic -> {});
+                // HTTP Basic 인증 비활성화 (전체 접근 허용)
+                // .httpBasic(httpBasic -> {});
 
         return http.build();
     }
