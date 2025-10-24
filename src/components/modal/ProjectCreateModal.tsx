@@ -13,7 +13,7 @@ import ProjectCreate1 from './ProjectCreate1';
 import ProjectCreate2 from './ProjectCreate2';
 import ProjectCreate3 from './ProjectCreate3';
 
-// ==2= 타입 ====
+// ==== 타입 ====
 interface CreatePayload {
   name: string;
   description?: string;
