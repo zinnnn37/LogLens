@@ -5,7 +5,7 @@ plugins {
     id 'maven-publish'
 }
 
-group = 'a306'
+group = 'com.loglens'
 version = '1.1.0'
 
 repositories {
@@ -67,7 +67,7 @@ publishing {
             from components.java
 
             // 명시적으로 groupId, artifactId, version 설정
-            groupId = 'a306'
+            groupId = 'com.loglens'
             artifactId = 'loglens-spring-boot-starter'
             version = '1.1.0'
 
