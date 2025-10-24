@@ -86,7 +86,7 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
 
   return (
     <aside
-      className={`border-sidebar-border flex h-[100dvh] w-60 flex-col justify-between border-r p-2 ${className || ''}`}
+      className={`border-sidebar-border flex h-[100dvh] w-56 flex-col justify-between border-r p-2 ${className || ''}`}
       {...props}
     >
       {/* 1) 상단 그룹 */}
