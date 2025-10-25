@@ -22,20 +22,20 @@ const FrequentErrorsCard = ({ data }: FrequentErrorsCardProps) => {
   const getTrendIcon = (trend: string, percentage: number) => {
     if (trend === 'INCREASING') {
       return (
-        <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-semibold">
+        <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
           ↑ {Math.abs(percentage)}%
         </span>
       );
     }
     if (trend === 'DECREASING') {
       return (
-        <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold">
+        <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
           ↓ {Math.abs(percentage)}%
         </span>
       );
     }
     return (
-      <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-semibold">
+      <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">
         → {percentage}%
       </span>
     );
@@ -48,10 +48,10 @@ const FrequentErrorsCard = ({ data }: FrequentErrorsCardProps) => {
       </CardHeader>
       <CardContent>
         <div
-          className="max-h-[500px] space-y-3 overflow-y-auto scrollbar-custom"
+          className="scrollbar-custom max-h-[500px] space-y-3 overflow-y-auto"
           style={{
             scrollbarWidth: 'thin',
-            scrollbarColor: '#d1d5db transparent'
+            scrollbarColor: '#d1d5db transparent',
           }}
         >
           {data.errors.map(error => (
@@ -111,7 +111,7 @@ const FrequentErrorsCard = ({ data }: FrequentErrorsCardProps) => {
                     ))}
                   </div>
                 )}
-                <div className={error.components.length === 0 ? "ml-auto" : ""}>
+                <div className={error.components.length === 0 ? 'ml-auto' : ''}>
                   {getTrendIcon(error.trend, error.trendPercentage)}
                 </div>
               </div>

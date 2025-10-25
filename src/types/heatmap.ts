@@ -8,7 +8,14 @@ export interface HourlyData {
 }
 
 export interface DayHeatmap {
-  dayOfWeek: 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
+  dayOfWeek:
+    | 'MONDAY'
+    | 'TUESDAY'
+    | 'WEDNESDAY'
+    | 'THURSDAY'
+    | 'FRIDAY'
+    | 'SATURDAY'
+    | 'SUNDAY';
   dayName: string;
   hourlyData: HourlyData[];
   totalCount: number;

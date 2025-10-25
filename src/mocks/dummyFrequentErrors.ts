@@ -98,8 +98,7 @@ export const DUMMY_FREQUENT_ERRORS: FrequentErrorsData = {
       affectedUsers: 432,
       trend: 'STABLE',
       trendPercentage: 1.2,
-      stackTrace:
-        'at com.loglens.http.HttpClient.request(HttpClient.java:134)',
+      stackTrace: 'at com.loglens.http.HttpClient.request(HttpClient.java:134)',
       severity: 'MEDIUM',
       components: ['external-api-client'],
     },

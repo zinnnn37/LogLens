@@ -5,7 +5,9 @@ const generateHourlyData = (baseMultiplier: number): HourlyData[] => {
   return Array.from({ length: 24 }, (_, hour) => {
     // 근무 시간대(9-18시)에 더 많은 로그 발생
     const timeMultiplier = hour >= 9 && hour <= 18 ? 1.5 : 0.5;
-    const count = Math.floor(Math.random() * 2000 * baseMultiplier * timeMultiplier + 500);
+    const count = Math.floor(
+      Math.random() * 2000 * baseMultiplier * timeMultiplier + 500,
+    );
     const errorCount = Math.floor(count * 0.05);
     const warnCount = Math.floor(count * 0.15);
     const infoCount = count - errorCount - warnCount;

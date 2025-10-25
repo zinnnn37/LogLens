@@ -36,21 +36,21 @@ const RecentAlertsCard = ({ alerts }: RecentAlertsCardProps) => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {alerts.map((alert) => (
+          {alerts.map(alert => (
             <div
               key={alert.id}
-              className="flex items-start gap-4 rounded-lg border p-4 hover:bg-gray-50 transition-colors"
+              className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-gray-50"
             >
               <span
-                className={`px-3 py-1.5 rounded text-xs font-semibold ${getLevelColor(alert.level)}`}
+                className={`rounded px-3 py-1.5 text-xs font-semibold ${getLevelColor(alert.level)}`}
               >
                 {alert.level}
               </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-gray-900">
                   {alert.message}
                 </p>
-                <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
                   <span className="truncate">{alert.traceId}</span>
                   <span>•</span>
                   <span>{formatTimestamp(alert.timestamp)}</span>
