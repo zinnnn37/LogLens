@@ -109,7 +109,7 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
     fi
 
     # Health check (더 상세한 응답 확인)
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/health 2>/dev/null || echo "000")
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/api/v1/health 2>/dev/null || echo "000")
     
     # 추가적으로 루트 엔드포인트도 확인
     if [ "$HTTP_CODE" != "200" ]; then
@@ -124,11 +124,32 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
         echo "✅ $NEW_ENV 환경이 정상 상태입니다!"
         SUCCESS=true
 
+        # OpenSearch 인덱스 초기화 (최초 배포 시에만 필요)
+        echo "🔧 OpenSearch 인덱스 확인 및 초기화..."
+
+        # 컨테이너 내부에서 인덱스 생성 스크립트 실행
+        docker exec ai-service-${NEW_ENV} python scripts/create_indices.py 2>&1 | tee /tmp/index-creation.log
+
+        if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "✅ OpenSearch 인덱스 준비 완료"
+        else
+            # 인덱스가 이미 존재하는 경우도 있으므로 로그 확인
+            if grep -q "already exists\|resource_already_exists_exception" /tmp/index-creation.log; then
+                echo "ℹ️ OpenSearch 인덱스가 이미 존재합니다"
+            else
+                echo "⚠️ OpenSearch 인덱스 생성 실패. 로그를 확인하세요."
+                echo "📋 Error details:"
+                cat /tmp/index-creation.log
+                # 인덱스 생성 실패는 경고만 하고 배포는 계속 진행
+            fi
+        fi
+        rm -f /tmp/index-creation.log
+
         # 추가 확인
         echo "🔍 엔드포인트 확인:"
         curl -s http://localhost:${NEW_PORT}/ | jq . 2>/dev/null || echo "메인 엔드포인트 응답 실패"
         echo ""
-        curl -s http://localhost:${NEW_PORT}/health | jq . 2>/dev/null || echo "헬스체크 응답 실패"
+        curl -s http://localhost:${NEW_PORT}/api/v1/health | jq . 2>/dev/null || echo "헬스체크 응답 실패"
 
         break
     fi
@@ -298,7 +319,7 @@ fi
 
 # 최종 확인
 echo "🔍 새 환경 최종 확인..."
-FINAL_CHECK=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/health)
+FINAL_CHECK=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/api/v1/health)
 if [ "$FINAL_CHECK" != "200" ]; then
     echo "❌ 최종 확인 실패!"
     exit 1
@@ -337,7 +358,7 @@ docker ps --filter "name=ai-service" --format "table {{.Names}}\t{{.Status}}\t{{
 # 헬스 체크 엔드포인트 응답 확인
 echo ""
 echo "🏥 헬스 체크 응답:"
-curl -s http://localhost:${NEW_PORT}/health | jq . 2>/dev/null || echo "JSON 파싱 실패"
+curl -s http://localhost:${NEW_PORT}/api/v1/health | jq . 2>/dev/null || echo "JSON 파싱 실패"
 
 # 성공적으로 종료
 exit 0

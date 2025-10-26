@@ -22,8 +22,9 @@ class Settings(BaseSettings):
     # OpenSearch
     OPENSEARCH_HOST: str = "localhost"
     OPENSEARCH_PORT: int = 9200
-    OPENSEARCH_USER: Optional[str] = None
-    OPENSEARCH_PASSWORD: Optional[str] = None
+    OPENSEARCH_USER: str = "admin"  # Default for development
+    OPENSEARCH_PASSWORD: str = "Admin123!@#"  # Default for development
+    OPENSEARCH_USE_SSL: bool = True  # OpenSearch uses HTTPS
 
     # Kafka
     KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"

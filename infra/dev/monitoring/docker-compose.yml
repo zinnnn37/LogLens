@@ -23,7 +23,7 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin123
-      - GF_SERVER_ROOT_URL=https://grafana.fintech-osm.store
+      - GF_SERVER_ROOT_URL=https://grafana.loglens.store
     volumes:
       - grafana_data:/var/lib/grafana
     restart: unless-stopped

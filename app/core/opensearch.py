@@ -13,13 +13,13 @@ def create_opensearch_client() -> OpenSearch:
     client_params = {
         "hosts": [{"host": settings.OPENSEARCH_HOST, "port": settings.OPENSEARCH_PORT}],
         "http_compress": True,
-        "use_ssl": False,
-        "verify_certs": False,
+        "use_ssl": settings.OPENSEARCH_USE_SSL,
+        "verify_certs": False,  # Disable cert verification for development
         "ssl_assert_hostname": False,
         "ssl_show_warn": False,
     }
 
-    # Add authentication if provided
+    # Add authentication (required when security plugin is enabled)
     if settings.OPENSEARCH_USER and settings.OPENSEARCH_PASSWORD:
         client_params["http_auth"] = (
             settings.OPENSEARCH_USER,

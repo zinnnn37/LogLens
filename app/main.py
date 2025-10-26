@@ -22,6 +22,24 @@ async def lifespan(app: FastAPI):
     print(f"🚀 Starting {settings.APP_NAME} v{settings.APP_VERSION}")
     print(f"📊 Environment: {settings.ENVIRONMENT}")
 
+    # Initialize OpenSearch indices
+    try:
+        print("🔧 Checking OpenSearch indices...")
+        from scripts.create_indices import create_logs_index_template, create_qa_cache_index
+
+        # Create indices if they don't exist
+        logs_success = create_logs_index_template()
+        qa_success = create_qa_cache_index()
+
+        if logs_success and qa_success:
+            print("✅ OpenSearch indices ready")
+        else:
+            print("⚠️ Some indices may already exist or failed to create")
+            print("   (This is normal if indices were created previously)")
+    except Exception as e:
+        print(f"⚠️ OpenSearch indices check failed: {e}")
+        print("   Application will continue, but some features may not work")
+
     # Start Kafka consumer in background
     consumer_task = asyncio.create_task(log_consumer.start())
     print("✅ Kafka consumer task started")

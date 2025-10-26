@@ -232,29 +232,63 @@ scripts/
 
 ### 환경 변수 (.env)
 
+#### 기본 설정 (모든 환경)
+
 ```bash
 # Application
 APP_NAME=log-analysis-api
 APP_VERSION=1.0.0
 ENVIRONMENT=development
 
-# OpenAI
-OPENAI_API_KEY=sk-...
+# OpenAI (필수)
+OPENAI_API_KEY=your-openai-api-key-here
 EMBEDDING_MODEL=text-embedding-3-large
-LLM_MODEL=gpt-4o
-
-# OpenSearch
-OPENSEARCH_HOST=localhost
-OPENSEARCH_PORT=9200
+LLM_MODEL=gpt-4o-mini
 
 # Kafka
-KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 KAFKA_TOPIC=application-logs
+KAFKA_GROUP_ID=log-analysis-consumer
 
 # Analysis
 SIMILARITY_THRESHOLD=0.8        # 유사도 임계값
 MAX_CONTEXT_LOGS=5              # 챗봇 컨텍스트 로그 수
 ```
+
+#### 로컬 개발 환경
+
+```bash
+# OpenSearch (로컬)
+OPENSEARCH_HOST=localhost
+OPENSEARCH_PORT=9200
+OPENSEARCH_USER=admin
+OPENSEARCH_PASSWORD=Admin123!@#
+OPENSEARCH_USE_SSL=true
+
+# Kafka (로컬)
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+```
+
+#### 컨테이너/프로덕션 환경
+
+컨테이너 환경에서는 `docker-compose.yml`에서 자동으로 오버라이드됩니다:
+
+```yaml
+environment:
+  # Kafka - 내부 통신 포트
+  - KAFKA_BOOTSTRAP_SERVERS=kafka:19092
+
+  # OpenSearch - 서비스명으로 접근
+  - OPENSEARCH_HOST=opensearch
+  - OPENSEARCH_PORT=9200
+  - OPENSEARCH_USER=admin
+  - OPENSEARCH_PASSWORD=Admin123!@#
+  - OPENSEARCH_USE_SSL=true
+```
+
+**중요 사항**:
+- **로컬 개발**: `localhost` 사용, 외부 포트 `9092` 사용
+- **컨테이너**: 서비스명 사용, Kafka는 내부 포트 `19092` 사용
+- **보안**: 프로덕션에서는 비밀번호 변경 필수
 
 ## 🧪 테스트 시나리오
 

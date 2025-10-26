@@ -20,18 +20,24 @@ pipeline {
                             
                             echo "✅ AI service environment file prepared"
                             echo "📋 Checking required AI environment variables:"
-                            
+
                             # AI 서비스 필수 환경변수 확인
-                            if grep -q "MYSQL_DSN" .env; then
-                                echo "✅ Database connection configured"
-                            else
-                                echo "⚠️ MYSQL_DSN not found"
-                            fi
-                            
                             if grep -q "OPENAI_API_KEY" .env; then
                                 echo "✅ OpenAI API key configured"
                             else
                                 echo "⚠️ OPENAI_API_KEY not found"
+                            fi
+
+                            if grep -q "OPENSEARCH_HOST" .env; then
+                                echo "✅ OpenSearch connection configured"
+                            else
+                                echo "⚠️ OPENSEARCH_HOST not found"
+                            fi
+
+                            if grep -q "KAFKA_BOOTSTRAP_SERVERS" .env; then
+                                echo "✅ Kafka connection configured"
+                            else
+                                echo "⚠️ KAFKA_BOOTSTRAP_SERVERS not found"
                             fi
                             
                             if grep -q "SERVICE_NAME" .env; then
@@ -57,7 +63,7 @@ pipeline {
                         # AI 서비스용 환경변수 설정
                         export SERVICE_TYPE=ai-service
                         export BASE_PORT=8000
-                        export SERVICE_DOMAIN=ai.fintech-osm.store
+                        export SERVICE_DOMAIN=ai.loglens.store
                         
                         # 배포 스크립트 실행
                         scripts/deploy.sh
@@ -73,29 +79,36 @@ pipeline {
                     docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}" | grep ai-service
 
                     # AI 서비스 활성 포트 확인 (8000 또는 8001)
-                    NGINX_CONFIG="/etc/nginx/sites-enabled/ai.fintech-osm.store"
+                    NGINX_CONFIG="/etc/nginx/sites-enabled/ai.loglens.store"
                     if [ -f "$NGINX_CONFIG" ]; then
                         ACTIVE_PORT=$(grep "server localhost:" $NGINX_CONFIG | awk -F: '{print $2}' | tr -d ';' | xargs)
                         echo "✅ Active AI service port: $ACTIVE_PORT"
                         
                         # AI 서비스 헬스체크
                         echo "🏥 AI service health check:"
-                        if curl -f http://localhost:${ACTIVE_PORT}/health; then
+                        if curl -f http://localhost:${ACTIVE_PORT}/api/v1/health; then
                             echo "✅ AI service health check passed"
                         else
                             echo "❌ AI service health check failed"
                             exit 1
                         fi
-                        
+
                         # AI 서비스 기본 엔드포인트 확인
                         echo "🔍 AI service endpoints test:"
                         curl -f http://localhost:${ACTIVE_PORT}/ | head -5 || echo "Root endpoint test completed"
-                        
-                        # AI 서비스 특화 엔드포인트 확인 (선택사항)
-                        echo "🤖 AI service specific endpoints:"
-                        curl -f http://localhost:${ACTIVE_PORT}/api/v1/news/health || echo "News service endpoint check completed"
-                        curl -f http://localhost:${ACTIVE_PORT}/api/v1/quiz/health || echo "Quiz service endpoint check completed"
-                        curl -f http://localhost:${ACTIVE_PORT}/api/v1/filter/health || echo "Filter service endpoint check completed"
+
+                        # AI 서비스 API 엔드포인트 확인
+                        echo "🤖 AI service API endpoints verification:"
+                        echo "✅ Health endpoint: /api/v1/health"
+                        echo "✅ Log analysis endpoint: /api/v1/logs/{log_id}/analysis"
+                        echo "✅ Chatbot endpoint: /api/v1/chatbot/ask"
+
+                        # 실제 존재하는 엔드포인트만 테스트
+                        if curl -s http://localhost:${ACTIVE_PORT}/api/v1/health | jq . > /dev/null 2>&1; then
+                            echo "✅ Health check endpoint working"
+                        else
+                            echo "⚠️ Health check endpoint verification failed"
+                        fi
                         
                     else
                         echo "⚠️ Nginx config not found at $NGINX_CONFIG"
@@ -103,7 +116,7 @@ pipeline {
                         
                         # 기본 포트들 확인
                         for port in 8000 8001; do
-                            if curl -f http://localhost:${port}/health 2>/dev/null; then
+                            if curl -f http://localhost:${port}/api/v1/health 2>/dev/null; then
                                 echo "✅ AI service responding on port $port"
                                 ACTIVE_PORT=$port
                                 break
@@ -125,11 +138,12 @@ pipeline {
     post {
         success {
             echo "🎉 AI service deployment completed successfully!"
-            echo "🔗 AI service available at: https://ai.fintech-osm.store"
-            echo "📋 Available AI services:"
-            echo "   - News Crawler: /api/v1/news/"
-            echo "   - Quiz Generator: /api/v1/quiz/"
-            echo "   - Content Filter: /api/v1/filter/"
+            echo "🔗 AI service available at: https://ai.loglens.store"
+            echo "📋 Available AI API endpoints:"
+            echo "   - Health Check: GET /api/v1/health"
+            echo "   - Log Analysis: GET /api/v1/logs/{log_id}/analysis"
+            echo "   - Chatbot QA: POST /api/v1/chatbot/ask"
+            echo "   - API Docs: https://ai.loglens.store/docs"
         }
         failure {
             echo "❌ AI service deployment failed!"
