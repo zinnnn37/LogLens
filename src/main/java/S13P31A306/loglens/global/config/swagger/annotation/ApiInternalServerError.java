@@ -25,9 +25,9 @@ import java.lang.annotation.Target;
                         summary = "서버 오류 예시",
                         value = """
                                 {
-                                  "code": "INTERNAL_SERVER_ERROR",
-                                  "message": "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
-                                  "status": 500,
+                                  "code": 500,
+                                  "message": "인증이 필요합니다.",
+                                  "status": "INTERNAL_SERVER_ERROR",
                                   "timestamp": "2025-09-04T16:35:00Z"
                                 }
                                 """
