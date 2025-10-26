@@ -56,11 +56,11 @@ public class UserServiceImpl implements UserService {
         // 1. 유효성 검증
         userValidator.validatePasswordConfirmation(request.password(), request.passwordConfirm());
         userValidator.validateDuplicateEmail(request.email());
-        log.debug("{}회원가입 유효성 검증 통과: {}", LOG_PREFIX, request.email());
+        log.debug("{} 회원가입 유효성 검증 통과: {}", LOG_PREFIX, request.email());
 
         // 2. 비밀번호 암호화
         String encodedPassword = passwordEncoder.encode(request.password());
-        log.debug("{}비밀번호 암호화 완료", LOG_PREFIX);
+        log.debug("{} 비밀번호 암호화 완료", LOG_PREFIX);
 
         // 3. User 엔티티 생성 및 저장
         User user = userMapper.toEntity(request, encodedPassword);
