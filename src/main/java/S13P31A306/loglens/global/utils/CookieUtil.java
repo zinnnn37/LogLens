@@ -15,7 +15,7 @@ public class CookieUtil {
         return ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
                 .secure(true)
-                .path("/api/auth")
+                .path("/")
                 .maxAge(Duration.ofSeconds(jwtProperties.refreshTokenValidityInSeconds()))
                 .sameSite("Lax")
                 .build();
@@ -24,7 +24,7 @@ public class CookieUtil {
     public ResponseCookie expireRefreshTokenCookie() {
         return ResponseCookie.from("refreshToken", "")
                 .maxAge(0)
-                .path("/api/auth")
+                .path("/")
                 .secure(true)
                 .httpOnly(true)
                 .sameSite("Lax")
