@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class AuthValidator {
 
-    private static final String LOG_PREFIX = "[AuthValidator] ";
+    private static final String LOG_PREFIX = "[AuthValidator]";
 
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthRepository authRepository;
