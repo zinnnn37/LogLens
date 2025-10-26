@@ -33,7 +33,7 @@ const formatTimestamp = (isoString: string) => {
         const min = String(date.getMinutes()).padStart(2, '0');
         const ss = String(date.getSeconds()).padStart(2, '0');
         return `${mm}-${dd} ${hh}:${min}:${ss}`;
-    } catch (_error) {
+    } catch {
         return 'Invalid Date';
     }
 };
@@ -74,6 +74,7 @@ const DetailLogSearchTable = ({ logs }: DetailLogSearchTableProps) => {
                                         {log.level}
                                     </div>
                                 </TableCell>
+
                                 {/* System */}
                                 <TableCell>
                                     <Badge
@@ -88,8 +89,10 @@ const DetailLogSearchTable = ({ logs }: DetailLogSearchTableProps) => {
                                         {log.layer}
                                     </Badge>
                                 </TableCell>
+
                                 {/* Message */}
                                 <TableCell className="font-mono">{log.message}</TableCell>
+
                                 {/* Date */}
                                 <TableCell className="font-mono text-right text-gray-600">
                                     {formatTimestamp(log.date)}
