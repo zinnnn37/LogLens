@@ -1,6 +1,6 @@
 package S13P31A306.loglens.domain.auth.service.impl;
 
-import S13P31A306.loglens.domain.auth.dto.request.UserSignupRequest;
+import S13P31A306.loglens.domain.auth.dto.request.UserSigninRequest;
 import S13P31A306.loglens.domain.auth.jwt.Jwt;
 import S13P31A306.loglens.domain.auth.jwt.JwtTokenProvider;
 import S13P31A306.loglens.domain.auth.respository.AuthRepository;
@@ -37,7 +37,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public Jwt signIn(final UserSignupRequest request) {
+    public Jwt signIn(final UserSigninRequest request) {
         log.info("{} 사용자 로그인 시도: {}", LOG_PREFIX, request.email());
         try {
             // 1. email/password 를 기반으로 Authentication 객체 생성

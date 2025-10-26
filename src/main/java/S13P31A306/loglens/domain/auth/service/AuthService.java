@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.auth.service;
 
+import S13P31A306.loglens.domain.auth.dto.request.UserSigninRequest;
 import S13P31A306.loglens.domain.auth.dto.request.UserSignupRequest;
 import S13P31A306.loglens.domain.auth.jwt.Jwt;
 import org.springframework.security.core.Authentication;
@@ -12,7 +13,7 @@ public interface AuthService {
      * @param request 로그인 요청 DTO (email, password)
      * @return JWT (Access Token, Refresh Token)
      */
-    Jwt signIn(UserSignupRequest request);
+    Jwt signIn(UserSigninRequest request);
 
     /**
      * Access Token 재발급
