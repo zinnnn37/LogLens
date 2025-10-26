@@ -4,13 +4,10 @@ import jakarta.validation.constraints.NotNull;
 
 public interface BaseResponse {
     @NotNull
-    String code();
+    int code();
 
     @NotNull
     String message();
-
-    @NotNull
-    int status();
 
     @NotNull
     String timestamp();

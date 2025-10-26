@@ -11,9 +11,8 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @Builder(access = AccessLevel.PRIVATE)
 public record SuccessResponse<T>(
-        @NotNull String code,
+        @NotNull int code,
         @NotNull String message,
-        @NotNull int status,
         @JsonInclude(NON_NULL) T data,
         @NotNull String timestamp
 
@@ -21,9 +20,8 @@ public record SuccessResponse<T>(
 
     public static <T> SuccessResponse<T> of(final SuccessCode successCode, final T data) {
         return SuccessResponse.<T>builder()
-                .code(successCode.getCode())
+                .code(successCode.getStatus())
                 .message(successCode.getMessage())
-                .status(successCode.getStatus())
                 .data(data)
                 .timestamp(TimestampUtils.now())
                 .build();
@@ -31,9 +29,8 @@ public record SuccessResponse<T>(
 
     public static <T> SuccessResponse<T> of(final SuccessCode successCode) {
         return SuccessResponse.<T>builder()
-                .code(successCode.getCode())
+                .code(successCode.getStatus())
                 .message(successCode.getMessage())
-                .status(successCode.getStatus())
                 .timestamp(TimestampUtils.now())
                 .build();
     }

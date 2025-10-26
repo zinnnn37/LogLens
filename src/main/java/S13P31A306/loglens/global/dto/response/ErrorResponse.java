@@ -12,28 +12,28 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @Builder(access = AccessLevel.PRIVATE)
 public record ErrorResponse<T>(
-        @NotNull String code,
+        @NotNull int code,
         @NotNull String message,
-        @NotNull int status,
-        @JsonInclude(NON_NULL) T details,
+        @NotNull String errorCode,
+        @JsonInclude(NON_NULL) T data,
         @NotNull String timestamp
 ) implements BaseResponse {
 
-    public static <T> ErrorResponse<T> of(final ErrorCode errorCode, final T details) {
+    public static <T> ErrorResponse<T> of(final ErrorCode errorCode, final T data) {
         return ErrorResponse.<T>builder()
-                .code(errorCode.getCode())
+                .code(errorCode.getStatus())
                 .message(errorCode.getMessage())
-                .status(errorCode.getStatus())
-                .details(details)
+                .errorCode(errorCode.getCode())
+                .data(data)
                 .timestamp(TimestampUtils.now())
                 .build();
     }
 
     public static <T> ErrorResponse<T> of(final ErrorCode errorCode) {
         return ErrorResponse.<T>builder()
-                .code(errorCode.getCode())
+                .code(errorCode.getStatus())
                 .message(errorCode.getMessage())
-                .status(errorCode.getStatus())
+                .errorCode(errorCode.getCode())
                 .timestamp(TimestampUtils.now())
                 .build();
     }
