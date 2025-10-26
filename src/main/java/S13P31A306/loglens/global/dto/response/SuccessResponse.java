@@ -22,6 +22,7 @@ public record SuccessResponse<T>(
         return SuccessResponse.<T>builder()
                 .code(successCode.getCode())
                 .message(successCode.getMessage())
+                .status(successCode.getStatus())
                 .data(data)
                 .timestamp(TimestampUtils.now())
                 .build();
@@ -31,6 +32,7 @@ public record SuccessResponse<T>(
         return SuccessResponse.<T>builder()
                 .code(successCode.getCode())
                 .message(successCode.getMessage())
+                .status(successCode.getStatus())
                 .timestamp(TimestampUtils.now())
                 .build();
     }
