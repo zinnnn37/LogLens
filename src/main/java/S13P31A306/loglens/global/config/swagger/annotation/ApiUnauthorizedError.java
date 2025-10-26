@@ -25,9 +25,9 @@ import java.lang.annotation.Target;
                         summary = "인증 실패 예시",
                         value = """
                                 {
-                                  "code": 401,
+                                  "code": "G401",
                                   "message": "인증이 필요합니다.",
-                                  "status": "UNAUTHORIZED",
+                                  "status": 401,
                                   "timestamp": "2025-09-04T15:16:30Z"
                                 }
                                 """
