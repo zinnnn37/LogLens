@@ -47,9 +47,9 @@ const LogTrendCard = () => {
             {/* 카드 제목 */}
             <h2 className="mb-4 text-base font-semibold">로그 발생 추이</h2>
 
-            {/* 카드 본문 (Left: Counts / Right: Graph) */}
+            {/* 카드 본문 */}
             <div className="flex flex-col space-y-6 sm:flex-row sm:space-x-6 sm:space-y-0">
-                {/* Left UI: 로그 카운트 리스트 */}
+                {/* 로그 카운트 리스트 */}
                 <div className="space-y-4">
                     {logLevels.map((item) => (
                         <div key={item.level} className="flex items-center space-x-3">
@@ -66,8 +66,7 @@ const LogTrendCard = () => {
                     ))}
                 </div>
 
-                {/* Right UI: 그래프 (Placeholder) */}
-                <div className="flex min-h-[150px] flex-1 items-center justify-center rounded-md bg-gray-50 text-sm text-gray-400">
+                <div className="flex min-h-[250px] flex-1 items-center justify-center rounded-md bg-gray-50 text-sm text-gray-400">
                     그래프 영역
                 </div>
             </div>
