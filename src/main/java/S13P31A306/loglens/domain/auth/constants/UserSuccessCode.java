@@ -7,12 +7,12 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum AuthSuccessCode implements SuccessCode {
+public enum UserSuccessCode implements SuccessCode {
 
-    SIGNIN_SUCCESS("A200-1", "로그인에 성공했습니다.", HttpStatus.OK.value()),
-    SIGNOUT_SUCCESS("A200-2", "로그아웃이 완료되었습니다.", HttpStatus.OK.value()),
+    EMAIL_AVAILABLE("U200-1", "회원가입이 완료되었습니다.", HttpStatus.OK.value()),
+    EMAIL_DUPLICATE("U200-2", "회원가입이 완료되었습니다.", HttpStatus.OK.value()),
 
-    TOKEN_REFRESH_SUCCESS("A201-1", "토큰이 갱신되었습니다.", HttpStatus.OK.value());
+    SIGNUP_SUCCESS("U201-1", "회원가입이 완료되었습니다.", HttpStatus.CREATED.value());
 
     private final String code;
     private final String message;
