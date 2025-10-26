@@ -123,8 +123,7 @@ public interface AuthApi {
                                     )))
             }
     )
-    ResponseEntity<? extends BaseResponse> signIn(@Valid @RequestBody UserSigninRequest request,
-                                                  jakarta.servlet.http.HttpServletResponse response);
+    ResponseEntity<? extends BaseResponse> signIn(@Valid @RequestBody UserSigninRequest request);
 
     @Operation(
             summary = "토큰 재발급",
@@ -217,8 +216,7 @@ public interface AuthApi {
     )
     ResponseEntity<? extends BaseResponse> reissueToken(
             @RequestHeader(name = "Authorization", required = true) String authHeader,
-            @CookieValue(name = "refreshToken", required = true) String refreshToken,
-            jakarta.servlet.http.HttpServletResponse response
+            @CookieValue(name = "refreshToken", required = true) String refreshToken
     );
 
     @Operation(
@@ -328,7 +326,6 @@ public interface AuthApi {
     )
     ResponseEntity<? extends BaseResponse> signOut(
             Authentication authentication,
-            @CookieValue(name = "refreshToken", required = true) String refreshToken,
-            jakarta.servlet.http.HttpServletResponse response
+            @CookieValue(name = "refreshToken", required = true) String refreshToken
     );
 }
