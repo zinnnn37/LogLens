@@ -45,11 +45,19 @@ public class JwtTokenProvider {
     }
 
     public Jwt generateJwt(final Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        Integer userId = userDetails.getUserId();
+        String email = userDetails.getUsername();
+
         String accessToken = generateAccessToken(authentication);
         String refreshToken = generateRefreshToken(authentication);
         return Jwt.builder()
+                .userId(userId)
+                .email(email)
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .expiresIn((int) (accessTokenValidityInMilliseconds / 1000))
                 .build();
     }
 

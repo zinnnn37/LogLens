@@ -40,9 +40,10 @@ public class AuthController implements AuthApi {
     public ResponseEntity<? extends BaseResponse> signIn(
             @Valid @RequestBody UserSigninRequest request) {
         Jwt jwt = authService.signIn(request);
+        ResponseCookie cookie = cookieUtil.createRefreshTokenCookie(jwt.getRefreshToken());
         UserSigninResponse data = authMapper.toUserSigninResponse(jwt);
 
-        return ApiResponseFactory.success(AuthSuccessCode.SIGNIN_SUCCESS, data);
+        return ApiResponseFactory.success(AuthSuccessCode.SIGNIN_SUCCESS, data, cookie);
     }
 
     @Override

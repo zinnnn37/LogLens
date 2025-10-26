@@ -8,8 +8,17 @@ import lombok.Getter;
 @Builder
 public class Jwt {
 
+    private Integer userId;
+
+    private String email;
+
+    private String tokenType;
+
+    private Integer expiresIn;
+
     @Sensitive
     private String accessToken;
+
     @Sensitive
     private String refreshToken;
 }
