@@ -19,6 +19,26 @@ public class UserValidator {
     private final UserRepository userRepository;
 
     /**
+     * 이메일 사용 가능 여부 확인 (예외를 던지지 않음)
+     *
+     * @param email 확인할 이메일
+     * @return true: 사용 가능, false: 이미 사용 중
+     */
+    public boolean isEmailAvailable(final String email) {
+        log.debug("{}이메일 사용 가능 여부 확인: {}", LOG_PREFIX, email);
+        boolean exists = userRepository.existsByEmail(email);
+        boolean available = !exists;
+
+        if (available) {
+            log.debug("{}이메일 {}은(는) 사용 가능합니다.", LOG_PREFIX, email);
+        } else {
+            log.debug("{}이메일 {}은(는) 이미 사용 중입니다.", LOG_PREFIX, email);
+        }
+
+        return available;
+    }
+
+    /**
      * 이메일 중복 검증
      */
     public void validateDuplicateEmail(final String email) {
