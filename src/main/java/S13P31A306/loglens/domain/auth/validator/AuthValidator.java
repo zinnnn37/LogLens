@@ -4,6 +4,9 @@ import S13P31A306.loglens.domain.auth.jwt.JwtTokenProvider;
 import S13P31A306.loglens.domain.auth.respository.AuthRepository;
 import S13P31A306.loglens.global.constants.GlobalErrorCode;
 import S13P31A306.loglens.global.exception.BusinessException;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -19,16 +22,23 @@ public class AuthValidator {
     private final AuthRepository authRepository;
 
     public String validateRefreshToken(final String accessToken, final String refreshToken) {
-        // 1. Refresh Token 자체 유효성 검증
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
-            log.warn("{} 토큰 재발급 실패: 유효하지 않은 Refresh Token", LOG_PREFIX);
+        // 1. Refresh Token 자체 유효성 검증 (만료, 형식 오류 등 구분)
+        String userEmailFromRt;
+        try {
+            userEmailFromRt = jwtTokenProvider.getSubject(refreshToken);
+        } catch (ExpiredJwtException e) {
+            log.warn("{} 토큰 재발급 실패: Refresh Token 만료", LOG_PREFIX);
+            throw new BusinessException(GlobalErrorCode.REFRESH_TOKEN_EXPIRED);
+        } catch (io.jsonwebtoken.security.SecurityException | MalformedJwtException e) {
+            log.warn("{} 토큰 재발급 실패: 잘못된 Refresh Token 서명 또는 형식", LOG_PREFIX);
+            throw new BusinessException(GlobalErrorCode.REFRESH_TOKEN_INVALID);
+        } catch (UnsupportedJwtException | IllegalArgumentException e) {
+            log.warn("{} 토큰 재발급 실패: 지원되지 않거나 잘못된 Refresh Token", LOG_PREFIX);
             throw new BusinessException(GlobalErrorCode.REFRESH_TOKEN_INVALID);
         }
 
         // 2. Access Token과 Refresh Token의 소유자 일치 여부 확인
-        String userEmailFromRt = jwtTokenProvider.getSubject(refreshToken);
         String userEmailFromAt = jwtTokenProvider.getSubjectFromExpiredToken(accessToken);
-
         if (!userEmailFromRt.equals(userEmailFromAt)) {
             log.warn("{} 토큰 재발급 실패: 토큰 소유자 불일치. RT sub: {}, AT sub: {}",
                     LOG_PREFIX,
