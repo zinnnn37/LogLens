@@ -12,7 +12,7 @@ public record UserSigninRequest(
         @Email(message = "EMAIL_INVALID_FORMAT")
         @Pattern(regexp = "^[a-zA-Z][a-zA-Z0-9._-]*@[a-zA-Z][a-zA-Z0-9.-]*\\.[a-zA-Z]{2,}$",
                 message = "EMAIL_INVALID_FORMAT")
-        @Schema(description = "로그인용 이메일", example = "som@example.com")
+        @Schema(description = "로그인용 이메일", example = "developer@example.com")
         String email,
 
         @Sensitive
