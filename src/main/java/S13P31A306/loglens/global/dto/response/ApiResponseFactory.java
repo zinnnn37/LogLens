@@ -7,8 +7,9 @@ import org.springframework.http.ResponseEntity;
 public final class ApiResponseFactory {
 
     private ApiResponseFactory() {
-        throw new IllegalStateException();
+        throw new IllegalStateException("Utility class");
     }
+
     public static <T> ResponseEntity<SuccessResponse<T>> success(final SuccessCode successCode, final T data) {
         return ResponseEntity.status(successCode.getStatus()).body(SuccessResponse.of(successCode, data));
     }
