@@ -40,13 +40,17 @@ const formatTimestamp = (isoString: string) => {
 
 interface DetailLogSearchTableProps {
     logs: LogRow[];
+    /** (gemini) 부모로부터 클릭 이벤트를 받기 위한 prop 추가 */
+    onRowClick?: (log: LogRow) => void;
 }
 
-const DetailLogSearchTable = ({ logs }: DetailLogSearchTableProps) => {
+const DetailLogSearchTable = ({
+    logs,
+    onRowClick, // (gemini) onRowClick prop을 받음
+}: DetailLogSearchTableProps) => {
     return (
         <div className="rounded-lg border bg-white shadow-sm">
             <Table>
-                {/* 테이블 헤더 */}
                 <TableHeader>
                     <TableRow className="hover:bg-transparent">
                         <TableHead className="w-[100px]">Level</TableHead>
@@ -56,7 +60,6 @@ const DetailLogSearchTable = ({ logs }: DetailLogSearchTableProps) => {
                     </TableRow>
                 </TableHeader>
 
-                {/* 테이블 본문 */}
                 <TableBody>
                     {logs.length === 0 ? (
                         <TableRow>
@@ -66,7 +69,11 @@ const DetailLogSearchTable = ({ logs }: DetailLogSearchTableProps) => {
                         </TableRow>
                     ) : (
                         logs.map((log) => (
-                            <TableRow key={log.id}>
+                            <TableRow
+                                key={log.id}
+                                onClick={() => onRowClick?.(log)}
+                                className={cn(onRowClick && 'cursor-pointer hover:bg-slate-50')}
+                            >
                                 {/* Level */}
                                 <TableCell>
                                     <div className="flex items-center">
