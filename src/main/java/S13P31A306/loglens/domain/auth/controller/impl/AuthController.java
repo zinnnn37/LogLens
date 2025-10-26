@@ -53,10 +53,9 @@ public class AuthController implements AuthApi {
 
         // 1. 인증 처리 및 JWT 생성
         Jwt jwt = authService.signIn(request);
-        ResponseCookie cookie = cookieUtil.createRefreshTokenCookie(jwt.getRefreshToken());
         UserSigninResponse data = authMapper.toUserSigninResponse(jwt);
 
-        return ApiResponseFactory.success(AuthSuccessCode.SIGNIN_SUCCESS, data, cookie);
+        return ApiResponseFactory.success(AuthSuccessCode.SIGNIN_SUCCESS, data);
     }
 
     @Override
@@ -100,7 +99,7 @@ public class AuthController implements AuthApi {
         );
 
         log.info("{} 토큰 재발급 성공", LOG_PREFIX);
-        return ApiResponseFactory.success(AuthSuccessCode.TOKEN_REFRESH_SUCCESS, refreshResponse, cookie);
+        return ApiResponseFactory.success(AuthSuccessCode.TOKEN_REFRESH_SUCCESS, refreshResponse);
     }
 
     @Override
@@ -127,9 +126,9 @@ public class AuthController implements AuthApi {
         authService.signOut(authentication);
 
         // Refresh Token 쿠키 삭제
-        ResponseCookie cookie = cookieUtil.expireRefreshTokenCookie();
+        cookieUtil.expireRefreshTokenCookie();
 
         log.info("{} 로그아웃 성공: email={}", LOG_PREFIX, userEmail);
-        return ApiResponseFactory.success(AuthSuccessCode.SIGNOUT_SUCCESS, null, cookie);
+        return ApiResponseFactory.success(AuthSuccessCode.SIGNOUT_SUCCESS, null);
     }
 }
