@@ -9,8 +9,8 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum UserSuccessCode implements SuccessCode {
 
-    EMAIL_AVAILABLE("U200-1", "회원가입이 완료되었습니다.", HttpStatus.OK.value()),
-    EMAIL_DUPLICATE("U200-2", "회원가입이 완료되었습니다.", HttpStatus.OK.value()),
+    EMAIL_AVAILABLE("U200-1", "사용 가능한 이메일입니다.", HttpStatus.OK.value()),
+    EMAIL_DUPLICATE("U200-2", "이미 사용 중인 이메일입니다.", HttpStatus.OK.value()),
 
     SIGNUP_SUCCESS("U201-1", "회원가입이 완료되었습니다.", HttpStatus.CREATED.value());
 
