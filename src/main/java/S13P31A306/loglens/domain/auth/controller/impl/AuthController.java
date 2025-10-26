@@ -7,7 +7,6 @@ import S13P31A306.loglens.domain.auth.dto.request.UserSigninRequest;
 import S13P31A306.loglens.domain.auth.dto.response.TokenRefreshResponse;
 import S13P31A306.loglens.domain.auth.dto.response.UserSigninResponse;
 import S13P31A306.loglens.domain.auth.jwt.Jwt;
-import S13P31A306.loglens.domain.auth.jwt.JwtProperties;
 import S13P31A306.loglens.domain.auth.mapper.AuthMapper;
 import S13P31A306.loglens.domain.auth.service.AuthService;
 import S13P31A306.loglens.global.constants.GlobalErrorCode;
@@ -43,7 +42,6 @@ public class AuthController implements AuthApi {
     private final AuthService authService;
     private final AuthMapper authMapper;
     private final CookieUtil cookieUtil;
-    private final JwtProperties jwtProperties;
 
     @Override
     @PostMapping("/tokens")
@@ -92,14 +90,10 @@ public class AuthController implements AuthApi {
         ResponseCookie cookie = cookieUtil.createRefreshTokenCookie(newJwt.getRefreshToken());
 
         // 6. 응답 생성
-        TokenRefreshResponse refreshResponse = new TokenRefreshResponse(
-                newJwt.getAccessToken(),
-                "Bearer",
-                (int) jwtProperties.accessTokenValidityInSeconds()
-        );
+        TokenRefreshResponse data = authMapper.toTokenRefreshResponse(newJwt);
 
         log.info("{} 토큰 재발급 성공", LOG_PREFIX);
-        return ApiResponseFactory.success(AuthSuccessCode.TOKEN_REFRESH_SUCCESS, refreshResponse);
+        return ApiResponseFactory.success(AuthSuccessCode.TOKEN_REFRESH_SUCCESS, data, cookie);
     }
 
     @Override
@@ -126,9 +120,9 @@ public class AuthController implements AuthApi {
         authService.signOut(authentication);
 
         // Refresh Token 쿠키 삭제
-        cookieUtil.expireRefreshTokenCookie();
+        ResponseCookie cookie = cookieUtil.expireRefreshTokenCookie();
 
         log.info("{} 로그아웃 성공: email={}", LOG_PREFIX, userEmail);
-        return ApiResponseFactory.success(AuthSuccessCode.SIGNOUT_SUCCESS, null);
+        return ApiResponseFactory.success(AuthSuccessCode.SIGNOUT_SUCCESS, cookie);
     }
 }
