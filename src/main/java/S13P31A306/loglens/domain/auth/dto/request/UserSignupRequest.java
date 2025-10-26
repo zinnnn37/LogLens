@@ -12,8 +12,8 @@ public record UserSignupRequest(
         @NotBlank(message = "NAME_REQUIRED")
         @Pattern(regexp = "^[가-힣a-zA-Z]{2,30}$", message = "NAME_INVALID_FORMAT")
         @Schema(description = "사용자 이름", example = "홍길동")
-        @JsonProperty("userName")
-        String userName,
+        @JsonProperty("name")
+        String name,
 
         @NotBlank(message = "EMAIL_REQUIRED")
         @Email(message = "EMAIL_INVALID_FORMAT")
