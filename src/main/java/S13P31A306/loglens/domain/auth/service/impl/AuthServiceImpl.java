@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.auth.service.impl;
 
+import S13P31A306.loglens.domain.auth.constants.AuthErrorCode;
 import S13P31A306.loglens.domain.auth.dto.request.UserSigninRequest;
 import S13P31A306.loglens.domain.auth.jwt.Jwt;
 import S13P31A306.loglens.domain.auth.jwt.JwtTokenProvider;
@@ -8,7 +9,6 @@ import S13P31A306.loglens.domain.auth.service.AuthService;
 import S13P31A306.loglens.domain.auth.service.CustomUserDetailsService;
 import S13P31A306.loglens.domain.auth.validator.AuthValidator;
 import S13P31A306.loglens.global.annotation.Sensitive;
-import S13P31A306.loglens.global.constants.GlobalErrorCode;
 import S13P31A306.loglens.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,7 +62,7 @@ public class AuthServiceImpl implements AuthService {
             return jwt;
         } catch (AuthenticationException e) {
             log.warn("{} 로그인 실패: 이메일 또는 비밀번호 불일치 - {}", LOG_PREFIX, request.email());
-            throw new BusinessException(GlobalErrorCode.INVALID_CREDENTIALS);
+            throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS);
         }
     }
 

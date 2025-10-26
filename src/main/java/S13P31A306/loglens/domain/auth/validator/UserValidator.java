@@ -1,8 +1,8 @@
 package S13P31A306.loglens.domain.auth.validator;
 
 import static S13P31A306.loglens.global.constants.GlobalErrorCode.EMAIL_DUPLICATED;
-import static S13P31A306.loglens.global.constants.GlobalErrorCode.PASSWORD_CONFIRMATION_MISMATCH;
 
+import S13P31A306.loglens.domain.auth.constants.AuthErrorCode;
 import S13P31A306.loglens.domain.auth.respository.UserRepository;
 import S13P31A306.loglens.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -57,7 +57,7 @@ public class UserValidator {
         log.debug("{}비밀번호 확인 검증 시작", LOG_PREFIX);
         if (!password.equals(passwordConfirm)) {
             log.warn("{}비밀번호 불일치", LOG_PREFIX);
-            throw new BusinessException(PASSWORD_CONFIRMATION_MISMATCH);
+            throw new BusinessException(AuthErrorCode.PASSWORD_CONFIRMATION_MISMATCH);
         }
         log.debug("{}비밀번호 확인 검증 성공", LOG_PREFIX);
     }

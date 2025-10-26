@@ -1,8 +1,8 @@
 package S13P31A306.loglens.domain.auth.validator;
 
+import S13P31A306.loglens.domain.auth.constants.AuthErrorCode;
 import S13P31A306.loglens.domain.auth.jwt.JwtTokenProvider;
 import S13P31A306.loglens.domain.auth.respository.AuthRepository;
-import S13P31A306.loglens.global.constants.GlobalErrorCode;
 import S13P31A306.loglens.global.exception.BusinessException;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
@@ -28,13 +28,13 @@ public class AuthValidator {
             userEmailFromRt = jwtTokenProvider.getSubject(refreshToken);
         } catch (ExpiredJwtException e) {
             log.warn("{} 토큰 재발급 실패: Refresh Token 만료", LOG_PREFIX);
-            throw new BusinessException(GlobalErrorCode.REFRESH_TOKEN_EXPIRED);
+            throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_EXPIRED);
         } catch (io.jsonwebtoken.security.SecurityException | MalformedJwtException e) {
             log.warn("{} 토큰 재발급 실패: 잘못된 Refresh Token 서명 또는 형식", LOG_PREFIX);
-            throw new BusinessException(GlobalErrorCode.REFRESH_TOKEN_INVALID);
+            throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID);
         } catch (UnsupportedJwtException | IllegalArgumentException e) {
             log.warn("{} 토큰 재발급 실패: 지원되지 않거나 잘못된 Refresh Token", LOG_PREFIX);
-            throw new BusinessException(GlobalErrorCode.REFRESH_TOKEN_INVALID);
+            throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID);
         }
 
         // 2. Access Token과 Refresh Token의 소유자 일치 여부 확인
@@ -44,7 +44,7 @@ public class AuthValidator {
                     LOG_PREFIX,
                     userEmailFromRt,
                     userEmailFromAt);
-            throw new BusinessException(GlobalErrorCode.REFRESH_TOKEN_INVALID);
+            throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID);
         }
 
         // 3. Repository(Redis)에 저장된 Refresh Token과 일치하는지 확인
@@ -53,14 +53,14 @@ public class AuthValidator {
                     log.warn("{} 토큰 재발급 실패: 저장된 Refresh Token 없음 - 사용자 email: {}",
                             LOG_PREFIX,
                             userEmailFromRt);
-                    return new BusinessException(GlobalErrorCode.REFRESH_TOKEN_INVALID);
+                    return new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID);
                 });
 
         if (!storedRefreshToken.equals(refreshToken)) {
             log.warn("{} 토큰 재발급 실패: 저장된 토큰과 불일치 - 사용자 email: {}",
                     LOG_PREFIX,
                     userEmailFromRt);
-            throw new BusinessException(GlobalErrorCode.REFRESH_TOKEN_INVALID);
+            throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID);
         }
 
         // 모든 검증 통과 시, 사용자 email 반환
