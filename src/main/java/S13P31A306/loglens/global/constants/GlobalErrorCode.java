@@ -27,6 +27,9 @@ public enum GlobalErrorCode implements ErrorCode {
 
     // 401 Unauthorized
     UNAUTHORIZED("G401", "인증이 필요합니다", 401),
+    INVALID_CREDENTIALS("A401-1", "이메일 또는 비밀번호가 일치하지 않습니다.", 401),
+    REFRESH_TOKEN_INVALID("A401-2", "Refresh Token이 유효하지 않습니다.", 401),
+
 
     // 403 Forbidden
     FORBIDDEN("G403", "접근 권한이 없습니다", 403),
