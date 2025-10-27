@@ -1,0 +1,12 @@
+stages:
+  - test
+
+test:
+  stage: test
+  tags:
+    - npm
+  script:
+    - npm ci
+    - npm test
+  only:
+    - npm/main
