@@ -3,7 +3,7 @@
 # ===================================================================
 spring:
   application:
-    name: osm
+    name: loglens
   profiles:
     # 활성 프로필 지정. 환경 변수 SPRING_PROFILES_ACTIVE가 없으면 'dev' 사용
     active: ${SPRING_PROFILES_ACTIVE:dev}
@@ -37,7 +37,7 @@ logging:
     org.hibernate.engine.jdbc.spi.SqlExceptionHelper: OFF # SQL 예외 로그
     org.hibernate.stat: OFF               # Hibernate 통계 로그
     # SSE 알림 서비스 디버그 로그
-    com.a306.osm.domain.notification.service.impl.SseNotificationServiceImpl: DEBUG
+    com.a306.osm.domain.notification.service.impl.SseNotificationServiceImpl: WARN
 
 jwt:
   secret: ${JWT_SECRET:c3es6QmdhS7Bffn7u3ljFyWnj50RxsLqNzpgomVwJjZvbsdiIKkXunqexhnL7+ROLg+5Kxzf2ljrakWSPTsV6g==}
