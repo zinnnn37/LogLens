@@ -1,10 +1,17 @@
 # ===================================================================
 # 'dev' 프로필 전용 설정 (개발 환경)
 # ===================================================================
+#spring:
+#  # ===================================================================
+#  # 데이터 소스 설정 (H2 In-Memory DataSource)
+#  # ===================================================================
+#  datasource:
+#    url: jdbc:h2:mem:devdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+#    username: sa
+#    password:
+#    driver-class-name: org.h2.Driver
+
 spring:
-  # ===================================================================
-  # 데이터 소스 설정 (H2 In-Memory DataSource)
-  # ===================================================================
   datasource:
     url: jdbc:h2:mem:devdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     username: sa
@@ -30,13 +37,6 @@ spring:
     console:
       enabled: true # H2 콘솔 활성화
       path: /h2-console # H2 콘솔 접속 경로
-
-# ===================================================================
-# OAuth2 Redirect URI (dev)
-# ===================================================================
-oauth2:
-  signup-redirect-uri: ${OAUTH2_KAKAO_REDIRECT_URI_DEV}
-  error-redirect-uri: ${OAUTH2_KAKAO_ERROR_REDIRECT_URI_DEV}
 
 # ===================================================================
 # 로깅 설정 (개발 환경에 맞게 상세 설정)
