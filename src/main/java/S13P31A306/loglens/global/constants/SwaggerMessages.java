@@ -16,7 +16,7 @@ public enum SwaggerMessages {
 
     // Server URLs
     LOCAL_SERVER_URL("http://localhost:8080"),
-    PROD_SERVER_URL("https://api.loglens.com");
+    PROD_SERVER_URL("https://api.loglens.co.kr");
 
     private final String message;
 
