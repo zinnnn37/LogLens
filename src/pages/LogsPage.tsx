@@ -104,7 +104,7 @@ const LogsPage = () => {
 
   return (
     <div className="font-pretendard space-y-6 p-6 py-1">
-      <h1 className="font-godoM text-lg">통계 요약</h1>
+      <h1 className="font-godoM text-lg">로그 내역</h1>
 
       {/* 로그 발생 추이 */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
