@@ -4,14 +4,17 @@ import a306.dependency_logger_starter.dependency.DependencyCollector;
 import a306.dependency_logger_starter.dependency.client.DependencyLogSender;
 import a306.dependency_logger_starter.logging.aspect.ExceptionHandlerLoggingAspect;
 import a306.dependency_logger_starter.logging.aspect.MethodLoggingAspect;
+import a306.dependency_logger_starter.logging.filter.TraceIdFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.Ordered;
 
 /**
  * 자동 설정
@@ -28,6 +31,25 @@ public class LoggerAutoConfiguration {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         return mapper;
+    }
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "dependency.logger.trace",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    public FilterRegistrationBean<TraceIdFilter> traceIdFilter() {
+        FilterRegistrationBean<TraceIdFilter> registration =
+                new FilterRegistrationBean<>();
+
+        registration.setFilter(new TraceIdFilter());
+        registration.addUrlPatterns("/*");
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        registration.setName("traceIdFilter");
+
+        return registration;
     }
 
     /**
