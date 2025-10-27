@@ -11,7 +11,7 @@ public enum SwaggerMessages {
 
     // API Info
     API_TITLE("LogLens API"),
-    API_DESCRIPTION("Holistic Trace 통합 로깅 시스템 API"),
+    API_DESCRIPTION("LogLens 시스템 API"),
     API_VERSION("v1.0.0"),
 
     // Server URLs
