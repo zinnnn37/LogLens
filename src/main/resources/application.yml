@@ -14,6 +14,9 @@ dependency:
     trace:
       enabled: true
 
+    async:
+      enabled: true
+
     method-execution:
       enabled: true
 
