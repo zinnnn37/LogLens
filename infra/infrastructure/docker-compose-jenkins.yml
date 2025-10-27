@@ -16,7 +16,7 @@ services:
       - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
     restart: unless-stopped
     networks:
-      - loglens-network
+      - ai-loglens-network
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/login || exit 1"]
       interval: 30s
@@ -29,6 +29,6 @@ volumes:
     driver: local
 
 networks:
-  loglens-network:
-    name: loglens-network
+  ai-loglens-network:
+    name: ai-loglens-network
     driver: bridge
