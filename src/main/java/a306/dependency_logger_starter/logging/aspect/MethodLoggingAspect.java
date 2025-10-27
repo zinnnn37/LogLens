@@ -12,6 +12,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.slf4j.MDC;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -170,7 +171,8 @@ public class MethodLoggingAspect {
         try {
             Map<String, Object> logEntry = new LinkedHashMap<>();
             logEntry.put("@timestamp", LocalDateTime.now().atZone(ZoneOffset.UTC).format(ISO_FORMATTER));
-            logEntry.put("trace_id", null);
+            String traceId = MDC.get("traceId");
+            logEntry.put("trace_id", traceId);
             logEntry.put("level", "INFO");
             logEntry.put("package", packageName);
             logEntry.put("layer", layer);
@@ -211,7 +213,8 @@ public class MethodLoggingAspect {
         try {
             Map<String, Object> logEntry = new LinkedHashMap<>();
             logEntry.put("@timestamp", LocalDateTime.now().atZone(ZoneOffset.UTC).format(ISO_FORMATTER));
-            logEntry.put("trace_id", null);
+            String traceId = MDC.get("traceId");
+            logEntry.put("trace_id", traceId);
             logEntry.put("package", packageName);
             logEntry.put("layer", layer);
             logEntry.put("execution_time_ms", executionTime);
