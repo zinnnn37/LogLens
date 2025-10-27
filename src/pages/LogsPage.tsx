@@ -11,7 +11,7 @@ import DetailLogSearchTable from '@/components/DetailLogSearchTable';
 
 // --- 모달 컴포넌트 임포트 ---
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import LogDetailModal1 from '@/components/modal/LogDetailModal1'; 
+import LogDetailModal1 from '@/components/modal/LogDetailModal1';
 import LogDetailModal2, {
   type JiraTicketFormData,
 } from '@/components/modal/LogDetailModal2';
@@ -31,7 +31,7 @@ const LogsPage = () => {
    * '검색' 버튼 클릭 핸들러 (기존 동기식 필터링)
    */
   const handleSearch = (criteria: SearchCriteria) => {
-    const newFilteredLogs = DUMMY_LOG_SEARCH_RESULTS.filter((log) => {
+    const newFilteredLogs = DUMMY_LOG_SEARCH_RESULTS.filter(log => {
       // TraceID 필터
       if (
         criteria.traceId &&
@@ -96,7 +96,12 @@ const LogsPage = () => {
    * (2페이지) '발행하기' 버튼 클릭 시
    */
   const handleSubmitJira = (formData: JiraTicketFormData) => {
-    console.log('Jira Ticket Submitted:', formData, 'for log:', selectedLog?.id);
+    console.log(
+      'Jira Ticket Submitted:',
+      formData,
+      'for log:',
+      selectedLog?.id,
+    );
     // TODO: 실제 Jira 티켓 발행 API 호출
     alert('이쁜 alert 로 수정 예정입니다.');
     setIsModalOpen(false); // 성공 시 모달 닫기
