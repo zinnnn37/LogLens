@@ -38,36 +38,8 @@ spring:
         format_sql: true                             # SQL을 보기 좋게 포맷팅
 
 # ===================================================================
-# OAuth2 Redirect URI (prod)
-# ===================================================================
-oauth2:
-  signup-redirect-uri: ${OAUTH2_KAKAO_REDIRECT_URI_PROD}
-  error-redirect-uri: ${OAUTH2_KAKAO_ERROR_REDIRECT_URI_PROD}
-
-# ===================================================================
 # Spring Boot Actuator 설정
 # ===================================================================
-#management:
-#  # Actuator 엔드포인트 관리 서버 설정
-#  #  server:
-#  #    port: 8080 # 관리용 포트 분리
-#  # address: 127.0.0.1                    # 로컬 호스트에서만 접근 허용
-#  # 개별 엔드포인트 활성화 설정
-#  endpoint:
-#    prometheus:
-#      enabled: true  # prometheus 엔드포인트 활성화
-#  # Actuator 엔드포인트 설정
-#  endpoints:
-#    web:
-#      base-path: /actuator # 기본 경로
-#      exposure:
-#        # 노출할 엔드포인트 목록
-#        include: health,info,metrics,prometheus
-#  # Prometheus 메트릭 설정
-#  prometheus:
-#    metrics:
-#      export:
-#        enabled: true  # prometheus 메트릭 export 활성화
 management: # Spring-Actuator 설정
   endpoints:
     web:
@@ -77,11 +49,6 @@ management: # Spring-Actuator 설정
     metrics: # 시스템이나 애플리케이션의 동작 상태를 수치로 표현한 정보
       export:
         enabled: true   # prometheus 엔드포인트 활성화 여부 *default = true
-#    binders:
-#      processor:
-#        enabled: false
-#      system:
-#        enabled: false
 
 # ===================================================================
 # 로깅 설정 (Logging Configuration)

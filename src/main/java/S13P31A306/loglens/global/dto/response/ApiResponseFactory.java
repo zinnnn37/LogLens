@@ -2,22 +2,42 @@ package S13P31A306.loglens.global.dto.response;
 
 import S13P31A306.loglens.global.constants.ErrorCode;
 import S13P31A306.loglens.global.constants.SuccessCode;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 
 public final class ApiResponseFactory {
 
     private ApiResponseFactory() {
-        throw new IllegalStateException();
+        throw new IllegalStateException("Utility class");
     }
-    public static <T> ResponseEntity<SuccessResponse<T>> success(final SuccessCode successCode, final T data) {
+
+    public static <T> ResponseEntity<SuccessResponse<T>> success(final SuccessCode successCode,
+                                                                 final T data) {
         return ResponseEntity.status(successCode.getStatus()).body(SuccessResponse.of(successCode, data));
+    }
+
+    public static <T> ResponseEntity<SuccessResponse<T>> success(final SuccessCode successCode,
+                                                                 T data,
+                                                                 final ResponseCookie cookie) {
+        return ResponseEntity.status(successCode.getStatus())
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(SuccessResponse.of(successCode, data));
+    }
+
+    public static ResponseEntity<SuccessResponse<Void>> success(final SuccessCode successCode,
+                                                                final ResponseCookie cookie) {
+        return ResponseEntity.status(successCode.getStatus())
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(SuccessResponse.of(successCode));
     }
 
     public static ResponseEntity<BaseResponse> success(final SuccessCode successCode) {
         return ResponseEntity.status(successCode.getStatus()).body(SuccessResponse.of(successCode));
     }
 
-    public static <T> ResponseEntity<ErrorResponse<T>> fail(final ErrorCode errorCode, final T data) {
+    public static <T> ResponseEntity<ErrorResponse<T>> fail(final ErrorCode errorCode,
+                                                            final T data) {
         return ResponseEntity.status(errorCode.getStatus()).body(ErrorResponse.of(errorCode, data));
     }
 

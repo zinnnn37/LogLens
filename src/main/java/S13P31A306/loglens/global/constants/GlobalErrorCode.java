@@ -1,9 +1,8 @@
 package S13P31A306.loglens.global.constants;
 
+import java.util.Optional;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-
-import java.util.Optional;
 
 /**
  * 전역 에러 코드 정의
@@ -26,7 +25,7 @@ public enum GlobalErrorCode implements ErrorCode {
     INVALID_FORMAT("G400-1", "요청 형식이 올바르지 않습니다", 400),
 
     // 401 Unauthorized
-    UNAUTHORIZED("G401", "인증이 필요합니다", 401),
+    UNAUTHORIZED("G401", "인증이 필요합니다.", 401),
 
     // 403 Forbidden
     FORBIDDEN("G403", "접근 권한이 없습니다", 403),
@@ -40,6 +39,7 @@ public enum GlobalErrorCode implements ErrorCode {
 
     // 409 Conflict
     CONFLICT("G409", "리소스 충돌이 발생했습니다", 409),
+    EMAIL_DUPLICATED("A409-1", "이미 사용 중인 이메일입니다.", 409),
 
     // 429 Too Many Requests
     TOO_MANY_REQUESTS("G429", "요청이 너무 많습니다", 429),
@@ -54,6 +54,7 @@ public enum GlobalErrorCode implements ErrorCode {
 
     /**
      * Enum name으로 GlobalErrorCode를 안전하게 조회한다.
+     *
      * @param name GlobalErrorCode enum의 이름
      * @return 존재하면 해당 ErrorCode, 없으면 Optional.empty()
      */
