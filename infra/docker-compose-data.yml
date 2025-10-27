@@ -1,5 +1,6 @@
 # docker-compose-data.yml
-# MySQL과 Redis를 관리하는 docker compose 파일
+# MySQL과 Redis를 관리하는 Docker Compose 파일
+# Redis 비밀번호: Loglens306#)^ (특수문자 포함)
 
 version: '3.8'
 
