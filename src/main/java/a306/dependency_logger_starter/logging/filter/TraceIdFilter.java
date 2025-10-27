@@ -75,6 +75,11 @@ public class TraceIdFilter implements Filter {
     }
 
     @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        log.info("TraceIdFilter 초기화 완료");
+    }
+
+    @Override
     public void destroy() {
         MDC.clear();
     }
