@@ -4,8 +4,12 @@ import { ApiError } from '@/types/api';
 
 export const useEmailCheck = () => {
   const [isEmailChecking, setIsEmailChecking] = useState(false);
-  const [isEmailAvailable, setIsEmailAvailable] = useState<boolean | null>(null);
-  const [emailCheckMessage, setEmailCheckMessage] = useState<string | null>(null);
+  const [isEmailAvailable, setIsEmailAvailable] = useState<boolean | null>(
+    null,
+  );
+  const [emailCheckMessage, setEmailCheckMessage] = useState<string | null>(
+    null,
+  );
 
   const checkEmail = async (email: string, emailError?: string) => {
     // 이메일 유효성 검사 먼저 확인
@@ -28,7 +32,9 @@ export const useEmailCheck = () => {
       }
     } catch (error) {
       if (error instanceof ApiError) {
-        setEmailCheckMessage(error.response?.message || '이메일 확인에 실패했습니다.');
+        setEmailCheckMessage(
+          error.response?.message || '이메일 확인에 실패했습니다.',
+        );
       } else {
         setEmailCheckMessage('네트워크 오류가 발생했습니다.');
       }

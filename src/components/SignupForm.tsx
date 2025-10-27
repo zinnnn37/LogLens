@@ -183,9 +183,11 @@ export const SignupForm = ({
             <Button
               type="button"
               variant="outline"
-              className="rounded-[15px] whitespace-nowrap px-3"
+              className="rounded-[15px] px-3 whitespace-nowrap"
               onClick={handleEmailCheck}
-              disabled={isEmailChecking || !values.email || Boolean(errors.email)}
+              disabled={
+                isEmailChecking || !values.email || Boolean(errors.email)
+              }
             >
               {isEmailChecking ? '확인 중...' : '중복확인'}
             </Button>
@@ -193,7 +195,7 @@ export const SignupForm = ({
           {emailCheckMessage && (
             <p
               className={cn(
-                'text-xs mt-1',
+                'mt-1 text-xs',
                 isEmailAvailable === true && 'text-green-600',
                 isEmailAvailable === false && 'text-destructive',
                 isEmailAvailable === null && 'text-muted-foreground',

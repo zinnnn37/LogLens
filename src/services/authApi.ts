@@ -11,7 +11,9 @@ import type {
  * 이메일 중복확인 API
  * GET /api/auth/emails?email=user@example.com
  */
-export const checkEmailAvailability = async (email: string): Promise<EmailCheckResponse> => {
+export const checkEmailAvailability = async (
+  email: string,
+): Promise<EmailCheckResponse> => {
   return apiClient.get<EmailCheckResponse>('/api/auth/emails', { email });
 };
 
