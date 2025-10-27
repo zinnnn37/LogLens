@@ -25,7 +25,7 @@ public enum PublicEndPoint {
     HEALTH_CHECK("/health-check"),
 
     // Maven Repository
-    MAVEN_REPO("/maven-repo"),
+    MAVEN_REPO("/maven-repo/**"),
 
     // Root
     ROOT("/");
