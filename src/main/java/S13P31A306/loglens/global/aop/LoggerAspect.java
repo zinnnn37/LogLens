@@ -19,21 +19,35 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class LoggerAspect {
     // 포인트컷용 상수
-    private static final String CONTROLLER_PATTERN = "@within(org.springframework.web.bind.annotation.RestController) || " +
-                                                    "@within(org.springframework.stereotype.Controller)";
+    private static final String CONTROLLER_PATTERN =
+            "@within(org.springframework.web.bind.annotation.RestController) || " +
+                    "@within(org.springframework.stereotype.Controller)";
 
     // Service: Service 또는 ServiceImpl로 끝나는 모든 메서드
     private static final String SERVICE_PATTERN = "@within(org.springframework.stereotype.Service)";
 
     // Repository: Repository로 끝나는 모든 메서드 + JpaRepository 프록시
     private static final String REPOSITORY_PATTERN = "@within(org.springframework.stereotype.Repository) || " +
-                                                     "execution(* org.springframework.data.repository.Repository+.*(..))";
+            "execution(* org.springframework.data.repository.Repository+.*(..))";
 
     private final LogTrace logTrace;
 
     // ======= Pointcut =======
 
-    @Pointcut(CONTROLLER_PATTERN)
+//    @Pointcut(CONTROLLER_PATTERN)
+//    private void controllerLayer() {
+//    }
+
+    @Pointcut("@within(org.springframework.web.bind.annotation.RestController) || " +
+            "@within(org.springframework.stereotype.Controller)")
+    private void allControllers() {
+    }
+
+    @Pointcut("!within(S13P31A306.loglens.global.controller.HealthCheckController)")
+    private void excludeHealthCheck() {
+    }
+
+    @Pointcut("allControllers() && excludeHealthCheck()")
     private void controllerLayer() {
     }
 
