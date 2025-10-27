@@ -17,7 +17,7 @@ services:
       - SPRING_DATASOURCE_PASSWORD=Loglens306#)^
       - SPRING_REDIS_HOST=loglens-redis
       - SPRING_REDIS_PORT=6379
-      - SPRING_REDIS_PASSWORD=your-redis-password
+      - SPRING_REDIS_PASSWORD=Loglens306#)^
     restart: unless-stopped
     networks:
       - loglens-network
