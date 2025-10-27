@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
   validateEmail,
@@ -7,6 +8,7 @@ import {
   validateName,
 } from '@/lib/authValidation';
 import { useFormValidation } from '@/hooks/useFormValidation';
+import { useEmailCheck } from '@/hooks/useEmailCheck';
 import { Button } from '@/components/ui/button';
 import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import {
@@ -18,13 +20,26 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ROUTE_PATH } from '@/router/route-path';
+import { signup } from '@/services/authApi';
+import { ApiError } from '@/types/api';
 
 export const SignupForm = ({
   className,
   ...props
 }: React.ComponentProps<'form'>) => {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  const {
+    isEmailChecking,
+    isEmailAvailable,
+    emailCheckMessage,
+    checkEmail,
+    resetEmailCheck,
+  } = useEmailCheck();
 
   const { values, errors, touched, isValid, setFieldValue, setFieldTouched } =
     useFormValidation(
@@ -43,16 +58,52 @@ export const SignupForm = ({
       },
     );
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (isValid) {
-      console.log('Form submitted:', values);
+    if (!isValid) {
+      return;
     }
+
+    setIsLoading(true);
+    setApiError(null);
+
+    try {
+      const response = await signup({
+        userName: values.name,
+        email: values.email,
+        password: values.password,
+        passwordConfirm: values['confirm-password'],
+      });
+
+      console.log('회원가입 성공:', response);
+
+      // 회원가입 성공 시 로그인 페이지로 이동
+      navigate(ROUTE_PATH.LOGIN);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setApiError(error.response?.message || '회원가입에 실패했습니다.');
+      } else {
+        setApiError('네트워크 오류가 발생했습니다.');
+      }
+      console.error('회원가입 실패:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEmailCheck = () => {
+    checkEmail(values.email, errors.email);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fieldId = e.target.id;
     setFieldValue(fieldId, e.target.value);
+
+    // 이메일이 변경되면 중복확인 상태 초기화
+    if (fieldId === 'email') {
+      resetEmailCheck();
+    }
+
     // 이미 터치된 필드이거나, 값이 있는 경우 즉시 유효성 검사
     if (touched[fieldId] || e.target.value) {
       setFieldTouched(fieldId);
@@ -79,6 +130,11 @@ export const SignupForm = ({
           <p className="text-muted-foreground mt-2 mb-5 text-sm text-balance">
             로그인해서 프로젝트를 관리해보세요
           </p>
+          {apiError && (
+            <p className="text-destructive bg-destructive/10 w-full rounded-md px-4 py-2 text-sm">
+              {apiError}
+            </p>
+          )}
         </div>
         <Field>
           <FieldLabel htmlFor="name">
@@ -110,19 +166,42 @@ export const SignupForm = ({
               <p className="text-destructive text-xs">{errors.email}</p>
             )}
           </FieldLabel>
-          <Input
-            id="email"
-            type="email"
-            placeholder="ssafy@example.com"
-            value={values.email}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            aria-invalid={touched.email && Boolean(errors.email)}
-            className={cn(
-              'rounded-[15px]',
-              touched.email && errors.email && 'bg-destructive/10',
-            )}
-          />
+          <div className="flex gap-2">
+            <Input
+              id="email"
+              type="email"
+              placeholder="ssafy@example.com"
+              value={values.email}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              aria-invalid={touched.email && Boolean(errors.email)}
+              className={cn(
+                'rounded-[15px]',
+                touched.email && errors.email && 'bg-destructive/10',
+              )}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-[15px] whitespace-nowrap px-3"
+              onClick={handleEmailCheck}
+              disabled={isEmailChecking || !values.email || Boolean(errors.email)}
+            >
+              {isEmailChecking ? '확인 중...' : '중복확인'}
+            </Button>
+          </div>
+          {emailCheckMessage && (
+            <p
+              className={cn(
+                'text-xs mt-1',
+                isEmailAvailable === true && 'text-green-600',
+                isEmailAvailable === false && 'text-destructive',
+                isEmailAvailable === null && 'text-muted-foreground',
+              )}
+            >
+              {emailCheckMessage}
+            </p>
+          )}
         </Field>
         <Field>
           <FieldLabel htmlFor="password">
@@ -202,10 +281,10 @@ export const SignupForm = ({
         <Field>
           <Button
             type="submit"
-            disabled={!isValid}
+            disabled={!isValid || isLoading || isEmailAvailable !== true}
             className="bg-secondary mt-3 rounded-[15px] py-5"
           >
-            회원가입
+            {isLoading ? '처리 중...' : '회원가입'}
           </Button>
         </Field>
         <FieldSeparator></FieldSeparator>
