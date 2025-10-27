@@ -55,14 +55,14 @@ management: # Spring-Actuator 설정
 # ===================================================================
 logging:
   level:
-    com.a306.osm: DEBUG
-    com.a306.osm.global.exception: DEBUG  # 예외 처리 상세 로깅
-    # Actuator 문제 진단을 위한 상세 로깅
+    S13P31A306.loglens: DEBUG
+    # 헬스체크 컨트롤러 로그 비활성화
+    S13P31A306.loglens.global.controller.HealthCheckController: OFF
+
     org.springframework.web: DEBUG
     org.springframework.boot.actuate: DEBUG
-    org.springframework.boot.actuate.endpoint: TRACE  # Actuator 엔드포인트 상세 추적
+#    org.springframework.boot.actuate.endpoint: TRACE  # Actuator 엔드포인트 상세 추적
     org.springframework.security: DEBUG
     org.springframework.web.servlet.DispatcherServlet: DEBUG
     org.springframework.web.servlet.mvc.method.annotation: DEBUG
-    org.springframework.web.servlet.resource: DEBUG
-    org.springframework.web.servlet.handler: TRACE  # 핸들러 매핑 상세 추적
+#    org.springframework.web.servlet.handler: TRACE  # 핸들러 매핑 상세 추적
