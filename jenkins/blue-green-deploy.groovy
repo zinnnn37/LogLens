@@ -147,7 +147,7 @@ pipeline {
 
                             CONTAINER="${containerName}"
                             HOST_PORT="${port}"
-                            HEALTH_ENDPOINT="http://localhost:8080/actuator/health"
+                            HEALTH_ENDPOINT="http://localhost:8080/health-check"
 
                             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
                             echo "📦 Container: \${CONTAINER}"
