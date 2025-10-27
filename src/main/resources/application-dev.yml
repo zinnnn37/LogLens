@@ -22,7 +22,7 @@ spring:
   # JPA 및 Hibernate 설정
   # ===================================================================
   jpa:
-    show-sql: true # 실행되는 SQL 쿼리를 로그로 출력
+    show-sql: false # SQL 쿼리 로그 출력 비활성화
     hibernate:
       ddl-auto: create # 애플리케이션 시작 시 스키마를 새로 생성
     properties:
@@ -43,7 +43,7 @@ spring:
 # ===================================================================
 logging:
   level:
-    com.a306.osm: TRACE
-    org.hibernate.SQL: DEBUG # Hibernate가 실행하는 SQL 로그 출력
-    org.hibernate.type.descriptor.sql: TRACE # SQL 바인딩 파라미터 로그 출력
+    S13P31A306.loglens: TRACE
+    org.hibernate.SQL: ERROR # Hibernate가 실행하는 SQL 로그 출력
+    org.hibernate.type.descriptor.sql: ERROR # SQL 바인딩 파라미터 로그 출력
     org.springframework.security: DEBUG
