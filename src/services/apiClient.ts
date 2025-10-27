@@ -66,7 +66,7 @@ class ApiClient {
 
   async get<T>(url: string, params?: object): Promise<T> {
     const response = await this.instance.get<ApiResponse<T>>(url, { params });
-    return (response.data as ApiSuccessResponse<T>).body;
+    return (response.data as ApiSuccessResponse<T>).data;
   }
 
   async post<T>(url: string, data?: object | FormData): Promise<T> {
@@ -84,24 +84,24 @@ class ApiClient {
       data,
       config,
     );
-    return (response.data as ApiSuccessResponse<T>).body;
+    return (response.data as ApiSuccessResponse<T>).data;
   }
 
   async put<T>(url: string, data?: object): Promise<T> {
     const response = await this.instance.put<ApiResponse<T>>(url, data);
-    return (response.data as ApiSuccessResponse<T>).body;
+    return (response.data as ApiSuccessResponse<T>).data;
   }
 
   async patch<T>(url: string, data?: object): Promise<T> {
     const response = await this.instance.patch<ApiResponse<T>>(url, data);
-    return (response.data as ApiSuccessResponse<T>).body;
+    return (response.data as ApiSuccessResponse<T>).data;
   }
 
   async delete<T>(url: string, params?: object): Promise<T> {
     const response = await this.instance.delete<ApiResponse<T>>(url, {
       params,
     });
-    return (response.data as ApiSuccessResponse<T>).body;
+    return (response.data as ApiSuccessResponse<T>).data;
   }
 }
 

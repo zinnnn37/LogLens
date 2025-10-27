@@ -3,7 +3,7 @@ import type { AxiosError } from 'axios';
 export interface ApiSuccessResponse<T> {
   success: true;
   status: number;
-  body: T;
+  data: T;
 }
 
 export interface ApiErrorResponse {
@@ -12,7 +12,7 @@ export interface ApiErrorResponse {
   code: string;
   message: string;
   timestamp: string;
-  body?: unknown;
+  data?: unknown;
 }
 
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
