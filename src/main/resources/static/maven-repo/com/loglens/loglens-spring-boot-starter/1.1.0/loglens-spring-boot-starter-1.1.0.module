@@ -65,10 +65,10 @@
           "name": "loglens-spring-boot-starter-1.1.0-plain.jar",
           "url": "loglens-spring-boot-starter-1.1.0-plain.jar",
           "size": 41453,
-          "sha512": "a02ac01f2bcdcae8e2749d48158f0151f5f17949117f5086a483bfb50f432980f26310c69e5038c69083097153c5baee30c097e5dce13b448e321d1d463346c2",
-          "sha256": "50adc4e9703f496d46f8878d984ca9af1d2d663f730286f62b06093296fb5761",
-          "sha1": "f6abf5dfad8d4160ee0587afb1dcb91ea226e6f8",
-          "md5": "e28e5468d888d2bad08600f1d03a9ee1"
+          "sha512": "66cf26848fb295510a2c4cfb1d9864692bc19098685e06aad4249e732354443ed9f476bd8d8a6e50f27a5ae0c77df4c3b75659256af1696264751f411af24586",
+          "sha256": "307fbea9fe92afaee75183548795573e902b4a8e93aaf2c2cc53bc696042d8d9",
+          "sha1": "d6bf6a4c4253e1333037efa1a47ec6df58d9fbc2",
+          "md5": "e8da4083dfc1a0d006a2f5f99cbdb4d9"
         }
       ]
     },
@@ -123,10 +123,10 @@
           "name": "loglens-spring-boot-starter-1.1.0-plain.jar",
           "url": "loglens-spring-boot-starter-1.1.0-plain.jar",
           "size": 41453,
-          "sha512": "a02ac01f2bcdcae8e2749d48158f0151f5f17949117f5086a483bfb50f432980f26310c69e5038c69083097153c5baee30c097e5dce13b448e321d1d463346c2",
-          "sha256": "50adc4e9703f496d46f8878d984ca9af1d2d663f730286f62b06093296fb5761",
-          "sha1": "f6abf5dfad8d4160ee0587afb1dcb91ea226e6f8",
-          "md5": "e28e5468d888d2bad08600f1d03a9ee1"
+          "sha512": "66cf26848fb295510a2c4cfb1d9864692bc19098685e06aad4249e732354443ed9f476bd8d8a6e50f27a5ae0c77df4c3b75659256af1696264751f411af24586",
+          "sha256": "307fbea9fe92afaee75183548795573e902b4a8e93aaf2c2cc53bc696042d8d9",
+          "sha1": "d6bf6a4c4253e1333037efa1a47ec6df58d9fbc2",
+          "md5": "e8da4083dfc1a0d006a2f5f99cbdb4d9"
         }
       ]
     }
