@@ -113,9 +113,12 @@ const LogDetailModal1 = ({
                     )}
                 </div>
 
-                <DialogFooter>
-                    <Button onClick={onGoToNextPage}>Jira 티켓 발행</Button>
-                </DialogFooter>
+                {isErrorLevel && (
+                    <DialogFooter>
+                        <Button onClick={onGoToNextPage}>Jira 티켓 발행</Button>
+                    </DialogFooter>
+                )}
+
             </DialogContent>
         </Dialog>
     );
