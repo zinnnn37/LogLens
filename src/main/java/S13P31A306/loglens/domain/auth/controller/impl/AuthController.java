@@ -8,6 +8,7 @@ import S13P31A306.loglens.domain.auth.dto.response.UserSigninResponse;
 import S13P31A306.loglens.domain.auth.jwt.Jwt;
 import S13P31A306.loglens.domain.auth.mapper.AuthMapper;
 import S13P31A306.loglens.domain.auth.service.AuthService;
+import S13P31A306.loglens.global.annotation.ExcludeValue;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
 import S13P31A306.loglens.global.utils.CookieUtil;
@@ -50,7 +51,7 @@ public class AuthController implements AuthApi {
     @PostMapping("/tokens/refresh")
     public ResponseEntity<? extends BaseResponse> reissueToken(
             @RequestHeader(name = "Authorization", required = false) String authHeader,
-            @CookieValue(name = REFRESH_TOKEN_COOKIE_NAME, required = false) String refreshToken) {
+            @ExcludeValue @CookieValue(name = REFRESH_TOKEN_COOKIE_NAME, required = false) String refreshToken) {
         Jwt newJwt = authService.reissueToken(authHeader, refreshToken);
         ResponseCookie cookie = cookieUtil.createRefreshTokenCookie(newJwt.getRefreshToken());
         TokenRefreshResponse data = authMapper.toTokenRefreshResponse(newJwt);
@@ -62,7 +63,7 @@ public class AuthController implements AuthApi {
     @DeleteMapping("/tokens")
     public ResponseEntity<? extends BaseResponse> signOut(
             Authentication authentication,
-            @CookieValue(name = REFRESH_TOKEN_COOKIE_NAME, required = false) String refreshToken) {
+            @ExcludeValue @CookieValue(name = REFRESH_TOKEN_COOKIE_NAME, required = false) String refreshToken) {
         authService.signOut(authentication, refreshToken);
         ResponseCookie cookie = cookieUtil.expireRefreshTokenCookie();
 
