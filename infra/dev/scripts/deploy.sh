@@ -29,7 +29,8 @@ fi
 # 환경 상태에 따른 처리
 if [ "$BLUE_RUNNING" = true ] && [ "$GREEN_RUNNING" = true ]; then
     echo "⚠️ 두 환경 모두 실행 중입니다. green 환경을 중지합니다..."
-    docker-compose -p ai-service-green -f docker/docker-compose-green.yaml down
+    docker stop ai-service-green 2>/dev/null || true
+    docker rm ai-service-green 2>/dev/null || true
     CURRENT_ENV="blue"
 elif [ "$BLUE_RUNNING" = true ]; then
     CURRENT_ENV="blue"
@@ -59,9 +60,30 @@ echo ""
 docker system df
 echo ""
 
-# 새로운 환경 시작 - 프로젝트 이름 지정
+# 새로운 환경 시작
 echo "🎯 $NEW_ENV 환경 시작 중..."
-docker-compose -p ai-service-${NEW_ENV} -f docker/docker-compose-${NEW_ENV}.yaml up -d
+
+# Docker 네트워크 생성 (이미 있으면 무시)
+docker network create ai-loglens-network 2>/dev/null || true
+
+# 컨테이너 시작
+docker run -d \
+  --name ai-service-${NEW_ENV} \
+  --network ai-loglens-network \
+  -p ${NEW_PORT}:8000 \
+  --env-file .env \
+  -e SLOT=${NEW_ENV} \
+  -e UVICORN_PORT=8000 \
+  -e LOG_LEVEL=INFO \
+  --restart unless-stopped \
+  --health-cmd "curl -f http://localhost:8000/api/v1/health || exit 1" \
+  --health-interval 30s \
+  --health-timeout 10s \
+  --health-retries 3 \
+  --health-start-period 60s \
+  ai-service:latest
+
+echo "✅ 컨테이너 시작 명령 완료"
 
 # 컨테이너 시작 대기
 echo "⏳ 컨테이너 시작 대기중..."
@@ -244,10 +266,22 @@ if [ "$SUCCESS" = false ]; then
         echo "   - 로그 확인: docker logs ai-service-${NEW_ENV}"
         echo "   - 컨테이너 접속: docker exec -it ai-service-${NEW_ENV} bash"
         echo "   - 컨테이너 상태: docker inspect ai-service-${NEW_ENV}"
-        echo "   - 컨테이너 제거: docker-compose -p ai-service-${NEW_ENV} -f docker/docker-compose-${NEW_ENV}.yaml down"
+        echo "   - 컨테이너 제거: docker stop ai-service-${NEW_ENV} && docker rm ai-service-${NEW_ENV}"
     else
         echo "🔄 컨테이너를 제거합니다..."
-        docker-compose -p ai-service-${NEW_ENV} -f docker/docker-compose-${NEW_ENV}.yaml down
+        docker stop ai-service-${NEW_ENV} 2>/dev/null || true
+        docker rm ai-service-${NEW_ENV} 2>/dev/null || true
+    fi
+
+    # 이미지 롤백 (이전 이미지가 있으면)
+    if [ "$(docker images -q ai-service:latest-previous)" ]; then
+        echo "🔄 Rolling back Docker image to previous version..."
+        docker rmi ai-service:latest 2>/dev/null || true
+        docker tag ai-service:latest-previous ai-service:latest
+        echo "✅ Image rolled back successfully"
+    else
+        echo "⚠️ No previous image found, removing failed image"
+        docker rmi ai-service:latest 2>/dev/null || true
     fi
 
     exit 1
@@ -303,8 +337,18 @@ if [ -f "$NGINX_CONFIG_FILE" ]; then
         # 디버그 모드에서는 컨테이너를 유지
         if [ "$DEBUG_MODE" != "true" ]; then
             echo "🔄 실패한 컨테이너 제거 중..."
-            docker-compose -p ai-service-${NEW_ENV} -f docker/docker-compose-${NEW_ENV}.yaml down
+            docker stop ai-service-${NEW_ENV} 2>/dev/null || true
+            docker rm ai-service-${NEW_ENV} 2>/dev/null || true
         fi
+
+        # 이미지 롤백
+        if [ "$(docker images -q ai-service:latest-previous)" ]; then
+            echo "🔄 Rolling back Docker image to previous version..."
+            docker rmi ai-service:latest 2>/dev/null || true
+            docker tag ai-service:latest-previous ai-service:latest
+            echo "✅ Image rolled back successfully"
+        fi
+
         exit 1
     fi
 else
@@ -334,7 +378,9 @@ if [ "$CURRENT_ENV" != "" ]; then
     echo "🔍 기존 컨테이너 상태 확인:"
     docker ps --filter "name=ai-service-${OLD_ENV}" --format "table {{.Names}}\t{{.Status}}"
 
-    docker-compose -p ai-service-${OLD_ENV} -f docker/docker-compose-${OLD_ENV}.yaml down --remove-orphans || true
+    echo "🛑 기존 컨테이너 중지 및 제거..."
+    docker stop ai-service-${OLD_ENV} 2>/dev/null || true
+    docker rm ai-service-${OLD_ENV} 2>/dev/null || true
 
     echo "✅ 기존 $OLD_ENV 환경 정리 완료"
     

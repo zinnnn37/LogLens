@@ -148,26 +148,45 @@ pipeline {
         failure {
             echo "❌ AI service deployment failed!"
             echo "📋 Check logs for deployment, health check, or configuration issues"
-            
-            // 실패 시 디버깅 정보 수집
+            echo "🔄 Rolling back Docker image to previous version..."
+
+            // 실패 시 디버깅 정보 수집 및 이미지 롤백
             script {
                 try {
                     sh '''
                         echo "🔍 AI service debugging information:"
                         echo "📋 Running containers:"
                         docker ps | grep ai-service || echo "No ai-service containers running"
-                        
+
                         echo "📋 Available images:"
                         docker images | grep ai-service || echo "No ai-service images found"
-                        
+
                         echo "📋 Recent container logs:"
                         for container in $(docker ps -a --filter "name=ai-service" --format "{{.Names}}"); do
                             echo "--- Logs for $container ---"
                             docker logs $container --tail 10 2>&1 || echo "Failed to get logs for $container"
                         done
+
+                        echo ""
+                        echo "🔄 Attempting to rollback Docker image..."
+
+                        # 배포 실패 시 이미지 롤백
+                        if [ "$(docker images -q ai-service:latest-previous)" ]; then
+                            echo "🗑️ Removing failed image..."
+                            docker rmi ai-service:latest 2>/dev/null || true
+
+                            echo "🔄 Restoring previous image..."
+                            docker tag ai-service:latest-previous ai-service:latest
+
+                            echo "✅ Docker image rolled back successfully"
+                            echo "ℹ️ Previous version restored as ai-service:latest"
+                        else
+                            echo "⚠️ No previous image found (ai-service:latest-previous)"
+                            echo "ℹ️ Failed image remains for debugging"
+                        fi
                     '''
                 } catch (Exception e) {
-                    echo "Failed to collect debugging information: ${e.message}"
+                    echo "Failed to collect debugging information or rollback: ${e.message}"
                 }
             }
         }

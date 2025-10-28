@@ -113,6 +113,25 @@ pipeline {
         failure {
             echo "❌ AI service Docker build failed!"
             echo "📋 Check logs for Docker build issues"
+            echo "🔄 Rolling back to previous image..."
+            script {
+                sh """
+                    # 실패한 이미지 제거
+                    if [ "\$(docker images -q ${IMAGE_NAME})" ]; then
+                        echo "🗑️ Removing failed image: ${IMAGE_NAME}"
+                        docker rmi ${IMAGE_NAME} || true
+                    fi
+
+                    # 이전 이미지가 있으면 복원
+                    if [ "\$(docker images -q ${IMAGE_NAME}-previous)" ]; then
+                        echo "🔄 Restoring previous image..."
+                        docker tag ${IMAGE_NAME}-previous ${IMAGE_NAME}
+                        echo "✅ Rolled back to previous image"
+                    else
+                        echo "⚠️ No previous image found to restore"
+                    fi
+                """
+            }
         }
         always {
             // 실패 시 디버깅을 위한 정보 수집

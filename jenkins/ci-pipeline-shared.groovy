@@ -147,15 +147,25 @@ EOF
         failure {
             echo "❌ AI service CI build failed!"
             echo "📋 Check logs above for error details"
+            echo "🧹 Cleaning up test image..."
+            script {
+                sh """
+                    # 테스트 실패 시 생성된 이미지 제거
+                    if [ "\$(docker images -q ${TEST_IMAGE})" ]; then
+                        echo "🗑️ Removing failed test image: ${TEST_IMAGE}"
+                        docker rmi ${TEST_IMAGE} || true
+                        echo "✅ Test image removed"
+                    else
+                        echo "ℹ️ No test image to remove"
+                    fi
+                """
+            }
         }
         always {
             script {
-                // 테스트 이미지 정리 (선택적)
                 sh """
                     echo "🧹 Cleaning up..."
                     rm -f .env || true
-                    # 테스트 이미지는 유지 (디버깅용) 또는 삭제
-                    # docker rmi ${TEST_IMAGE} || true
                     echo "✅ Cleanup completed"
                 """
             }
