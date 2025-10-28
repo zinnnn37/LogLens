@@ -37,7 +37,7 @@ deploy_test_local:
     - git config --global user.email "ci@gitlab.com"
     - git config --global user.name "GitLab CI"
   script:
-    # NPM_DEPLOY_TOKEN으로 클론 (FE 배포 방식과 동일)
+    # NPM_DEPLOY_TOKEN으로 클론
     - $token = $env:NPM_DEPLOY_TOKEN
     - $gitUrl = "https://oauth2:$token@lab.ssafy.com/s13-final/S13P31A306.git"
     - git clone --depth 1 --branch npm/main $gitUrl test-temp
