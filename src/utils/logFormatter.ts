@@ -3,9 +3,6 @@
 import type { LogEntry } from '../core/types';
 import TraceContext from '../core/traceContext';
 
-/**
- * 로그 포맷터 클래스
- */
 class LogFormatter {
   private static readonly COLORS = {
     INFO: '\x1b[30m', // black
@@ -44,7 +41,13 @@ class LogFormatter {
             .padStart(5)}ms)${reset}`
         : `${gray}(    - )${reset}`;
 
-    return `${level} ${indent}${arrow} ${logEntry.methodName} ${duration}`;
+    // methodName이 없으면 comment 사용
+    const displayName = logEntry.methodName || logEntry.comment || 'anonymous';
+    const message = logEntry.comment
+      ? `${displayName}: ${gray}${logEntry.comment}${reset}`
+      : displayName;
+
+    return `${level} ${indent}${arrow} ${message} ${duration}`;
   }
 
   /**
