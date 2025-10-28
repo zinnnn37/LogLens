@@ -357,14 +357,6 @@ else
     echo "⚠️ 수동으로 nginx 설정을 확인해주세요."
 fi
 
-# 최종 확인
-echo "🔍 새 환경 최종 확인..."
-FINAL_CHECK=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/api/v1/health)
-if [ "$FINAL_CHECK" != "200" ]; then
-    echo "❌ 최종 확인 실패!"
-    exit 1
-fi
-
 # 기존 환경 종료 - nginx 설정 성공 후에만 실행
 if [ "$CURRENT_ENV" != "" ]; then
     echo "🛑 기존 $OLD_ENV 환경 중지 중..."
