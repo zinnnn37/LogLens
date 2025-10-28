@@ -56,11 +56,16 @@ class ApiClient {
         const originalRequest = error.config;
 
         // 로그인, 회원가입, 토큰 리프레시 요청은 401 재시도 제외
-        const isAuthRequest = originalRequest.url?.includes('/api/auth/tokens') ||
-                              originalRequest.url?.includes('/api/auth/users');
+        const isAuthRequest =
+          originalRequest.url?.includes('/api/auth/tokens') ||
+          originalRequest.url?.includes('/api/auth/users');
 
         // 401 에러이고, 아직 재시도하지 않은 요청이며, 인증 요청이 아닌 경우
-        if (error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
+        if (
+          error.response?.status === 401 &&
+          !originalRequest._retry &&
+          !isAuthRequest
+        ) {
           originalRequest._retry = true;
 
           try {
