@@ -1,7 +1,7 @@
 stages:
   - test
   - build
-  - deploy_test
+  - deploy
 
 test:
   stage: test
@@ -20,7 +20,6 @@ build:
   script:
     - npm ci
     - npm run build
-    - Get-ChildItem dist
   artifacts:
     paths:
       - dist/
@@ -28,8 +27,8 @@ build:
   only:
     - npm/main
 
-deploy_test_local:
-  stage: deploy_test
+deploy_to_fe:
+  stage: deploy
   tags:
     - npm
   dependencies:
@@ -38,25 +37,21 @@ deploy_test_local:
     - git config --global user.email "ci@gitlab.com"
     - git config --global user.name "GitLab CI"
   script:
-    # PowerShell 변수로 먼저 저장
-    - $token = $env:CI_JOB_TOKEN
-    - $gitUrl = "https://oauth2:$token@lab.ssafy.com/s13-final/S13P31A306.git"
-    - Write-Host "Cloning from project..."
-    - git clone --depth 1 --branch npm/main $gitUrl test-temp
-    - New-Item -ItemType Directory -Force -Path test-temp/test-static/lib
-    - Copy-Item dist/index.es.js test-temp/test-static/lib/loglens.esm.js
-    - Copy-Item dist/index.umd.js test-temp/test-static/lib/loglens.umd.js
-    - Copy-Item dist/index.d.ts test-temp/test-static/lib/loglens.d.ts
-    - Get-ChildItem test-temp/test-static/lib
-    - cd test-temp
-    - git add test-static/
-    - git status
+    - $token = $env:FE_DEPLOY_TOKEN
+    - $feUrl = "https://oauth2:$token@lab.ssafy.com/s13-final/S13P31A306.git"
+    - git clone --depth 1 --branch fe/main $feUrl fe-temp
+    - New-Item -ItemType Directory -Force -Path fe-temp/static/lib
+    - Copy-Item dist/index.es.js fe-temp/static/lib/loglens.esm.js
+    - Copy-Item dist/index.umd.js fe-temp/static/lib/loglens.umd.js
+    - Copy-Item dist/index.d.ts fe-temp/static/lib/loglens.d.ts
+    - cd fe-temp
+    - git add static/lib/
     - |
       $changes = git diff --staged --quiet
       if ($LASTEXITCODE -ne 0) {
-        git commit -m "test: CI push test [skip ci]"
+        git commit -m "chore: update loglens library [skip ci]"
       }
-    - git push $gitUrl HEAD:npm/main
-    - Write-Host "✅ npm/main에 test-static/ 폴더가 생성되었습니다!"
+    - git push $feUrl HEAD:fe/main
+    - Write-Host "✅ fe/main 업데이트 완료!"
   only:
     - npm/main
