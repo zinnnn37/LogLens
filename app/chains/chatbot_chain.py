@@ -12,6 +12,7 @@ llm = ChatOpenAI(
     model=settings.LLM_MODEL,
     temperature=0.7,
     api_key=settings.OPENAI_API_KEY,
+    base_url=settings.OPENAI_BASE_URL,
 )
 
 # Prompt template for RAG-based chatbot

@@ -14,6 +14,7 @@ llm = ChatOpenAI(
     model=settings.LLM_MODEL,
     temperature=0.3,
     api_key=settings.OPENAI_API_KEY,
+    base_url=settings.OPENAI_BASE_URL,
 )
 
 # Output parser

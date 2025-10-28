@@ -14,8 +14,9 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     ENVIRONMENT: str = "development"
 
-    # OpenAI
-    OPENAI_API_KEY: str
+    # OpenAI (GMS)
+    OPENAI_API_KEY: str  # GMS_KEY from SSAFY
+    OPENAI_BASE_URL: str = "https://gms.ssafy.io/gmsapi/api.openai.com/v1"
     EMBEDDING_MODEL: str = "text-embedding-3-large"
     LLM_MODEL: str = "gpt-4o-mini"
 
