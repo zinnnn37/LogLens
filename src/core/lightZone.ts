@@ -57,34 +57,29 @@ type ZoneContext = {
  *   비동기 작업 수행
  * });
  */
+// src/core/lightZone.ts - 완전 재작성
+
 class LightZone {
   private static stack: ZoneContext[] = [];
   private static isPatched = false;
+  private static OriginalPromise: PromiseConstructor | null = null;
 
-  /**
-   * 초기화 - 앱 시작 시 한 번만 호출
-   */
   static init(): void {
     if (this.isPatched) {
       console.warn('[LogLens] Already initialized');
       return;
     }
 
+    this.OriginalPromise = Promise;
     this.patchPromise();
     this.isPatched = true;
     console.log('[LogLens] Initialized - Auto trace propagation enabled');
   }
 
-  /**
-   * 현재 활성화 여부
-   */
   static isEnabled(): boolean {
     return this.isPatched;
   }
 
-  /**
-   * Zone 실행 (비동기)
-   */
   static async runAsync<T>(
     context: ZoneContext,
     fn: () => Promise<T>,
@@ -98,9 +93,6 @@ class LightZone {
     }
   }
 
-  /**
-   * Zone 실행 (동기)
-   */
   static run<T>(context: ZoneContext, fn: () => T): T {
     this.stack.push(context);
 
@@ -111,43 +103,33 @@ class LightZone {
     }
   }
 
-  /**
-   * 현재 컨텍스트 조회
-   */
   static current(): ZoneContext | null {
     return this.stack[this.stack.length - 1] || null;
   }
 
-  /**
-   * 현재 traceId만 조회
-   */
   static getTraceId(): string | null {
     return this.current()?.traceId || null;
   }
 
-  /**
-   * 스택 깊이 조회
-   */
   static getDepth(): number {
     return this.stack.length;
   }
 
-  /**
-   * 스택 초기화 (테스트용)
-   */
   static reset(): void {
     this.stack = [];
+    this.isPatched = false;
   }
 
-  /**
-   * Promise 패치
-   */
   private static patchPromise(): void {
-    const OriginalPromise = Promise;
+    if (!this.OriginalPromise) {
+      throw new Error('[LogLens] OriginalPromise not initialized');
+    }
+
+    const OriginalPromise = this.OriginalPromise!;
     const zone = this;
 
     // Promise 생성자 패치
-    (window as any).Promise = class ZonedPromise<T> extends OriginalPromise<T> {
+    class ZonedPromise<T> extends OriginalPromise<T> {
       constructor(
         executor: (
           resolve: (value: T | PromiseLike<T>) => void,
@@ -157,90 +139,133 @@ class LightZone {
         const capturedContext = zone.current();
 
         super((resolve, reject) => {
-          const wrappedResolve = (value: T | PromiseLike<T>) => {
-            if (capturedContext) {
-              zone.stack.push(capturedContext);
-            }
-            try {
-              resolve(value);
-            } finally {
-              if (capturedContext) {
-                zone.stack.pop();
+          executor(
+            (value: T | PromiseLike<T>) => {
+              // 컨텍스트 복원
+              if (capturedContext && zone.current() !== capturedContext) {
+                zone.stack.push(capturedContext);
+                try {
+                  resolve(value);
+                } finally {
+                  zone.stack.pop();
+                }
+              } else {
+                resolve(value);
               }
-            }
-          };
-
-          const wrappedReject = (reason?: any) => {
-            if (capturedContext) {
-              zone.stack.push(capturedContext);
-            }
-            try {
-              reject(reason);
-            } finally {
-              if (capturedContext) {
-                zone.stack.pop();
+            },
+            (reason?: any) => {
+              // 컨텍스트 복원
+              if (capturedContext && zone.current() !== capturedContext) {
+                zone.stack.push(capturedContext);
+                try {
+                  reject(reason);
+                } finally {
+                  zone.stack.pop();
+                }
+              } else {
+                reject(reason);
               }
-            }
-          };
-
-          try {
-            executor(wrappedResolve, wrappedReject);
-          } catch (error) {
-            wrappedReject(error);
-          }
+            },
+          );
         });
       }
-    };
 
-    // Promise.resolve 패치
-    (window as any).Promise.resolve = function <T>(
+      then<TResult1 = T, TResult2 = never>(
+        onfulfilled?:
+          | ((value: T) => TResult1 | PromiseLike<TResult1>)
+          | null
+          | undefined,
+        onrejected?:
+          | ((reason: any) => TResult2 | PromiseLike<TResult2>)
+          | null
+          | undefined,
+      ): Promise<TResult1 | TResult2> {
+        const capturedContext = zone.current();
+
+        return super.then(
+          onfulfilled
+            ? (value: T) => {
+                // 컨텍스트 복원
+                if (capturedContext && zone.current() !== capturedContext) {
+                  zone.stack.push(capturedContext);
+                  try {
+                    return onfulfilled(value);
+                  } finally {
+                    zone.stack.pop();
+                  }
+                }
+                return onfulfilled(value);
+              }
+            : undefined,
+          onrejected
+            ? (reason: any) => {
+                // 컨텍스트 복원
+                if (capturedContext && zone.current() !== capturedContext) {
+                  zone.stack.push(capturedContext);
+                  try {
+                    return onrejected(reason);
+                  } finally {
+                    zone.stack.pop();
+                  }
+                }
+                return onrejected(reason);
+              }
+            : undefined,
+        ) as Promise<TResult1 | TResult2>;
+      }
+    }
+
+    // 전역 Promise 교체
+    (globalThis as any).Promise = ZonedPromise;
+
+    // 정적 메서드들
+    ZonedPromise.resolve = function <T>(
       value?: T | PromiseLike<T>,
     ): Promise<T> {
-      return new (window as any).Promise((resolve: any) => resolve(value));
+      return new ZonedPromise((resolve) => resolve(value as T));
     };
 
-    // Promise.reject 패치
-    (window as any).Promise.reject = function <T = never>(
-      reason?: any,
-    ): Promise<T> {
-      return new (window as any).Promise((_: any, reject: any) =>
-        reject(reason),
-      );
+    ZonedPromise.reject = function <T = never>(reason?: any): Promise<T> {
+      return new ZonedPromise((_, reject) => reject(reason));
     };
 
-    // Promise.all 패치 - 패치된 생성자를 거치게
-    (window as any).Promise.all = function <T>(
+    ZonedPromise.all = function <T>(
       values: Iterable<T | PromiseLike<T>>,
     ): Promise<Awaited<T>[]> {
-      return new (window as any).Promise((resolve: any, reject: any) => {
+      return new ZonedPromise((resolve, reject) => {
         OriginalPromise.all(values).then(resolve, reject);
       }) as Promise<Awaited<T>[]>;
     };
 
-    // Promise.race 패치
-    (window as any).Promise.race = function <T>(
+    ZonedPromise.race = function <T>(
       values: Iterable<T | PromiseLike<T>>,
     ): Promise<Awaited<T>> {
-      return new (window as any).Promise((resolve: any, reject: any) => {
+      return new ZonedPromise((resolve, reject) => {
         OriginalPromise.race(values).then(resolve, reject);
       }) as Promise<Awaited<T>>;
     };
 
-    // Promise.allSettled 패치
-    (window as any).Promise.allSettled = function <T>(
+    ZonedPromise.allSettled = function <T>(
       values: Iterable<T | PromiseLike<T>>,
     ): Promise<PromiseSettledResult<Awaited<T>>[]> {
-      return new (window as any).Promise((resolve: any) => {
+      return new ZonedPromise((resolve) => {
         OriginalPromise.allSettled(values).then(resolve);
       }) as Promise<PromiseSettledResult<Awaited<T>>[]>;
     };
 
+    if ((OriginalPromise as any).any) {
+      (ZonedPromise as any).any = function <T>(
+        values: Iterable<T | PromiseLike<T>>,
+      ): Promise<Awaited<T>> {
+        return new ZonedPromise((resolve, reject) => {
+          (OriginalPromise as any).any(values).then(resolve, reject);
+        });
+      };
+    }
+
     console.log('[LogLens] Promise patched - TraceId auto-propagation active');
   }
 
-  /**
-   * 상태 조회 (디버깅용)
-   */
   static getStatus() {
     return {
       isPatched: this.isPatched,

@@ -31,6 +31,7 @@ function extractFunctionName(): string {
           'withLogLens',
           'extractFunctionName',
           'runAsync',
+          'run',
           'Object',
           'Module',
           'eval',
@@ -134,6 +135,11 @@ function logError(
 
 /**
  * 함수를 LogLens로 래핑 (자동 traceId 생성 및 전파)
+ *
+ * ✅ 진짜 최종 해결책:
+ * - async 함수 감지 후 runAsync 내부에서 실행
+ * - Promise 반환 함수는 run + then 체인
+ * - 동기 함수는 run으로 처리
  */
 function withLogLens<T extends (...args: any[]) => any>(
   fn: T,
@@ -144,54 +150,86 @@ function withLogLens<T extends (...args: any[]) => any>(
     (fn.name && fn.name !== 'anonymous' ? fn.name : null) ||
     extractFunctionName();
 
+  // ✅ async 함수인지 미리 확인
+  const isAsyncFunction = fn.constructor.name === 'AsyncFunction';
+
   return ((...args: any[]) => {
     const traceId = crypto.randomUUID();
-    const startTime = Date.now();
     const shouldLog = !options?.skipLog;
+    const startTime = Date.now();
 
     // 시작 로그
     if (shouldLog) {
       logStart(traceId, functionName, args);
     }
 
-    try {
-      const result = fn(...args);
-
-      if (result instanceof Promise) {
-        // 비동기 처리
-        return LightZone.runAsync({ traceId }, async () => {
-          try {
-            const value = await result;
-            const duration = Date.now() - startTime;
-
-            if (shouldLog) {
-              logSuccess(traceId, functionName, value, duration);
-            }
-
-            return value;
-          } catch (error: any) {
-            const duration = Date.now() - startTime;
-            logError(traceId, functionName, error, duration);
-            throw error;
-          }
-        });
-      } else {
-        // 동기 처리
-        return LightZone.run({ traceId }, () => {
+    // ✅ async 함수: runAsync 내부에서 실행
+    if (isAsyncFunction) {
+      return LightZone.runAsync({ traceId }, async () => {
+        try {
+          const value = await fn(...args);
           const duration = Date.now() - startTime;
 
           if (shouldLog) {
-            logSuccess(traceId, functionName, result, duration);
+            logSuccess(traceId, functionName, value, duration);
           }
 
-          return result;
-        });
-      }
-    } catch (error: any) {
-      const duration = Date.now() - startTime;
-      logError(traceId, functionName, error, duration);
-      throw error;
+          return value;
+        } catch (error: any) {
+          const duration = Date.now() - startTime;
+          logError(traceId, functionName, error, duration);
+          throw error;
+        }
+      });
     }
+
+    // ✅ 동기 또는 Promise 반환 함수: run 내부에서 실행
+    let result: any;
+    let syncError: any = null;
+
+    LightZone.run({ traceId }, () => {
+      try {
+        result = fn(...args);
+      } catch (error) {
+        syncError = error;
+      }
+    });
+
+    // 동기 에러 처리
+    if (syncError) {
+      const duration = Date.now() - startTime;
+      logError(traceId, functionName, syncError, duration);
+      throw syncError;
+    }
+
+    // Promise 체크
+    if (result && typeof result.then === 'function') {
+      // ✅ Promise 반환 함수: then 체인으로 로깅
+      return result
+        .then((value: any) => {
+          const duration = Date.now() - startTime;
+
+          if (shouldLog) {
+            logSuccess(traceId, functionName, value, duration);
+          }
+
+          return value;
+        })
+        .catch((error: any) => {
+          const duration = Date.now() - startTime;
+          logError(traceId, functionName, error, duration);
+          throw error;
+        });
+    }
+
+    // ✅ 동기 함수: 즉시 로깅 후 반환
+    const duration = Date.now() - startTime;
+
+    if (shouldLog) {
+      logSuccess(traceId, functionName, result, duration);
+    }
+
+    return result;
   }) as T;
 }
 
