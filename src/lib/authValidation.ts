@@ -40,8 +40,8 @@ export const validatePassword = (password: string): string | null => {
     return '비밀번호는 8자 이상이어야 합니다.';
   }
 
-  if (!/(?=.*[a-zA-Z])(?=.*[0-9])/.test(password)) {
-    return '비밀번호는 영문과 숫자를 포함해야 합니다.';
+  if (!/(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#$%^&*])/.test(password)) {
+    return '비밀번호는 영문 대소문자, 숫자, 특수문자를 포함해야 합니다.';
   }
 
   return null;

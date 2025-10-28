@@ -12,7 +12,7 @@ export interface ApiErrorResponse {
   code: string;
   message: string;
   timestamp: string;
-  body?: unknown;
+  data?: unknown;
 }
 
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
