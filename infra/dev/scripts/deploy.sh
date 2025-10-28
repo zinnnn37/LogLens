@@ -316,31 +316,37 @@ if [ -f "$NGINX_CONFIG_FILE" ]; then
     cp "$NGINX_CONFIG_FILE" ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME}
     ln -sf ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME} ${NGINX_SITES_ENABLED}/${NGINX_SITE_NAME}
 
-    # nginx 설정 테스트
-    if nginx -t; then
-        nginx -s reload
-        echo "✅ nginx 재로드 완료 (${NEW_ENV} 환경으로 전환)"
-        
-        # 전환 확인
-        ACTIVE_PORT=$(grep "server localhost:" ${NGINX_SITES_ENABLED}/${NGINX_SITE_NAME} | head -1 | awk -F: '{print $2}' | tr -d '; ')
-        echo "✅ 활성 포트: $ACTIVE_PORT"
-    else
-        echo "❌ nginx 설정 테스트 실패"
-        
-        # 롤백: 이전 환경 설정으로 복구
-        if [ "$CURRENT_ENV" != "" ] && [ -f "$OLD_NGINX_CONFIG_FILE" ]; then
-            echo "🔄 이전 환경 설정으로 롤백 중..."
-            cp "$OLD_NGINX_CONFIG_FILE" ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME}
-            ln -sf ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME} ${NGINX_SITES_ENABLED}/${NGINX_SITE_NAME}
+    # nginx reload (kill 시그널 사용)
+    if [ -f /var/run/nginx.pid ]; then
+        NGINX_PID=$(cat /var/run/nginx.pid)
+        echo "🔄 nginx reload 중... (PID: $NGINX_PID)"
+        kill -HUP $NGINX_PID
 
-            if nginx -t && nginx -s reload; then
-                echo "✅ 이전 환경으로 nginx 설정 복구 완료"
-            else
-                echo "❌ nginx 설정 복구도 실패!"
-            fi
+        if [ $? -eq 0 ]; then
+            echo "✅ nginx 재로드 완료 (${NEW_ENV} 환경으로 전환)"
+
+            # 전환 확인
+            ACTIVE_PORT=$(grep "server localhost:" ${NGINX_SITES_ENABLED}/${NGINX_SITE_NAME} | head -1 | awk -F: '{print $2}' | tr -d '; ')
+            echo "✅ 활성 포트: $ACTIVE_PORT"
         else
-            echo "⚠️ 이전 환경 설정을 찾을 수 없어 롤백을 건너뜁니다."
+            echo "❌ nginx reload 실패"
+
+            # 롤백: 이전 환경 설정으로 복구
+            if [ "$CURRENT_ENV" != "" ] && [ -f "$OLD_NGINX_CONFIG_FILE" ]; then
+                echo "🔄 이전 환경 설정으로 롤백 중..."
+                cp "$OLD_NGINX_CONFIG_FILE" ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME}
+                ln -sf ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME} ${NGINX_SITES_ENABLED}/${NGINX_SITE_NAME}
+                kill -HUP $NGINX_PID && echo "✅ 이전 환경으로 nginx 설정 복구 완료" || echo "❌ nginx 설정 복구도 실패!"
+            else
+                echo "⚠️ 이전 환경 설정을 찾을 수 없어 롤백을 건너뜁니다."
+            fi
         fi
+    else
+        echo "⚠️ nginx PID 파일을 찾을 수 없습니다: /var/run/nginx.pid"
+        echo "📋 설정 파일은 업데이트되었으나 reload는 수동으로 실행 필요:"
+        echo "   sudo systemctl reload nginx"
+        # 설정은 변경되었으므로 경고만 하고 계속 진행
+    fi
 
         # 디버그 모드에서는 컨테이너를 유지
         if [ "$DEBUG_MODE" != "true" ]; then
