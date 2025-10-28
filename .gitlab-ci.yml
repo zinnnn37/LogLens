@@ -1,7 +1,7 @@
 stages:
   - test
   - build
-  - deploy_test
+  - deploy
 
 test:
   stage: test
@@ -27,8 +27,8 @@ build:
   only:
     - npm/main
 
-deploy_test_local:
-  stage: deploy_test
+npm-deploy:
+  stage: deploy
   tags:
     - npm
   dependencies:
@@ -37,28 +37,26 @@ deploy_test_local:
     - git config --global user.email "ci@gitlab.com"
     - git config --global user.name "GitLab CI"
   script:
-    # NPM_DEPLOY_TOKEN으로 클론
     - $token = $env:NPM_DEPLOY_TOKEN
     - $gitUrl = "https://oauth2:$token@lab.ssafy.com/s13-final/S13P31A306.git"
-    - git clone --depth 1 --branch npm/main $gitUrl test-temp
+    - git clone --depth 1 --branch fe/main $gitUrl temp
     
-    # 빌드 파일 복사
-    - New-Item -ItemType Directory -Force -Path test-temp/test-static/lib
-    - Copy-Item dist/index.es.js test-temp/test-static/lib/loglens.esm.js
-    - Copy-Item dist/index.umd.js test-temp/test-static/lib/loglens.umd.js
-    - Copy-Item dist/index.d.ts test-temp/test-static/lib/loglens.d.ts
-    - Get-ChildItem test-temp/test-static/lib
+    # public/lib에 복사
+    - New-Item -ItemType Directory -Force -Path temp/public/lib
+    - Copy-Item dist/index.es.js temp/public/lib/loglens.esm.js
+    - Copy-Item dist/index.umd.js temp/public/lib/loglens.umd.js
+    - Copy-Item dist/index.d.ts temp/public/lib/loglens.d.ts
+    - Get-ChildItem temp/public/lib
     
-    # 커밋 & 푸시
-    - cd test-temp
-    - git add test-static/
+    - cd temp
+    - git add public/
     - git status
     - |
-      $changes = git diff --staged --quiet
+      git diff --staged --quiet
       if ($LASTEXITCODE -ne 0) {
-        git commit -m "test: CI push test [skip ci]"
+        git commit -m "chore: update loglens library [skip ci]"
       }
-    - git push $gitUrl HEAD:npm/main
-    - Write-Host "✅ npm/main에 test-static/ 폴더가 생성되었습니다!"
+    - git push $gitUrl HEAD:fe/main
+    - Write-Host "✅ fe/main의 public/lib/에 배포 완료!"
   only:
     - npm/main
