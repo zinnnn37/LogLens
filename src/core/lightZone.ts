@@ -15,31 +15,31 @@ type ZoneContext = {
  * 인덱스 시그니처
  * - ZoneContext 객체가 동적으로 여러 속성을 가질 수 있도록 허용
  *
- * ✅ 가능 - traceId만
- * const ctx1: ZoneContext = {
- *   traceId: 'abc-123'
- * };
+ ** 가능 - traceId만
+ ** const ctx1: ZoneContext = {
+ **  traceId: 'abc-123'
+ ** };
  *
- * ✅ 가능 - 추가 필드들
- * const ctx2: ZoneContext = {
- *   traceId: 'abc-123',
- *   userId: 'user-456',
- *   requestId: 'req-789',
- *   sessionId: 'sess-999'
- * ;
+ ** 가능 - 추가 필드들
+ ** const ctx2: ZoneContext = {
+ **   traceId: 'abc-123',
+ **   userId: 'user-456',
+ **   requestId: 'req-789',
+ **   sessionId: 'sess-999'
+ ** };
  *
- * ✅ 가능 - 어떤 키든
- * const ctx3: ZoneContext = {
- *   traceId: 'abc-123',
- *   anything: 'value',
- *   whatever: 123,
- *   randomKey: true
- * };
+ ** ✅ 가능 - 어떤 키든
+ ** const ctx3: ZoneContext = {
+ **   traceId: 'abc-123',
+ **   anything: 'value',
+ **   whatever: 123,
+ **   randomKey: true
+ ** };
  *
- * ❌ 불가능 - traceId 없음
- * const ctx4: ZoneContext = {
- *   userId: 'user-456'
- * };
+ *! ❌ 불가능 - traceId 없음
+ *! const ctx4: ZoneContext = {
+ *!   userId: 'user-456'
+ *! };
  */
 
 /**
@@ -57,8 +57,6 @@ type ZoneContext = {
  *   비동기 작업 수행
  * });
  */
-// src/core/lightZone.ts - 완전 재작성
-
 class LightZone {
   private static stack: ZoneContext[] = [];
   private static isPatched = false;

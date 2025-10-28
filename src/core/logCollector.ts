@@ -42,6 +42,8 @@ class LogCollector {
    */
   static addLog(log: LogEntry): void {
     this.logs.push(log);
+    console.log('[LogCollector] New log added:');
+    console.log(this.logs);
 
     const formatted = LogFormatter.toConsole(log);
     console.log(formatted);
