@@ -13,7 +13,7 @@ class EmbeddingService:
     def __init__(self):
         self.embeddings = OpenAIEmbeddings(
             model=settings.EMBEDDING_MODEL,
-            openai_api_key=settings.OPENAI_API_KEY,
+            api_key=settings.OPENAI_API_KEY,
         )
 
     async def embed_query(self, text: str) -> List[float]:

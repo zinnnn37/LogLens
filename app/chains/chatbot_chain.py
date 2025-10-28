@@ -11,7 +11,7 @@ from app.core.config import settings
 llm = ChatOpenAI(
     model=settings.LLM_MODEL,
     temperature=0.7,
-    openai_api_key=settings.OPENAI_API_KEY,
+    api_key=settings.OPENAI_API_KEY,
 )
 
 # Prompt template for RAG-based chatbot

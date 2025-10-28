@@ -13,7 +13,7 @@ from app.models.analysis import LogAnalysisResult
 llm = ChatOpenAI(
     model=settings.LLM_MODEL,
     temperature=0.3,
-    openai_api_key=settings.OPENAI_API_KEY,
+    api_key=settings.OPENAI_API_KEY,
 )
 
 # Output parser
