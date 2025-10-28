@@ -1,84 +1,72 @@
 plugins {
     id 'java-library'
+    id 'maven-publish'
     id 'org.springframework.boot' version '3.5.6'
     id 'io.spring.dependency-management' version '1.1.7'
-    id 'maven-publish'
 }
 
 group = 'com.loglens'
 version = '1.1.0'
 
-repositories {
-    mavenCentral()
-}
-
 java {
+    withSourcesJar()
+    withJavadocJar()
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
+repositories {
+    mavenCentral()
+}
+
 dependencies {
-    // api로 변경 (라이브러리니까 의존성 노출)
-    api 'org.springframework.boot:spring-boot-starter-aop'
-    api 'org.springframework.boot:spring-boot-starter-web'
-    api 'org.springframework.boot:spring-boot-starter-webflux'
-    api 'com.fasterxml.jackson.core:jackson-databind'
-    api 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+    compileOnly 'org.springframework.boot:spring-boot-starter-webflux'
+    compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
 
-    compileOnly 'org.springframework.data:spring-data-commons'
-    compileOnly 'org.projectlombok:lombok:1.18.30'
-    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
 
-    testImplementation platform('org.junit:junit-bom:5.10.0')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    implementation 'org.aspectj:aspectjweaver'
+    implementation 'jakarta.servlet:jakarta.servlet-api'
 }
 
-// ========================================
-// JAR 설정 (중요!)
-// ========================================
-
-// 일반 JAR 생성 활성화
-jar {
-    enabled = true
-}
-
-// Spring Boot 실행 JAR 비활성화
+// ✅ 중요: Spring Boot jar 대신 일반 jar 생성
 bootJar {
     enabled = false
 }
 
-// ========================================
-// 테스트
-// ========================================
-
-test {
-    useJUnitPlatform()
+jar {
+    enabled = true
+    archiveClassifier = ''  // ✅ -plain 제거!
 }
 
-// ========================================
-// Maven 배포 설정
-// ========================================
-
+// ✅ Publishing 설정
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            from components.java
-
-            // 명시적으로 groupId, artifactId, version 설정
             groupId = 'com.loglens'
             artifactId = 'loglens-spring-boot-starter'
             version = '1.1.0'
 
-            versionMapping {
-                usage('java-api') {
-                    fromResolutionOf('runtimeClasspath')
-                }
-                usage('java-runtime') {
-                    fromResolutionResult()
-                }
+            from components.java
+
+            pom {
+                name = 'LogLens Spring Boot Starter'
+                description = 'Structured logging and dependency tracking library'
             }
+        }
+    }
+
+    repositories {
+        maven {
+            name = 'local'
+            url = layout.buildDirectory.dir('maven-repo')
         }
     }
 }
