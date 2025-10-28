@@ -38,7 +38,11 @@ deploy_test_local:
     - git config --global user.email "ci@gitlab.com"
     - git config --global user.name "GitLab CI"
   script:
-    - git clone --depth 1 --branch npm/main https://oauth2:${env:CI_JOB_TOKEN}@lab.ssafy.com/s13-final/S13P31A306.git test-temp
+    # PowerShell 변수로 먼저 저장
+    - $token = $env:CI_JOB_TOKEN
+    - $gitUrl = "https://oauth2:$token@lab.ssafy.com/s13-final/S13P31A306.git"
+    - Write-Host "Cloning from project..."
+    - git clone --depth 1 --branch npm/main $gitUrl test-temp
     - New-Item -ItemType Directory -Force -Path test-temp/test-static/lib
     - Copy-Item dist/index.es.js test-temp/test-static/lib/loglens.esm.js
     - Copy-Item dist/index.umd.js test-temp/test-static/lib/loglens.umd.js
@@ -52,7 +56,7 @@ deploy_test_local:
       if ($LASTEXITCODE -ne 0) {
         git commit -m "test: CI push test [skip ci]"
       }
-    - git push https://oauth2:${env:CI_JOB_TOKEN}@lab.ssafy.com/s13-final/S13P31A306.git HEAD:npm/main
+    - git push $gitUrl HEAD:npm/main
     - Write-Host "✅ npm/main에 test-static/ 폴더가 생성되었습니다!"
   only:
     - npm/main
