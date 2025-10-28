@@ -21,11 +21,11 @@ class Settings(BaseSettings):
     LLM_MODEL: str = "gpt-4o-mini"
 
     # OpenSearch
-    OPENSEARCH_HOST: str = "localhost"
+    OPENSEARCH_HOST: str = "opensearch"
     OPENSEARCH_PORT: int = 9200
     OPENSEARCH_USER: str = "admin"  # Default for development
     OPENSEARCH_PASSWORD: str = "Admin123!@#"  # Default for development
-    OPENSEARCH_USE_SSL: bool = True  # OpenSearch uses HTTPS
+    OPENSEARCH_USE_SSL: bool = False  # OpenSearch security plugin disabled
 
     # Kafka
     KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"

@@ -8,7 +8,7 @@ echo "⏰ 시작 시간: $(date '+%Y-%m-%d %H:%M:%S')"
 # nginx 설정 파일 경로
 NGINX_SITES_AVAILABLE="/etc/nginx/sites-available"
 NGINX_SITES_ENABLED="/etc/nginx/sites-enabled"
-NGINX_SITE_NAME="ai"
+NGINX_SITE_NAME="loglens-ai"
 
 # 디버그 모드 설정 (실패 시 컨테이너 유지)
 DEBUG_MODE="${DEBUG_MODE:-false}"

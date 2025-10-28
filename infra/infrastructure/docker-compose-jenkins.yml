@@ -18,7 +18,7 @@ services:
       - /etc/nginx:/etc/nginx
       - /var/run:/var/run
     environment:
-      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=true
     restart: unless-stopped
     networks:
       - ai-loglens-network
