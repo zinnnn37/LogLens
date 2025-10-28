@@ -69,6 +69,11 @@ public class MethodLoggingAspect {
         return logMethodExecution(joinPoint);
     }
 
+    @Around("within(@org.springframework.stereotype.Component *) && execution(public * *(..))")
+    public Object logComponentMethods(ProceedingJoinPoint joinPoint) throws Throwable {
+        return logMethodExecution(joinPoint);
+    }
+
     /**
      * @LogMethodExecution 어노테이션
      */
