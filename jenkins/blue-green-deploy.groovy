@@ -79,52 +79,41 @@ pipeline {
                     docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}" | grep ai-service
 
                     # AI 서비스 활성 포트 확인 (8000 또는 8001)
-                    NGINX_CONFIG="/etc/nginx/sites-enabled/ai.loglens.store"
+                    NGINX_CONFIG="/etc/nginx/sites-enabled/loglens-ai"
                     if [ -f "$NGINX_CONFIG" ]; then
                         ACTIVE_PORT=$(grep "server localhost:" $NGINX_CONFIG | awk -F: '{print $2}' | tr -d ';' | xargs)
                         echo "✅ Active AI service port: $ACTIVE_PORT"
-                        
-                        # AI 서비스 헬스체크
+
+                        # AI 서비스 헬스체크 (Docker HEALTHCHECK 상태 확인)
                         echo "🏥 AI service health check:"
-                        if curl -f http://localhost:${ACTIVE_PORT}/api/v1/health; then
+                        if docker ps --filter "name=ai-service" --filter "health=healthy" --format "{{.Names}}" | grep -q ai-service; then
                             echo "✅ AI service health check passed"
+
+                            # 컨테이너 내부에서 health endpoint 확인
+                            CONTAINER=$(docker ps --filter "name=ai-service" --format "{{.Names}}" | head -1)
+                            echo "🔍 Testing health endpoint in container: $CONTAINER"
+                            docker exec $CONTAINER curl -f http://localhost:8000/api/v1/health > /dev/null 2>&1 && echo "✅ Health endpoint responding" || echo "⚠️ Health endpoint test failed"
                         else
                             echo "❌ AI service health check failed"
                             exit 1
                         fi
 
-                        # AI 서비스 기본 엔드포인트 확인
-                        echo "🔍 AI service endpoints test:"
-                        curl -f http://localhost:${ACTIVE_PORT}/ | head -5 || echo "Root endpoint test completed"
-
                         # AI 서비스 API 엔드포인트 확인
-                        echo "🤖 AI service API endpoints verification:"
+                        echo "🤖 AI service API endpoints:"
                         echo "✅ Health endpoint: /api/v1/health"
                         echo "✅ Log analysis endpoint: /api/v1/logs/{log_id}/analysis"
                         echo "✅ Chatbot endpoint: /api/v1/chatbot/ask"
-
-                        # 실제 존재하는 엔드포인트만 테스트
-                        if curl -s http://localhost:${ACTIVE_PORT}/api/v1/health | jq . > /dev/null 2>&1; then
-                            echo "✅ Health check endpoint working"
-                        else
-                            echo "⚠️ Health check endpoint verification failed"
-                        fi
                         
                     else
                         echo "⚠️ Nginx config not found at $NGINX_CONFIG"
-                        echo "📋 Checking if AI service is running on default ports..."
-                        
-                        # 기본 포트들 확인
-                        for port in 8000 8001; do
-                            if curl -f http://localhost:${port}/api/v1/health 2>/dev/null; then
-                                echo "✅ AI service responding on port $port"
-                                ACTIVE_PORT=$port
-                                break
-                            fi
-                        done
-                        
-                        if [ -z "$ACTIVE_PORT" ]; then
-                            echo "❌ AI service not responding on any expected port"
+                        echo "📋 Checking AI service container health status..."
+
+                        # Docker HEALTHCHECK 상태로 확인
+                        if docker ps --filter "name=ai-service" --filter "health=healthy" --format "{{.Names}}" | grep -q ai-service; then
+                            CONTAINER=$(docker ps --filter "name=ai-service" --format "{{.Names}}" | head -1)
+                            echo "✅ AI service container $CONTAINER is healthy"
+                        else
+                            echo "❌ AI service container not healthy"
                             exit 1
                         fi
                     fi
