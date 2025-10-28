@@ -48,7 +48,10 @@ deploy_test_local:
     - cd test-temp
     - git add test-static/
     - git status
-    - git diff --staged --quiet || git commit -m "test: CI push test [skip ci]"
+    - |
+      if ! git diff --staged --quiet; then
+        git commit -m "test: CI push test [skip ci]"
+      fi
     - git push https://oauth2:${CI_JOB_TOKEN}@gitlab.com/username/project.git HEAD:npm/main
     - echo "✅ npm/main에 test-static/ 폴더가 생성되었습니다!"
   only:
