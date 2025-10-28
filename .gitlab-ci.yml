@@ -39,23 +39,20 @@ deploy_test_local:
     - git config --global user.email "ci@gitlab.com"
     - git config --global user.name "GitLab CI"
   script:
-    # npm 프로젝트 자체를 클론 (테스트용)
     - git clone --depth 1 --branch npm/main https://oauth2:${CI_JOB_TOKEN}@gitlab.com/username/project.git test-temp
-    
-    # 테스트 디렉토리에 복사
     - mkdir -p test-temp/test-static/lib
     - cp dist/index.es.js test-temp/test-static/lib/loglens.esm.js
     - cp dist/index.umd.js test-temp/test-static/lib/loglens.umd.js
     - cp dist/index.d.ts test-temp/test-static/lib/loglens.d.ts
     - ls -la test-temp/test-static/lib/
-    
-    # git 작업
     - cd test-temp
     - git add test-static/
     - git status
-    - git diff --staged --quiet || git commit -m "test: CI push test [skip ci]"
+    - |
+      if ! git diff --staged --quiet; then
+        git commit -m "test: CI push test [skip ci]"
+      fi
     - git push https://oauth2:${CI_JOB_TOKEN}@gitlab.com/username/project.git HEAD:npm/main
-    
     - echo "✅ npm/main에 test-static/ 폴더가 생성되었습니다!"
   only:
     - npm/main
