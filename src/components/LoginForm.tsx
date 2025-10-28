@@ -57,7 +57,11 @@ export const LoginForm = ({
   };
 
   return (
-    <form className={cn('flex flex-col', className)} onSubmit={handleSubmit} {...props}>
+    <form
+      className={cn('flex flex-col', className)}
+      onSubmit={handleSubmit}
+      {...props}
+    >
       <FieldGroup className="font-yisunsin gap-4">
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="font-pretendard text-2xl font-bold">로그인</h1>
@@ -65,7 +69,7 @@ export const LoginForm = ({
             로그인해서 프로젝트를 관리해보세요
           </p>
           {apiError && (
-            <p className="text-destructive text-sm bg-destructive/10 rounded-md px-4 py-2 w-full">
+            <p className="text-destructive bg-destructive/10 w-full rounded-md px-4 py-2 text-sm">
               {apiError}
             </p>
           )}
@@ -79,7 +83,7 @@ export const LoginForm = ({
             type="email"
             placeholder="ssafy@example.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value)}
             required
             className="rounded-[15px]"
           />
@@ -96,7 +100,7 @@ export const LoginForm = ({
               id="password"
               type={showPassword ? 'text' : 'password'}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
               required
               className="rounded-[15px] pr-10"
             />

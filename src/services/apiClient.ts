@@ -61,7 +61,9 @@ class ApiClient {
 
           try {
             // refresh token으로 새로운 access token 발급
-            const response = await this.instance.post('/api/auth/tokens/refresh');
+            const response = await this.instance.post(
+              '/api/auth/tokens/refresh',
+            );
             const newAccessToken = response.data.data.accessToken;
 
             // 새로운 토큰 저장
