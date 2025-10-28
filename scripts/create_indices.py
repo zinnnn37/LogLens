@@ -42,8 +42,8 @@ def create_logs_index_template():
                         "dimension": 1536,  # text-embedding-3-large
                         "method": {
                             "name": "hnsw",
-                            "space_type": "cosinesimil",
-                            "engine": "lucene",
+                            "space_type": "cosinesimilarity",
+                            "engine": "faiss",
                         },
                     },
                     "ai_analysis": {
@@ -98,8 +98,8 @@ def create_qa_cache_index():
                     "dimension": 1536,
                     "method": {
                         "name": "hnsw",
-                        "space_type": "cosinesimil",
-                        "engine": "lucene",
+                        "space_type": "cosinesimilarity",
+                        "engine": "faiss",
                     },
                 },
                 "answer": {"type": "text"},
