@@ -39,7 +39,7 @@ class LogFormatter {
         ? `${durationColor}(${logEntry.executionTimeMs
             .toString()
             .padStart(5)}ms)${reset}`
-        : `${gray}(    - )${reset}`;
+        : '';
 
     // methodName이 없으면 comment 사용
     const displayName = logEntry.logger || logEntry.message || 'anonymous';
