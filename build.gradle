@@ -10,7 +10,6 @@ version = '1.1.0'
 
 java {
     withSourcesJar()
-    withJavadocJar()
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
@@ -25,48 +24,32 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-aop'
     compileOnly 'org.springframework.boot:spring-boot-starter-webflux'
     compileOnly 'org.springframework.boot:spring-boot-starter-data-jpa'
-
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
-
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
-
-    implementation 'org.aspectj:aspectjweaver'
-    implementation 'jakarta.servlet:jakarta.servlet-api'
 }
 
-// ✅ 중요: Spring Boot jar 대신 일반 jar 생성
 bootJar {
     enabled = false
 }
 
 jar {
     enabled = true
-    archiveClassifier = ''  // ✅ -plain 제거!
 }
 
-// ✅ Publishing 설정
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            groupId = 'com.loglens'
-            artifactId = 'loglens-spring-boot-starter'
-            version = '1.1.0'
-
             from components.java
-
-            pom {
-                name = 'LogLens Spring Boot Starter'
-                description = 'Structured logging and dependency tracking library'
-            }
         }
     }
-
     repositories {
+        mavenLocal()
         maven {
-            name = 'local'
             url = layout.buildDirectory.dir('maven-repo')
         }
     }
+}
+
+tasks.withType(GenerateModuleMetadata).configureEach {
+    suppressedValidationErrors.add('dependencies-without-versions')
 }
