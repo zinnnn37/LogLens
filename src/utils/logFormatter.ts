@@ -1,11 +1,8 @@
 // src/utils/logFormatter.ts
 
 import type { LogEntry } from '../core/types';
-import TraceContext from '../core/traceContext';
+import { LightZone } from '../core/lightZone';
 
-/**
- * 로그 포맷터 클래스
- */
 class LogFormatter {
   private static readonly COLORS = {
     INFO: '\x1b[30m', // black
@@ -20,31 +17,37 @@ class LogFormatter {
   private static readonly LEVEL_WIDTH = 5;
 
   static toConsole(logEntry: LogEntry): string {
-    const depth: number = Math.max(0, TraceContext.getDepth() - 1);
+    const depth: number = Math.max(0, LightZone.getDepth() - 1);
     const indent: string = '|'.repeat(depth);
     const arrow: string = '→';
 
-    const color: string = this.COLORS[logEntry.logLevel];
+    const color: string = this.COLORS[logEntry.level];
     const reset: string = this.COLORS.RESET;
     const gray: string = this.COLORS.GRAY;
 
     // 로그 레벨 우측 정렬
-    const level = `${color}[${logEntry.logLevel.padStart(
+    const level = `${color}[${logEntry.level.padStart(
       this.LEVEL_WIDTH,
     )}]${reset}`;
 
     // Duration 색상
     const durationColor: string | null = this.getDurationColor(
-      logEntry.executionTime,
+      logEntry.executionTimeMs,
     );
     const duration =
-      logEntry.executionTime !== null
-        ? `${durationColor}(${logEntry.executionTime
+      logEntry.executionTimeMs !== null
+        ? `${durationColor}(${logEntry.executionTimeMs
             .toString()
             .padStart(5)}ms)${reset}`
         : `${gray}(    - )${reset}`;
 
-    return `${level} ${indent}${arrow} ${logEntry.methodName} ${duration}`;
+    // methodName이 없으면 comment 사용
+    const displayName = logEntry.logger || logEntry.message || 'anonymous';
+    const message = logEntry.message
+      ? `${displayName}: ${gray}${logEntry.message}${reset}`
+      : displayName;
+
+    return `${level} ${indent}${arrow} ${message} ${duration}`;
   }
 
   /**

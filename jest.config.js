@@ -7,6 +7,7 @@ module.exports = {
       displayName: 'node',
       testEnvironment: 'node',
       testMatch: [
+        '<rootDir>/tests/*.test.ts',
         '<rootDir>/tests/core/**/*.test.ts',
         '<rootDir>/tests/wrappers/**/*.test.ts',
         '<rootDir>/tests/integration/**/*.test.ts',
