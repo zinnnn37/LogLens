@@ -42,7 +42,7 @@ def create_logs_index_template():
                         "dimension": 1536,  # text-embedding-3-large
                         "method": {
                             "name": "hnsw",
-                            "space_type": "cosinesimilarity",
+                            "space_type": "l2",
                             "engine": "faiss",
                         },
                     },
@@ -98,7 +98,7 @@ def create_qa_cache_index():
                     "dimension": 1536,
                     "method": {
                         "name": "hnsw",
-                        "space_type": "cosinesimilarity",
+                        "space_type": "l2",
                         "engine": "faiss",
                     },
                 },
