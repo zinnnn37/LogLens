@@ -28,12 +28,19 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 }
 
+// ✅ 핵심: bootJar 비활성화
 bootJar {
     enabled = false
 }
 
+// ✅ 핵심: 일반 jar 활성화
 jar {
     enabled = true
+    archiveClassifier = ''
+}
+
+tasks.withType(GenerateModuleMetadata) {
+    enabled = false
 }
 
 publishing {
@@ -44,12 +51,5 @@ publishing {
     }
     repositories {
         mavenLocal()
-        maven {
-            url = layout.buildDirectory.dir('maven-repo')
-        }
     }
-}
-
-tasks.withType(GenerateModuleMetadata).configureEach {
-    suppressedValidationErrors.add('dependencies-without-versions')
 }
