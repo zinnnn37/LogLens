@@ -58,3 +58,56 @@ export interface PaginatedProjectResponse {
   first: boolean;
   last: boolean;
 }
+
+// 프로젝트 멤버 초대
+/**
+ * 멤버 초대 API (POST /api/projects/{projectId}/members) 요청 Body
+ */
+export interface InviteMemberPayload {
+  userId: number;
+}
+
+/**
+ * 멤버 초대 API 응답 (data.member)의 멤버 정보
+ */
+export interface InvitedMemberInfo {
+  userId: number;
+  username: string;
+  email: string;
+  joinedAt: string;
+}
+
+/**
+ * 멤버 초대 API (POST /api/projects/{projectId}/members)의
+ * `data` 필드 전체 응답 타입
+ */
+export interface InviteMemberResponse {
+  projectId: number;
+  member: InvitedMemberInfo;
+}
+
+// 프로젝트 상세조회
+/**
+ * 프로젝트 상세 조회 (data.members)에 포함된
+ * 개별 멤버 정보 타입
+ */
+export interface ProjectMember {
+  userId: number;
+  name: string;
+  email: string;
+  joinedAt: string;
+}
+
+/**
+ * 프로젝트 상세 조회 API (GET /api/projects/{projectId})의
+ * `data` 필드 전체 응답 타입
+ */
+export interface ProjectDetailDTO {
+  projectId: number;
+  projectName: string;
+  description: string;
+  apiKey: string;
+  members: ProjectMember[];
+  createdAt: string;
+  updatedAt: string;
+}

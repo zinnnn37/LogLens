@@ -6,22 +6,26 @@ import type {
   ProjectInfoDTO,
   PaginatedProjectResponse,
   Pageable,
+  ProjectDetailDTO,
 } from '@/types/project';
 
 interface ProjectState {
-  projects: ProjectInfoDTO[];
-  currentProject: ProjectInfoDTO | null;
+  projects: ProjectInfoDTO[]; // 프로젝트 
 
-  // 페이지네이션 상태 추가
+  // 프로젝트 상세 조회
+  currentProject: ProjectDetailDTO | null;
+
+  // 페이지네이션 상태
   pagination: Pageable | null;
   totalElements: number;
   totalPages: number;
 
   setProjects: (response: PaginatedProjectResponse) => void;
-
   addProject: (newProject: ProjectDTO) => void;
 
-  setCurrentProject: (project: ProjectInfoDTO | null) => void;
+  setCurrentProject: (project: ProjectDetailDTO | null) => void;
+
+  incrementMemberCount: (projectId: number) => void;
 }
 
 export const useProjectStore = create<ProjectState>(set => ({
@@ -68,7 +72,28 @@ export const useProjectStore = create<ProjectState>(set => ({
 
   /**
    * (GET /api/projects/{id})
-   * (향후 상세 조회 API 연결 시 사용)
+   * 'getProjectDetail' 서비스가 호출하는 액션.
+   * API 응답(ProjectDetailDTO)을 받아 'currentProject' 상태에 저장합니다.
    */
   setCurrentProject: project => set({ currentProject: project }),
+
+  /**
+   * (POST /api/projects/{projectId}/members)
+   * 멤버 초대가 성공했을 때, 해당 프로젝트의 memberCount를 1 증가시킵니다.
+   */
+  incrementMemberCount: projectId =>
+    set(state => ({
+      // 멤버 증가
+      projects: state.projects.map(project =>
+        project.projectId === projectId
+          ? { ...project, memberCount: project.memberCount + 1 }
+          : project,
+      ),
+
+      // 멤버 추가 후 다시 조회
+      currentProject:
+        state.currentProject?.projectId === projectId
+          ? null 
+          : state.currentProject,
+    })),
 }));
