@@ -4,13 +4,13 @@ uvicorn[standard]==0.27.0
 pydantic==2.5.3
 pydantic-settings==2.1.0
 
-# LangChain
-langchain==0.1.4
-langchain-openai==0.0.5
-langchain-community==0.0.16
+# LangChain (업그레이드 - 2025.01 안정 버전)
+langchain==0.2.16
+langchain-openai==0.1.25
+langchain-community==0.2.16
 
-# OpenAI
-openai==1.10.0
+# OpenAI (업그레이드)
+openai==1.51.0
 
 # OpenSearch
 opensearch-py==2.4.2
