@@ -17,6 +17,15 @@ export interface ProjectDTO {
 /**
  * 프로젝트 목록 조회
  */
+
+// 쿼리파라미터
+export interface GetProjectsParams {
+  page?: number;
+  size?: number;
+  sort?: 'CREATED_AT' | 'UPDATED_AT' | 'PROJECT_NAME';
+  order?: 'ASC' | 'DESC';
+}
+
 export interface ProjectInfoDTO {
   projectId: number;
   projectName: string;
