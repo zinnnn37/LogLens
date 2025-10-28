@@ -4,6 +4,8 @@ import a306.dependency_logger_starter.dependency.DependencyCollector;
 import a306.dependency_logger_starter.dependency.client.DependencyLogSender;
 import a306.dependency_logger_starter.logging.aspect.ExceptionHandlerLoggingAspect;
 import a306.dependency_logger_starter.logging.aspect.MethodLoggingAspect;
+import a306.dependency_logger_starter.logging.async.AsyncExecutor;
+import a306.dependency_logger_starter.logging.async.MDCTaskDecorator;
 import a306.dependency_logger_starter.logging.filter.TraceIdFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -15,6 +17,7 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.Ordered;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
  * 자동 설정
@@ -31,6 +34,20 @@ public class LoggerAutoConfiguration {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         return mapper;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public AsyncExecutor asyncExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(10);
+        executor.setMaxPoolSize(20);
+        executor.setQueueCapacity(100);
+        executor.setTaskDecorator(new MDCTaskDecorator());
+        executor.setThreadNamePrefix("async-");
+        executor.initialize();
+
+        return new AsyncExecutor(executor);
     }
 
     @Bean
