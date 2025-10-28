@@ -69,7 +69,7 @@ export const SignupForm = ({
 
     try {
       const response = await signup({
-        userName: values.name,
+        name: values.name,
         email: values.email,
         password: values.password,
         passwordConfirm: values['confirm-password'],
