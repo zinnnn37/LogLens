@@ -1,33 +1,74 @@
+// src/stores/projectStore.ts
+
 import { create } from 'zustand';
-import type { ProjectDTO } from '@/types/project';
+import type {
+  ProjectDTO,
+  ProjectInfoDTO,
+  PaginatedProjectResponse,
+  Pageable,
+} from '@/types/project';
 
 interface ProjectState {
-  projects: ProjectDTO[];
-  currentProject: ProjectDTO | null;
+  projects: ProjectInfoDTO[];
+  currentProject: ProjectInfoDTO | null;
 
-  setProjects: (projects: ProjectDTO[]) => void;
+  // 페이지네이션 상태 추가
+  pagination: Pageable | null;
+  totalElements: number;
+  totalPages: number;
+
+  setProjects: (response: PaginatedProjectResponse) => void;
 
   addProject: (newProject: ProjectDTO) => void;
 
-  setCurrentProject: (project: ProjectDTO | null) => void;
+  setCurrentProject: (project: ProjectInfoDTO | null) => void;
 }
 
 export const useProjectStore = create<ProjectState>(set => ({
   // 초기 상태
   projects: [],
   currentProject: null,
+  pagination: null,
+  totalElements: 0,
+  totalPages: 0,
 
-  // 상태 변경
-  // (GET /api/projects)
-  setProjects: projects => set({ projects: projects }),
+  // 액션
 
-  // 프로젝트 생성
+  /**
+   * (GET /api/projects)
+   * 목록 조회 API의 응답(PaginatedProjectResponse)을 받아
+   * 스토어 상태 전체를 업데이트합니다.
+   */
+  setProjects: response =>
+    set({
+      projects: response.content,
+      pagination: response.pageable,
+      totalElements: response.totalElements,
+      totalPages: response.totalPages,
+    }),
+
+  /**
+   * (POST /api/projects)
+   * createProject가 반환한 ProjectDTO를 받아
+   * ProjectInfoDTO로 변환한 뒤 목록 맨 앞에 추가합니다.
+   */
   addProject: newProject =>
-    set(state => ({
-      // 새 프로젝트를 목록 맨 앞에 추가
-      projects: [newProject, ...state.projects],
-    })),
+    set(state => {
+      const newProjectInfo: ProjectInfoDTO = {
+        ...newProject,
+        memberCount: 1, // 초기 기본값
+        logCount: 0, // 초기 기본값
+      };
 
-  // (GET /api/projects/{id})
+      return {
+        projects: [newProjectInfo, ...state.projects],
+        totalElements: state.totalElements + 1,
+      };
+    }),
+
+  /**
+   * (GET /api/projects/{id})
+   * (향후 상세 조회 API 연결 시 사용)
+   */
   setCurrentProject: project => set({ currentProject: project }),
 }));
