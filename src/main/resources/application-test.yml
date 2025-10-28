@@ -79,19 +79,12 @@ jwt:
   refresh-token-validity-in-seconds: 604800 # 7일
 
 # ===================================================================
-# OAuth2 설정 (OAuth2 Configuration for Test)
-# ===================================================================
-oauth2:
-  signup-redirect-uri: http://localhost:3000/signup
-  error-redirect-uri: http://localhost:3000/error
-
-# ===================================================================
 # 로깅 설정 (Logging Configuration)
 # ===================================================================
 logging:
   level:
     # 애플리케이션 패키지는 DEBUG 레벨로 설정
-    com.a306.osm: DEBUG
+    S13P31A306.loglens: DEBUG
     # Hibernate가 실행하는 SQL은 DEBUG 레벨로 출력
     org.hibernate.SQL: DEBUG
     # Spring 테스트 관련 로그는 INFO 레벨로 설정

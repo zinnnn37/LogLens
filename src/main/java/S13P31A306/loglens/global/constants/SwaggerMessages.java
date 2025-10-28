@@ -11,12 +11,12 @@ public enum SwaggerMessages {
 
     // API Info
     API_TITLE("LogLens API"),
-    API_DESCRIPTION("Holistic Trace 통합 로깅 시스템 API"),
+    API_DESCRIPTION("LogLens 시스템 API"),
     API_VERSION("v1.0.0"),
 
     // Server URLs
     LOCAL_SERVER_URL("http://localhost:8080"),
-    PROD_SERVER_URL("https://api.loglens.com");
+    PROD_SERVER_URL("https://api.loglens.co.kr");
 
     private final String message;
 
