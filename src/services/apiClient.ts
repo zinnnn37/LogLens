@@ -64,9 +64,19 @@ class ApiClient {
           originalRequest._retry = true;
 
           try {
+            // 만료된 access token 가져오기
+            const { accessToken: expiredToken } = useAuthStore.getState();
+
             // refresh token으로 새로운 access token 발급
+            // Authorization 헤더에 만료된 토큰 포함 필요
             const response = await this.instance.post(
               '/api/auth/tokens/refresh',
+              {},
+              {
+                headers: {
+                  Authorization: `Bearer ${expiredToken}`,
+                },
+              },
             );
             const newAccessToken = response.data.data.accessToken;
 
