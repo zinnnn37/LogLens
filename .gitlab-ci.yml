@@ -20,7 +20,7 @@ build:
   script:
     - npm ci
     - npm run build
-    - ls -la dist/
+    - Get-ChildItem dist
   artifacts:
     paths:
       - dist/
@@ -35,24 +35,24 @@ deploy_test_local:
   dependencies:
     - build
   before_script:
-    - apt-get update && apt-get install -y git
     - git config --global user.email "ci@gitlab.com"
     - git config --global user.name "GitLab CI"
   script:
-    - git clone --depth 1 --branch npm/main https://oauth2:${CI_JOB_TOKEN}@gitlab.com/username/project.git test-temp
-    - mkdir -p test-temp/test-static/lib
-    - cp dist/index.es.js test-temp/test-static/lib/loglens.esm.js
-    - cp dist/index.umd.js test-temp/test-static/lib/loglens.umd.js
-    - cp dist/index.d.ts test-temp/test-static/lib/loglens.d.ts
-    - ls -la test-temp/test-static/lib/
+    - git clone --depth 1 --branch npm/main https://oauth2:${env:CI_JOB_TOKEN}@gitlab.com/username/project.git test-temp
+    - New-Item -ItemType Directory -Force -Path test-temp/test-static/lib
+    - Copy-Item dist/index.es.js test-temp/test-static/lib/loglens.esm.js
+    - Copy-Item dist/index.umd.js test-temp/test-static/lib/loglens.umd.js
+    - Copy-Item dist/index.d.ts test-temp/test-static/lib/loglens.d.ts
+    - Get-ChildItem test-temp/test-static/lib
     - cd test-temp
     - git add test-static/
     - git status
     - |
-      if ! git diff --staged --quiet; then
+      $changes = git diff --staged --quiet
+      if ($LASTEXITCODE -ne 0) {
         git commit -m "test: CI push test [skip ci]"
-      fi
-    - git push https://oauth2:${CI_JOB_TOKEN}@gitlab.com/username/project.git HEAD:npm/main
-    - echo "✅ npm/main에 test-static/ 폴더가 생성되었습니다!"
+      }
+    - git push https://oauth2:${env:CI_JOB_TOKEN}@gitlab.com/username/project.git HEAD:npm/main
+    - Write-Host "✅ npm/main에 test-static/ 폴더가 생성되었습니다!"
   only:
     - npm/main
