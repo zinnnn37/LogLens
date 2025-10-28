@@ -360,6 +360,26 @@ pipeline {
                 }
             }
         }
+
+        stage('Cleanup Dangling Images') {
+            steps {
+                script {
+                    echo "🗑️ Removing dangling Docker images"
+                    sh '''#!/bin/bash
+                        DANGLING_COUNT=$(docker images -f "dangling=true" -q | wc -l)
+                        
+                        if [ "$DANGLING_COUNT" -gt 0 ]; then
+                            echo "📦 Found $DANGLING_COUNT dangling image(s)"
+                            docker images -f "dangling=true"
+                            docker rmi $(docker images -f "dangling=true" -q) || true
+                            echo "✅ Dangling images removed"
+                        else
+                            echo "ℹ️ No dangling images to remove"
+                        fi
+                    '''
+                }
+            }
+        }
     }
 
     post {
