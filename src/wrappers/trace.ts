@@ -37,6 +37,8 @@ function extractFunctionName(): string {
           'eval',
           'anonymous',
           'Function',
+          'mountMemo',
+          'useMemo',
         ];
 
         if (!excludePatterns.includes(name)) {

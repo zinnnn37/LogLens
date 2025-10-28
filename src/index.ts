@@ -8,3 +8,5 @@ export { LogCollector } from './core/logCollector';
 export { useLogLens } from './react/useLogLens';
 export { loglens } from './core/logger';
 export { useLogger } from './react/useLogger';
+
+export { type LogEntry } from './core/types';

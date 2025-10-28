@@ -42,7 +42,7 @@ export function useLogger(name?: string): Logger {
       });
     },
 
-    error: (message: string, error?: Error) => {
+    error: (message: string, error?: any) => {
       LogCollector.addLog({
         '@timestamp': new Date().toISOString(),
         traceId: LightZone.getTraceId() || null,
@@ -88,6 +88,8 @@ function extractComponentName(): string {
           'workLoop',
           'Object',
           'Module',
+          'mountMemo',
+          'useMemo',
         ];
 
         if (!excludePatterns.includes(name)) {
