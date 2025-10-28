@@ -60,9 +60,9 @@ pipeline {
         stage('Build AI Service Docker Image') {
             steps {
                 script {
-                    sh '''
+                    sh """
                         # 이전 이미지 백업 (존재할 때만)
-                        if [ "$(docker images -q ${IMAGE_NAME})" ]; then
+                        if [ "\$(docker images -q ${IMAGE_NAME})" ]; then
                             echo "ℹ️ Found existing AI service image: ${IMAGE_NAME}, tagging as previous"
                             docker tag ${IMAGE_NAME} ${IMAGE_NAME}-previous
                         else
@@ -76,8 +76,8 @@ pipeline {
 
                         # 이미지 확인
                         echo "📋 AI service images:"
-                        docker images | grep ${SERVICE_NAME}
-                    '''
+                        docker images | grep "${SERVICE_NAME}" || echo "Image built but grep found no match (this is OK)"
+                    """
                 }
             }
         }
@@ -85,20 +85,20 @@ pipeline {
         stage('Verify AI Service Image') {
             steps {
                 script {
-                    sh '''
+                    sh """
                         # Docker 이미지 빌드 성공 여부만 확인
                         echo "🔍 Verifying AI service image build"
 
-                        if [ "$(docker images -q ${IMAGE_NAME})" ]; then
+                        if [ "\$(docker images -q ${IMAGE_NAME})" ]; then
                             echo "✅ AI service image built successfully: ${IMAGE_NAME}"
                             echo "📋 AI service images:"
-                            docker images | grep ${SERVICE_NAME}
+                            docker images | grep "${SERVICE_NAME}" || echo "Image exists but grep found no match"
                             echo "🎯 Docker image is ready for deployment"
                         else
                             echo "❌ AI service image not found"
                             exit 1
                         fi
-                    '''
+                    """
                 }
             }
         }
@@ -118,11 +118,11 @@ pipeline {
             // 실패 시 디버깅을 위한 정보 수집
             script {
                 try {
-                    sh '''
+                    sh """
                         echo "📊 Final Docker status:"
-                        docker images | grep ${SERVICE_NAME} || echo "No AI service images found"
-                        docker ps -a | grep ${SERVICE_NAME} || echo "No AI service containers found"
-                    '''
+                        docker images | grep "${SERVICE_NAME}" || echo "No AI service images found"
+                        docker ps -a | grep "${SERVICE_NAME}" || echo "No AI service containers found"
+                    """
                 } catch (Exception e) {
                     echo "Failed to collect Docker status: ${e.message}"
                 }
