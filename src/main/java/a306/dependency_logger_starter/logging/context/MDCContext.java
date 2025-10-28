@@ -3,7 +3,7 @@ package a306.dependency_logger_starter.logging.context;
 import org.slf4j.MDC;
 
 import java.util.Map;
-import java.util.concurrent.Callable;
+import java.util.function.Supplier;
 
 public class MDCContext {
 
@@ -35,12 +35,12 @@ public class MDCContext {
         };
     }
 
-    public static <T> Callable<T> wrap(Callable<T> callable) {
+    public static <T> Supplier<T> wrap(Supplier<T> supplier) {
         Map<String, String> context = capture();
         return () -> {
             try {
                 restore(context);
-                return callable.call();
+                return supplier.get();
             } finally {
                 clear();
             }
