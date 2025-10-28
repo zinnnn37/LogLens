@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { PlusSquare, Settings, MessageSquare, LogOut } from 'lucide-react';
 
 import ProjectCreateModal from '@/components/modal/ProjectCreateModal';
+import { JiraIntegrationModal } from '@/components/modal/JiraIntegrationModal';
 import { logout } from '@/services/authApi';
 import { useAuthStore } from '@/stores/authStore';
 import { ROUTE_PATH } from '@/router/route-path';
@@ -69,6 +70,8 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
 
   // 프로젝트 생성 모달 Open 상태 관리
   const [openCreate, setOpenCreate] = useState(false);
+  // Jira API 연동 모달 Open 상태 관리
+  const [openJira, setOpenJira] = useState(false);
 
   // TODO : 더미데이터, 추후 API 를 통하여 실제 값 불러오기
   const handlePrepare = async (_payload: {
@@ -147,7 +150,9 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
             </NavHeading>
             <ul className="flex flex-col gap-1">
               <li>
-                <NavLink icon={Settings}>Jira API 연결</NavLink>
+                <NavButton icon={Settings} onClick={() => setOpenJira(true)}>
+                  Jira API 연결
+                </NavButton>
               </li>
             </ul>
           </section>
@@ -175,6 +180,9 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
           // TODO :생성 완료 시 사용자에게 알려줄 것 정의하기.
         }}
       />
+
+      {/* Jira API 연동 모달 */}
+      <JiraIntegrationModal open={openJira} onOpenChange={setOpenJira} />
     </aside>
   );
 };
