@@ -1,5 +1,7 @@
 stages:
   - test
+  - build
+  - deploy_test
 
 test:
   stage: test
@@ -8,5 +10,52 @@ test:
   script:
     - npm ci
     - npm test
+  only:
+    - npm/main
+
+build:
+  stage: build
+  tags:
+    - npm
+  script:
+    - npm ci
+    - npm run build
+    - ls -la dist/
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 day
+  only:
+    - npm/main
+
+deploy_test_local:
+  stage: deploy_test
+  tags:
+    - npm
+  dependencies:
+    - build
+  before_script:
+    - apt-get update && apt-get install -y git
+    - git config --global user.email "ci@gitlab.com"
+    - git config --global user.name "GitLab CI"
+  script:
+    # npm 프로젝트 자체를 클론 (테스트용)
+    - git clone --depth 1 --branch npm/main https://oauth2:${CI_JOB_TOKEN}@gitlab.com/username/project.git test-temp
+    
+    # 테스트 디렉토리에 복사
+    - mkdir -p test-temp/test-static/lib
+    - cp dist/index.es.js test-temp/test-static/lib/loglens.esm.js
+    - cp dist/index.umd.js test-temp/test-static/lib/loglens.umd.js
+    - cp dist/index.d.ts test-temp/test-static/lib/loglens.d.ts
+    - ls -la test-temp/test-static/lib/
+    
+    # git 작업
+    - cd test-temp
+    - git add test-static/
+    - git status
+    - git diff --staged --quiet || git commit -m "test: CI push test [skip ci]"
+    - git push https://oauth2:${CI_JOB_TOKEN}@gitlab.com/username/project.git HEAD:npm/main
+    
+    - echo "✅ npm/main에 test-static/ 폴더가 생성되었습니다!"
   only:
     - npm/main
