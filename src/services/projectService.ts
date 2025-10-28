@@ -49,8 +49,6 @@ export const fetchProjects = async (
   }
 };
 
-// 이름으로 멤버 검색 함수
-
 // 멤버 초대 함수
 
 // 프로젝트 상세 조회 함수
