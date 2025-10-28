@@ -22,7 +22,7 @@ export const checkEmailAvailability = async (
  * POST /v1/api/auth/users
  */
 export const signup = async (data: SignupRequest): Promise<SignupResponse> => {
-  return apiClient.post<SignupResponse>('/v1/api/auth/users', data);
+  return apiClient.post<SignupResponse>('/api/auth/users', data);
 };
 
 /**
