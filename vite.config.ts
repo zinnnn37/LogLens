@@ -19,7 +19,9 @@ export default defineConfig({
         // 이렇게 하면 require() 사용 시 default 객체 없이 바로 접근 가능
         exports: 'named',
         globals: {
-          soo1Loglens: 'soo1Loglens', // 글로벌 네임스페이스 설정
+          react: 'React',
+          'react-dom': 'ReactDOM',
+          'react/jsx-runtime': 'jsxRuntime',
         },
       },
     },
