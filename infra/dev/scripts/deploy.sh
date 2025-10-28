@@ -347,24 +347,6 @@ if [ -f "$NGINX_CONFIG_FILE" ]; then
         echo "   sudo systemctl reload nginx"
         # 설정은 변경되었으므로 경고만 하고 계속 진행
     fi
-
-        # 디버그 모드에서는 컨테이너를 유지
-        if [ "$DEBUG_MODE" != "true" ]; then
-            echo "🔄 실패한 컨테이너 제거 중..."
-            docker stop ai-service-${NEW_ENV} 2>/dev/null || true
-            docker rm ai-service-${NEW_ENV} 2>/dev/null || true
-        fi
-
-        # 이미지 롤백
-        if [ "$(docker images -q ai-service:latest-previous)" ]; then
-            echo "🔄 Rolling back Docker image to previous version..."
-            docker rmi ai-service:latest 2>/dev/null || true
-            docker tag ai-service:latest-previous ai-service:latest
-            echo "✅ Image rolled back successfully"
-        fi
-
-        exit 1
-    fi
 else
     echo "❌ nginx 설정 파일을 찾을 수 없습니다!"
     echo "   확인 대상: $NGINX_CONFIG_FILE"
