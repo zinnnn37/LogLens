@@ -3,7 +3,7 @@ import type { AxiosError } from 'axios';
 export interface ApiSuccessResponse<T> {
   success: true;
   status: number;
-  body: T;
+  data: T;
 }
 
 export interface ApiErrorResponse {
