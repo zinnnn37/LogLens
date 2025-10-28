@@ -312,13 +312,13 @@ if [ -f "$NGINX_CONFIG_FILE" ]; then
     echo "✅ nginx 설정 파일을 찾았습니다: $NGINX_CONFIG_FILE"
     
     # 새 설정 적용 (절대경로 사용)
-    echo "🔧 복사 명령: sudo cp \"$NGINX_CONFIG_FILE\" ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME}"
-    sudo cp "$NGINX_CONFIG_FILE" ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME}
-    sudo ln -sf ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME} ${NGINX_SITES_ENABLED}/${NGINX_SITE_NAME}
+    echo "🔧 복사 명령: cp \"$NGINX_CONFIG_FILE\" ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME}"
+    cp "$NGINX_CONFIG_FILE" ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME}
+    ln -sf ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME} ${NGINX_SITES_ENABLED}/${NGINX_SITE_NAME}
 
     # nginx 설정 테스트
-    if sudo nginx -t; then
-        sudo systemctl reload nginx
+    if nginx -t; then
+        nginx -s reload
         echo "✅ nginx 재로드 완료 (${NEW_ENV} 환경으로 전환)"
         
         # 전환 확인
@@ -330,10 +330,10 @@ if [ -f "$NGINX_CONFIG_FILE" ]; then
         # 롤백: 이전 환경 설정으로 복구
         if [ "$CURRENT_ENV" != "" ] && [ -f "$OLD_NGINX_CONFIG_FILE" ]; then
             echo "🔄 이전 환경 설정으로 롤백 중..."
-            sudo cp "$OLD_NGINX_CONFIG_FILE" ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME}
-            sudo ln -sf ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME} ${NGINX_SITES_ENABLED}/${NGINX_SITE_NAME}
-            
-            if sudo nginx -t && sudo systemctl reload nginx; then
+            cp "$OLD_NGINX_CONFIG_FILE" ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME}
+            ln -sf ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME} ${NGINX_SITES_ENABLED}/${NGINX_SITE_NAME}
+
+            if nginx -t && nginx -s reload; then
                 echo "✅ 이전 환경으로 nginx 설정 복구 완료"
             else
                 echo "❌ nginx 설정 복구도 실패!"
