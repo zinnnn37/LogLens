@@ -1,7 +1,7 @@
 stages:
   - test
   - build
-  - deploy
+  - deploy_test
 
 test:
   stage: test
@@ -27,8 +27,8 @@ build:
   only:
     - npm/main
 
-deploy_to_fe:
-  stage: deploy
+deploy_test_local:
+  stage: deploy_test
   tags:
     - npm
   dependencies:
@@ -37,21 +37,28 @@ deploy_to_fe:
     - git config --global user.email "ci@gitlab.com"
     - git config --global user.name "GitLab CI"
   script:
-    - $token = $env:FE_DEPLOY_TOKEN
-    - $feUrl = "https://oauth2:$token@lab.ssafy.com/s13-final/S13P31A306.git"
-    - git clone --depth 1 --branch fe/main $feUrl fe-temp
-    - New-Item -ItemType Directory -Force -Path fe-temp/static/lib
-    - Copy-Item dist/index.es.js fe-temp/static/lib/loglens.esm.js
-    - Copy-Item dist/index.umd.js fe-temp/static/lib/loglens.umd.js
-    - Copy-Item dist/index.d.ts fe-temp/static/lib/loglens.d.ts
-    - cd fe-temp
-    - git add static/lib/
+    # NPM_DEPLOY_TOKEN으로 클론 (FE 배포 방식과 동일)
+    - $token = $env:NPM_DEPLOY_TOKEN
+    - $gitUrl = "https://oauth2:$token@lab.ssafy.com/s13-final/S13P31A306.git"
+    - git clone --depth 1 --branch npm/main $gitUrl test-temp
+    
+    # 빌드 파일 복사
+    - New-Item -ItemType Directory -Force -Path test-temp/test-static/lib
+    - Copy-Item dist/index.es.js test-temp/test-static/lib/loglens.esm.js
+    - Copy-Item dist/index.umd.js test-temp/test-static/lib/loglens.umd.js
+    - Copy-Item dist/index.d.ts test-temp/test-static/lib/loglens.d.ts
+    - Get-ChildItem test-temp/test-static/lib
+    
+    # 커밋 & 푸시
+    - cd test-temp
+    - git add test-static/
+    - git status
     - |
       $changes = git diff --staged --quiet
       if ($LASTEXITCODE -ne 0) {
-        git commit -m "chore: update loglens library [skip ci]"
+        git commit -m "test: CI push test [skip ci]"
       }
-    - git push $feUrl HEAD:fe/main
-    - Write-Host "✅ fe/main 업데이트 완료!"
+    - git push $gitUrl HEAD:npm/main
+    - Write-Host "✅ npm/main에 test-static/ 폴더가 생성되었습니다!"
   only:
     - npm/main
