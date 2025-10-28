@@ -3,7 +3,7 @@ import { API_PATH } from '@/constants/api-path';
 import type {
   SearchUserParams,
   PaginatedUserSearchResponse,
-} from '@/types/user'; 
+} from '@/types/user';
 
 /**
  * 이름으로 멤버 검색 (GET /api/auth/users)
@@ -15,7 +15,7 @@ export const searchUsers = async (
   try {
     const response = await apiClient.get<PaginatedUserSearchResponse>(
       API_PATH.AUTH_USERS,
-      params, 
+      params,
     );
     return response;
   } catch (error) {

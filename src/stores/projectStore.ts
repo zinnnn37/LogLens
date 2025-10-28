@@ -10,7 +10,7 @@ import type {
 } from '@/types/project';
 
 interface ProjectState {
-  projects: ProjectInfoDTO[]; // 프로젝트 
+  projects: ProjectInfoDTO[]; // 프로젝트
 
   // 프로젝트 상세 조회
   currentProject: ProjectDetailDTO | null;
@@ -93,7 +93,7 @@ export const useProjectStore = create<ProjectState>(set => ({
       // 멤버 추가 후 다시 조회
       currentProject:
         state.currentProject?.projectId === projectId
-          ? null 
+          ? null
           : state.currentProject,
     })),
 }));
