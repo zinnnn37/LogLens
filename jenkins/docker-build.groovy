@@ -70,8 +70,8 @@ pipeline {
                         fi
 
                         # AI 서비스 Docker 이미지 빌드
-                        echo "🐳 Building AI service image: ${IMAGE_NAME}"
-                        docker build -t ${IMAGE_NAME} .
+                        echo "🐳 Building AI service image: ${IMAGE_NAME} (no cache)"
+                        docker build --no-cache -t ${IMAGE_NAME} .
                         echo "✅ AI service Docker image built successfully: ${IMAGE_NAME}"
 
                         # 이미지 확인
