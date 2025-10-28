@@ -1,9 +1,13 @@
 // src/components/Sidebar.tsx
 import { useState } from 'react';
 import type { ComponentProps } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PlusSquare, Settings, MessageSquare, LogOut } from 'lucide-react';
 
 import ProjectCreateModal from '@/components/modal/ProjectCreateModal';
+import { logout } from '@/services/authApi';
+import { useAuthStore } from '@/stores/authStore';
+import { ROUTE_PATH } from '@/router/route-path';
 
 // --- Sidebar Props ---
 type SidebarProps = ComponentProps<'aside'> & {
@@ -60,6 +64,9 @@ const NavHeading = ({ children }: { children: React.ReactNode }) => {
 };
 
 const Sidebar = ({ className, ...props }: SidebarProps) => {
+  const navigate = useNavigate();
+  const { clearAuth } = useAuthStore();
+
   // 프로젝트 생성 모달 Open 상태 관리
   const [openCreate, setOpenCreate] = useState(false);
 
@@ -82,6 +89,20 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
     provisionId?: string;
   }) => {
     return { projectId: 'proj_temp_123' };
+  };
+
+  // 로그아웃 핸들러
+  const handleLogout = async () => {
+    try {
+      await logout(); // 서버에 로그아웃 요청
+      clearAuth(); // 로컬 토큰 삭제
+      navigate(ROUTE_PATH.LOGIN); // 로그인 페이지로 이동
+    } catch (error) {
+      console.error('로그아웃 실패:', error);
+      // 에러가 발생해도 로컬 토큰은 삭제하고 로그인 페이지로 이동
+      clearAuth();
+      navigate(ROUTE_PATH.LOGIN);
+    }
   };
 
   return (
@@ -138,7 +159,9 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
         <hr className="border-sidebar-border my-4" />
         <nav className="font-godoM flex flex-col gap-1">
           <NavLink icon={MessageSquare}>AI Chat</NavLink>
-          <NavLink icon={LogOut}>Log out</NavLink>
+          <NavButton icon={LogOut} onClick={handleLogout}>
+            Log out
+          </NavButton>
         </nav>
       </div>
 

@@ -18,14 +18,20 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
   userId: number;
-  userName: string;
   email: string;
+  accessToken: string;
+  tokenType: string;
+  expiresIn: number;
 }
 
 export interface EmailCheckResponse {
   email: string;
   available: boolean;
+}
+
+export interface RefreshTokenResponse {
+  accessToken: string;
+  tokenType: string;
+  expiresIn: number;
 }
