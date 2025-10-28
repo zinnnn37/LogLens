@@ -130,19 +130,29 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
         continue
     fi
 
-    # Health check (더 상세한 응답 확인)
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/api/v1/health 2>/dev/null || echo "000")
-    
-    # 추가적으로 루트 엔드포인트도 확인
-    if [ "$HTTP_CODE" != "200" ]; then
-        ROOT_HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/ 2>/dev/null || echo "000")
-        if [ "$ROOT_HTTP_CODE" = "200" ]; then
-            echo "⚠️ 헬스체크 엔드포인트는 응답하지 않지만 루트 엔드포인트는 정상입니다."
-            HTTP_CODE="200"  # 루트가 정상이면 통과
+    # Health check - Docker의 HEALTHCHECK 결과 확인 (Jenkins 컨테이너 환경 대응)
+    HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' ai-service-${NEW_ENV} 2>/dev/null || echo "none")
+
+    # Docker HEALTHCHECK가 healthy면 성공
+    if [ "$HEALTH_STATUS" = "healthy" ]; then
+        echo "✅ Docker HEALTHCHECK가 healthy 상태입니다!"
+    else
+        # HEALTHCHECK 결과가 없거나 아직 starting이면 curl로 직접 확인 시도
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/api/v1/health 2>/dev/null || echo "000")
+
+        # 추가적으로 루트 엔드포인트도 확인
+        if [ "$HTTP_CODE" != "200" ]; then
+            ROOT_HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/ 2>/dev/null || echo "000")
+            if [ "$ROOT_HTTP_CODE" = "200" ]; then
+                echo "⚠️ 헬스체크 엔드포인트는 응답하지 않지만 루트 엔드포인트는 정상입니다."
+                HEALTH_STATUS="healthy"  # 루트가 정상이면 통과
+            fi
+        elif [ "$HTTP_CODE" = "200" ]; then
+            HEALTH_STATUS="healthy"  # HTTP 헬스체크 성공
         fi
     fi
 
-    if [ "$HTTP_CODE" = "200" ]; then
+    if [ "$HEALTH_STATUS" = "healthy" ]; then
         echo "✅ $NEW_ENV 환경이 정상 상태입니다!"
         SUCCESS=true
 
@@ -167,16 +177,14 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
         fi
         rm -f /tmp/index-creation.log
 
-        # 추가 확인
-        echo "🔍 엔드포인트 확인:"
-        curl -s http://localhost:${NEW_PORT}/ | jq . 2>/dev/null || echo "메인 엔드포인트 응답 실패"
-        echo ""
-        curl -s http://localhost:${NEW_PORT}/api/v1/health | jq . 2>/dev/null || echo "헬스체크 응답 실패"
+        # 추가 확인 (컨테이너 내부에서 헬스체크)
+        echo "🔍 엔드포인트 확인 (컨테이너 내부):"
+        docker exec ai-service-${NEW_ENV} curl -s http://localhost:8000/api/v1/health 2>/dev/null | jq . 2>/dev/null || echo "✅ 헬스체크 확인 (jq 없음)"
 
         break
     fi
 
-    echo "⏳ 헬스 체크 대기 중... (시도 $ATTEMPT/$MAX_ATTEMPTS, HTTP 상태: $HTTP_CODE)"
+    echo "⏳ 헬스 체크 대기 중... (시도 $ATTEMPT/$MAX_ATTEMPTS, 상태: $HEALTH_STATUS)"
 
     if [ $((ATTEMPT % 5)) -eq 0 ]; then
         echo "📋 진행 상황: $ATTEMPT/$MAX_ATTEMPTS 시도 완료"
