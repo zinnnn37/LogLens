@@ -1,60 +1,52 @@
 // src/core/logger.ts
 
-import TraceContext from './traceContext';
+import { LightZone } from './lightZone';
 import { LogCollector } from './logCollector';
+import type { LogLevel } from './types';
 
 const loglens = {
   info: (message: string, context?: any) => {
-    const traceId = TraceContext.getCurrentTraceId();
+    const traceId = LightZone.getTraceId();
     LogCollector.addLog({
-      timestamp: new Date().toISOString(),
+      '@timestamp': new Date().toISOString(),
       traceId: traceId || null,
-      logLevel: 'INFO',
-      sourceType: 'FRONT',
-      comment: message,
-      methodName: null,
-      className: null,
-      stackTrace: null,
-      requestData: null,
-      responseData: null,
-      executionTime: null,
-      additionalInfo: context || null,
+      level: 'INFO' as LogLevel,
+      logger: 'loglens',
+      message,
+      layer: 'FRONT',
+      request: null,
+      response: context || null,
+      executionTimeMs: null,
     });
   },
 
   warn: (message: string, context?: any) => {
-    const traceId = TraceContext.getCurrentTraceId();
+    const traceId = LightZone.getTraceId();
     LogCollector.addLog({
-      timestamp: new Date().toISOString(),
+      '@timestamp': new Date().toISOString(),
       traceId: traceId || null,
-      logLevel: 'WARN',
-      sourceType: 'FRONT',
-      comment: message,
-      methodName: null,
-      className: null,
-      stackTrace: null,
-      requestData: null,
-      responseData: null,
-      executionTime: null,
-      additionalInfo: context || null,
+      level: 'WARN' as LogLevel,
+      logger: 'loglens',
+      message,
+      layer: 'FRONT',
+      request: null,
+      response: context || null,
+      executionTimeMs: null,
     });
   },
 
   error: (message: string, error?: Error) => {
-    const traceId = TraceContext.getCurrentTraceId();
+    const traceId = LightZone.getTraceId();
     LogCollector.addLog({
-      timestamp: new Date().toISOString(),
+      '@timestamp': new Date().toISOString(),
       traceId: traceId || null,
-      logLevel: 'ERROR',
-      sourceType: 'FRONT',
-      comment: message,
-      stackTrace: error?.stack || null,
-      methodName: null,
-      className: null,
-      requestData: null,
-      responseData: null,
-      executionTime: null,
-      additionalInfo: null,
+      level: 'ERROR' as LogLevel,
+      logger: 'loglens',
+      message: error?.stack || message,
+      layer: 'FRONT',
+      request: null,
+      response: null,
+      executionTimeMs: null,
     });
   },
 };
