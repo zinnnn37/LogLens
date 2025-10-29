@@ -71,6 +71,13 @@ public class UserValidator {
         log.debug("{}비밀번호 확인 검증 성공", LOG_PREFIX);
     }
 
+    /**
+     * 사용자 이름 검색 파라미터 유효성 검증
+     *
+     * @param name 검색할 이름
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     */
     public void validateFindUsersByName(String name, int page, int size) {
         log.debug("{} 사용자 검색 파라미터 검증 시작: name={}, page={}, size={}", LOG_PREFIX, name, page, size);
 
