@@ -18,8 +18,6 @@ public record ComponentRequest(
 
         ComponentLayer layer,
 
-        Boolean highLevel,
-
         @NotBlank(message = "기술 스택은 필수입니다")
         String technology
 ) {}

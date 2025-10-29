@@ -37,23 +37,6 @@ public class Component extends BaseEntity {
     @Column(name = "layer", length = 50)
     private ComponentLayer layer;
 
-    @Column(name = "high_level_yn", length = 1)
-    @Convert(converter = BooleanToYNConverter.class)
-    private Boolean highLevel;
-
     @Column(name = "technology", nullable = false, length = 50)
     private String technology;
-
-    @Converter
-    public static class BooleanToYNConverter implements AttributeConverter<Boolean, String> {
-        @Override
-        public String convertToDatabaseColumn(Boolean attribute) {
-            return (attribute != null && attribute) ? "Y" : "N";
-        }
-
-        @Override
-        public Boolean convertToEntityAttribute(String dbData) {
-            return "Y".equalsIgnoreCase(dbData);
-        }
-    }
 }
