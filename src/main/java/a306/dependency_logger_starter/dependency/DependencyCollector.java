@@ -1,9 +1,7 @@
 package a306.dependency_logger_starter.dependency;
 
 import a306.dependency_logger_starter.dependency.client.DependencyLogSender;
-import a306.dependency_logger_starter.dependency.dto.Component;
-import a306.dependency_logger_starter.dependency.dto.DependencyRelation;
-import a306.dependency_logger_starter.dependency.dto.ProjectDependencyInfo;
+import a306.dependency_logger_starter.dependency.dto.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,8 +60,13 @@ public class DependencyCollector {
 
         // ✅ 1단계: 컴포넌트만 먼저 전송
         log.info("📤 [1단계] 컴포넌트 정보 전송...");
-        sender.sendComponents(projectName, new ArrayList<>(componentMap.values()));
+        List<ComponentRequest> componentRequests = componentMap.values().stream()
+                .map(this::convertToComponentRequest)
+                .toList();
 
+        // ComponentBatchRequest로 전송
+        ComponentBatchRequest batchRequest = new ComponentBatchRequest(componentRequests);
+        sender.sendComponents(batchRequest);
         // ✅ 2단계: 의존성 관계 나중에 전송
         log.info("📤 [2단계] 의존성 관계 정보 전송...");
         sender.sendDependencies(projectName, relations);
@@ -427,5 +430,30 @@ public class DependencyCollector {
                 || className.contains("$Proxy")
                 || className.startsWith("$")
                 || clazz.getPackage() != null && clazz.getPackage().getName().startsWith("jdk.proxy");
+    }
+
+
+    private ComponentRequest convertToComponentRequest(Component component) {
+        return new ComponentRequest(
+                component.name(),                    // name
+                component.type(),                    // classType
+                determineComponentType(component),   // componentType (Enum string)
+                component.packageName(),             // packageName
+                component.layer(),                   // layer
+                "Spring Boot"                            // technology (기본값)
+        );
+    }
+
+    private String determineComponentType(Component component) {
+        // layer를 componentType으로 매핑
+        String layer = component.layer();
+        if (layer == null) return "UNKNOWN";
+
+        return switch (layer) {
+            case "CONTROLLER" -> "CONTROLLER";
+            case "SERVICE" -> "SERVICE";
+            case "REPOSITORY" -> "REPOSITORY";
+            default -> "UNKNOWN";
+        };
     }
 }
