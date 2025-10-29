@@ -435,25 +435,45 @@ public class DependencyCollector {
 
     private ComponentRequest convertToComponentRequest(Component component) {
         return new ComponentRequest(
-                component.name(),                    // name
+                component.name(),
                 component.type(),                    // classType
-                determineComponentType(component),   // componentType (Enum string)
-                component.packageName(),             // packageName
-                component.layer(),                   // layer
-                "Spring Boot"                            // technology (기본값)
+                determineComponentType(component),   // "BE"
+                component.packageName(),
+                determineComponentLayer(component),  // "CONTROLLER", "SERVICE", "REPOSITORY"
+                "Spring Boot"       // "Spring Web", "JPA" 등
         );
     }
 
     private String determineComponentType(Component component) {
-        // layer를 componentType으로 매핑
-        String layer = component.layer();
-        if (layer == null) return "UNKNOWN";
+        String packageName = component.packageName();
 
+        // 인프라 계층 판단
+        if (packageName != null && (
+                packageName.contains(".config") ||
+                        packageName.contains(".filter") ||
+                        packageName.contains(".security") ||
+                        packageName.contains(".aspect"))) {
+            return "INFRA";
+        }
+
+        // 기본값: 백엔드
+        return "BE";
+    }
+
+
+    private String determineComponentLayer(Component component) {
+        String layer = component.layer();
+
+        if (layer == null) {
+            return null;  // nullable
+        }
+
+        // 서버의 ComponentLayer Enum 값만 허용
         return switch (layer) {
             case "CONTROLLER" -> "CONTROLLER";
             case "SERVICE" -> "SERVICE";
             case "REPOSITORY" -> "REPOSITORY";
-            default -> "UNKNOWN";
+            default -> null;  // COMPONENT, UNKNOWN 등은 null로
         };
     }
 }
