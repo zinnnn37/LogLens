@@ -104,7 +104,7 @@ public class DependencyLogSender {
             );
 
             webClient.post()
-                    .uri("/api/dependencies/components")
+                    .uri("/api/components/batch")
                     .body(Mono.just(componentInfo), ProjectDependencyInfo.class)
                     .retrieve()
                     .bodyToMono(String.class)
