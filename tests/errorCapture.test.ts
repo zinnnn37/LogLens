@@ -155,7 +155,7 @@ describe('ErrorCapture', () => {
 
           try {
             expect(errorLog).toMatchObject({
-              '@timestamp': expect.any(String),
+              timestamp: expect.any(String),
               traceId: null, // run 하지 않아서 traceId 없음
               level: 'ERROR',
               logger: 'ErrorCapture',

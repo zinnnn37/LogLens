@@ -22,7 +22,7 @@ class ErrorCapture {
       const traceId = error?.__traceId || LightZone.getTraceId();
 
       const log: LogEntry = {
-        '@timestamp': new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         traceId,
         level: 'ERROR',
         logger: 'ErrorCapture',
@@ -47,7 +47,7 @@ class ErrorCapture {
       const traceId = error?.__traceId || LightZone.getTraceId();
 
       const log: LogEntry = {
-        '@timestamp': new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         traceId,
         level: 'ERROR',
         logger: 'ErrorCapture',

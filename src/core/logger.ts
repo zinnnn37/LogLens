@@ -8,7 +8,7 @@ const loglens = {
   info: (message: string, context?: any) => {
     const traceId = LightZone.getTraceId();
     LogCollector.addLog({
-      '@timestamp': new Date().toISOString(),
+      timestamp: new Date().toISOString(),
       traceId: traceId || null,
       level: 'INFO' as LogLevel,
       logger: 'loglens',
@@ -23,7 +23,7 @@ const loglens = {
   warn: (message: string, context?: any) => {
     const traceId = LightZone.getTraceId();
     LogCollector.addLog({
-      '@timestamp': new Date().toISOString(),
+      timestamp: new Date().toISOString(),
       traceId: traceId || null,
       level: 'WARN' as LogLevel,
       logger: 'loglens',
@@ -38,7 +38,7 @@ const loglens = {
   error: (message: string, error?: Error) => {
     const traceId = LightZone.getTraceId();
     LogCollector.addLog({
-      '@timestamp': new Date().toISOString(),
+      timestamp: new Date().toISOString(),
       traceId: traceId || null,
       level: 'ERROR' as LogLevel,
       logger: 'loglens',

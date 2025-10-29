@@ -3,7 +3,7 @@
 export type LogLevel = 'ERROR' | 'WARN' | 'INFO';
 
 export type LogEntry = {
-  '@timestamp': string;
+  timestamp: string;
   traceId: string | null;
   level: LogLevel;
   logger: string;

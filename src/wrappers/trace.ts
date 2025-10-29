@@ -63,7 +63,7 @@ function createBaseLog(
   message: string,
 ) {
   return {
-    '@timestamp': new Date().toISOString(),
+    timestamp: new Date().toISOString(),
     traceId,
     level,
     logger: functionName,

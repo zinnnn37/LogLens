@@ -16,7 +16,7 @@ export function useLogger(name?: string): Logger {
   return {
     info: (message: string, context?: any) => {
       LogCollector.addLog({
-        '@timestamp': new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         traceId: LightZone.getTraceId() || null,
         level: 'INFO' as LogLevel,
         logger: loggerName,
@@ -30,7 +30,7 @@ export function useLogger(name?: string): Logger {
 
     warn: (message: string, context?: any) => {
       LogCollector.addLog({
-        '@timestamp': new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         traceId: LightZone.getTraceId() || null,
         level: 'WARN' as LogLevel,
         logger: loggerName,
@@ -44,7 +44,7 @@ export function useLogger(name?: string): Logger {
 
     error: (message: string, error?: any) => {
       LogCollector.addLog({
-        '@timestamp': new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         traceId: LightZone.getTraceId() || null,
         level: 'ERROR' as LogLevel,
         logger: loggerName,
