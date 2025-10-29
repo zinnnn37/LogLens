@@ -13,19 +13,28 @@ import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 
+import S13P31A306.loglens.domain.auth.constants.UserErrorCode;
 import S13P31A306.loglens.domain.auth.dto.request.UserSignupRequest;
 import S13P31A306.loglens.domain.auth.dto.response.EmailValidateResponse;
+import S13P31A306.loglens.domain.auth.dto.response.UserSearchResponse;
 import S13P31A306.loglens.domain.auth.dto.response.UserSignupResponse;
 import S13P31A306.loglens.domain.auth.entity.User;
 import S13P31A306.loglens.domain.auth.mapper.UserMapper;
 import S13P31A306.loglens.domain.auth.respository.UserRepository;
 import S13P31A306.loglens.domain.auth.validator.UserValidator;
 import S13P31A306.loglens.global.exception.BusinessException;
+import java.util.List;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
@@ -135,5 +144,69 @@ class UserServiceImplTest {
         // then
         assertThat(response.available()).isFalse();
         verify(userValidator, times(1)).isEmailAvailable(email);
+    }
+
+    @Nested
+    @DisplayName("이름으로 사용자 검색")
+    class FindUsersByName {
+
+        @Test
+        void 이름_검색을_성공한다() {
+            // given
+            String name = "홍길동";
+            Pageable pageable = PageRequest.of(0, 20);
+            User user = mock(User.class);
+            Page<User> userPage = new PageImpl<>(List.of(user), pageable, 1);
+            UserSearchResponse response = new UserSearchResponse(1, "홍길동", "test@test.com");
+
+            willDoNothing().given(userValidator).validateFindUsersByName(name, 0, 20);
+            given(userRepository.findByNameContaining(name, pageable)).willReturn(userPage);
+            given(userMapper.toSearchResponse(user)).willReturn(response);
+
+            // when
+            Page<UserSearchResponse> result = userService.findUsersByName(name, pageable);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.getContent()).hasSize(1);
+            verify(userValidator, times(1)).validateFindUsersByName(name, 0, 20);
+            verify(userRepository, times(1)).findByNameContaining(name, pageable);
+        }
+
+        @Test
+        void 검색_결과가_없으면_빈_페이지를_반환한다() {
+            // given
+            String name = "없는이름";
+            Pageable pageable = PageRequest.of(0, 20);
+            Page<User> emptyPage = Page.empty(pageable);
+
+            willDoNothing().given(userValidator).validateFindUsersByName(name, 0, 20);
+            given(userRepository.findByNameContaining(name, pageable)).willReturn(emptyPage);
+
+            // when
+            Page<UserSearchResponse> result = userService.findUsersByName(name, pageable);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.isEmpty()).isTrue();
+            verify(userValidator, times(1)).validateFindUsersByName(name, 0, 20);
+            verify(userRepository, times(1)).findByNameContaining(name, pageable);
+        }
+
+        @Test
+        void 이름이_없으면_예외가_발생한다() {
+            // given
+            String name = "";
+            Pageable pageable = PageRequest.of(0, 20);
+            willThrow(new BusinessException(UserErrorCode.NAME_REQUIRED))
+                    .given(userValidator).validateFindUsersByName(name, 0, 20);
+
+            // when & then
+            assertThatThrownBy(() -> userService.findUsersByName(name, pageable))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.NAME_REQUIRED);
+
+            verify(userRepository, times(0)).findByNameContaining(anyString(), any(Pageable.class));
+        }
     }
 }
