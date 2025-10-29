@@ -4,6 +4,7 @@ import S13P31A306.loglens.domain.auth.dto.request.UserSignupRequest;
 import S13P31A306.loglens.domain.auth.dto.response.EmailValidateResponse;
 import S13P31A306.loglens.domain.auth.dto.response.UserSignupResponse;
 import S13P31A306.loglens.global.config.swagger.annotation.ApiInternalServerError;
+import S13P31A306.loglens.global.config.swagger.annotation.ApiUnauthorizedError;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
 import S13P31A306.loglens.global.dto.response.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -189,6 +190,7 @@ public interface UserApi {
             @RequestParam(name = "email") String email
     );
 
+    @ApiUnauthorizedError
     @Operation(
             summary = "이름으로 멤버 검색",
             description = "입력한 이름(name)을 기준으로 가입된 사용자를 검색합니다. 결과는 페이지네이션 및 정렬이 적용되어 반환됩니다.",
