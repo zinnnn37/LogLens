@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @ApiInternalServerError
-@Tag(name = "User API", description = "사용자 회원가입 및 이메일 중복 확인 API")
+@Tag(name = "User API", description = "사용자 회원가입, 이메일 중복 확인 및 사용자 검색 API")
 public interface UserApi {
 
     @Operation(
@@ -187,5 +187,65 @@ public interface UserApi {
     )
     ResponseEntity<? extends BaseResponse> checkEmailAvailability(
             @RequestParam(name = "email") String email
+    );
+
+    @Operation(
+            summary = "이름으로 멤버 검색",
+            description = "입력한 이름(name)을 기준으로 가입된 사용자를 검색합니다. 결과는 페이지네이션 및 정렬이 적용되어 반환됩니다.",
+            parameters = {
+                    @Parameter(in = ParameterIn.HEADER, name = "Authorization", description = "Bearer {access_token}", required = true, schema = @Schema(type = "string")),
+                    @Parameter(in = ParameterIn.QUERY, name = "name", description = "검색할 사용자 이름 (최소 1자, 최대 10자)", required = true, schema = @Schema(type = "string", example = "홍길동")),
+                    @Parameter(in = ParameterIn.QUERY, name = "page", description = "페이지 번호 (0부터 시작)", schema = @Schema(type = "integer", defaultValue = "0")),
+                    @Parameter(in = ParameterIn.QUERY, name = "size", description = "페이지당 항목 수 (1~100)", schema = @Schema(type = "integer", defaultValue = "20")),
+                    @Parameter(in = ParameterIn.QUERY, name = "sort", description = "정렬 기준 (CREATED_AT, NAME, EMAIL)", schema = @Schema(type = "string", defaultValue = "CREATED_AT")),
+                    @Parameter(in = ParameterIn.QUERY, name = "order", description = "정렬 방향 (ASC, DESC)", schema = @Schema(type = "string", defaultValue = "DESC"))
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "사용자 검색 성공",
+                            content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "UserSearchSuccess", value = """
+                                    {
+                                      "code": "U200-3",
+                                      "message": "사용자 검색이 완료되었습니다.",
+                                      "status": 200,
+                                      "timestamp": "2025-10-27T13:00:00Z",
+                                      "data": {
+                                        "content": [
+                                          {
+                                            "userId": 101,
+                                            "username": "홍길동",
+                                            "email": "hong1@example.com"
+                                          },
+                                          {
+                                            "userId": 104,
+                                            "username": "홍길동",
+                                            "email": "hong2@example.com"
+                                          }
+                                        ],
+                                        "pageable": {
+                                          "page": 0,
+                                          "size": 20,
+                                          "sort": "CREATED_AT,DESC"
+                                        },
+                                        "totalElements": 2,
+                                        "totalPages": 1,
+                                        "first": true,
+                                        "last": true
+                                      }
+                                    }
+                                    """))
+                    ),
+                    @ApiResponse(responseCode = "400", description = "입력값 유효성 검증 실패", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "검색 결과 없음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    ResponseEntity<? extends BaseResponse> findUsersByName(
+            @RequestParam(name = "name") String name,
+            @RequestParam(name = "page", defaultValue = "0") Integer page,
+            @RequestParam(name = "size", defaultValue = "20") Integer size,
+            @RequestParam(name = "sort", defaultValue = "CREATED_AT") String sort,
+            @RequestParam(name = "order", defaultValue = "DESC") String order
     );
 }
