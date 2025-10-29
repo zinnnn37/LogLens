@@ -39,7 +39,7 @@ npm-deploy:
   script:
     - $token = $env:NPM_DEPLOY_TOKEN
     - $gitUrl = "https://oauth2:$token@lab.ssafy.com/s13-final/S13P31A306.git"
-    - git clone --depth 1 --branch fe/main $gitUrl temp
+    - git clone --depth 1 --branch fe/develop $gitUrl temp
     
     # public/lib에 복사
     - New-Item -ItemType Directory -Force -Path temp/public/lib
@@ -56,7 +56,7 @@ npm-deploy:
       if ($LASTEXITCODE -ne 0) {
         git commit -m "chore: update loglens library [skip ci]"
       }
-    - git push $gitUrl HEAD:fe/main
-    - Write-Host "✅ fe/main의 public/lib/에 배포 완료!"
+    - git push $gitUrl HEAD:fe/develop
+    - Write-Host "✅ fe/develop의 public/lib/에 배포 완료!"
   only:
     - npm/main
