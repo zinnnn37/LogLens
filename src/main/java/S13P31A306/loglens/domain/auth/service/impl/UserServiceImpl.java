@@ -79,12 +79,9 @@ public class UserServiceImpl implements UserService {
     @Override
     public Page<UserSearchResponse> findUsersByName(final String name, final Pageable pageable) {
         log.debug("{} 이름으로 사용자 검색 요청: name={}, pageable={}", LOG_PREFIX, name, pageable);
+        userValidator.validateFindUsersByName(name, pageable.getPageNumber(), pageable.getPageSize());
 
         Page<User> userPage = userRepository.findByNameContaining(name, pageable);
-
-        if (userPage.isEmpty()) {
-            throw new BusinessException(UserErrorCode.USER_NOT_FOUND_BY_NAME);
-        }
 
         log.info("{} 이름으로 사용자 검색 완료: name={}, found={} items", LOG_PREFIX, name, userPage.getTotalElements());
         return userPage.map(userMapper::toSearchResponse);
