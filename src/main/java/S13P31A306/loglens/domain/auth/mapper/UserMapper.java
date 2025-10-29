@@ -1,6 +1,7 @@
 package S13P31A306.loglens.domain.auth.mapper;
 
 import S13P31A306.loglens.domain.auth.dto.request.UserSignupRequest;
+import S13P31A306.loglens.domain.auth.dto.response.UserSearchResponse;
 import S13P31A306.loglens.domain.auth.dto.response.UserSignupResponse;
 import S13P31A306.loglens.domain.auth.entity.User;
 import org.mapstruct.Mapper;
@@ -31,4 +32,13 @@ public interface UserMapper {
      */
     @Mapping(source = "id", target = "userId")
     UserSignupResponse toSignupResponse(User user);
+
+    /**
+     * User 엔티티를 UserSearchResponse로 변환
+     *
+     * @param user User 엔티티
+     * @return 사용자 검색 응답 DTO
+     */
+    @Mapping(source = "id", target = "userId")
+    UserSearchResponse toSearchResponse(User user);
 }
