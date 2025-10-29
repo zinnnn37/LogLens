@@ -8,51 +8,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2 } from 'lucide-react';
 
-import ProjectCreate1 from './ProjectCreate1';
-import ProjectCreate2 from './ProjectCreate2';
-import ProjectCreate3 from './ProjectCreate3';
-
-// ==== 타입 ====
-interface CreatePayload {
-  name: string;
-  description?: string;
-}
-
-interface PrepareResult {
-  apiKey: string;
-  installCmd: string;
-  // 백엔드가 사전발급/예약 개념을 쓴다면 유지용 ID (선택)
-  provisionId?: string;
-}
-
-interface CreateResult {
-  projectId: string;
-}
+import type { CreateProjectPayload, ProjectDTO } from '@/types/project';
 
 interface ProjectCreateModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 
-  /**
-   * 최종 완료 후 상위에 알림 (예: 목록 갱신)
-   */
-  onComplete?: (projectId: string) => void;
+  onCreate: (payload: CreateProjectPayload) => Promise<ProjectDTO>;
 
-  /**
-   * 3페이지 "완료" 시 실제 프로젝트 생성
-   * - 필요한 경우 1→2 단계에서 받은 provisionId를 함께 전달
-   */
-  onCreate: (args: {
-    payload: CreatePayload;
-    provisionId?: string;
-  }) => Promise<CreateResult>;
+  onComplete: (newProject: ProjectDTO) => void;
 
-  /**
-   * (선택) 1→2 이동 시, UI에 보여줄 키/명령을 준비하는 API
-   * - 실제 생성은 아님. 사용하지 않으면 플레이스홀더로 표시됨
-   */
-  onPrepare?: (payload: CreatePayload) => Promise<PrepareResult>;
 }
 
 // ==== 상수/검증 ====
@@ -65,34 +35,24 @@ const ProjectCreateModal = ({
   onOpenChange,
   onCreate,
   onComplete,
-  onPrepare,
 }: ProjectCreateModalProps) => {
-  // 0: 기본 정보, 1: API 키 확인, 2: 설치 명령어
-  const [page, setPage] = useState<0 | 1 | 2>(0);
-
-  const [form, setForm] = useState<CreatePayload>({
-    name: '',
+  const [form, setForm] = useState<CreateProjectPayload>({
+    projectName: '',
     description: '',
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof CreateProjectPayload, string>>
+  >({});
 
-  // 1→2 진입을 위한 준비값 (실제 생성 전 미리보기 용)
-  const [prepared, setPrepared] = useState<PrepareResult | null>(null);
+  const [completing, setCompleting] = useState(false);
 
-  // 로딩 플래그
-  const [preparing, setPreparing] = useState(false); // 1→2 준비 중
-  const [completing, setCompleting] = useState(false); // 3에서 실제 생성 중
-
-  // 포커스
   const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   // 모달 열릴 때 초기화
   useEffect(() => {
     if (open) {
-      setPage(0);
+      setForm({ projectName: '', description: '' });
       setErrors({});
-      setPrepared(null);
-      setPreparing(false);
       setCompleting(false);
 
       const id = requestAnimationFrame(() => {
@@ -105,14 +65,14 @@ const ProjectCreateModal = ({
 
   // 입력폼 검증
   const validate = useMemo(
-    () => (payload: CreatePayload) => {
-      const next: Record<string, string> = {};
-      const trimmed = payload.name.trim();
+    () => (payload: CreateProjectPayload) => {
+      const next: Partial<Record<keyof CreateProjectPayload, string>> = {};
+      const trimmed = payload.projectName.trim();
 
       if (trimmed.length < NAME_MIN) {
-        next.name = `프로젝트명은 최소 ${NAME_MIN}자 이상입니다.`;
+        next.projectName = `프로젝트명은 최소 ${NAME_MIN}자 이상입니다.`;
       } else if (trimmed.length > NAME_MAX) {
-        next.name = `프로젝트명은 최대 ${NAME_MAX}자 이하로 입력하세요.`;
+        next.projectName = `프로젝트명은 최대 ${NAME_MAX}자 이하로 입력하세요.`;
       }
 
       if ((payload.description ?? '').length > DESC_MAX) {
@@ -123,84 +83,44 @@ const ProjectCreateModal = ({
     [],
   );
 
-  // Step1 → Step2
-  const goStep2 = async () => {
+  const handleSubmit = async () => {
     const v = validate(form);
     if (Object.keys(v).length > 0) {
       setErrors(v);
-      if (v.name) {
+      if (v.projectName) {
         nameInputRef.current?.focus();
       }
       return;
     }
 
-    // 준비 API가 있다면 호출해서 미리보기 데이터 확보
-    if (onPrepare) {
-      try {
-        setPreparing(true);
-        const res = await onPrepare({
-          name: form.name.trim(),
-          description: form.description?.trim() || undefined,
-        });
-        setPrepared(res);
-      } catch {
-        // 실패해도 UX 중단은 금물 — 필요 시 토스트/알림 처리
-      } finally {
-        setPreparing(false);
-      }
-    } else {
-      // 준비 API가 없으면 플레이스홀더
-      setPrepared({
-        apiKey: '발급은 완료 시 표시됩니다',
-        installCmd: '완료 후 생성되는 설치 명령',
-      });
-    }
-
-    setPage(1);
-  };
-
-  // Step2 → Step3
-  const goStep3 = () => {
-    setPage(2);
-  };
-
-  // Step3 “완료” → 실제 생성
-  const handleComplete = async () => {
     try {
       setCompleting(true);
-      const res = await onCreate({
-        payload: {
-          name: form.name.trim(),
-          description: form.description?.trim() || undefined,
-        },
-        provisionId: prepared?.provisionId,
-      });
-      onComplete?.(res.projectId);
+
+      const payload: CreateProjectPayload = {
+        projectName: form.projectName.trim(),
+        description: form.description?.trim() || undefined,
+      };
+
+      const newProject = await onCreate(payload);
+
+      onComplete(newProject);
       onOpenChange(false);
-    } catch {
-      // 실패했다고 알려주기
+    } catch (error) {
+      console.error('프로젝트 생성 실패', error);
+      // TODO: 실패 시 알림
     } finally {
       setCompleting(false);
     }
   };
 
-  // Step1 인풋 변경 핸들러
-  const handleChange = (patch: Partial<CreatePayload>) => {
+  // [수정] Step1 인풋 변경 핸들러
+  const handleChange = (patch: Partial<CreateProjectPayload>) => {
     setForm(prev => ({ ...prev, ...patch }));
-    if (patch.name && errors.name) {
-      setErrors(prev => ({ ...prev, name: '' }));
+    if (patch.projectName && errors.projectName) {
+      setErrors(prev => ({ ...prev, projectName: '' }));
     }
     if (patch.description && errors.description) {
       setErrors(prev => ({ ...prev, description: '' }));
-    }
-  };
-
-  // 복사
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      // 무시 or 토스트
     }
   };
 
@@ -208,76 +128,78 @@ const ProjectCreateModal = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          {/* 타이틀/설명은 페이지별 */}
-          {page === 0 && (
-            <>
-              <DialogTitle className="text-center">프로젝트 생성</DialogTitle>
-              <DialogDescription className="sr-only">
-                프로젝트 기본 정보를 입력하고 다음 단계로 이동합니다.
-              </DialogDescription>
-            </>
-          )}
-          {page === 1 && (
-            <>
-              <DialogTitle className="flex items-center gap-2">
-                <span aria-hidden>🛠️</span> Fluent Bit 설치 가이드
-              </DialogTitle>
-              <DialogDescription className="sr-only">
-                설치 전 확인 사항과 API 키를 확인합니다.
-              </DialogDescription>
-            </>
-          )}
-          {page === 2 && (
-            <>
-              <DialogTitle className="flex items-center gap-2">
-                <span aria-hidden>🛠️</span> Fluent Bit 설치 가이드
-              </DialogTitle>
-              <DialogDescription className="sr-only">
-                설치 명령어를 확인하고 실행합니다.
-              </DialogDescription>
-            </>
-          )}
+          <DialogTitle className="text-center">프로젝트 생성</DialogTitle>
+          <DialogDescription className="sr-only">
+            프로젝트 기본 정보를 입력하고 생성합니다.
+          </DialogDescription>
         </DialogHeader>
 
-        {/* 페이지 0 */}
-        {page === 0 ? (
-          <ProjectCreate1
-            value={form}
-            errors={errors}
-            onChange={handleChange}
-            onNext={goStep2}
-            nameInputRef={nameInputRef}
-          />
-        ) : null}
+        <div>
+          <div className="space-y-6">
+            <div className="grid gap-3">
+              <Label htmlFor="project-name">프로젝트명</Label>
+              <Input
+                id="project-name"
+                ref={nameInputRef}
+                name="projectName" 
+                value={form.projectName} 
+                onChange={ev => handleChange({ projectName: ev.target.value })} 
+                placeholder="프로젝트명을 입력해 주세요"
+                required
+                minLength={NAME_MIN}
+                maxLength={NAME_MAX}
+                aria-required="true"
+                aria-invalid={Boolean(errors?.projectName)} 
+                aria-describedby={
+                  errors?.projectName ? 'project-name-error' : undefined
+                } 
+                disabled={completing}
+              />
+              {errors?.projectName ? ( 
+                <p id="project-name-error" className="text-destructive text-sm">
+                  {errors.projectName} 
+                </p>
+              ) : null}
+            </div>
 
-        {/* 페이지 1 */}
-        {page === 1 ? (
-          <ProjectCreate2
-            projectName={form.name}
-            apiKey={
-              prepared?.apiKey ??
-              (preparing ? '발급 중…' : '발급은 완료 시 표시됩니다')
-            }
-            onNext={goStep3}
-            onPrev={() => setPage(0)}
-            onCopy={copyToClipboard}
-          />
-        ) : null}
+            <div className="grid gap-3">
+              <Label htmlFor="project-desc">프로젝트 설명</Label>
+              <Input
+                id="project-desc"
+                name="description"
+                value={form.description ?? ''}
+                onChange={ev => handleChange({ description: ev.target.value })}
+                placeholder="프로젝트 설명을 입력해 주세요 (선택)"
+                maxLength={DESC_MAX}
+                aria-invalid={Boolean(errors?.description)}
+                aria-describedby={
+                  errors?.description ? 'project-desc-error' : undefined
+                }
+                disabled={completing}
+              />
+              {errors?.description ? (
+                <p id="project-desc-error" className="text-destructive text-sm">
+                  {errors.description}
+                </p>
+              ) : null}
+            </div>
+          </div>
 
-        {/* 페이지 2 */}
-        {page === 2 ? (
-          <ProjectCreate3
-            projectName={form.name}
-            installCmd={
-              prepared?.installCmd ??
-              (preparing ? '생성 중…' : '완료 후 생성됩니다')
-            }
-            onPrev={() => setPage(1)}
-            onComplete={handleComplete}
-            completing={completing}
-            onCopy={copyToClipboard}
-          />
-        ) : null}
+          <div className="mt-8 flex justify-center">
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={completing}
+              className="w-32"
+            >
+              {completing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              {completing ? '생성 중...' : '생성하기'}
+            </Button>
+          </div>
+        </div>
+
       </DialogContent>
     </Dialog>
   );
