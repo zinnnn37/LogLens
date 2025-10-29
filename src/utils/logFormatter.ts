@@ -1,6 +1,6 @@
 // src/utils/logFormatter.ts
 
-import type { LogEntry } from '../core/types';
+import type { LogEntry } from '../types/logTypes';
 import { LightZone } from '../core/lightZone';
 
 class LogFormatter {

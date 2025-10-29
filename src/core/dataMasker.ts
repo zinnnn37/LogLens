@@ -1,6 +1,6 @@
 // src/core/dataMasker.ts
 
-import type { MaskConfig } from './types';
+import type { MaskConfig } from '../types/logTypes';
 
 /**
  * 데이터 마스킹 처리 클래스

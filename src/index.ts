@@ -5,7 +5,7 @@ import { LightZone } from './core/lightZone';
 import { ErrorCapture } from './core/errorCapture';
 import { loglens } from './core/logger';
 import { withLogLens } from './wrappers/trace';
-import { type CollectorConfig } from './core/types';
+import { type CollectorConfig } from './types/logTypes';
 import { LogCollector } from './core/logCollector';
 
 export type InitLogLensConfig = {

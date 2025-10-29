@@ -62,6 +62,9 @@ class LightZone {
   private static isPatched = false;
   private static OriginalPromise: PromiseConstructor | null = null;
 
+  private static originalSetTimeout = globalThis.setTimeout;
+  private static originalSetInterval = globalThis.setInterval;
+
   static init(): void {
     if (this.isPatched) {
       console.warn('[LogLens] Already initialized');
@@ -70,6 +73,7 @@ class LightZone {
 
     this.OriginalPromise = Promise;
     this.patchPromise();
+    this.patchTimer();
     this.isPatched = true;
     console.log('[LogLens] Initialized - Auto trace propagation enabled');
   }
@@ -116,6 +120,9 @@ class LightZone {
   static reset(): void {
     this.stack = [];
     this.isPatched = false;
+
+    globalThis.setTimeout = this.originalSetTimeout;
+    globalThis.setInterval = this.originalSetInterval;
   }
 
   private static patchPromise(): void {
@@ -123,10 +130,9 @@ class LightZone {
       throw new Error('[LogLens] OriginalPromise not initialized');
     }
 
-    const OriginalPromise = this.OriginalPromise!;
+    const OriginalPromise = this.OriginalPromise;
     const zone = this;
 
-    // Promise 생성자 패치
     class ZonedPromise<T> extends OriginalPromise<T> {
       constructor(
         executor: (
@@ -138,32 +144,12 @@ class LightZone {
 
         super((resolve, reject) => {
           executor(
-            (value: T | PromiseLike<T>) => {
-              // 컨텍스트 복원
-              if (capturedContext && zone.current() !== capturedContext) {
-                zone.stack.push(capturedContext);
-                try {
-                  resolve(value);
-                } finally {
-                  zone.stack.pop();
-                }
-              } else {
-                resolve(value);
-              }
-            },
-            (reason?: any) => {
-              // 컨텍스트 복원
-              if (capturedContext && zone.current() !== capturedContext) {
-                zone.stack.push(capturedContext);
-                try {
-                  reject(reason);
-                } finally {
-                  zone.stack.pop();
-                }
-              } else {
-                reject(reason);
-              }
-            },
+            capturedContext
+              ? (value) => zone.run(capturedContext, () => resolve(value))
+              : resolve,
+            capturedContext
+              ? (reason) => zone.run(capturedContext, () => reject(reason))
+              : reject,
           );
         });
       }
@@ -181,42 +167,21 @@ class LightZone {
         const capturedContext = zone.current();
 
         return super.then(
-          onfulfilled
-            ? (value: T) => {
-                // 컨텍스트 복원
-                if (capturedContext && zone.current() !== capturedContext) {
-                  zone.stack.push(capturedContext);
-                  try {
-                    return onfulfilled(value);
-                  } finally {
-                    zone.stack.pop();
-                  }
-                }
-                return onfulfilled(value);
-              }
-            : undefined,
-          onrejected
-            ? (reason: any) => {
-                // 컨텍스트 복원
-                if (capturedContext && zone.current() !== capturedContext) {
-                  zone.stack.push(capturedContext);
-                  try {
-                    return onrejected(reason);
-                  } finally {
-                    zone.stack.pop();
-                  }
-                }
-                return onrejected(reason);
-              }
-            : undefined,
+          onfulfilled && capturedContext
+            ? (value: T) => zone.run(capturedContext, () => onfulfilled(value))
+            : onfulfilled ?? undefined,
+          onrejected && capturedContext
+            ? (reason: any) =>
+                zone.run(capturedContext, () => onrejected(reason))
+            : onrejected ?? undefined,
         ) as Promise<TResult1 | TResult2>;
       }
     }
 
     // 전역 Promise 교체
-    (globalThis as any).Promise = ZonedPromise;
+    globalThis.Promise = ZonedPromise;
 
-    // 정적 메서드들
+    // 정적 메서드 패치
     ZonedPromise.resolve = function <T>(
       value?: T | PromiseLike<T>,
     ): Promise<T> {
@@ -260,8 +225,61 @@ class LightZone {
         });
       };
     }
+    console.log('[LogLens] Promise patched - TraceId propagation enabled');
+  }
 
-    console.log('[LogLens] Promise patched - TraceId auto-propagation active');
+  private static patchTimer(): void {
+    const zone = this;
+
+    this.originalSetTimeout = globalThis.setTimeout;
+    this.originalSetInterval = globalThis.setInterval;
+
+    (globalThis as any).setTimeout = function (
+      callback: Function,
+      delay?: number,
+      ...args: any[]
+    ) {
+      const capturedContext = zone.current();
+
+      const wrappedCallback = function (...cbArgs: any[]) {
+        if (capturedContext) {
+          zone.stack.push(capturedContext);
+          try {
+            return callback(...cbArgs);
+          } catch (error) {
+            throw error;
+          } finally {
+            zone.stack.pop();
+          }
+        }
+        return callback(...cbArgs);
+      };
+      return zone.originalSetTimeout(wrappedCallback, delay, ...args);
+    };
+
+    // Node.js 충돌 때문에 any 캐스팅
+    (globalThis as any).setInterval = function (
+      callback: Function,
+      delay?: number,
+      ...args: any[]
+    ) {
+      const capturedContext = zone.current();
+      const wrappedCallback = function (...cbArgs: any[]) {
+        if (capturedContext) {
+          zone.stack.push(capturedContext);
+          try {
+            return callback(...cbArgs);
+          } catch (error) {
+            throw error;
+          } finally {
+            zone.stack.pop();
+          }
+        }
+        return callback(...cbArgs);
+      };
+      return zone.originalSetInterval(wrappedCallback, delay, ...args);
+    };
+    console.log('[LogLens] Timers patched - TraceId propagation enabled');
   }
 
   static getStatus() {

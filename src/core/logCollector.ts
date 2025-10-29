@@ -1,7 +1,7 @@
 // src/core/logCollector.ts
 
 import { LogFormatter } from '../utils/logFormatter';
-import type { LogEntry, CollectorConfig } from './types';
+import type { LogEntry, CollectorConfig } from '../types/logTypes';
 
 class LogCollector {
   private static logs: LogEntry[] = [];

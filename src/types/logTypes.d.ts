@@ -1,4 +1,4 @@
-// src/core/types.ts
+// src/core/logTypes.d.ts
 
 export type LogLevel = 'ERROR' | 'WARN' | 'INFO';
 
