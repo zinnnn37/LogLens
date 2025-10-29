@@ -17,7 +17,7 @@ public record UserSignupRequest(
 
         @NotBlank(message = "EMAIL_REQUIRED")
         @Email(message = "EMAIL_INVALID_FORMAT")
-        @Pattern(regexp = "^[a-zA-Z][a-zA-Z0-9._-]*@[a-zA-Z][a-zA-Z0-9.-]*\\.[a-zA-Z]{2,}$",
+        @Pattern(regexp = "^[a-zA-Z0-9][a-zA-Z0-9._-]*@[a-zA-Z][a-zA-Z0-9.-]*\\.[a-zA-Z]{2,}$\n",
                 message = "EMAIL_INVALID_FORMAT")
         @Schema(description = "사용자 이메일", example = "developer@example.com")
         String email,
