@@ -9,6 +9,7 @@ declare global {
     timestamp?: number;
     context?: Record<string, any>;
     stackInfo?: any;
+    __traceId?: string; // 내부 전파용
   }
 }
 

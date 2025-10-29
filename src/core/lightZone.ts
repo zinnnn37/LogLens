@@ -148,7 +148,13 @@ class LightZone {
               ? (value) => zone.run(capturedContext, () => resolve(value))
               : resolve,
             capturedContext
-              ? (reason) => zone.run(capturedContext, () => reject(reason))
+              ? (reason) => {
+                  // 에러 reject 시 traceId 저장
+                  if (reason && typeof reason === 'object') {
+                    (reason as MyError).__traceId = capturedContext.traceId;
+                  }
+                  zone.run(capturedContext, () => reject(reason));
+                }
               : reject,
           );
         });
@@ -247,6 +253,8 @@ class LightZone {
           try {
             return callback(...cbArgs);
           } catch (error) {
+            const enrichedError = error as MyError;
+            enrichedError.__traceId = capturedContext.traceId;
             throw error;
           } finally {
             zone.stack.pop();
@@ -270,6 +278,8 @@ class LightZone {
           try {
             return callback(...cbArgs);
           } catch (error) {
+            const enrichedError = error as MyError;
+            enrichedError.__traceId = capturedContext.traceId;
             throw error;
           } finally {
             zone.stack.pop();

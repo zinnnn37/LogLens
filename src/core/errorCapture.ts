@@ -1,9 +1,14 @@
 import { LightZone } from './lightZone';
 import { LogCollector } from './logCollector';
-import type { LogEntry } from './types';
+import type { LogEntry } from '../types/logTypes';
 
+// errorCapture.ts
 class ErrorCapture {
   private static isInitialized = false;
+  private static errorHandler: ((event: ErrorEvent) => void) | null = null;
+  private static rejectionHandler:
+    | ((event: PromiseRejectionEvent) => void)
+    | null = null;
 
   static init(): void {
     if (this.isInitialized) {
@@ -11,11 +16,14 @@ class ErrorCapture {
       return;
     }
 
-    // 전역 에러 캡처
-    window.addEventListener('error', (event) => {
+    // 핸들러 저장
+    this.errorHandler = (event: ErrorEvent) => {
+      const error = event.error as MyError;
+      const traceId = error?.__traceId || LightZone.getTraceId();
+
       const log: LogEntry = {
         '@timestamp': new Date().toISOString(),
-        traceId: LightZone.getTraceId(),
+        traceId,
         level: 'ERROR',
         logger: 'ErrorCapture',
         message: `Uncaught error: ${event.error?.message || event.message}\n${
@@ -32,13 +40,15 @@ class ErrorCapture {
       };
 
       LogCollector.addLog(log);
-    });
+    };
 
-    // Promise rejection 에러
-    window.addEventListener('unhandledrejection', (event) => {
+    this.rejectionHandler = (event: PromiseRejectionEvent) => {
+      const error = event.reason as MyError;
+      const traceId = error?.__traceId || LightZone.getTraceId();
+
       const log: LogEntry = {
         '@timestamp': new Date().toISOString(),
-        traceId: LightZone.getTraceId(),
+        traceId,
         level: 'ERROR',
         logger: 'ErrorCapture',
         message: `Unhandled promise rejection: ${
@@ -53,7 +63,10 @@ class ErrorCapture {
       };
 
       LogCollector.addLog(log);
-    });
+    };
+
+    window.addEventListener('error', this.errorHandler);
+    window.addEventListener('unhandledrejection', this.rejectionHandler);
 
     this.isInitialized = true;
     console.log('[LogLens] ErrorCapture initialized');
@@ -64,6 +77,16 @@ class ErrorCapture {
   }
 
   static reset(): void {
+    if (this.errorHandler) {
+      window.removeEventListener('error', this.errorHandler);
+      this.errorHandler = null;
+    }
+
+    if (this.rejectionHandler) {
+      window.removeEventListener('unhandledrejection', this.rejectionHandler);
+      this.rejectionHandler = null;
+    }
+
     this.isInitialized = false;
   }
 }
