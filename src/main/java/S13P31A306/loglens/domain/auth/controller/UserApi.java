@@ -194,7 +194,7 @@ public interface UserApi {
             description = "입력한 이름(name)을 기준으로 가입된 사용자를 검색합니다. 결과는 페이지네이션 및 정렬이 적용되어 반환됩니다.",
             parameters = {
                     @Parameter(in = ParameterIn.HEADER, name = "Authorization", description = "Bearer {access_token}", required = true, schema = @Schema(type = "string")),
-                    @Parameter(in = ParameterIn.QUERY, name = "name", description = "검색할 사용자 이름 (최소 1자, 최대 10자)", required = true, schema = @Schema(type = "string", example = "홍길동")),
+                    @Parameter(in = ParameterIn.QUERY, name = "name", description = "검색할 사용자 이름 (최소 1자, 최대 50자)", required = true, schema = @Schema(type = "string", example = "홍길동")),
                     @Parameter(in = ParameterIn.QUERY, name = "page", description = "페이지 번호 (0부터 시작)", schema = @Schema(type = "integer", defaultValue = "0")),
                     @Parameter(in = ParameterIn.QUERY, name = "size", description = "페이지당 항목 수 (1~100)", schema = @Schema(type = "integer", defaultValue = "20")),
                     @Parameter(in = ParameterIn.QUERY, name = "sort", description = "정렬 기준 (CREATED_AT, NAME, EMAIL)", schema = @Schema(type = "string", defaultValue = "CREATED_AT")),
