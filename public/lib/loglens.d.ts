@@ -1,9 +1,13 @@
-export { Log } from './decorators/logs';
-export { LogFormatter } from './utils/logFormatter';
-export { withLogLens } from './wrappers/trace';
-export { LightZone } from './core/lightZone';
-export { LogCollector } from './core/logCollector';
-export { useLogLens } from './react/useLogLens';
-export { loglens } from './core/logger';
+import { LightZone } from './core/lightZone';
+import { ErrorCapture } from './core/errorCapture';
+import { loglens } from './core/logger';
+import { withLogLens } from './wrappers/trace';
+import { CollectorConfig } from './types/logTypes.d';
 export { useLogger } from './react/useLogger';
-export { type LogEntry } from './core/types';
+export type InitLogLensConfig = {
+    logCollector?: Partial<CollectorConfig> | null;
+    captureErrors?: boolean;
+};
+declare const initLogLens: (config?: InitLogLensConfig) => void;
+export { useLogLens } from './react/useLogLens';
+export { initLogLens, withLogLens, LightZone, ErrorCapture, loglens };
