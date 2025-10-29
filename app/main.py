@@ -2,13 +2,11 @@
 FastAPI application entry point
 """
 
-import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1 import router as v1_router
-from app.consumers.log_consumer import log_consumer
 
 
 @asynccontextmanager
@@ -40,19 +38,10 @@ async def lifespan(app: FastAPI):
         print(f"⚠️ OpenSearch indices check failed: {e}")
         print("   Application will continue, but some features may not work")
 
-    # Start Kafka consumer in background
-    consumer_task = asyncio.create_task(log_consumer.start())
-    print("✅ Kafka consumer task started")
-
     yield
 
     # Shutdown
     print("🛑 Shutting down...")
-    log_consumer.stop()
-    try:
-        await asyncio.wait_for(consumer_task, timeout=5.0)
-    except asyncio.TimeoutError:
-        consumer_task.cancel()
     print("✅ Shutdown complete")
 
 

@@ -5,6 +5,21 @@ Log analysis models
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
+from enum import Enum
+
+
+class AnalysisType(str, Enum):
+    """Analysis type enumeration"""
+
+    SINGLE = "SINGLE"
+    TRACE_BASED = "TRACE_BASED"
+
+
+class TargetType(str, Enum):
+    """Analysis target type enumeration"""
+
+    LOG = "LOG"
+    LOG_DETAILS = "LOG_DETAILS"
 
 
 class LogAnalysisResult(BaseModel):
@@ -14,6 +29,8 @@ class LogAnalysisResult(BaseModel):
     error_cause: Optional[str] = Field(None, description="Root cause of error (if applicable)")
     solution: Optional[str] = Field(None, description="Suggested solution")
     tags: List[str] = Field(default_factory=list, description="Relevant tags")
+    analysis_type: AnalysisType = Field(default=AnalysisType.SINGLE, description="Analysis type (SINGLE/TRACE_BASED)")
+    target_type: TargetType = Field(default=TargetType.LOG, description="Target type (LOG/LOG_DETAILS)")
     analyzed_at: datetime = Field(default_factory=datetime.utcnow, description="Analysis timestamp")
 
     class Config:
@@ -23,6 +40,8 @@ class LogAnalysisResult(BaseModel):
                 "error_cause": "User object was null when accessing getName() method",
                 "solution": "Add null check before accessing user object properties",
                 "tags": ["NullPointerException", "UserService", "critical"],
+                "analysis_type": "TRACE_BASED",
+                "target_type": "LOG",
                 "analyzed_at": "2024-01-15T10:35:00.000Z",
             }
         }
@@ -46,6 +65,8 @@ class LogAnalysisResponse(BaseModel):
                     "error_cause": "User object was null",
                     "solution": "Add null check",
                     "tags": ["NullPointerException", "critical"],
+                    "analysis_type": "TRACE_BASED",
+                    "target_type": "LOG",
                     "analyzed_at": "2024-01-15T10:35:00.000Z",
                 },
                 "from_cache": False,

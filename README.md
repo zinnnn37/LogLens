@@ -8,17 +8,15 @@ Spring Boot 애플리케이션에서 수집된 로그를 AI로 분석하고, 챗
 
 ### 주요 기능
 
-1. **자동 로그 수집 및 벡터화**
-   - Kafka에서 로그 수신
-   - OpenAI Embedding으로 벡터 생성
-   - OpenSearch에 저장 (로그 + 벡터)
+1. **AI 로그 분석** (`/api/v1/logs/{log_id}/analysis?project_id={project_id}`)
+   - **Multi-tenancy 지원**: project_id 기반 데이터 격리
+   - **Trace 기반 분석**: trace_id로 연관 로그 수집 (±3초, 최대 100개)
+   - **2단계 캐싱**:
+     - Trace 캐싱 (97-99% 비용 절감)
+     - 유사도 캐싱 (80% 비용 절감)
+   - GPT-4o mini를 통한 상세 분석 (요약, 원인, 해결방법)
 
-2. **AI 로그 분석** (`/api/v1/logs/{log_id}/analysis`)
-   - 유사도 기반 캐싱 (threshold: 0.8)
-   - 유사한 로그의 분석 결과 재사용 → **80% 비용 절감**
-   - GPT-4o를 통한 상세 분석 (요약, 원인, 해결방법)
-
-3. **RAG 기반 챗봇** (`/api/v1/chatbot/ask`)
+2. **RAG 기반 챗봇** (`/api/v1/chatbot/ask`)
    - 자연어 질문으로 로그 검색
    - 유사 질문 캐싱 → **80% 비용 절감**
    - 관련 로그를 컨텍스트로 활용한 답변 생성
@@ -26,19 +24,30 @@ Spring Boot 애플리케이션에서 수집된 로그를 AI로 분석하고, 챗
 ## 🏗️ 아키텍처
 
 ```
-Kafka (로그 수신)
-   ↓
-Log Consumer
-   ↓
-OpenAI Embedding (벡터 생성)
-   ↓
-OpenSearch (로그 + 벡터 저장)
-   ↓
-┌─────────────┬─────────────┐
-│ 로그 분석 API │  챗봇 API     │
-│ (유사도 캐시) │ (QA 캐시)    │
-└─────────────┴─────────────┘
+┌──────────────────────────────────────┐
+│   로그 수집 파이프라인 (별도 관리)    │
+│  Spring Boot → Kafka → Logstash     │
+│                   ↓                  │
+│              OpenSearch              │
+│            (로그 + 벡터 저장)         │
+└──────────────────────────────────────┘
+                   ↓ (읽기)
+┌──────────────────────────────────────┐
+│      AI 서비스 (FastAPI)              │
+│                                      │
+│  OpenSearch ← 로그 조회               │
+│       ↓                              │
+│  ┌─────────────┬─────────────┐      │
+│  │ 로그 분석 API │  챗봇 API     │      │
+│  │ (유사도 캐시) │ (QA 캐시)    │      │
+│  └─────────────┴─────────────┘      │
+└──────────────────────────────────────┘
 ```
+
+**AI 서비스의 역할**:
+- OpenSearch에서 로그 읽기 (Logstash가 이미 저장한 로그)
+- AI 분석 수행 및 결과 캐싱
+- 챗봇 질의 응답 (RAG)
 
 ## 📦 기술 스택
 
@@ -46,7 +55,6 @@ OpenSearch (로그 + 벡터 저장)
 - **LangChain**: LLM 체인 구성
 - **OpenAI**: GPT-4o (분석), text-embedding-3-large (임베딩)
 - **OpenSearch**: 로그 저장 + Vector DB (KNN search)
-- **Kafka**: 로그 메시지 큐
 
 ## 🚀 빠른 시작
 
@@ -65,29 +73,7 @@ cp .env.example .env
 # .env 파일을 열어서 OPENAI_API_KEY 설정
 ```
 
-### 2. 인프라 실행
-
-Infrastructure 프로젝트의 Kafka, OpenSearch를 먼저 실행해야 합니다.
-
-```bash
-cd ../infrastructure
-bash scripts/setup.sh
-```
-
-### 3. 연결 테스트
-
-```bash
-python scripts/test_connection.py
-```
-
-**기대 출력**:
-```
-✅ OpenSearch connected
-✅ Kafka connected
-✅ OpenAI API connected
-```
-
-### 4. OpenSearch 인덱스 생성
+### 2. OpenSearch 인덱스 생성
 
 ```bash
 python scripts/create_indices.py
@@ -97,7 +83,7 @@ python scripts/create_indices.py
 - `logs-*` 인덱스 템플릿 (로그 + 벡터)
 - `qa-cache` 인덱스 (챗봇 QA 캐시)
 
-### 5. 서버 실행
+### 3. 서버 실행
 
 ```bash
 uvicorn app.main:app --reload --port 8000
@@ -107,7 +93,7 @@ uvicorn app.main:app --reload --port 8000
 ```
 🚀 Starting log-analysis-api v1.0.0
 📊 Environment: development
-✅ Kafka consumer task started
+✅ OpenSearch indices ready
 ```
 
 ## 📚 API 문서
@@ -119,8 +105,11 @@ uvicorn app.main:app --reload --port 8000
 #### 1. 로그 분석
 
 ```bash
-GET /api/v1/logs/{log_id}/analysis
+GET /api/v1/logs/{log_id}/analysis?project_id={project_id}
 ```
+
+**Query Parameters**:
+- `project_id` (required): 프로젝트 ID (multi-tenancy)
 
 **응답 예시**:
 ```json
@@ -131,6 +120,8 @@ GET /api/v1/logs/{log_id}/analysis
     "error_cause": "User object was null when accessing getName()",
     "solution": "Add null check before accessing user properties",
     "tags": ["NullPointerException", "UserService", "critical"],
+    "analysis_type": "TRACE_BASED",
+    "target_type": "LOG",
     "analyzed_at": "2024-01-15T10:35:00.000Z"
   },
   "from_cache": false,
@@ -172,19 +163,25 @@ Content-Type: application/json
 }
 ```
 
-## 🎯 유사도 캐싱 전략
+## 🎯 캐싱 전략 (2단계)
 
-### 로그 분석 캐싱
+### 1단계: Trace 기반 캐싱 (우선)
 
-1. 로그가 들어오면 임베딩 벡터 생성
-2. OpenSearch KNN으로 유사한 로그 검색 (k=5)
+1. trace_id 존재 시, 연관 로그 수집 (±3초, 최대 100개)
+2. 수집된 로그 중 **이미 분석된 로그가 있으면** → 분석 결과 재사용
+3. 전체 trace에 대해 1회만 분석 → **97-99% 비용 절감**
+
+### 2단계: 유사도 기반 캐싱 (폴백)
+
+1. trace_id가 없거나 캐시 미스 시
+2. 임베딩 벡터로 KNN 검색 (k=5)
 3. **유사도 >= 0.8인 로그가 있으면** → 분석 결과 재사용
-4. 없으면 → GPT-4o로 새로 분석
+4. 없으면 → GPT-4o mini로 새로 분석
 
 **비용 절감 효과**:
-- 임베딩: $0.00003 (항상 필요)
-- LLM 호출: $0.01 (캐시 히트 시 생략)
-- **약 300배 비용 절감**
+- Trace 캐싱: 97-99% 절감 (같은 요청 흐름)
+- 유사도 캐싱: 80% 절감 (유사한 에러)
+- **총 97-99% 비용 절감**
 
 ### 챗봇 QA 캐싱
 
@@ -207,8 +204,6 @@ app/
 ├── chains/
 │   ├── log_analysis_chain.py    # 로그 분석 LangChain
 │   └── chatbot_chain.py         # 챗봇 LangChain
-├── consumers/
-│   └── log_consumer.py          # Kafka 로그 컨슈머
 ├── core/
 │   ├── config.py                # 설정 (Pydantic Settings)
 │   └── opensearch.py            # OpenSearch 클라이언트
@@ -245,10 +240,6 @@ OPENAI_API_KEY=your-openai-api-key-here
 EMBEDDING_MODEL=text-embedding-3-large
 LLM_MODEL=gpt-4o-mini
 
-# Kafka
-KAFKA_TOPIC=application-logs
-KAFKA_GROUP_ID=log-analysis-consumer
-
 # Analysis
 SIMILARITY_THRESHOLD=0.8        # 유사도 임계값
 MAX_CONTEXT_LOGS=5              # 챗봇 컨텍스트 로그 수
@@ -262,10 +253,7 @@ OPENSEARCH_HOST=localhost
 OPENSEARCH_PORT=9200
 OPENSEARCH_USER=admin
 OPENSEARCH_PASSWORD=Admin123!@#
-OPENSEARCH_USE_SSL=true
-
-# Kafka (로컬)
-KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+OPENSEARCH_USE_SSL=false
 ```
 
 #### 컨테이너/프로덕션 환경
@@ -274,21 +262,18 @@ KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 
 ```yaml
 environment:
-  # Kafka - 내부 통신 포트
-  - KAFKA_BOOTSTRAP_SERVERS=kafka:19092
-
   # OpenSearch - 서비스명으로 접근
   - OPENSEARCH_HOST=opensearch
   - OPENSEARCH_PORT=9200
   - OPENSEARCH_USER=admin
   - OPENSEARCH_PASSWORD=Admin123!@#
-  - OPENSEARCH_USE_SSL=true
+  - OPENSEARCH_USE_SSL=false
 ```
 
 **중요 사항**:
-- **로컬 개발**: `localhost` 사용, 외부 포트 `9092` 사용
-- **컨테이너**: 서비스명 사용, Kafka는 내부 포트 `19092` 사용
-- **보안**: 프로덕션에서는 비밀번호 변경 필수
+- **로컬 개발**: `localhost` 사용
+- **컨테이너**: 서비스명 (`opensearch`) 사용
+- **보안**: 프로덕션에서는 비밀번호 변경 및 SSL 활성화 필수
 
 ## 🧪 테스트 시나리오
 
@@ -301,18 +286,26 @@ curl "http://localhost:8080/api/test/error"
 # 2. OpenSearch에서 로그 ID 확인
 curl "http://localhost:9200/logs-*/_search?q=level:ERROR&pretty" | grep log_id
 
-# 3. AI 분석 요청
+# 3. AI 분석 요청 (project_id 포함)
 LOG_ID="..."  # 위에서 확인한 ID
-curl "http://localhost:8000/api/v1/logs/$LOG_ID/analysis" | jq
+PROJECT_ID="project_001"
+curl "http://localhost:8000/api/v1/logs/$LOG_ID/analysis?project_id=$PROJECT_ID" | jq
 ```
 
-### 2. 유사도 캐싱 확인
+### 2. Trace 캐싱 확인
 
 ```bash
-# 같은 에러를 다시 발생시킴
+# trace_id가 같은 다른 로그로 분석 요청
+# → from_cache: true, similarity_score: 1.0 반환 (같은 trace)
+```
+
+### 3. 유사도 캐싱 확인
+
+```bash
+# 같은 에러를 다시 발생시킴 (다른 trace_id)
 curl "http://localhost:8080/api/test/error"
 
-# 새 로그 ID로 분석 요청 → from_cache: true 반환
+# 새 로그 ID로 분석 요청 → from_cache: true, similarity_score: 0.9x 반환
 ```
 
 ### 3. 챗봇 테스트
@@ -348,14 +341,6 @@ curl http://localhost:9200/_cluster/health?pretty
 # status가 "green" 또는 "yellow"인지 확인
 ```
 
-### Kafka 연결 실패
-
-```bash
-cd ../infrastructure
-docker-compose ps
-docker-compose logs kafka
-```
-
 ### OpenAI API 에러
 
 ```bash
@@ -378,7 +363,6 @@ curl https://api.openai.com/v1/models \
 
 ### 확장성
 
-- [ ] Kafka 파티션 증가
 - [ ] OpenSearch 샤드/레플리카 조정
 - [ ] FastAPI workers 증가 (`--workers 4`)
 - [ ] Redis 캐시 추가

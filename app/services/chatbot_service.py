@@ -139,7 +139,7 @@ class ChatbotService:
                     RelatedLog(
                         log_id=source["log_id"],
                         timestamp=source["timestamp"],
-                        level=source["level"],
+                        level=source.get("log_level") or source.get("level", "INFO"),  # Logstash sends log_level
                         message=source["message"],
                         service_name=source["service_name"],
                         similarity_score=1.0,  # From cache, so perfect match
@@ -181,7 +181,7 @@ Log {i}:
                 RelatedLog(
                     log_id=data["log_id"],
                     timestamp=data["timestamp"],
-                    level=data["level"],
+                    level=data.get("log_level") or data.get("level", "INFO"),  # Logstash sends log_level
                     message=data["message"],
                     service_name=data["service_name"],
                     similarity_score=log["score"],
