@@ -1,6 +1,7 @@
 package a306.dependency_logger_starter.dependency.client;
 
 import a306.dependency_logger_starter.dependency.dto.Component;
+import a306.dependency_logger_starter.dependency.dto.ComponentBatchRequest;
 import a306.dependency_logger_starter.dependency.dto.DependencyRelation;
 import a306.dependency_logger_starter.dependency.dto.ProjectDependencyInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -83,38 +84,29 @@ public class DependencyLogSender {
     /**
      * 컴포넌트만 Collector에 전송
      *
-     * @param projectName 프로젝트명
-     * @param components 컴포넌트 목록
+     * @param request 컴포넌트 배치
      */
-    public void sendComponents(String projectName, List<Component> components) {
+    public void sendComponents(ComponentBatchRequest request) {
         if (!enabled) {
             log.debug("의존성 전송이 비활성화되어 있습니다.");
             return;
         }
 
-        log.info("📤 컴포넌트 정보 전송 시작: {}", projectName);
-        log.info("  - 컴포넌트: {} 개", components.size());
+        log.info("📤 컴포넌트 정보 전송 시작");
+        log.info("  - 컴포넌트: {} 개", request.components().size());
 
         try {
-            // DTO 생성 (컴포넌트만 포함, 의존성은 빈 리스트)
-            ProjectDependencyInfo componentInfo = new ProjectDependencyInfo(
-                    projectName,
-                    components,
-                    List.of()  // 빈 의존성 리스트
-            );
-
             webClient.post()
                     .uri("/api/components/batch")
-                    .body(Mono.just(componentInfo), ProjectDependencyInfo.class)
+                    .body(Mono.just(request), ComponentBatchRequest.class)
                     .retrieve()
                     .bodyToMono(String.class)
                     .timeout(Duration.ofSeconds(10))
                     .doOnSuccess(response ->
-                            log.info("✅ 컴포넌트 정보 전송 성공: {}", projectName)
+                            log.info("✅ 컴포넌트 정보 전송 성공")
                     )
                     .doOnError(error ->
-                            log.warn("⚠️ 컴포넌트 정보 전송 실패: {} - {}",
-                                    projectName,
+                            log.warn("⚠️ 컴포넌트 정보 전송 실패: {}",
                                     error.getMessage())
                     )
                     .onErrorResume(e -> {
@@ -127,7 +119,6 @@ public class DependencyLogSender {
             log.error("컴포넌트 전송 중 예외 발생", e);
         }
     }
-
     /**
      * 의존성 관계만 Collector에 전송
      *
