@@ -1,11 +1,24 @@
 // src/components/Sidebar.tsx
 import { useState } from 'react';
 import type { ComponentProps } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { PlusSquare, Settings, MessageSquare, LogOut } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import {
+  PlusSquare,
+  Settings,
+  MessageSquare,
+  LogOut,
+  BookOpen,
+} from 'lucide-react';
 
 import ProjectCreateModal from '@/components/modal/ProjectCreateModal';
 import { JiraIntegrationModal } from '@/components/modal/JiraIntegrationModal';
+import DocsTOC from '@/components/DocsTOC';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { logout } from '@/services/authApi';
 import { useAuthStore } from '@/stores/authStore';
 import { ROUTE_PATH } from '@/router/route-path';
@@ -18,24 +31,6 @@ type SidebarProps = ComponentProps<'aside'> & {
 // 공통 스타일: 링크/버튼 모양 일치
 const itemBase =
   'text-[#6A6A6A] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-all';
-
-// a 태그 버전 (라우팅/외부 링크 등)
-const NavLink = ({
-  icon: Icon,
-  children,
-  href = '#',
-}: {
-  icon: React.ElementType;
-  children: React.ReactNode;
-  href?: string;
-}) => {
-  return (
-    <a href={href} className={itemBase}>
-      <Icon className="text-primary h-4 w-4" />
-      {children}
-    </a>
-  );
-};
 
 // 버튼 버전 (모달 트리거/액션 등)
 const NavButton = ({
@@ -66,7 +61,10 @@ const NavHeading = ({ children }: { children: React.ReactNode }) => {
 
 const Sidebar = ({ className, ...props }: SidebarProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { clearAuth } = useAuthStore();
+
+  const isDocsPage = location.pathname === ROUTE_PATH.DOCS;
 
   // 프로젝트 생성 모달 Open 상태 관리
   const [openCreate, setOpenCreate] = useState(false);
@@ -110,13 +108,13 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
 
   return (
     <aside
-      className={`border-sidebar-border flex h-[100dvh] w-56 flex-col justify-between border-r p-2 ${className || ''}`}
+      className={`border-sidebar-border flex h-[100dvh] w-56 flex-col border-r p-2 ${className || ''}`}
       {...props}
     >
       {/* 1) 상단 그룹 */}
-      <div className="font-godoM">
+      <div className="font-godoM flex min-h-0 flex-1 flex-col">
         {/* 로고 */}
-        <div className="mb-3 flex h-14 items-center px-2">
+        <div className="mb-3 flex h-14 flex-shrink-0 items-center px-2">
           <a href="/" className="font-pretendard text-4xl font-bold">
             <span className="text-[#1C1C1C]">Log</span>
             <span className="text-[#6A91BE]">Lens</span>
@@ -124,9 +122,9 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
         </div>
 
         {/* 네비게이션 */}
-        <nav className="flex flex-col gap-4">
+        <nav className="flex min-h-0 flex-1 flex-col gap-4">
           {/* Projects */}
-          <section>
+          <section className="flex-shrink-0">
             <NavHeading>
               <p className="font-pretendard">projects</p>
             </NavHeading>
@@ -144,26 +142,61 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
           </section>
 
           {/* Support */}
-          <section>
+          <section className="flex min-h-0 flex-1 flex-col">
             <NavHeading>
               <p className="font-pretendard">Support</p>
             </NavHeading>
-            <ul className="flex flex-col gap-1">
-              <li>
-                <NavButton icon={Settings} onClick={() => setOpenJira(true)}>
-                  Jira API 연결
-                </NavButton>
-              </li>
-            </ul>
+            <div className="flex min-h-0 flex-1 flex-col gap-1">
+              <NavButton icon={Settings} onClick={() => setOpenJira(true)}>
+                Jira API 연결
+              </NavButton>
+
+              <Accordion
+                type="single"
+                collapsible
+                className="min-h-0 flex-1"
+                defaultValue={isDocsPage ? 'docs' : undefined}
+              >
+                <AccordionItem
+                  value="docs"
+                  className="flex min-h-0 flex-1 flex-col border-none"
+                >
+                  <AccordionTrigger
+                    className={`${itemBase} flex-shrink-0 py-2 text-base font-normal hover:no-underline`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="text-primary h-4 w-4" />
+                      <span
+                        onClick={e => {
+                          e.stopPropagation();
+                          navigate(ROUTE_PATH.DOCS);
+                        }}
+                        className="cursor-pointer"
+                      >
+                        사용자 가이드
+                      </span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="flex min-h-0 flex-1 flex-col pb-0">
+                    <DocsTOC />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </div>
           </section>
         </nav>
       </div>
 
       {/* 2) 하단 그룹 */}
-      <div>
+      <div className="flex-shrink-0">
         <hr className="border-sidebar-border my-4" />
         <nav className="font-godoM flex flex-col gap-1">
-          <NavLink icon={MessageSquare}>AI Chat</NavLink>
+          <NavButton
+            icon={MessageSquare}
+            onClick={() => navigate(ROUTE_PATH.AI_CHAT)}
+          >
+            AI Chat
+          </NavButton>
           <NavButton icon={LogOut} onClick={handleLogout}>
             Log out
           </NavButton>
