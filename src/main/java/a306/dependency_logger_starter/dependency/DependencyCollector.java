@@ -434,6 +434,14 @@ public class DependencyCollector {
 
 
     private ComponentRequest convertToComponentRequest(Component component) {
+        // ✅ 로그 추가
+        log.info("🔍 변환 중: name={}, type={}, componentType={}, layer={}, packageName={}",
+                component.name(),
+                component.type(),
+                determineComponentType(component),
+                determineComponentLayer(component),
+                component.packageName());
+
         return new ComponentRequest(
                 component.name(),
                 component.type(),                    // classType
