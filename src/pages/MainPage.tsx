@@ -1,60 +1,51 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import NoProjectIllust from '@/assets/images/NoProjectIllust.png';
-import type { Project } from '@/components/WithProject';
 import WithProject from '@/components/WithProject';
 import ProjectCreateModal from '@/components/modal/ProjectCreateModal';
+import { Loader2 } from 'lucide-react';
 
-const DEV_SEED_ON_FIRST_CREATE = true;
-
-// 더미 목록 (WithProject의 더미와 톤만 맞춤)
-const SEED_DUMMIES: Project[] = [
-  { id: 'p1', name: '자율 프로젝트', memberCount: 2, todayLogCount: 1200 },
-  { id: 'p2', name: '공통 프로젝트', memberCount: 2, todayLogCount: 1200 },
-  { id: 'p3', name: '개인 프로젝트', memberCount: 2, todayLogCount: 1200 },
-];
+import { useProjectStore } from '@/stores/projectStore';
+import { fetchProjects, createProject } from '@/services/projectService';
 
 const MainPage = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [showEmptyMain, setShowEmptyMain] = useState(true);
-
-  useEffect(() => {
-    if (projects.length > 0) {
-      setShowEmptyMain(false);
-    }
-  }, [projects.length]);
+  const projects = useProjectStore(state => state.projects);
+  const setProjectsInStore = useProjectStore(state => state.setProjects);
 
   const [openCreate, setOpenCreate] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showEmptyMain, setShowEmptyMain] = useState(false);
 
-  // 한번에 여러개 만들기 (더미용)
-  const handleComplete = (projectId: string) => {
-    if (DEV_SEED_ON_FIRST_CREATE && projects.length === 0) {
-      const created: Project = {
-        id: projectId,
-        name: `새 프로젝트 1`,
-        memberCount: 1,
-        todayLogCount: 0,
-      };
-      setProjects([created, ...SEED_DUMMIES]);
-      setShowEmptyMain(false);
-      return;
-    }
+  useEffect(() => {
+    const loadProjects = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetchProjects();
+        setProjectsInStore(response);
+      } catch (error) {
+        console.error('프로젝트 목록 로드 실패', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadProjects();
+  }, [setProjectsInStore]);
 
-    setProjects(prev => [
-      ...prev,
-      {
-        id: projectId,
-        name: `새 프로젝트 ${prev.length + 1}`,
-        memberCount: 1,
-        todayLogCount: 0,
-      },
-    ]);
-    setShowEmptyMain(false);
+  useEffect(() => {
+    setShowEmptyMain(!isLoading && projects.length === 0);
+  }, [isLoading, projects.length]);
+
+  const handleDelete = async (id: number) => {
+    console.warn(`[TODO] deleteProject(${id}) 서비스 및 스토어 액션 구현 필요`);
   };
 
-  const handleDelete = (id: string) => {
-    setProjects(prev => prev.filter(p => p.id !== id));
-  };
+  if (isLoading) {
+    return (
+      <main className="flex flex-1 flex-col items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+      </main>
+    );
+  }
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-10">
@@ -90,8 +81,12 @@ const MainPage = () => {
       <ProjectCreateModal
         open={openCreate}
         onOpenChange={setOpenCreate}
-        onCreate={async () => ({ projectId: `proj_${Date.now()}` })}
-        onComplete={handleComplete}
+        onCreate={createProject}
+        onComplete={(newProject) => {
+          useProjectStore.getState().addProject(newProject);
+          setOpenCreate(false);
+
+        }}
       />
     </main>
   );
