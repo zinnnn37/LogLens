@@ -19,24 +19,6 @@ type SidebarProps = ComponentProps<'aside'> & {
 const itemBase =
   'text-[#6A6A6A] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-all';
 
-// a 태그 버전 (라우팅/외부 링크 등)
-const NavLink = ({
-  icon: Icon,
-  children,
-  href = '#',
-}: {
-  icon: React.ElementType;
-  children: React.ReactNode;
-  href?: string;
-}) => {
-  return (
-    <a href={href} className={itemBase}>
-      <Icon className="text-primary h-4 w-4" />
-      {children}
-    </a>
-  );
-};
-
 // 버튼 버전 (모달 트리거/액션 등)
 const NavButton = ({
   icon: Icon,
@@ -163,7 +145,12 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
       <div>
         <hr className="border-sidebar-border my-4" />
         <nav className="font-godoM flex flex-col gap-1">
-          <NavLink icon={MessageSquare}>AI Chat</NavLink>
+          <NavButton
+            icon={MessageSquare}
+            onClick={() => navigate(ROUTE_PATH.AI_CHAT)}
+          >
+            AI Chat
+          </NavButton>
           <NavButton icon={LogOut} onClick={handleLogout}>
             Log out
           </NavButton>
