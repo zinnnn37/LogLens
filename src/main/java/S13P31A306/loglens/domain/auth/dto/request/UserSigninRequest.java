@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
 public record UserSigninRequest(
         @NotBlank(message = "EMAIL_REQUIRED")
         @Email(message = "EMAIL_INVALID_FORMAT")
-        @Pattern(regexp = "^[a-zA-Z][a-zA-Z0-9._-]*@[a-zA-Z][a-zA-Z0-9.-]*\\.[a-zA-Z]{2,}$",
+        @Pattern(regexp = "^[a-zA-Z0-9][a-zA-Z0-9._-]*@[a-zA-Z][a-zA-Z0-9.-]*\\.[a-zA-Z]{2,}$",
                 message = "EMAIL_INVALID_FORMAT")
         @Schema(description = "로그인용 이메일", example = "developer@example.com")
         String email,
