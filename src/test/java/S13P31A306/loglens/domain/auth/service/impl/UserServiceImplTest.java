@@ -4,6 +4,7 @@ import static S13P31A306.loglens.domain.auth.constants.AuthErrorCode.PASSWORD_CO
 import static S13P31A306.loglens.global.constants.GlobalErrorCode.EMAIL_DUPLICATED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.any;
 import static org.mockito.BDDMockito.anyString;
 import static org.mockito.BDDMockito.given;
@@ -21,7 +22,9 @@ import S13P31A306.loglens.domain.auth.dto.response.UserSignupResponse;
 import S13P31A306.loglens.domain.auth.entity.User;
 import S13P31A306.loglens.domain.auth.mapper.UserMapper;
 import S13P31A306.loglens.domain.auth.respository.UserRepository;
+import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.domain.auth.validator.UserValidator;
+import S13P31A306.loglens.global.constants.GlobalErrorCode;
 import S13P31A306.loglens.global.exception.BusinessException;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -51,6 +54,8 @@ class UserServiceImplTest {
     private PasswordEncoder passwordEncoder;
     @Mock
     private UserValidator userValidator;
+    @Mock
+    private AuthenticationHelper authenticationHelper;
 
     @Test
     void 회원가입_성공_시_UserSignupResponse을_반환한다() {
@@ -150,6 +155,8 @@ class UserServiceImplTest {
     @DisplayName("이름으로 사용자 검색")
     class FindUsersByName {
 
+        private final Integer TEST_USER_ID = 1;
+
         @Test
         void 이름_검색을_성공한다() {
             // given
@@ -159,6 +166,7 @@ class UserServiceImplTest {
             Page<User> userPage = new PageImpl<>(List.of(user), pageable, 1);
             UserSearchResponse response = new UserSearchResponse(1, "홍길동", "test@test.com");
 
+            given(authenticationHelper.getCurrentUserId()).willReturn(TEST_USER_ID);
             willDoNothing().given(userValidator).validateFindUsersByName(name, 0, 20);
             given(userRepository.findByNameContaining(name, pageable)).willReturn(userPage);
             given(userMapper.toSearchResponse(user)).willReturn(response);
@@ -169,6 +177,7 @@ class UserServiceImplTest {
             // then
             assertThat(result).isNotNull();
             assertThat(result.getContent()).hasSize(1);
+            verify(authenticationHelper, times(1)).getCurrentUserId();
             verify(userValidator, times(1)).validateFindUsersByName(name, 0, 20);
             verify(userRepository, times(1)).findByNameContaining(name, pageable);
         }
@@ -180,6 +189,7 @@ class UserServiceImplTest {
             Pageable pageable = PageRequest.of(0, 20);
             Page<User> emptyPage = Page.empty(pageable);
 
+            given(authenticationHelper.getCurrentUserId()).willReturn(TEST_USER_ID);
             willDoNothing().given(userValidator).validateFindUsersByName(name, 0, 20);
             given(userRepository.findByNameContaining(name, pageable)).willReturn(emptyPage);
 
@@ -189,6 +199,7 @@ class UserServiceImplTest {
             // then
             assertThat(result).isNotNull();
             assertThat(result.isEmpty()).isTrue();
+            verify(authenticationHelper, times(1)).getCurrentUserId();
             verify(userValidator, times(1)).validateFindUsersByName(name, 0, 20);
             verify(userRepository, times(1)).findByNameContaining(name, pageable);
         }
@@ -198,6 +209,8 @@ class UserServiceImplTest {
             // given
             String name = "";
             Pageable pageable = PageRequest.of(0, 20);
+
+            given(authenticationHelper.getCurrentUserId()).willReturn(TEST_USER_ID);
             willThrow(new BusinessException(UserErrorCode.NAME_REQUIRED))
                     .given(userValidator).validateFindUsersByName(name, 0, 20);
 
@@ -206,6 +219,26 @@ class UserServiceImplTest {
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.NAME_REQUIRED);
 
+            verify(authenticationHelper, times(1)).getCurrentUserId();
+            verify(userRepository, times(0)).findByNameContaining(anyString(), any(Pageable.class));
+        }
+
+        @Test
+        void 유효하지_않은_사용자_ID로_검색_시_예외가_발생한다() {
+            // given
+            String name = "홍길동";
+            Pageable pageable = PageRequest.of(0, 20);
+
+            willThrow(new BusinessException(GlobalErrorCode.USER_NOT_FOUND))
+                    .given(authenticationHelper).getCurrentUserId();
+
+            // when & then
+            assertThatThrownBy(() -> userService.findUsersByName(name, pageable))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", GlobalErrorCode.USER_NOT_FOUND);
+
+            verify(authenticationHelper, times(1)).getCurrentUserId();
+            verify(userValidator, times(0)).validateFindUsersByName(anyString(), anyInt(), anyInt());
             verify(userRepository, times(0)).findByNameContaining(anyString(), any(Pageable.class));
         }
     }
