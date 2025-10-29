@@ -4,11 +4,13 @@ import static S13P31A306.loglens.global.constants.GlobalErrorCode.EMAIL_DUPLICAT
 
 import S13P31A306.loglens.domain.auth.constants.AuthErrorCode;
 import S13P31A306.loglens.domain.auth.constants.UserErrorCode;
+import S13P31A306.loglens.domain.auth.constants.UserSortField;
 import S13P31A306.loglens.domain.auth.respository.UserRepository;
 import S13P31A306.loglens.global.exception.BusinessException;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -98,5 +100,29 @@ public class UserValidator {
         }
 
         log.debug("{} 사용자 검색 파라미터 검증 완료", LOG_PREFIX);
+    }
+
+    public Sort validateSortAndOrder(String sort, String order) {
+        String sortField = validateSortField(sort);
+        Sort.Direction direction = validateSortDirection(order);
+        return Sort.by(direction, sortField);
+    }
+
+    private String validateSortField(String sort) {
+        try {
+            return UserSortField.valueOf(sort.toUpperCase()).getFieldName();
+        } catch (IllegalArgumentException e) {
+            log.warn("{} 유효하지 않은 정렬 필드: {}", LOG_PREFIX, sort);
+            throw new BusinessException(UserErrorCode.SORT_INVALID);
+        }
+    }
+
+    private Sort.Direction validateSortDirection(String order) {
+        try {
+            return Sort.Direction.fromString(order.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.warn("{} 유효하지 않은 정렬 방향: {}", LOG_PREFIX, order);
+            throw new BusinessException(UserErrorCode.ORDER_INVALID);
+        }
     }
 }
