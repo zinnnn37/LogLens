@@ -60,13 +60,15 @@ public class DependencyCollector {
         log.info("✅ 수집 완료! (컴포넌트: {}, 관계: {})",
                 componentMap.size(), relations.size());
 
-        // 전송
-        ProjectDependencyInfo projectInfo = new ProjectDependencyInfo(
-                projectName,
-                new ArrayList<>(componentMap.values()),
-                relations
-        );
-        sender.sendProjectDependencies(projectInfo);
+        // ✅ 1단계: 컴포넌트만 먼저 전송
+        log.info("📤 [1단계] 컴포넌트 정보 전송...");
+        sender.sendComponents(projectName, new ArrayList<>(componentMap.values()));
+
+        // ✅ 2단계: 의존성 관계 나중에 전송
+        log.info("📤 [2단계] 의존성 관계 정보 전송...");
+        sender.sendDependencies(projectName, relations);
+
+        log.info("🎉 전송 완료!");
     }
 
     /**
@@ -89,7 +91,7 @@ public class DependencyCollector {
 
             // ✅ 중복 체크 추가
             if (componentMap.containsKey(componentKey)) {
-                log.debug("⏭️ 이미 수집됨: {}", targetClass.getSimpleName());
+                log.debug("⭐️ 이미 수집됨: {}", targetClass.getSimpleName());
                 continue;
             }
 
@@ -156,7 +158,7 @@ public class DependencyCollector {
 
                 // 중복 체크 (Class-based Repository와 겹칠 수 있음)
                 if (componentMap.containsKey(componentKey)) {
-                    log.debug("⏭️ 이미 수집된 Repository: {}", repositoryInterface.getSimpleName());
+                    log.debug("⭐️ 이미 수집된 Repository: {}", repositoryInterface.getSimpleName());
                     continue;
                 }
 
@@ -172,7 +174,7 @@ public class DependencyCollector {
                 log.debug("  ✅ Interface-based Repository 수집: {}", component.name());
 
                 // ⚠️ 의존성 수집 스킵 - 인터페이스는 생성자 없음
-                log.debug("  ⏭️ 의존성 수집 스킵 (인터페이스)");
+                log.debug("  ⭐️ 의존성 수집 스킵 (인터페이스)");
             }
 
         } catch (ClassNotFoundException e) {
@@ -275,7 +277,7 @@ public class DependencyCollector {
         for (Constructor<?> constructor : constructors) {
             Parameter[] parameters = constructor.getParameters();
 
-            log.debug("    🏗️ 생성자 파라미터 {} 개", parameters.length);
+            log.debug("    🗝️ 생성자 파라미터 {} 개", parameters.length);
 
             for (Parameter param : parameters) {
                 Class<?> paramType = param.getType();
