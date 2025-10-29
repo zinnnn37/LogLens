@@ -1,15 +1,20 @@
 package S13P31A306.loglens.domain.auth.service.impl;
 
+import S13P31A306.loglens.domain.auth.constants.UserErrorCode;
 import S13P31A306.loglens.domain.auth.dto.request.UserSignupRequest;
 import S13P31A306.loglens.domain.auth.dto.response.EmailValidateResponse;
+import S13P31A306.loglens.domain.auth.dto.response.UserSearchResponse;
 import S13P31A306.loglens.domain.auth.dto.response.UserSignupResponse;
 import S13P31A306.loglens.domain.auth.entity.User;
 import S13P31A306.loglens.domain.auth.mapper.UserMapper;
 import S13P31A306.loglens.domain.auth.respository.UserRepository;
 import S13P31A306.loglens.domain.auth.service.UserService;
 import S13P31A306.loglens.domain.auth.validator.UserValidator;
+import S13P31A306.loglens.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,5 +74,19 @@ public class UserServiceImpl implements UserService {
 
         // 4. 응답 DTO 생성 및 반환
         return userMapper.toSignupResponse(savedUser);
+    }
+
+    @Override
+    public Page<UserSearchResponse> findUsersByName(final String name, final Pageable pageable) {
+        log.debug("{} 이름으로 사용자 검색 요청: name={}, pageable={}", LOG_PREFIX, name, pageable);
+
+        Page<User> userPage = userRepository.findByNameContaining(name, pageable);
+
+        if (userPage.isEmpty()) {
+            throw new BusinessException(UserErrorCode.USER_NOT_FOUND_BY_NAME);
+        }
+
+        log.info("{} 이름으로 사용자 검색 완료: name={}, found={} items", LOG_PREFIX, name, userPage.getTotalElements());
+        return userPage.map(userMapper::toSearchResponse);
     }
 }
