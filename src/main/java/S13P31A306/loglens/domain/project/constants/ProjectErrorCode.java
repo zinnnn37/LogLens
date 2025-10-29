@@ -17,7 +17,7 @@ public enum ProjectErrorCode {
     INVALID_PAGE_SORT("PJ400-7", "유효하지 않은 정렬 필드입니다.", HttpStatus.BAD_REQUEST.value()),
     INVALID_PAGE_ORDER("PJ400-8", "유효하지 않은 정렬 방향입니다.", HttpStatus.BAD_REQUEST.value()),
     INVALID_PROJECT_ID("PJ400-9", "유효하지 않은 프로젝트 ID입니다.", HttpStatus.BAD_REQUEST.value()),
-    MEMBER_ID_REQUIRED("PJ400-10", "사용자 ID는 필수입니다.", HttpStatus.BAD_REQUEST.value()),
+    USER_ID_REQUIRED("PJ400-10", "사용자 ID는 필수입니다.", HttpStatus.BAD_REQUEST.value()),
 
     // 403 Forbidden
     ACCESS_FORBIDDEN("PJ403-1", "해당 프로젝트에 대한 접근 권한이 없습니다.", HttpStatus.FORBIDDEN.value()),
@@ -27,7 +27,8 @@ public enum ProjectErrorCode {
 
     // 404 Not Found
     PROJECT_NOT_FOUND("PJ404-1", "해당 프로젝트를 찾을 수 없습니다.", HttpStatus.NOT_FOUND.value()),
-    USER_NOT_FOUND("PJ404-2", "해당 사용자를 찾을 수 없습니다.",  HttpStatus.NOT_FOUND.value()),
+    USER_NOT_FOUND("PJ404-2", "해당 사용자를 찾을 수 없습니다.",  HttpStatus.NOT_FOUND.value()), // USER 자체가 없음
+    MEMBER_NOT_FOUND("PJ404-3", "해당 멤버를 찾을 수 없습니다.", HttpStatus.NOT_FOUND.value()),  // 프로젝트에 해당 멤버가 존재하지 않음
 
     // 409 Conflict
     PROJECT_NAME_DUPLICATED("PJ409-1", "이미 사용 중인 프로젝트 이름입니다.", HttpStatus.CONFLICT.value()),
