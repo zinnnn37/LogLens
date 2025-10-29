@@ -2,7 +2,7 @@
 
 import { LightZone } from '../core/lightZone';
 import { LogCollector } from '../core/logCollector';
-import type { LogLevel } from '../core/types';
+import type { LogLevel } from '../types/logTypes';
 
 type Logger = {
   info: (message: string, context?: any) => void;

@@ -1,6 +1,6 @@
 // src/react/types.ts
 
-import type { LogLevel } from '../core/types';
+import type { LogLevel } from './logTypes';
 
 export type UseLogLensOptions = {
   logger?: string;

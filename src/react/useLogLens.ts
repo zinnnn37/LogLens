@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { withLogLens } from '../wrappers/trace';
-import type { LogLensOptions } from '../core/types';
+import type { LogLensOptions } from '../types/logTypes';
 
 /**
  * 함수를 LogLens로 래핑하는 React Hook
