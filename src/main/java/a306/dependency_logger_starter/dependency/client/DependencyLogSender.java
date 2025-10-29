@@ -83,8 +83,6 @@ public class DependencyLogSender {
 
     /**
      * 컴포넌트만 Collector에 전송
-     *
-     * @param request 컴포넌트 배치
      */
     public void sendComponents(ComponentBatchRequest request) {
         if (!enabled) {
@@ -119,6 +117,7 @@ public class DependencyLogSender {
             log.error("컴포넌트 전송 중 예외 발생", e);
         }
     }
+
     /**
      * 의존성 관계만 Collector에 전송
      *
