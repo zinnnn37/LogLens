@@ -2,7 +2,7 @@
 
 import { LightZone } from './lightZone';
 import { LogCollector } from './logCollector';
-import type { LogLevel } from './types';
+import type { LogLevel } from '../types/logTypes';
 
 const loglens = {
   info: (message: string, context?: any) => {

@@ -1,7 +1,7 @@
 // src/core/logCollector.ts
 
 import { LogFormatter } from '../utils/logFormatter';
-import type { LogEntry, CollectorConfig } from './types';
+import type { LogEntry, CollectorConfig } from '../types/logTypes';
 
 class LogCollector {
   private static logs: LogEntry[] = [];
@@ -42,6 +42,8 @@ class LogCollector {
    */
   static addLog(log: LogEntry): void {
     this.logs.push(log);
+    console.log('[LogCollector] New log added:');
+    console.log(this.logs);
 
     const formatted = LogFormatter.toConsole(log);
     console.log(formatted);

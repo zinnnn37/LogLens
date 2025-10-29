@@ -15,31 +15,31 @@ type ZoneContext = {
  * 인덱스 시그니처
  * - ZoneContext 객체가 동적으로 여러 속성을 가질 수 있도록 허용
  *
- * ✅ 가능 - traceId만
- * const ctx1: ZoneContext = {
- *   traceId: 'abc-123'
- * };
+ ** 가능 - traceId만
+ ** const ctx1: ZoneContext = {
+ **  traceId: 'abc-123'
+ ** };
  *
- * ✅ 가능 - 추가 필드들
- * const ctx2: ZoneContext = {
- *   traceId: 'abc-123',
- *   userId: 'user-456',
- *   requestId: 'req-789',
- *   sessionId: 'sess-999'
- * ;
+ ** 가능 - 추가 필드들
+ ** const ctx2: ZoneContext = {
+ **   traceId: 'abc-123',
+ **   userId: 'user-456',
+ **   requestId: 'req-789',
+ **   sessionId: 'sess-999'
+ ** };
  *
- * ✅ 가능 - 어떤 키든
- * const ctx3: ZoneContext = {
- *   traceId: 'abc-123',
- *   anything: 'value',
- *   whatever: 123,
- *   randomKey: true
- * };
+ ** ✅ 가능 - 어떤 키든
+ ** const ctx3: ZoneContext = {
+ **   traceId: 'abc-123',
+ **   anything: 'value',
+ **   whatever: 123,
+ **   randomKey: true
+ ** };
  *
- * ❌ 불가능 - traceId 없음
- * const ctx4: ZoneContext = {
- *   userId: 'user-456'
- * };
+ *! ❌ 불가능 - traceId 없음
+ *! const ctx4: ZoneContext = {
+ *!   userId: 'user-456'
+ *! };
  */
 
 /**
@@ -57,12 +57,13 @@ type ZoneContext = {
  *   비동기 작업 수행
  * });
  */
-// src/core/lightZone.ts - 완전 재작성
-
 class LightZone {
   private static stack: ZoneContext[] = [];
   private static isPatched = false;
   private static OriginalPromise: PromiseConstructor | null = null;
+
+  private static originalSetTimeout = globalThis.setTimeout;
+  private static originalSetInterval = globalThis.setInterval;
 
   static init(): void {
     if (this.isPatched) {
@@ -72,6 +73,7 @@ class LightZone {
 
     this.OriginalPromise = Promise;
     this.patchPromise();
+    this.patchTimer();
     this.isPatched = true;
     console.log('[LogLens] Initialized - Auto trace propagation enabled');
   }
@@ -118,6 +120,9 @@ class LightZone {
   static reset(): void {
     this.stack = [];
     this.isPatched = false;
+
+    globalThis.setTimeout = this.originalSetTimeout;
+    globalThis.setInterval = this.originalSetInterval;
   }
 
   private static patchPromise(): void {
@@ -125,10 +130,9 @@ class LightZone {
       throw new Error('[LogLens] OriginalPromise not initialized');
     }
 
-    const OriginalPromise = this.OriginalPromise!;
+    const OriginalPromise = this.OriginalPromise;
     const zone = this;
 
-    // Promise 생성자 패치
     class ZonedPromise<T> extends OriginalPromise<T> {
       constructor(
         executor: (
@@ -140,32 +144,18 @@ class LightZone {
 
         super((resolve, reject) => {
           executor(
-            (value: T | PromiseLike<T>) => {
-              // 컨텍스트 복원
-              if (capturedContext && zone.current() !== capturedContext) {
-                zone.stack.push(capturedContext);
-                try {
-                  resolve(value);
-                } finally {
-                  zone.stack.pop();
+            capturedContext
+              ? (value) => zone.run(capturedContext, () => resolve(value))
+              : resolve,
+            capturedContext
+              ? (reason) => {
+                  // 에러 reject 시 traceId 저장
+                  if (reason && typeof reason === 'object') {
+                    (reason as MyError).__traceId = capturedContext.traceId;
+                  }
+                  zone.run(capturedContext, () => reject(reason));
                 }
-              } else {
-                resolve(value);
-              }
-            },
-            (reason?: any) => {
-              // 컨텍스트 복원
-              if (capturedContext && zone.current() !== capturedContext) {
-                zone.stack.push(capturedContext);
-                try {
-                  reject(reason);
-                } finally {
-                  zone.stack.pop();
-                }
-              } else {
-                reject(reason);
-              }
-            },
+              : reject,
           );
         });
       }
@@ -183,42 +173,21 @@ class LightZone {
         const capturedContext = zone.current();
 
         return super.then(
-          onfulfilled
-            ? (value: T) => {
-                // 컨텍스트 복원
-                if (capturedContext && zone.current() !== capturedContext) {
-                  zone.stack.push(capturedContext);
-                  try {
-                    return onfulfilled(value);
-                  } finally {
-                    zone.stack.pop();
-                  }
-                }
-                return onfulfilled(value);
-              }
-            : undefined,
-          onrejected
-            ? (reason: any) => {
-                // 컨텍스트 복원
-                if (capturedContext && zone.current() !== capturedContext) {
-                  zone.stack.push(capturedContext);
-                  try {
-                    return onrejected(reason);
-                  } finally {
-                    zone.stack.pop();
-                  }
-                }
-                return onrejected(reason);
-              }
-            : undefined,
+          onfulfilled && capturedContext
+            ? (value: T) => zone.run(capturedContext, () => onfulfilled(value))
+            : onfulfilled ?? undefined,
+          onrejected && capturedContext
+            ? (reason: any) =>
+                zone.run(capturedContext, () => onrejected(reason))
+            : onrejected ?? undefined,
         ) as Promise<TResult1 | TResult2>;
       }
     }
 
     // 전역 Promise 교체
-    (globalThis as any).Promise = ZonedPromise;
+    globalThis.Promise = ZonedPromise;
 
-    // 정적 메서드들
+    // 정적 메서드 패치
     ZonedPromise.resolve = function <T>(
       value?: T | PromiseLike<T>,
     ): Promise<T> {
@@ -262,8 +231,65 @@ class LightZone {
         });
       };
     }
+    console.log('[LogLens] Promise patched - TraceId propagation enabled');
+  }
 
-    console.log('[LogLens] Promise patched - TraceId auto-propagation active');
+  private static patchTimer(): void {
+    const zone = this;
+
+    this.originalSetTimeout = globalThis.setTimeout;
+    this.originalSetInterval = globalThis.setInterval;
+
+    (globalThis as any).setTimeout = function (
+      callback: Function,
+      delay?: number,
+      ...args: any[]
+    ) {
+      const capturedContext = zone.current();
+
+      const wrappedCallback = function (...cbArgs: any[]) {
+        if (capturedContext) {
+          zone.stack.push(capturedContext);
+          try {
+            return callback(...cbArgs);
+          } catch (error) {
+            const enrichedError = error as MyError;
+            enrichedError.__traceId = capturedContext.traceId;
+            throw error;
+          } finally {
+            zone.stack.pop();
+          }
+        }
+        return callback(...cbArgs);
+      };
+      return zone.originalSetTimeout(wrappedCallback, delay, ...args);
+    };
+
+    // Node.js 충돌 때문에 any 캐스팅
+    (globalThis as any).setInterval = function (
+      callback: Function,
+      delay?: number,
+      ...args: any[]
+    ) {
+      const capturedContext = zone.current();
+      const wrappedCallback = function (...cbArgs: any[]) {
+        if (capturedContext) {
+          zone.stack.push(capturedContext);
+          try {
+            return callback(...cbArgs);
+          } catch (error) {
+            const enrichedError = error as MyError;
+            enrichedError.__traceId = capturedContext.traceId;
+            throw error;
+          } finally {
+            zone.stack.pop();
+          }
+        }
+        return callback(...cbArgs);
+      };
+      return zone.originalSetInterval(wrappedCallback, delay, ...args);
+    };
+    console.log('[LogLens] Timers patched - TraceId propagation enabled');
   }
 
   static getStatus() {

@@ -1,12 +1,30 @@
 // src/index.ts
 
-export { Log } from './decorators/logs';
-export { LogFormatter } from './utils/logFormatter';
-export { withLogLens } from './wrappers/trace';
-export { LightZone } from './core/lightZone';
-export { LogCollector } from './core/logCollector';
-export { useLogLens } from './react/useLogLens';
-export { loglens } from './core/logger';
 export { useLogger } from './react/useLogger';
+import { LightZone } from './core/lightZone';
+import { ErrorCapture } from './core/errorCapture';
+import { loglens } from './core/logger';
+import { withLogLens } from './wrappers/trace';
+import { type CollectorConfig } from './types/logTypes';
+import { LogCollector } from './core/logCollector';
 
-export { type LogEntry } from './core/types';
+export type InitLogLensConfig = {
+  logCollector?: Partial<CollectorConfig> | null;
+  captureErrors?: boolean;
+};
+
+const initLogLens = (config?: InitLogLensConfig): void => {
+  // 컨텍스트 전파
+  LightZone.init();
+
+  // 로그 수집기 초기화
+  LogCollector.init(config?.logCollector || null);
+
+  // 에러 캡처링 활성화
+  if (config?.captureErrors) {
+    ErrorCapture.init();
+  }
+};
+
+export { useLogLens } from './react/useLogLens';
+export { initLogLens, withLogLens, LightZone, ErrorCapture, loglens };

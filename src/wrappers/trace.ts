@@ -2,7 +2,7 @@
 
 import { LightZone } from '../core/lightZone';
 import { LogCollector } from '../core/logCollector';
-import type { LogLensOptions } from '../core/types';
+import type { LogLensOptions } from '../types/logTypes';
 
 /**
  * StackTrace에서 함수명 추출
