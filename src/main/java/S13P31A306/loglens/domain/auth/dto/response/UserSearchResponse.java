@@ -5,16 +5,14 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
-public class UserSearchResponse {
+public record UserSearchResponse(
     @Schema(description = "사용자 ID", example = "1")
-    private Integer userId;
+    Integer userId,
 
     @Schema(description = "사용자 이름", example = "홍길동")
-    private String name;
+    String name,
 
     @Schema(description = "사용자 이메일", example = "developer@example.com")
-    private String email;
+    String email
+) {
 }
