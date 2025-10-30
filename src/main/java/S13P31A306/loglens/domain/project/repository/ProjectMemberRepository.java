@@ -1,11 +1,12 @@
 package S13P31A306.loglens.domain.project.repository;
 
 import S13P31A306.loglens.domain.project.entity.ProjectMember;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface ProjectMemberRepository {
+public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Integer> {
 
     /**
      * 멤버 초대 시 중복 여부 확인
@@ -30,7 +31,7 @@ public interface ProjectMemberRepository {
      * @param projectId 프로젝트 ID
      * @param userId 멤버 ID
      */
-    void deleteByProjectIdAndMemberId(int projectId, int userId);
+    void deleteByProjectIdAndUserId(int projectId, int userId);
 
     /**
      * 프로젝트 내 특정 멤버 찾기
