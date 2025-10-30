@@ -47,6 +47,7 @@ public class ProjectServiceImpl implements ProjectService {
     private static AuthenticationHelper authHelper;
 
     @Override
+    @Transactional
     public ProjectCreateResponse createProject(ProjectCreateRequest request) {
         log.info("{} 프로젝트 생성 시작: {}", LOG_PREFIX, request.projectName());
 
@@ -76,6 +77,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @Transactional
     public ProjectMemberInviteResponse inviteMember(int projectId, ProjectMemberInviteRequest request) {
         log.info("{} 프로젝트에 사용자 초대 시도", LOG_PREFIX);
 
@@ -150,7 +152,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectDetailResponse getProject(int projectId) {
+    public ProjectDetailResponse getProjectDetail(int projectId) {
         log.info("{} 프로젝트 조회 시도", LOG_PREFIX);
 
         Integer userId = authHelper.getCurrentUserId();
@@ -164,17 +166,37 @@ public class ProjectServiceImpl implements ProjectService {
 
         // 프로젝트 권한 확인
         if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
+            log.warn("{} 프로젝트 접근 권한이 없습니다.", LOG_PREFIX);
             throw new BusinessException(ACCESS_FORBIDDEN);
         }
 
-        log.info("{} 프로젝트 조회 성공: projectName={}", LOG_PREFIX, project.getProjectName());
+        log.info("{} 프로젝트 조회 성공: project={}", LOG_PREFIX, project.getProjectName());
 
         return projectMapper.toDetailResponse(project);
     }
 
     @Override
+    @Transactional
     public void deleteProject(int projectId) {
+        log.info("{} 프로젝트 삭제 시도", LOG_PREFIX);
 
+        Integer userId = authHelper.getCurrentUserId();
+
+        // 프로젝트 존재 여부
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> {
+                    log.warn("{} 프로젝트를 찾을 수 없습니다.",  LOG_PREFIX);
+                    return new BusinessException(PROJECT_NOT_FOUND);
+                });
+
+        // 프로젝트 권한 확인
+        if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
+            throw new BusinessException(PROJECT_DELETE_FORBIDDEN);
+        }
+
+        projectRepository.delete(project);
+
+        log.info("{} 프로젝트 삭제 완료: projec={}", LOG_PREFIX, project.getProjectName());
     }
 
     @Override
