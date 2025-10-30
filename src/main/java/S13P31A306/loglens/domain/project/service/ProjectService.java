@@ -46,7 +46,7 @@ public interface ProjectService {
      * @param projectId 프로젝트 ID
      * @return ProjectDetailResponse
      */
-    ProjectDetailResponse getProject(int projectId);
+    ProjectDetailResponse getProjectDetail(int projectId);
 
     /**
      * 프로젝트 삭제
