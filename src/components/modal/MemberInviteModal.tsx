@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -10,33 +10,22 @@ import {
 import { Trash2, Loader2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
-// TODO : 실제 API 연결 시 활성화
-// import { getProjectDetail, inviteMember } from '@/services/projectService';
-// import { searchUsers } from '@/services/userService';
+import {
+  getProjectDetail,
+  inviteMember,
+  deleteMember,
+} from '@/services/projectService';
+import { searchUsers } from '@/services/userService';
+import { useProjectStore } from '@/stores/projectStore';
 import type { ProjectMember } from '@/types/project';
 import type { UserSearchResult } from '@/types/user';
-// import { ApiError } from '@/types/api';
+import { ApiError } from '@/types/api';
 
 interface MemberInviteModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: number;
 }
-
-// TODO : 더미 추후 제거
-const DUMMY_CURRENT_MEMBERS: ProjectMember[] = [
-  { userId: 1, name: '홍길동 ', email: 'hong@example.com', joinedAt: '' },
-  { userId: 2, name: '김철수 ', email: 'kim@example.com', joinedAt: '' },
-];
-
-const DUMMY_ALL_USERS: UserSearchResult[] = [
-  { userId: 1, username: '홍길동', email: 'hong@example.com' },
-  { userId: 2, username: '김철수', email: 'kim@example.com' },
-  { userId: 3, username: '이영희', email: 'lee@example.com' },
-  { userId: 4, username: '박지성', email: 'park@example.com' },
-  { userId: 5, username: '이종현', email: 'lee.jong@example.com' },
-  { userId: 6, username: '이종헌', email: 'lee.heon@example.com' },
-];
 
 const motionProps = {
   initial: { opacity: 0, y: 8, scale: 0.98, filter: 'blur(2px)' },
@@ -51,7 +40,11 @@ const MemberInviteModal = ({
   onOpenChange,
   projectId,
 }: MemberInviteModalProps) => {
-  const [currentMembers, setCurrentMembers] = useState<ProjectMember[]>([]);
+  const currentProject = useProjectStore(state => state.currentProject);
+  const currentMembers = useMemo(
+    () => currentProject?.members ?? [],
+    [currentProject?.members],
+  );
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
 
   const [searchText, setSearchText] = useState('');
@@ -59,12 +52,22 @@ const MemberInviteModal = ({
   const [isSearching, setIsSearching] = useState(false);
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // TODO : 일단 더미 추후 실제로 교체
-  const loadCurrentMembers = useCallback(() => {
-    setIsLoadingMembers(true);
-    setCurrentMembers(DUMMY_CURRENT_MEMBERS);
-    setIsLoadingMembers(false);
-  }, []);
+  const [invitingId, setInvitingId] = useState<number | null>(null);
+  const [removingId, setRemovingId] = useState<number | null>(null);
+
+  // 현재 프로젝트 내 멤버
+  const loadCurrentMembers = useCallback(async () => {
+    if (currentProject?.projectId !== projectId) {
+      setIsLoadingMembers(true);
+      try {
+        await getProjectDetail(projectId);
+      } catch (error) {
+        console.error('멤버 목록 로드 실패', error);
+      } finally {
+        setIsLoadingMembers(false);
+      }
+    }
+  }, [projectId, currentProject?.projectId]);
 
   useEffect(() => {
     if (open) {
@@ -72,35 +75,41 @@ const MemberInviteModal = ({
       setSearchText('');
       setSearchResults([]);
       setIsSearching(false);
+      setInvitingId(null);
+      setRemovingId(null);
+    } else {
+      useProjectStore.getState().setCurrentProject(null);
     }
-  }, [open, projectId, loadCurrentMembers]);
+  }, [open, loadCurrentMembers]);
 
   useEffect(() => {
     if (debounceTimeout.current) {
       clearTimeout(debounceTimeout.current);
     }
-    const trimmedSearch = searchText.trim().toLowerCase();
-    if (trimmedSearch.length === 0) {
+    const trimmedSearch = searchText.trim();
+    if (trimmedSearch.length < 2) {
       setSearchResults([]);
       setIsSearching(false);
       return;
     }
     setIsSearching(true);
-    debounceTimeout.current = setTimeout(() => {
-      const filtered = DUMMY_ALL_USERS.filter(
-        user =>
-          user.username.toLowerCase().includes(trimmedSearch) ||
-          user.email.toLowerCase().includes(trimmedSearch),
-      );
+    debounceTimeout.current = setTimeout(async () => {
+      try {
+        // searchUsers 서비스 함수 호출
+        const response = await searchUsers({ name: trimmedSearch, size: 10 });
 
-      // 현재 포함되어 있는 멤버는 제외
-      const currentMemberEmails = new Set(currentMembers.map(m => m.email));
-      const finalResults = filtered.filter(
-        user => !currentMemberEmails.has(user.email),
-      );
+        // 현재 포함되어 있는 멤버는 제외
+        const currentMemberEmails = new Set(currentMembers.map(m => m.email));
+        const finalResults = response.content.filter(
+          user => !currentMemberEmails.has(user.email),
+        );
 
-      setSearchResults(finalResults);
-      setIsSearching(false);
+        setSearchResults(finalResults);
+      } catch (error) {
+        console.error('멤버 검색 실패', error);
+      } finally {
+        setIsSearching(false);
+      }
     }, 500);
 
     return () => {
@@ -110,27 +119,49 @@ const MemberInviteModal = ({
     };
   }, [searchText, currentMembers]);
 
-
-  const handleInvite = (userToInvite: UserSearchResult) => {
-    // 1. 검색 결과에서 제거
-    setSearchResults(prev =>
-      prev.filter(user => user.userId !== userToInvite.userId),
-    );
-    // 2. 현재 멤버 목록에 추가 (타입 변환)
-    setCurrentMembers(prev => [
-      ...prev,
-      {
-        userId: userToInvite.userId,
-        name: userToInvite.username,
-        email: userToInvite.email,
-        joinedAt: new Date().toISOString(),
-      },
-    ]);
+  // 멤버 초대
+  const handleInvite = async (userToInvite: UserSearchResult) => {
+    setInvitingId(userToInvite.userId);
+    try {
+      await inviteMember(projectId, { userId: userToInvite.userId });
+      await loadCurrentMembers();
+    } catch (err) {
+      console.error('멤버 초대 실패', err);
+      if (err instanceof ApiError && err.response) {
+        // 에러문구 출력?
+      }
+    } finally {
+      setInvitingId(null);
+    }
   };
 
-  // TODO : 멤버삭제 API 연결
-  const handleRemove = (id: number) => {
-    setCurrentMembers(prev => prev.filter(m => m.userId !== id));
+  // 멤버삭제 API
+  const handleRemove = async (memberToRemove: ProjectMember) => {
+    const ok = window.confirm(
+      `'${memberToRemove.name}' 님을 프로젝트에서 삭제하시겠습니까?`,
+    );
+    if (!ok) { return; }
+
+    setRemovingId(memberToRemove.userId);
+    try {
+      await deleteMember({
+        projectId: projectId,
+        memberId: memberToRemove.userId,
+      });
+
+      // TODO : 삭제되었다고 알려주기
+
+    } catch (err) {
+      console.error('멤버 삭제 실패', err);
+      if (err instanceof ApiError && err.response) {
+        // TODO : 삭제실패했다고 알려주기
+        if (err.response.code === 'PJ403-4') {
+          // 자기자신을 삭제할순없다
+        }
+      }
+    } finally {
+      setRemovingId(null);
+    }
   };
 
   return (
@@ -189,8 +220,13 @@ const MemberInviteModal = ({
                             size="sm"
                             className="ml-4 rounded-lg px-4"
                             onClick={() => handleInvite(user)}
+                            disabled={invitingId === user.userId}
                           >
-                            초대
+                            {invitingId === user.userId ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              '초대'
+                            )}
                           </Button>
                         </motion.div>
                       ))}
@@ -243,10 +279,15 @@ const MemberInviteModal = ({
                         variant="ghost"
                         size="icon"
                         className="ml-2"
-                        onClick={() => handleRemove(m.userId)}
+                        onClick={() => handleRemove(m)}
                         aria-label={`${m.name} 삭제`}
+                        disabled={removingId === m.userId}
                       >
-                        <Trash2 className="h-5 w-5" />
+                        {removingId === m.userId ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-5 w-5" />
+                        )}
                       </Button>
                     </motion.div>
                   ))}
