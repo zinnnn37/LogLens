@@ -111,3 +111,8 @@ export interface ProjectDetailDTO {
   createdAt: string;
   updatedAt: string;
 }
+
+// 프로젝트 삭제 API 요청 파라미터
+export interface DeleteProjectParams {
+  projectId: number;
+}

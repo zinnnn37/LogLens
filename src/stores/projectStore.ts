@@ -26,6 +26,8 @@ interface ProjectState {
   setCurrentProject: (project: ProjectDetailDTO | null) => void;
 
   incrementMemberCount: (projectId: number) => void;
+
+  removeProject: (projectId: number) => void;
 }
 
 export const useProjectStore = create<ProjectState>(set => ({
@@ -95,5 +97,18 @@ export const useProjectStore = create<ProjectState>(set => ({
         state.currentProject?.projectId === projectId
           ? null
           : state.currentProject,
+    })),
+
+  /**
+   * (DELETE /api/projects/{id})
+   * 'deleteProject' 서비스가 호출하는 액션.
+   * 목록(projects)에서 해당 프로젝트를 제거합니다.
+   */
+  removeProject: projectId =>
+    set(state => ({
+      projects: state.projects.filter(
+        project => project.projectId !== projectId,
+      ),
+      totalElements: state.totalElements - 1,
     })),
 }));

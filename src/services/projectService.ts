@@ -63,7 +63,7 @@ export const inviteMember = async (
 ): Promise<InviteMemberResponse> => {
   try {
     const response = await apiClient.post<InviteMemberResponse>(
-      API_PATH.INVITE_MEMBERS(String(projectId)),
+      API_PATH.INVITE_MEMBERS(projectId),
       payload,
     );
 
@@ -86,7 +86,7 @@ export const getProjectDetail = async (
 ): Promise<ProjectDetailDTO> => {
   try {
     const projectDetail = await apiClient.get<ProjectDetailDTO>(
-      API_PATH.PROJECT_DETAIL(String(projectId)),
+      API_PATH.PROJECT_DETAIL(projectId),
     );
 
     useProjectStore.getState().setCurrentProject(projectDetail);
@@ -94,6 +94,22 @@ export const getProjectDetail = async (
     return projectDetail;
   } catch (error) {
     console.error('프로젝트 상세 조회 실패', error);
+    throw error;
+  }
+};
+
+/**
+ * 프로젝트 삭제 (DELETE /api/projects/{projectId})
+ * @param projectId - 삭제할 프로젝트 ID
+ */
+export const deleteProject = async (projectId: number): Promise<void> => {
+  try {
+    await apiClient.delete<void>(API_PATH.DELETE_PROJECT(projectId));
+
+    useProjectStore.getState().removeProject(projectId);
+
+  } catch (error) {
+    console.error('프로젝트 삭제 실패', error);
     throw error;
   }
 };
