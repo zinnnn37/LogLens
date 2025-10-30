@@ -73,7 +73,9 @@ const DocsTOC = () => {
 
   // URL hash 변경 감지하여 스크롤
   useEffect(() => {
-    if (!isDocsPage) return;
+    if (!isDocsPage) {
+      return;
+    }
 
     const hash = window.location.hash.substring(1); // # 제거
     if (hash) {
@@ -92,7 +94,7 @@ const DocsTOC = () => {
 
       // 여러 번 시도하여 DOM이 준비될 때까지 대기
       const timeouts = [100, 300, 500];
-      timeouts.forEach((delay) => {
+      timeouts.forEach(delay => {
         setTimeout(scrollToHash, delay);
       });
     }
