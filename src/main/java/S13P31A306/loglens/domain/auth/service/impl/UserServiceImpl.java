@@ -2,14 +2,18 @@ package S13P31A306.loglens.domain.auth.service.impl;
 
 import S13P31A306.loglens.domain.auth.dto.request.UserSignupRequest;
 import S13P31A306.loglens.domain.auth.dto.response.EmailValidateResponse;
+import S13P31A306.loglens.domain.auth.dto.response.UserSearchResponse;
 import S13P31A306.loglens.domain.auth.dto.response.UserSignupResponse;
 import S13P31A306.loglens.domain.auth.entity.User;
 import S13P31A306.loglens.domain.auth.mapper.UserMapper;
 import S13P31A306.loglens.domain.auth.respository.UserRepository;
 import S13P31A306.loglens.domain.auth.service.UserService;
+import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.domain.auth.validator.UserValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +30,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final UserValidator userValidator;
+    private final AuthenticationHelper authenticationHelper;
 
     /**
      * 이메일 중복 확인
@@ -69,5 +74,20 @@ public class UserServiceImpl implements UserService {
 
         // 4. 응답 DTO 생성 및 반환
         return userMapper.toSignupResponse(savedUser);
+    }
+
+    @Override
+    public Page<UserSearchResponse> findUsersByName(final String name, final Pageable pageable) {
+        // 현재 인증된 사용자 ID 조회
+        Integer userId = authenticationHelper.getCurrentUserId();
+        log.debug("{} 이름으로 사용자 검색 요청: name={}, pageable={}, userId={}", LOG_PREFIX, name, pageable, userId);
+
+        // 검색 파라미터 유효성 검증
+        userValidator.validateFindUsersByName(name, pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<User> userPage = userRepository.findByNameContaining(name, pageable);
+
+        log.info("{} 이름으로 사용자 검색 완료: name={}, found={} items", LOG_PREFIX, name, userPage.getTotalElements());
+        return userPage.map(userMapper::toSearchResponse);
     }
 }

@@ -27,6 +27,9 @@ public enum PublicEndPoint {
     // Maven Repository
     MAVEN_REPO("/maven-repo/**"),
 
+    // Component test
+    COMPONENT("/api/components/**"),
+
     // Root
     ROOT("/");
 
