@@ -1,9 +1,6 @@
 package S13P31A306.loglens.domain.project.repository;
 
-import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.entity.ProjectMember;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
