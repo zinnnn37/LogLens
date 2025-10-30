@@ -136,7 +136,7 @@ public class ProjectServiceImpl implements ProjectService {
         // DTO
         List<ProjectListResponse.ProjectInfo> projectInfos = projectMapper.toProjectInfoList(projectPage.getContent());
 
-        log.info("{} 프로젝트 목록 조회 성공: 프로젝트 목록 조회 완료: page={}, size={}, total={}",
+        log.info("{} 프로젝트 목록 조회 완료: page={}, size={}, total={}",
                 LOG_PREFIX, page, projectInfos.size(), projectPage.getTotalElements());
 
         return new ProjectListResponse(
@@ -151,7 +151,25 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public ProjectDetailResponse getProject(int projectId) {
-        return null;
+        log.info("{} 프로젝트 조회 시도", LOG_PREFIX);
+
+        Integer userId = authHelper.getCurrentUserId();
+
+        // 프로젝트 존재 여부
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> {
+                    log.warn("{} 프로젝트를 찾을 수 없습니다.",  LOG_PREFIX);
+                    return new BusinessException(PROJECT_NOT_FOUND);
+                });
+
+        // 프로젝트 권한 확인
+        if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
+            throw new BusinessException(ACCESS_FORBIDDEN);
+        }
+
+        log.info("{} 프로젝트 조회 성공: projectName={}", LOG_PREFIX, project.getProjectName());
+
+        return projectMapper.toDetailResponse(project);
     }
 
     @Override
