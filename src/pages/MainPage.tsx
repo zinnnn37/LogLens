@@ -4,9 +4,25 @@ import NoProjectIllust from '@/assets/images/NoProjectIllust.png';
 import WithProject from '@/components/WithProject';
 import ProjectCreateModal from '@/components/modal/ProjectCreateModal';
 import { Loader2 } from 'lucide-react';
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 import { useProjectStore } from '@/stores/projectStore';
-import { fetchProjects, createProject, deleteProject } from '@/services/projectService';
+import {
+  fetchProjects,
+  createProject,
+  deleteProject,
+} from '@/services/projectService';
+import { ApiError } from '@/types/api';
+import type { ProjectInfoDTO } from '@/types/project';
 
 const MainPage = () => {
   const projects = useProjectStore(state => state.projects);
@@ -15,6 +31,9 @@ const MainPage = () => {
   const [openCreate, setOpenCreate] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showEmptyMain, setShowEmptyMain] = useState(false);
+
+  const [projectToConfirmDelete, setProjectToConfirmDelete] =
+    useState<ProjectInfoDTO | null>(null);
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -35,25 +54,40 @@ const MainPage = () => {
     setShowEmptyMain(!isLoading && projects.length === 0);
   }, [isLoading, projects.length]);
 
-  const handleDelete = async (id: number) => {
-    // WithProject 컴포넌트가 이미 window.confirm()을 처리합니다.
-    try {
-      // 3. deleteProject 서비스 함수를 호출합니다.
-      // 이 함수가 성공하면 내부에서 removeProject 스토어 액션을 호출합니다.
-      await deleteProject(id);
-
-      // 스토어 상태가 변경되면 'projects'가 업데이트되고
-      // 컴포넌트가 자동으로 리렌더링됩니다.
-
-      // (옵션) 성공 토스트
-      // toast.success('프로젝트가 삭제되었습니다.');
-
-    } catch (error) {
-      console.error('프로젝트 삭제 실패', error);
-      // (옵션) 실패 토스트
-      // toast.error('삭제에 실패했습니다. 다시 시도해주세요.');
+  // 삭제버튼 눌렀을 때 alert-dialog 
+  const handleDeleteRequest = (id: number) => {
+    const projectToConfirm = projects.find(p => p.projectId === id);
+    if (projectToConfirm) {
+      setProjectToConfirmDelete(projectToConfirm);
+    } else {
+      console.error('삭제할 프로젝트 정보를 찾을 수 없습니다.');
+      toast.error('프로젝트 정보를 찾을 수 없어 삭제할 수 없습니다.');
     }
   };
+
+  // alert-dialog 에서 삭제
+  const executeDelete = async () => {
+    if (!projectToConfirmDelete) { return; }
+
+    try {
+      // 프로젝트 삭제 API 호출
+      await deleteProject({ projectId: projectToConfirmDelete.projectId });
+
+      toast.success(
+        `"${projectToConfirmDelete.projectName}" 프로젝트가 삭제되었습니다.`,
+      );
+    } catch (error) {
+      console.error('프로젝트 삭제 실패', error);
+      if (error instanceof ApiError && error.response) {
+        toast.error(error.response.message);
+      } else {
+        toast.error('프로젝트 삭제에 실패했습니다.');
+      }
+    } finally {
+      setProjectToConfirmDelete(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center">
@@ -84,7 +118,7 @@ const MainPage = () => {
       ) : (
         <WithProject
           projects={projects}
-          onDelete={handleDelete}
+          onDelete={handleDeleteRequest}
           onEmptyAfterExit={() => setShowEmptyMain(true)}
         />
       )}
@@ -101,8 +135,39 @@ const MainPage = () => {
           setOpenCreate(false);
         }}
       />
+
+      <AlertDialog
+        open={projectToConfirmDelete !== null}
+        onOpenChange={open => {
+          if (!open) {
+            setProjectToConfirmDelete(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              "{projectToConfirmDelete?.projectName}" 프로젝트를 삭제하시겠습니까?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              이 작업은 되돌릴 수 없습니다. 프로젝트와 관련된 모든 데이터가
+              영구적으로 삭제됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 };
 
 export default MainPage;
+
