@@ -6,7 +6,7 @@ import type {
 } from '@/types/user';
 
 /**
- * 이름으로 멤버 검색 (GET /api/auth/users)
+ * 이름으로 멤버 검색 (GET /api/auth/users?name={name})
  * @param params - { name, page, size, sort, order }
  */
 export const searchUsers = async (
@@ -14,7 +14,7 @@ export const searchUsers = async (
 ): Promise<PaginatedUserSearchResponse> => {
   try {
     const response = await apiClient.get<PaginatedUserSearchResponse>(
-      API_PATH.AUTH_USERS,
+      API_PATH.SEARCH_USERS,
       params,
     );
     return response;
