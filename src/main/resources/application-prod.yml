@@ -30,7 +30,7 @@ spring:
     show-sql: false
     # DDL(Data Definition Language) 자동 생성 전략
     hibernate:
-      ddl-auto: update # 애플리케이션 시작 시 스키마를 새로 생성
+      ddl-auto: create # 애플리케이션 시작 시 스키마를 새로 생성
     # Hibernate 관련 추가 프로퍼티
     properties:
       hibernate:
