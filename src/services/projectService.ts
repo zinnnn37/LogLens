@@ -10,6 +10,8 @@ import type {
   InviteMemberPayload,
   InviteMemberResponse,
   ProjectDetailDTO,
+  DeleteMemberParams,
+  DeleteProjectParams,
 } from '@/types/project';
 import { useProjectStore } from '@/stores/projectStore';
 
@@ -102,14 +104,30 @@ export const getProjectDetail = async (
  * 프로젝트 삭제 (DELETE /api/projects/{projectId})
  * @param projectId - 삭제할 프로젝트 ID
  */
-export const deleteProject = async (projectId: number): Promise<void> => {
+export const deleteProject = async ({
+  projectId,
+}: DeleteProjectParams): Promise<void> => {
   try {
     await apiClient.delete<void>(API_PATH.DELETE_PROJECT(projectId));
 
     useProjectStore.getState().removeProject(projectId);
-
   } catch (error) {
     console.error('프로젝트 삭제 실패', error);
+    throw error;
+  }
+};
+
+// 프로젝트 내 멤버 삭제(DELETE /api/projects/{projectId}/members/{memberId})
+export const deleteMember = async ({
+  projectId,
+  memberId,
+}: DeleteMemberParams): Promise<void> => {
+  try {
+    await apiClient.delete<void>(API_PATH.DELETE_MEMBER(projectId, memberId));
+
+    useProjectStore.getState().removeMember(projectId, memberId);
+  } catch (error) {
+    console.log('멤버 삭제 실패', error);
     throw error;
   }
 };

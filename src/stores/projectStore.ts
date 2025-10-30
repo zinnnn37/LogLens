@@ -28,6 +28,8 @@ interface ProjectState {
   incrementMemberCount: (projectId: number) => void;
 
   removeProject: (projectId: number) => void;
+
+  removeMember: (projectId: number, memberId: number) => void;
 }
 
 export const useProjectStore = create<ProjectState>(set => ({
@@ -110,5 +112,30 @@ export const useProjectStore = create<ProjectState>(set => ({
         project => project.projectId !== projectId,
       ),
       totalElements: state.totalElements - 1,
+    })),
+
+  /**
+   * (DELETE /api/projects/{id}/members/{memberId})
+   * 'deleteMember' 서비스가 호출하는 액션.
+   */
+  removeMember: (projectId, memberId) =>
+    set(state => ({
+      projects: state.projects.map(project =>
+        // 프로젝트 멤버카운트 -1
+        project.projectId === projectId
+          ? { ...project, memberCount: Math.max(0, project.memberCount - 1) }
+          : project,
+      ),
+
+      // 멤버 삭제
+      currentProject:
+        state.currentProject?.projectId === projectId
+          ? {
+              ...state.currentProject,
+              members: state.currentProject.members.filter(
+                member => member.userId !== memberId,
+              ),
+            }
+          : state.currentProject,
     })),
 }));

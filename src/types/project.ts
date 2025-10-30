@@ -116,3 +116,9 @@ export interface ProjectDetailDTO {
 export interface DeleteProjectParams {
   projectId: number;
 }
+
+// 프로젝트 내 멤버 삭제 요청 파라미터
+export interface DeleteMemberParams {
+  projectId: number;
+  memberId: number;
+}
