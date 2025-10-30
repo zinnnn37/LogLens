@@ -7,6 +7,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 import { Trash2, Loader2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -41,6 +52,7 @@ const MemberInviteModal = ({
   projectId,
 }: MemberInviteModalProps) => {
   const currentProject = useProjectStore(state => state.currentProject);
+  const projectName = currentProject?.projectName;
   const currentMembers = useMemo(
     () => currentProject?.members ?? [],
     [currentProject?.members],
@@ -54,6 +66,11 @@ const MemberInviteModal = ({
 
   const [invitingId, setInvitingId] = useState<number | null>(null);
   const [removingId, setRemovingId] = useState<number | null>(null);
+
+  const [userToConfirmInvite, setUserToConfirmInvite] =
+    useState<UserSearchResult | null>(null);
+  const [memberToConfirmDelete, setMemberToConfirmDelete] =
+    useState<ProjectMember | null>(null);
 
   // 현재 프로젝트 내 멤버
   const loadCurrentMembers = useCallback(async () => {
@@ -77,6 +94,9 @@ const MemberInviteModal = ({
       setIsSearching(false);
       setInvitingId(null);
       setRemovingId(null);
+      // [추가] 모달 열릴 때 확인 state 초기화
+      setUserToConfirmInvite(null);
+      setMemberToConfirmDelete(null);
     } else {
       useProjectStore.getState().setCurrentProject(null);
     }
@@ -119,48 +139,67 @@ const MemberInviteModal = ({
     };
   }, [searchText, currentMembers]);
 
-  // 멤버 초대
-  const handleInvite = async (userToInvite: UserSearchResult) => {
-    setInvitingId(userToInvite.userId);
+  // 멤버 초대 dialog
+  const handleInviteRequest = (userToInvite: UserSearchResult) => {
+    setUserToConfirmInvite(userToInvite);
+  };
+
+  // 멤버 초대 함수 호출
+  const executeInvite = async () => {
+    if (!userToConfirmInvite) {
+      return;
+    }
+
+    setInvitingId(userToConfirmInvite.userId);
     try {
-      await inviteMember(projectId, { userId: userToInvite.userId });
+      await inviteMember(projectId, { userId: userToConfirmInvite.userId });
       await loadCurrentMembers();
+      toast.success(`'${userToConfirmInvite.username}' 님을 초대했습니다.`);
     } catch (err) {
       console.error('멤버 초대 실패', err);
       if (err instanceof ApiError && err.response) {
-        // 에러문구 출력?
+        toast.error(err.response.message);
+      } else {
+        toast.error('멤버 초대에 실패했습니다.');
       }
     } finally {
       setInvitingId(null);
+      setUserToConfirmInvite(null);
     }
   };
 
-  // 멤버삭제 API
-  const handleRemove = async (memberToRemove: ProjectMember) => {
-    const ok = window.confirm(
-      `'${memberToRemove.name}' 님을 프로젝트에서 삭제하시겠습니까?`,
-    );
-    if (!ok) { return; }
+  // 멤버 삭제 dialog
+  const handleRemoveRequest = (memberToRemove: ProjectMember) => {
+    setMemberToConfirmDelete(memberToRemove);
+  };
 
-    setRemovingId(memberToRemove.userId);
+  // 삭제 API 호출
+  const executeRemove = async () => {
+    if (!memberToConfirmDelete) {
+      return;
+    }
+
+    setRemovingId(memberToConfirmDelete.userId);
     try {
       await deleteMember({
         projectId: projectId,
-        memberId: memberToRemove.userId,
+        memberId: memberToConfirmDelete.userId,
       });
-
-      // TODO : 삭제되었다고 알려주기
-
+      toast.success(`'${memberToConfirmDelete.name}' 님을 삭제했습니다.`);
     } catch (err) {
       console.error('멤버 삭제 실패', err);
       if (err instanceof ApiError && err.response) {
-        // TODO : 삭제실패했다고 알려주기
         if (err.response.code === 'PJ403-4') {
-          // 자기자신을 삭제할순없다
+          toast.error('자기 자신은 삭제할 수 없습니다.');
+        } else {
+          toast.error(err.response.message);
         }
+      } else {
+        toast.error('멤버 삭제에 실패했습니다.');
       }
     } finally {
       setRemovingId(null);
+      setMemberToConfirmDelete(null);
     }
   };
 
@@ -182,7 +221,7 @@ const MemberInviteModal = ({
               className="h-12 rounded-2xl pr-10"
             />
             {isSearching && (
-              <Loader2 className="absolute right-3 top-3 h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="text-muted-foreground absolute top-3 right-3 h-6 w-6 animate-spin" />
             )}
           </div>
 
@@ -196,7 +235,7 @@ const MemberInviteModal = ({
                   exit={{ opacity: 0 }}
                   className="mb-6"
                 >
-                  <h3 className="mb-3 px-2 text-sm font-semibold text-muted-foreground">
+                  <h3 className="text-muted-foreground mb-3 px-2 text-sm font-semibold">
                     검색 결과
                   </h3>
                   <div className="space-y-3">
@@ -205,7 +244,7 @@ const MemberInviteModal = ({
                         <motion.div
                           {...motionProps}
                           key={user.userId}
-                          className="flex items-center justify-between rounded-2xl bg-muted/50 px-6 py-2"
+                          className="bg-muted/50 flex items-center justify-between rounded-2xl px-6 py-2"
                         >
                           <div className="flex min-w-0 flex-1 items-center justify-between gap-6">
                             <p className="truncate font-semibold">
@@ -219,7 +258,7 @@ const MemberInviteModal = ({
                             variant="default"
                             size="sm"
                             className="ml-4 rounded-lg px-4"
-                            onClick={() => handleInvite(user)}
+                            onClick={() => handleInviteRequest(user)}
                             disabled={invitingId === user.userId}
                           >
                             {invitingId === user.userId ? (
@@ -231,7 +270,7 @@ const MemberInviteModal = ({
                         </motion.div>
                       ))}
                       {!isSearching && searchResults.length === 0 && (
-                        <p className="py-4 text-center text-sm text-muted-foreground">
+                        <p className="text-muted-foreground py-4 text-center text-sm">
                           검색 결과가 없습니다.
                         </p>
                       )}
@@ -242,14 +281,14 @@ const MemberInviteModal = ({
             </AnimatePresence>
 
             {/* 현재 멤버 */}
-            <h3 className="mb-3 px-2 text-sm font-semibold text-muted-foreground">
+            <h3 className="text-muted-foreground mb-3 px-2 text-sm font-semibold">
               현재 멤버 ({currentMembers.length}명)
             </h3>
             <div className="space-y-3">
               <AnimatePresence initial={false}>
                 {isLoadingMembers && (
                   <div className="flex justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
                   </div>
                 )}
                 {!isLoadingMembers && currentMembers.length === 0 && (
@@ -279,7 +318,7 @@ const MemberInviteModal = ({
                         variant="ghost"
                         size="icon"
                         className="ml-2"
-                        onClick={() => handleRemove(m)}
+                        onClick={() => handleRemoveRequest(m)}
                         aria-label={`${m.name} 삭제`}
                         disabled={removingId === m.userId}
                       >
@@ -295,6 +334,63 @@ const MemberInviteModal = ({
             </div>
           </div>
         </div>
+
+        <AlertDialog
+          open={userToConfirmInvite !== null}
+          onOpenChange={open => {
+            if (!open) {
+              setUserToConfirmInvite(null);
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>멤버 초대</AlertDialogTitle>
+              <AlertDialogDescription>
+                '**{userToConfirmInvite?.username}**' (
+                {userToConfirmInvite?.email}) 님을
+                <br />
+                '**{projectName}**' 프로젝트 멤버로 초대하시겠습니까?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction onClick={executeInvite}>
+                초대
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog
+          open={memberToConfirmDelete !== null}
+          onOpenChange={open => {
+            if (!open) {
+              setMemberToConfirmDelete(null);
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>멤버 삭제</AlertDialogTitle>
+              <AlertDialogDescription>
+                '**{memberToConfirmDelete?.name}**' (
+                {memberToConfirmDelete?.email}) 님을
+                <br />
+                '**{projectName}**' 프로젝트에서 탈퇴시키겠습니까?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={executeRemove}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                삭제
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
