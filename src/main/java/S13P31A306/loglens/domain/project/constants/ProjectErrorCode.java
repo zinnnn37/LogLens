@@ -1,12 +1,13 @@
 package S13P31A306.loglens.domain.project.constants;
 
+import S13P31A306.loglens.global.constants.ErrorCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum ProjectErrorCode {
+public enum ProjectErrorCode implements ErrorCode {
 
     // 400 Bad Request
     PROJECT_NAME_REQUIRED("PJ400-1", "프로젝트 이름은 필수입니다.", HttpStatus.BAD_REQUEST.value()),
