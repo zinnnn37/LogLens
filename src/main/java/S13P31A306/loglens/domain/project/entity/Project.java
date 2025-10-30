@@ -8,9 +8,15 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Getter
 @Entity
-@Table(name = "projects")
+@Table(
+        name = "projects",
+        uniqueConstraints = @UniqueConstraint(columnNames = "project_name")
+)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Project extends BaseTimeEntity {
 
@@ -28,6 +34,9 @@ public class Project extends BaseTimeEntity {
     @Sensitive
     @Column(name = "api_key", length = 64)
     private String apiKey; // TODO: NOT NULL & UNIQUE로 수정 필요
+
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProjectMember> members = new ArrayList<>();
 
     @Builder
     public Project(String projectName, String description, String apiKey) {
