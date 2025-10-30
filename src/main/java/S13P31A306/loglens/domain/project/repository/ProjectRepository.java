@@ -3,8 +3,13 @@ package S13P31A306.loglens.domain.project.repository;
 import S13P31A306.loglens.domain.project.entity.Project;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
-public interface ProjectRepository {
+import java.util.List;
+
+public interface ProjectRepository extends JpaRepository<Project, Integer> {
 
     /**
      * 프로젝트 이름을 기반으로 프로젝트를 조회합니다.
@@ -21,6 +26,11 @@ public interface ProjectRepository {
      * @param pageable 출력할 페이지 위치
      * @return Page<Project> 현재 페이지의 프로젝트
      */
-    Page<Project> findProjectsByMemberId(int userId, Pageable pageable);
+    Page<Project> findByMembersUserId(int userId, Pageable pageable);
+
+    @Query("SELECT DISTINCT p FROM Project p " +
+            "LEFT JOIN FETCH p.members " +
+            "WHERE p.id IN (SELECT pm.project.id FROM ProjectMember pm WHERE pm.user.id = :userId)")
+    List<Project> findProjectsWithMembersByUserId(@Param("userId") int userId);
 
 }
