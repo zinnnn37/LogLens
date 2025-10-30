@@ -19,8 +19,14 @@ import S13P31A306.loglens.domain.project.service.ProjectService;
 import S13P31A306.loglens.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.*;
 
@@ -71,7 +77,6 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public ProjectMemberInviteResponse inviteMember(int projectId, ProjectMemberInviteRequest request) {
-
         log.info("{} 프로젝트에 사용자 초대 시도", LOG_PREFIX);
 
         Integer inviter = authHelper.getCurrentUserId();
@@ -117,7 +122,31 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public ProjectListResponse getProjects(int page, int size, String sort, String order) {
-        return null;
+        log.info("{} 프로젝트 목록 조회: page={}, size={}, sort={}, order={}", LOG_PREFIX, page, size, sort, order);
+
+        Integer userId = authHelper.getCurrentUserId();
+
+        // Pagination
+        Sort.Direction direction = Sort.Direction.fromString(order);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sort));
+
+        // 사용자가 속한 프로젝트만 가져오기
+        Page<Project> projectPage = projectRepository.findProjectsByMemberId(userId, pageable);
+
+        // DTO
+        List<ProjectListResponse.ProjectInfo> projectInfos = projectMapper.toProjectInfoList(projectPage.getContent());
+
+        log.info("{} 프로젝트 목록 조회 성공: 프로젝트 목록 조회 완료: page={}, size={}, total={}",
+                LOG_PREFIX, page, projectInfos.size(), projectPage.getTotalElements());
+
+        return new ProjectListResponse(
+                projectInfos,
+                new ProjectListResponse.Pagination(page, size, sort, order),
+                (int) projectPage.getTotalElements(),
+                projectPage.getTotalPages(),
+                projectPage.isFirst(),
+                projectPage.isLast()
+        );
     }
 
     @Override
