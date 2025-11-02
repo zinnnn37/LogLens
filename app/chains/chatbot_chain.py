@@ -13,6 +13,8 @@ llm = ChatOpenAI(
     temperature=0.7,
     api_key=settings.OPENAI_API_KEY,
     base_url=settings.OPENAI_BASE_URL,
+    timeout=60,  # 60 second timeout
+    max_retries=2,  # Retry up to 2 times on failure
 )
 
 # Prompt template for RAG-based chatbot with history support

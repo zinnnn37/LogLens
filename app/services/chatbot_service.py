@@ -3,9 +3,11 @@ Chatbot service with RAG and context-aware QA caching
 """
 
 import re
+import asyncio
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from langchain_core.messages import HumanMessage, AIMessage
+import tiktoken
 from app.core.opensearch import opensearch_client
 from app.core.config import settings
 from app.chains.chatbot_chain import chatbot_chain
@@ -21,6 +23,11 @@ class ChatbotService:
         self.client = opensearch_client
         self.threshold = settings.SIMILARITY_THRESHOLD
         self.max_context = settings.MAX_CONTEXT_LOGS
+        # Initialize tiktoken encoder for token counting
+        try:
+            self.encoding = tiktoken.encoding_for_model("gpt-4")
+        except KeyError:
+            self.encoding = tiktoken.get_encoding("cl100k_base")  # Fallback
 
     async def ask(
         self,
@@ -58,39 +65,41 @@ class ChatbotService:
         question_vector = await embedding_service.embed_query(question)
 
         # Step 2: Check QA cache (2-stage validation)
-        # 2a. Get candidates by semantic similarity
-        cache_candidates = await similarity_service.find_similar_questions(
-            question_vector=question_vector,
-            k=settings.CACHE_CANDIDATE_SIZE,  # Get more candidates
-            project_id=project_id  # Filter by project_id
-        )
+        # Skip caching when chat_history is present (history-dependent answers)
+        if not chat_history:
+            # 2a. Get candidates by semantic similarity
+            cache_candidates = await similarity_service.find_similar_questions(
+                question_vector=question_vector,
+                k=settings.CACHE_CANDIDATE_SIZE,  # Get more candidates
+                project_id=project_id  # Filter by project_id
+            )
 
-        # 2b. Validate metadata and TTL
-        for candidate in cache_candidates:
-            if candidate["score"] >= self.threshold:
-                # Check TTL validity
-                if not self._is_cache_valid(candidate):
-                    continue  # Expired cache, skip
+            # 2b. Validate metadata and TTL
+            for candidate in cache_candidates:
+                if candidate["score"] >= self.threshold:
+                    # Check TTL validity
+                    if not self._is_cache_valid(candidate):
+                        continue  # Expired cache, skip
 
-                # Check metadata match
-                if self._metadata_matches(
-                    candidate.get("metadata", {}),
-                    filters,
-                    time_range,
-                    project_id
-                ):
-                    # Cache hit!
-                    cached = candidate
-                    related_logs = await self._get_logs_by_ids(
-                        cached.get("related_log_ids", []),
+                    # Check metadata match
+                    if self._metadata_matches(
+                        candidate.get("metadata", {}),
+                        filters,
+                        time_range,
                         project_id
-                    )
+                    ):
+                        # Cache hit!
+                        cached = candidate
+                        related_logs = await self._get_logs_by_ids(
+                            cached.get("related_log_ids", []),
+                            project_id
+                        )
 
-                    return ChatResponse(
-                        answer=cached["answer"],
-                        from_cache=True,
-                        related_logs=related_logs,
-                    )
+                        return ChatResponse(
+                            answer=cached["answer"],
+                            from_cache=True,
+                            related_logs=related_logs,
+                        )
 
         # Step 3: Cache miss - Search relevant logs using vector search
         relevant_logs_data = await similarity_service.find_similar_logs(
@@ -103,10 +112,12 @@ class ChatbotService:
         # Step 4: Prepare context from logs
         context_logs = self._format_context_logs(relevant_logs_data)
 
-        # Step 5: Convert chat history to LangChain messages (최근 10개만)
+        # Step 5: Convert chat history to LangChain messages (token-based truncation)
         history_messages = []
         if chat_history:
-            for msg in chat_history[-10:]:  # 최근 10개 턴만 유지
+            # Truncate history based on token budget (1500 tokens)
+            truncated_history = self._truncate_history(chat_history, max_tokens=1500)
+            for msg in truncated_history:
                 if msg.role == "user":
                     history_messages.append(HumanMessage(content=msg.content))
                 elif msg.role == "assistant":
@@ -160,7 +171,7 @@ class ChatbotService:
     ):
         """Cache a QA pair in OpenSearch with metadata and TTL"""
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             expires_at = now + timedelta(seconds=ttl)
 
             doc = {
@@ -172,7 +183,7 @@ class ChatbotService:
                 "cached_at": now.isoformat(),
                 "expires_at": expires_at.isoformat(),  # TTL expiration
             }
-            self.client.index(index="qa-cache", body=doc)
+            await asyncio.to_thread(self.client.index, index="qa-cache", body=doc)
         except Exception as e:
             print(f"Error caching QA pair: {e}")
 
@@ -182,7 +193,8 @@ class ChatbotService:
             return []
 
         try:
-            response = self.client.search(
+            response = await asyncio.to_thread(
+                self.client.search,
                 index="logs-*",
                 body={
                     "query": {
@@ -275,7 +287,7 @@ Log {i}:
 
         try:
             expiration_time = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-            return expiration_time > datetime.utcnow()
+            return expiration_time > datetime.now(timezone.utc)
         except Exception as e:
             print(f"Error parsing expiration time: {e}")
             return False  # Treat as expired if parsing fails
@@ -340,6 +352,48 @@ Log {i}:
                 )
             )
         return related_logs
+
+    def _truncate_history(
+        self,
+        chat_history: List[ChatMessage],
+        max_tokens: int = 1500
+    ) -> List[ChatMessage]:
+        """
+        Truncate chat history to fit within token budget
+
+        Strategy:
+        - Keep most recent messages first (reverse order)
+        - Count tokens for each message
+        - Stop when budget exhausted
+        - Return in correct chronological order
+
+        Args:
+            chat_history: Full chat history
+            max_tokens: Maximum tokens allowed (default 1500)
+
+        Returns:
+            Truncated chat history within token budget
+        """
+        if not chat_history:
+            return []
+
+        truncated = []
+        total_tokens = 0
+
+        # Process from most recent to oldest
+        for msg in reversed(chat_history):
+            # Count tokens in this message
+            msg_tokens = len(self.encoding.encode(msg.content))
+
+            # Check if adding this message exceeds budget
+            if total_tokens + msg_tokens > max_tokens:
+                break
+
+            truncated.append(msg)
+            total_tokens += msg_tokens
+
+        # Reverse back to chronological order
+        return list(reversed(truncated))
 
 
 # Global instance

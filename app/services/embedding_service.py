@@ -5,6 +5,7 @@ Embedding service using OpenAI
 from langchain_openai import OpenAIEmbeddings
 from app.core.config import settings
 from typing import List
+from cachetools import TTLCache
 
 
 class EmbeddingService:
@@ -16,18 +17,34 @@ class EmbeddingService:
             api_key=settings.OPENAI_API_KEY,
             base_url=settings.OPENAI_BASE_URL,
         )
+        # TTL Cache: 1000 items, 1 hour TTL (3600 seconds)
+        # Key: (text, model), Value: embedding vector
+        self.cache = TTLCache(maxsize=1000, ttl=3600)
 
     async def embed_query(self, text: str) -> List[float]:
         """
-        Generate embedding for a single text query
+        Generate embedding for a single text query with caching
 
         Args:
             text: Text to embed
 
         Returns:
-            Embedding vector
+            Embedding vector (from cache or newly generated)
         """
-        return await self.embeddings.aembed_query(text)
+        # Create cache key (text + model name)
+        cache_key = (text, settings.EMBEDDING_MODEL)
+
+        # Check cache first
+        if cache_key in self.cache:
+            return self.cache[cache_key]
+
+        # Cache miss - generate embedding
+        embedding = await self.embeddings.aembed_query(text)
+
+        # Store in cache
+        self.cache[cache_key] = embedding
+
+        return embedding
 
     async def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """

@@ -2,10 +2,11 @@
 Chatbot endpoints
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage, AIMessage
 import json
+import logging
 
 from app.services.chatbot_service import chatbot_service
 from app.services.embedding_service import embedding_service
@@ -15,6 +16,7 @@ from app.models.chat import ChatRequest, ChatResponse
 from app.core.config import settings
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/chatbot/ask", response_model=ChatResponse)
@@ -56,7 +58,7 @@ async def ask_chatbot(request: ChatRequest):
 
 
 @router.post("/chatbot/ask/stream")
-async def ask_chatbot_stream(request: ChatRequest):
+async def ask_chatbot_stream(request: ChatRequest, background_tasks: BackgroundTasks):
     """
     Stream-based chatbot endpoint with real-time typing effect and history support
 
@@ -79,27 +81,28 @@ async def ask_chatbot_stream(request: ChatRequest):
             # 1. Generate question embedding
             question_vector = await embedding_service.embed_query(request.question)
 
-            # 2. Check cache (optional, 히스토리 때문에 캐시 히트율 낮을 수 있음)
-            cache_candidates = await similarity_service.find_similar_questions(
-                question_vector=question_vector,
-                k=settings.CACHE_CANDIDATE_SIZE,
-                project_id=request.project_id
-            )
+            # 2. Check cache (skip if chat_history present - history-dependent answers)
+            if not request.chat_history:
+                cache_candidates = await similarity_service.find_similar_questions(
+                    question_vector=question_vector,
+                    k=settings.CACHE_CANDIDATE_SIZE,
+                    project_id=request.project_id
+                )
 
-            # 캐시 히트 시 전체 답변 전송
-            for candidate in cache_candidates:
-                if candidate["score"] >= chatbot_service.threshold:
-                    if chatbot_service._is_cache_valid(candidate):
-                        if chatbot_service._metadata_matches(
-                            candidate.get("metadata", {}),
-                            request.filters,
-                            request.time_range,
-                            request.project_id
-                        ):
-                            cached_answer = candidate["answer"]
-                            yield f"data: {cached_answer}\n\n"
-                            yield "data: [DONE]\n\n"
-                            return
+                # 캐시 히트 시 전체 답변 전송
+                for candidate in cache_candidates:
+                    if candidate["score"] >= chatbot_service.threshold:
+                        if chatbot_service._is_cache_valid(candidate):
+                            if chatbot_service._metadata_matches(
+                                candidate.get("metadata", {}),
+                                request.filters,
+                                request.time_range,
+                                request.project_id
+                            ):
+                                cached_answer = candidate["answer"]
+                                yield f"data: {cached_answer}\n\n"
+                                yield "data: [DONE]\n\n"
+                                return
 
             # 3. Search relevant logs
             relevant_logs_data = await similarity_service.find_similar_logs(
@@ -112,10 +115,12 @@ async def ask_chatbot_stream(request: ChatRequest):
             # 4. Prepare context
             context_logs = chatbot_service._format_context_logs(relevant_logs_data)
 
-            # 5. Convert chat history to LangChain messages
+            # 5. Convert chat history to LangChain messages (token-based truncation)
             history_messages = []
             if request.chat_history:
-                for msg in request.chat_history[-10:]:  # 최근 10개만
+                # Truncate history based on token budget (1500 tokens)
+                truncated_history = chatbot_service._truncate_history(request.chat_history, max_tokens=1500)
+                for msg in truncated_history:
                     if msg.role == "user":
                         history_messages.append(HumanMessage(content=msg.content))
                     elif msg.role == "assistant":
@@ -138,11 +143,11 @@ async def ask_chatbot_stream(request: ChatRequest):
             yield "data: [DONE]\n\n"
 
             # 8. Cache QA pair (백그라운드에서 비동기)
-            import asyncio
             related_log_ids = [log["log_id"] for log in relevant_logs_data]
             ttl = chatbot_service._calculate_ttl(request.question, request.time_range)
 
-            asyncio.create_task(chatbot_service._cache_qa_pair(
+            background_tasks.add_task(
+                chatbot_service._cache_qa_pair,
                 question=request.question,
                 question_vector=question_vector,
                 answer=full_answer,
@@ -153,10 +158,22 @@ async def ask_chatbot_stream(request: ChatRequest):
                     "time_range": request.time_range,
                 },
                 ttl=ttl
-            ))
+            )
 
         except Exception as e:
-            # 에러를 stream으로 전송
+            # Log the error with context
+            logger.error(
+                f"Stream error for project {request.project_id}: {str(e)}",
+                extra={
+                    "project_id": request.project_id,
+                    "question": request.question[:100],  # Truncate for logging
+                    "error": str(e),
+                },
+                exc_info=True
+            )
+
+            # Send error signal and data to client
+            yield "data: [ERROR]\n\n"
             error_data = json.dumps({"error": str(e)})
             yield f"data: {error_data}\n\n"
 

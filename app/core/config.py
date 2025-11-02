@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     ENVIRONMENT: str = "development"
 
+    # CORS Settings
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"  # Comma-separated list
+
     # OpenAI (GMS)
     OPENAI_API_KEY: str  # GMS_KEY from SSAFY
     OPENAI_BASE_URL: str = "https://gms.ssafy.io/gmsapi/api.openai.com/v1"
@@ -41,6 +44,13 @@ class Settings(BaseSettings):
     ENABLE_MAP_REDUCE: bool = True  # Enable Map-Reduce pattern for large log sets
     LOG_CHUNK_SIZE: int = 5  # Number of logs per chunk in Map phase
     MAP_REDUCE_THRESHOLD: int = 10  # Apply Map-Reduce only when logs > this threshold
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parse CORS_ORIGINS string into list"""
+        if self.CORS_ORIGINS == "*":
+            return ["*"]
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
     class Config:
         env_file = ".env"
