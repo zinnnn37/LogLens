@@ -11,8 +11,8 @@ router = APIRouter()
 
 @router.get("/logs/{log_id}/analysis", response_model=LogAnalysisResponse)
 async def analyze_log(
-    log_id: str,
-    project_id: str = Query(..., description="Project ID for multi-tenancy"),
+    log_id: int,
+    project_id: str = Query(..., description="Project ID for multi-tenancy (UUID)"),
 ):
     """
     Analyze a specific log using AI

@@ -85,7 +85,10 @@ class SimilarityService:
         return results
 
     async def find_similar_questions(
-        self, question_vector: List[float], k: int = 3
+        self,
+        question_vector: List[float],
+        k: int = 3,
+        project_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Find similar questions in QA cache
@@ -93,6 +96,7 @@ class SimilarityService:
         Args:
             question_vector: Question embedding vector
             k: Number of results to return
+            project_id: Project ID for multi-tenancy filtering
 
         Returns:
             List of similar QA pairs with scores
@@ -100,14 +104,26 @@ class SimilarityService:
         query = {
             "size": k,
             "query": {
-                "knn": {
-                    "question_vector": {
-                        "vector": question_vector,
-                        "k": k,
-                    }
+                "bool": {
+                    "must": [
+                        {
+                            "knn": {
+                                "question_vector": {
+                                    "vector": question_vector,
+                                    "k": k,
+                                }
+                            }
+                        }
+                    ]
                 }
             },
         }
+
+        # Add project_id filter if provided
+        if project_id:
+            query["query"]["bool"]["filter"] = [
+                {"term": {"metadata.project_id": project_id}}
+            ]
 
         response = self.client.search(index="qa-cache", body=query)
 
@@ -118,6 +134,8 @@ class SimilarityService:
                 "question": hit["_source"]["question"],
                 "answer": hit["_source"]["answer"],
                 "related_log_ids": hit["_source"].get("related_log_ids", []),
+                "metadata": hit["_source"].get("metadata", {}),  # Include metadata
+                "expires_at": hit["_source"].get("expires_at"),  # Include TTL
             }
             results.append(result)
 

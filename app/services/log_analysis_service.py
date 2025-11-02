@@ -1,11 +1,12 @@
 """
-Log analysis service with similarity-based caching
+Log analysis service with similarity-based caching and Map-Reduce pattern
 """
 
-from typing import Optional
+from typing import Optional, List
 from app.core.opensearch import opensearch_client
 from app.core.config import settings
 from app.chains.log_analysis_chain import log_analysis_chain
+from app.chains.log_summarization_chain import log_summarization_chain
 from app.services.embedding_service import embedding_service
 from app.services.similarity_service import similarity_service
 from app.models.analysis import LogAnalysisResponse, LogAnalysisResult
@@ -18,7 +19,7 @@ class LogAnalysisService:
         self.client = opensearch_client
         self.threshold = settings.SIMILARITY_THRESHOLD
 
-    async def analyze_log(self, log_id: str, project_id: str) -> LogAnalysisResponse:
+    async def analyze_log(self, log_id: int, project_id: str) -> LogAnalysisResponse:
         """
         Analyze a log using AI with trace-based context and similarity-based caching
 
@@ -31,8 +32,8 @@ class LogAnalysisService:
         6. Save analysis
 
         Args:
-            log_id: Log ID to analyze
-            project_id: Project ID for multi-tenancy
+            log_id: Log ID to analyze (integer)
+            project_id: Project ID for multi-tenancy (UUID string)
 
         Returns:
             Analysis result
@@ -142,7 +143,7 @@ class LogAnalysisService:
             similarity_score=None,
         )
 
-    async def _get_log(self, log_id: str, project_id: str) -> Optional[dict]:
+    async def _get_log(self, log_id: int, project_id: str) -> Optional[dict]:
         """Get log from OpenSearch filtered by project_id"""
         try:
             response = self.client.search(
@@ -185,21 +186,46 @@ class LogAnalysisService:
     async def _analyze_with_llm_trace(
         self, related_logs: list, center_log: dict
     ) -> LogAnalysisResult:
-        """Analyze multiple logs (trace context) using LLM"""
-        # Format logs for LLM
-        formatted_logs = self._format_logs_for_analysis(related_logs)
+        """
+        Analyze multiple logs (trace context) using LLM with Map-Reduce pattern
 
-        # Use trace analysis chain (will be updated)
-        result = await log_analysis_chain.ainvoke(
-            {
-                "total_logs": len(related_logs),
-                "trace_id": center_log.get("trace_id", "Unknown"),
-                "center_log_id": center_log.get("log_id", ""),
-                "center_timestamp": center_log.get("timestamp", ""),
-                "logs_context": formatted_logs,
-                "service_name": center_log.get("service_name", "Unknown"),
-            }
-        )
+        Strategy:
+        - If logs > MAP_REDUCE_THRESHOLD and ENABLE_MAP_REDUCE:
+          1. Map: Split logs into chunks, summarize each chunk
+          2. Reduce: Analyze combined summaries
+        - Otherwise: Use traditional single-pass analysis
+        """
+        # Apply Map-Reduce for large log sets
+        if (
+            len(related_logs) > settings.MAP_REDUCE_THRESHOLD
+            and settings.ENABLE_MAP_REDUCE
+        ):
+            print(
+                f"🔄 Applying Map-Reduce: {len(related_logs)} logs → "
+                f"{(len(related_logs) + settings.LOG_CHUNK_SIZE - 1) // settings.LOG_CHUNK_SIZE} chunks"
+            )
+
+            # Map: Summarize chunks
+            summaries = await self._map_summarize_chunks(
+                related_logs, chunk_size=settings.LOG_CHUNK_SIZE
+            )
+
+            # Reduce: Analyze combined summaries
+            result = await self._reduce_analyze(summaries, center_log)
+        else:
+            # Traditional single-pass analysis for small log sets
+            formatted_logs = self._format_logs_for_analysis(related_logs)
+            result = await log_analysis_chain.ainvoke(
+                {
+                    "total_logs": len(related_logs),
+                    "trace_id": center_log.get("trace_id", "Unknown"),
+                    "center_log_id": center_log.get("log_id", ""),
+                    "center_timestamp": center_log.get("timestamp", ""),
+                    "logs_context": formatted_logs,
+                    "service_name": center_log.get("service_name", "Unknown"),
+                }
+            )
+
         return result
 
     def _format_logs_for_analysis(self, logs: list) -> str:
@@ -224,7 +250,7 @@ class LogAnalysisService:
 
         return "\n".join(formatted)
 
-    async def _save_analysis(self, log_id: str, analysis: dict, project_id: str):
+    async def _save_analysis(self, log_id: int, analysis: dict, project_id: str):
         """Save analysis result to log filtered by project_id"""
         try:
             self.client.update_by_query(
@@ -246,6 +272,105 @@ class LogAnalysisService:
             )
         except Exception as e:
             print(f"Error saving analysis for log {log_id} in project {project_id}: {e}")
+
+    async def _map_summarize_chunks(
+        self, logs: List[dict], chunk_size: int
+    ) -> List[str]:
+        """
+        Map phase: Split logs into chunks and summarize each chunk
+
+        Args:
+            logs: List of log dictionaries
+            chunk_size: Number of logs per chunk
+
+        Returns:
+            List of summary strings (one per chunk)
+        """
+        # Split logs into chunks
+        chunks = [logs[i : i + chunk_size] for i in range(0, len(logs), chunk_size)]
+        summaries = []
+
+        for idx, chunk in enumerate(chunks):
+            # Format chunk for summarization (lighter than full analysis)
+            formatted_chunk = self._format_logs_for_summary(chunk)
+
+            # Summarize this chunk
+            try:
+                response = await log_summarization_chain.ainvoke(
+                    {
+                        "chunk_number": idx + 1,
+                        "total_chunks": len(chunks),
+                        "logs": formatted_chunk,
+                    }
+                )
+                summary = response.content
+                summaries.append(summary)
+                print(f"  ✅ Chunk {idx + 1}/{len(chunks)} summarized")
+            except Exception as e:
+                print(f"  ❌ Error summarizing chunk {idx + 1}: {e}")
+                # Fallback: use formatted chunk as-is (but truncated)
+                summaries.append(formatted_chunk[:500] + "...")
+
+        return summaries
+
+    async def _reduce_analyze(
+        self, summaries: List[str], center_log: dict
+    ) -> LogAnalysisResult:
+        """
+        Reduce phase: Analyze combined summaries to produce final analysis
+
+        Args:
+            summaries: List of chunk summaries from Map phase
+            center_log: The center log (for context)
+
+        Returns:
+            Final analysis result
+        """
+        # Combine summaries into a single context string
+        combined_summary = "\n\n".join(
+            [f"[Chunk {i + 1}] {summary}" for i, summary in enumerate(summaries)]
+        )
+
+        print(f"🔍 Reduce: Analyzing {len(summaries)} chunk summaries")
+
+        # Use the analysis chain with combined summaries
+        result = await log_analysis_chain.ainvoke(
+            {
+                "total_logs": len(summaries),  # Number of chunks (not logs)
+                "trace_id": center_log.get("trace_id", "Unknown"),
+                "center_log_id": center_log.get("log_id", ""),
+                "center_timestamp": center_log.get("timestamp", ""),
+                "logs_context": combined_summary,
+                "service_name": center_log.get("service_name", "Unknown"),
+            }
+        )
+
+        return result
+
+    def _format_logs_for_summary(self, logs: List[dict]) -> str:
+        """
+        Format logs for Map phase summarization (lighter than full analysis)
+
+        Only includes essential fields to minimize token usage
+        """
+        formatted = []
+        for idx, log in enumerate(logs, 1):
+            # Only include critical fields
+            level = log.get("log_level") or log.get("level", "INFO")
+            message = log.get("message", "N/A")
+            stack_trace = log.get("stack_trace", "")
+
+            log_str = f"{idx}. [{level}] {message}"
+
+            # Include truncated stack trace only for errors
+            if stack_trace and level in ["ERROR", "FATAL", "WARN"]:
+                # Only first 3 lines of stack trace
+                lines = stack_trace.split("\n")[:3]
+                log_str += f"\n   Stack: {' | '.join(lines)}"
+
+            formatted.append(log_str)
+
+        return "\n".join(formatted)
 
     def _prepare_text_for_embedding(self, log_data: dict) -> str:
         """Prepare log text for embedding"""

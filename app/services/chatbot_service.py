@@ -1,15 +1,17 @@
 """
-Chatbot service with RAG and QA caching
+Chatbot service with RAG and context-aware QA caching
 """
 
+import re
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
+from langchain_core.messages import HumanMessage, AIMessage
 from app.core.opensearch import opensearch_client
 from app.core.config import settings
 from app.chains.chatbot_chain import chatbot_chain
 from app.services.embedding_service import embedding_service
 from app.services.similarity_service import similarity_service
-from app.models.chat import ChatResponse, RelatedLog
+from app.models.chat import ChatResponse, RelatedLog, ChatMessage
 
 
 class ChatbotService:
@@ -23,23 +25,29 @@ class ChatbotService:
     async def ask(
         self,
         question: str,
+        project_id: str,
+        chat_history: Optional[List[ChatMessage]] = None,
         filters: Optional[Dict[str, Any]] = None,
         time_range: Optional[Dict[str, str]] = None,
     ) -> ChatResponse:
         """
-        Answer a question about logs using RAG
+        Answer a question about logs using RAG with context-aware caching and history support
 
         Strategy:
         1. Generate question embedding
-        2. Check QA cache for similar questions
-        3. If found (score >= threshold), return cached answer
+        2. Check QA cache for similar questions (2-stage validation)
+           a. Semantic similarity (vector search)
+           b. Metadata matching (filters, time_range, project_id) + TTL validation
+        3. If found, return cached answer
         4. Otherwise:
            - Search relevant logs
-           - Generate answer with LLM
-           - Cache the QA pair
+           - Generate answer with LLM (with chat history)
+           - Cache the QA pair with metadata
 
         Args:
             question: User's question
+            project_id: Project ID for multi-tenancy isolation
+            chat_history: Previous conversation history
             filters: Optional filters for log search
             time_range: Optional time range filter
 
@@ -49,45 +57,88 @@ class ChatbotService:
         # Step 1: Generate question embedding
         question_vector = await embedding_service.embed_query(question)
 
-        # Step 2: Check QA cache
-        similar_questions = await similarity_service.find_similar_questions(
-            question_vector=question_vector, k=3
+        # Step 2: Check QA cache (2-stage validation)
+        # 2a. Get candidates by semantic similarity
+        cache_candidates = await similarity_service.find_similar_questions(
+            question_vector=question_vector,
+            k=settings.CACHE_CANDIDATE_SIZE,  # Get more candidates
+            project_id=project_id  # Filter by project_id
         )
 
-        if similar_questions and similar_questions[0]["score"] >= self.threshold:
-            cached = similar_questions[0]
-            # Get related logs
-            related_logs = await self._get_logs_by_ids(cached.get("related_log_ids", []))
+        # 2b. Validate metadata and TTL
+        for candidate in cache_candidates:
+            if candidate["score"] >= self.threshold:
+                # Check TTL validity
+                if not self._is_cache_valid(candidate):
+                    continue  # Expired cache, skip
 
-            return ChatResponse(
-                answer=cached["answer"],
-                from_cache=True,
-                related_logs=related_logs,
-            )
+                # Check metadata match
+                if self._metadata_matches(
+                    candidate.get("metadata", {}),
+                    filters,
+                    time_range,
+                    project_id
+                ):
+                    # Cache hit!
+                    cached = candidate
+                    related_logs = await self._get_logs_by_ids(
+                        cached.get("related_log_ids", []),
+                        project_id
+                    )
 
-        # Step 3: Search relevant logs using vector search
+                    return ChatResponse(
+                        answer=cached["answer"],
+                        from_cache=True,
+                        related_logs=related_logs,
+                    )
+
+        # Step 3: Cache miss - Search relevant logs using vector search
         relevant_logs_data = await similarity_service.find_similar_logs(
             log_vector=question_vector,
             k=self.max_context,
             filters=filters,
+            project_id=project_id,  # Project isolation
         )
 
         # Step 4: Prepare context from logs
         context_logs = self._format_context_logs(relevant_logs_data)
 
-        # Step 5: Generate answer with LLM
+        # Step 5: Convert chat history to LangChain messages (최근 10개만)
+        history_messages = []
+        if chat_history:
+            for msg in chat_history[-10:]:  # 최근 10개 턴만 유지
+                if msg.role == "user":
+                    history_messages.append(HumanMessage(content=msg.content))
+                elif msg.role == "assistant":
+                    history_messages.append(AIMessage(content=msg.content))
+
+        # Step 6: Generate answer with LLM (with history)
         response = await chatbot_chain.ainvoke(
             {
                 "context_logs": context_logs,
                 "question": question,
+                "chat_history": history_messages,  # 히스토리 추가
             }
         )
 
         answer = response.content
 
-        # Step 6: Cache the QA pair
+        # Step 6: Cache the QA pair with metadata
         related_log_ids = [log["log_id"] for log in relevant_logs_data]
-        await self._cache_qa_pair(question, question_vector, answer, related_log_ids)
+        ttl = self._calculate_ttl(question, time_range)
+
+        await self._cache_qa_pair(
+            question=question,
+            question_vector=question_vector,
+            answer=answer,
+            related_log_ids=related_log_ids,
+            metadata={
+                "project_id": project_id,
+                "filters": filters,
+                "time_range": time_range,
+            },
+            ttl=ttl
+        )
 
         # Step 7: Format related logs
         related_logs = self._format_related_logs(relevant_logs_data)
@@ -103,23 +154,30 @@ class ChatbotService:
         question: str,
         question_vector: List[float],
         answer: str,
-        related_log_ids: List[str],
+        related_log_ids: List[int],
+        metadata: Dict[str, Any],
+        ttl: int,
     ):
-        """Cache a QA pair in OpenSearch"""
+        """Cache a QA pair in OpenSearch with metadata and TTL"""
         try:
+            now = datetime.utcnow()
+            expires_at = now + timedelta(seconds=ttl)
+
             doc = {
                 "question": question,
                 "question_vector": question_vector,
                 "answer": answer,
                 "related_log_ids": related_log_ids,
-                "cached_at": datetime.utcnow().isoformat(),
+                "metadata": metadata,  # Store filters, time_range, project_id
+                "cached_at": now.isoformat(),
+                "expires_at": expires_at.isoformat(),  # TTL expiration
             }
             self.client.index(index="qa-cache", body=doc)
         except Exception as e:
             print(f"Error caching QA pair: {e}")
 
-    async def _get_logs_by_ids(self, log_ids: List[str]) -> List[RelatedLog]:
-        """Get logs by IDs"""
+    async def _get_logs_by_ids(self, log_ids: List[int], project_id: str) -> List[RelatedLog]:
+        """Get logs by IDs filtered by project_id"""
         if not log_ids:
             return []
 
@@ -127,7 +185,14 @@ class ChatbotService:
             response = self.client.search(
                 index="logs-*",
                 body={
-                    "query": {"terms": {"log_id": log_ids}},
+                    "query": {
+                        "bool": {
+                            "must": [
+                                {"terms": {"log_id": log_ids}},
+                                {"term": {"project_id": project_id}},  # Project isolation
+                            ]
+                        }
+                    },
                     "size": len(log_ids),
                 },
             )
@@ -147,7 +212,7 @@ class ChatbotService:
                 )
             return logs
         except Exception as e:
-            print(f"Error fetching logs by IDs: {e}")
+            print(f"Error fetching logs by IDs for project {project_id}: {e}")
             return []
 
     def _format_context_logs(self, logs_data: List[Dict[str, Any]]) -> str:
@@ -171,6 +236,93 @@ Log {i}:
             context_parts.append(context.strip())
 
         return "\n\n".join(context_parts)
+
+    def _metadata_matches(
+        self,
+        cached_metadata: Dict[str, Any],
+        filters: Optional[Dict[str, Any]],
+        time_range: Optional[Dict[str, str]],
+        project_id: str,
+    ) -> bool:
+        """
+        Check if cached metadata matches current request metadata
+
+        All fields must match exactly for cache hit:
+        - project_id (required)
+        - filters (optional)
+        - time_range (optional)
+        """
+        # Project ID must match (required for multi-tenancy)
+        if cached_metadata.get("project_id") != project_id:
+            return False
+
+        # Filters must match exactly (None == None is valid)
+        if cached_metadata.get("filters") != filters:
+            return False
+
+        # Time range must match exactly (None == None is valid)
+        if cached_metadata.get("time_range") != time_range:
+            return False
+
+        return True
+
+    def _is_cache_valid(self, candidate: Dict[str, Any]) -> bool:
+        """Check if cache entry is still valid (not expired)"""
+        expires_at = candidate.get("expires_at")
+        if not expires_at:
+            # No expiration set, always valid
+            return True
+
+        try:
+            expiration_time = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+            return expiration_time > datetime.utcnow()
+        except Exception as e:
+            print(f"Error parsing expiration time: {e}")
+            return False  # Treat as expired if parsing fails
+
+    def _calculate_ttl(
+        self,
+        question: str,
+        time_range: Optional[Dict[str, str]],
+    ) -> int:
+        """
+        Calculate TTL based on question content and time_range
+
+        Strategy:
+        - Relative time expressions ("방금", "지금", "1시간 전", "최근"): SHORT_CACHE_TTL (10 min)
+        - Explicit time_range provided: DEFAULT_CACHE_TTL (30 min)
+        - Absolute dates in question (YYYY-MM-DD): LONG_CACHE_TTL (1 day)
+        - Default: DEFAULT_CACHE_TTL (30 min)
+        """
+        question_lower = question.lower()
+
+        # Check for immediate/relative time expressions (shortest TTL)
+        immediate_keywords = ["방금", "지금", "현재", "just now", "right now", "currently"]
+        if any(keyword in question_lower for keyword in immediate_keywords):
+            return settings.SHORT_CACHE_TTL
+
+        # Check for recent/short-term expressions
+        recent_keywords = ["1시간", "한시간", "2시간", "최근", "최신", "1 hour", "2 hour", "recent", "latest"]
+        if any(keyword in question_lower for keyword in recent_keywords):
+            return settings.SHORT_CACHE_TTL
+
+        # Check for today/this week (medium TTL)
+        today_keywords = ["오늘", "금일", "이번주", "today", "this week"]
+        if any(keyword in question_lower for keyword in today_keywords):
+            return settings.DEFAULT_CACHE_TTL
+
+        # Check for absolute dates (longest TTL)
+        # Matches patterns like 2024-01-15, 2024/01/15, 01-15, etc.
+        date_pattern = r'\d{4}[-/]\d{1,2}[-/]\d{1,2}'
+        if re.search(date_pattern, question):
+            return settings.LONG_CACHE_TTL
+
+        # If explicit time_range provided, use default TTL
+        if time_range:
+            return settings.DEFAULT_CACHE_TTL
+
+        # Default TTL for general questions
+        return settings.DEFAULT_CACHE_TTL
 
     def _format_related_logs(self, logs_data: List[Dict[str, Any]]) -> List[RelatedLog]:
         """Format logs into RelatedLog objects"""

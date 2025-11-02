@@ -78,8 +78,8 @@ class ApplicationLog(BaseModel):
     """Application log model (unified logs + log_details)"""
 
     # Core identification
-    log_id: str = Field(..., description="Unique log ID")
-    project_id: str = Field(..., description="Project ID for multi-tenancy")
+    log_id: int = Field(..., description="Unique log ID (integer from database)")
+    project_id: str = Field(..., description="Project ID for multi-tenancy (UUID string)")
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Log timestamp")
 
     # Service and logging context
@@ -119,8 +119,8 @@ class ApplicationLog(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "log_id": "550e8400-e29b-41d4-a716-446655440000",
-                "project_id": "project_001",
+                "log_id": 12345,
+                "project_id": "550e8400-e29b-41d4-a716-446655440000",
                 "timestamp": "2024-01-15T10:30:00.000Z",
                 "service_name": "user-service",
                 "logger": "com.example.user.UserService",

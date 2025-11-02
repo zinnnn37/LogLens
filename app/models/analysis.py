@@ -50,16 +50,16 @@ class LogAnalysisResult(BaseModel):
 class LogAnalysisResponse(BaseModel):
     """API response for log analysis"""
 
-    log_id: str = Field(..., description="Log ID")
+    log_id: int = Field(..., description="Log ID (integer)")
     analysis: LogAnalysisResult = Field(..., description="Analysis result")
     from_cache: bool = Field(..., description="Whether result came from similar log cache")
-    similar_log_id: Optional[str] = Field(None, description="ID of similar log (if from cache)")
+    similar_log_id: Optional[int] = Field(None, description="ID of similar log (if from cache)")
     similarity_score: Optional[float] = Field(None, description="Similarity score (if from cache)")
 
     class Config:
         json_schema_extra = {
             "example": {
-                "log_id": "550e8400-e29b-41d4-a716-446655440000",
+                "log_id": 12345,
                 "analysis": {
                     "summary": "NullPointerException in UserService",
                     "error_cause": "User object was null",

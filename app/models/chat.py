@@ -7,10 +7,30 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 
+class ChatMessage(BaseModel):
+    """Single chat message for history"""
+
+    role: str = Field(..., description="'user' or 'assistant'")
+    content: str = Field(..., description="Message content")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "role": "user",
+                "content": "최근 에러 알려줘"
+            }
+        }
+
+
 class ChatRequest(BaseModel):
-    """Chatbot question request"""
+    """Chatbot question request with history support"""
 
     question: str = Field(..., description="User's question about logs")
+    project_id: str = Field(..., description="Project ID for multi-tenancy isolation")
+    chat_history: Optional[List[ChatMessage]] = Field(
+        default=None,
+        description="Previous conversation history"
+    )
     filters: Optional[Dict[str, Any]] = Field(None, description="Optional filters for log search")
     time_range: Optional[Dict[str, str]] = Field(
         None, description="Time range filter (start, end)"
@@ -19,7 +39,12 @@ class ChatRequest(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "question": "최근에 발생한 에러들을 요약해줘",
+                "question": "그 중 가장 심각한 건?",
+                "project_id": "proj-123",
+                "chat_history": [
+                    {"role": "user", "content": "최근 에러 알려줘"},
+                    {"role": "assistant", "content": "NPE 3건, DB 타임아웃 2건 발생했습니다"}
+                ],
                 "filters": {"level": "ERROR", "service_name": "user-service"},
                 "time_range": {"start": "2024-01-15T00:00:00Z", "end": "2024-01-15T23:59:59Z"},
             }
@@ -29,7 +54,7 @@ class ChatRequest(BaseModel):
 class RelatedLog(BaseModel):
     """Related log information"""
 
-    log_id: str = Field(..., description="Log ID")
+    log_id: int = Field(..., description="Log ID (integer)")
     timestamp: datetime = Field(..., description="Log timestamp")
     level: str = Field(..., description="Log level")
     message: str = Field(..., description="Log message")
@@ -54,7 +79,7 @@ class ChatResponse(BaseModel):
                 "from_cache": False,
                 "related_logs": [
                     {
-                        "log_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "log_id": 12345,
                         "timestamp": "2024-01-15T10:30:00Z",
                         "level": "ERROR",
                         "message": "NullPointerException in UserService",

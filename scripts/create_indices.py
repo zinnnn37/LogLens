@@ -26,8 +26,8 @@ def create_logs_index_template():
             "mappings": {
                 "properties": {
                     # Core identification fields
-                    "log_id": {"type": "keyword"},
-                    "project_id": {"type": "integer"},  # Multi-tenancy support (Logstash sends integer)
+                    "log_id": {"type": "long"},  # Integer log ID from database
+                    "project_id": {"type": "keyword"},  # UUID string for multi-tenancy
                     "timestamp": {"type": "date"},
 
                     # Service and logging context
@@ -150,13 +150,26 @@ def create_qa_cache_index():
                     "dimension": 1536,
                     "method": {
                         "name": "hnsw",
-                        "space_type": "l2",
+                        "space_type": "cosinesimil",  # Changed to cosinesimil for consistency
                         "engine": "faiss",
                     },
                 },
                 "answer": {"type": "text"},
-                "related_log_ids": {"type": "keyword"},
+                "related_log_ids": {"type": "long"},  # Array of integer log IDs
+
+                # Metadata for context-aware caching
+                "metadata": {
+                    "type": "object",
+                    "properties": {
+                        "project_id": {"type": "keyword"},  # UUID string
+                        "filters": {"type": "flattened"},  # Dynamic filters object
+                        "time_range": {"type": "flattened"},  # Time range object
+                    }
+                },
+
+                # TTL fields
                 "cached_at": {"type": "date"},
+                "expires_at": {"type": "date"},  # TTL expiration time
             }
         },
     }
