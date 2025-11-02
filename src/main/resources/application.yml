@@ -71,3 +71,11 @@ management: # Spring-Actuator 설정
 llm:
   api:
     key: ${LLM_API_KEY:}
+
+# ===================================================================
+# 암호화 설정 (Encryption Configuration)
+# ===================================================================
+encryption:
+  # API 토큰 등 민감 정보 암호화에 사용되는 시크릿 키
+  # 프로덕션 환경에서는 반드시 환경 변수로 설정하세요 (최소 32자 이상 권장)
+  secret-key: ${ENCRYPTION_SECRET_KEY:loglens-default-secret-key-32ch}
