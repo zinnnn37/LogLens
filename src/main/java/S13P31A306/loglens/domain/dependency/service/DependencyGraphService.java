@@ -16,7 +16,7 @@ public interface DependencyGraphService {
      *
      * @param request 배치 저장 요청
      */
-    void saveAll(DependencyGraphBatchRequest request);
+    void saveAll(DependencyGraphBatchRequest request, Integer projectId);
 
     /**
      * 프로젝트별 모든 의존성 조회
