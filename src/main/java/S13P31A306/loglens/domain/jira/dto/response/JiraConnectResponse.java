@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.jira.dto.response;
 
+import S13P31A306.loglens.global.annotation.Sensitive;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
@@ -13,9 +14,11 @@ public record JiraConnectResponse(
         Integer projectId,
 
         @Schema(description = "Jira URL", example = "https://your-domain.atlassian.net")
+        @Sensitive
         String jiraUrl,
 
         @Schema(description = "Jira 이메일", example = "admin@example.com")
+        @Sensitive
         String jiraEmail,
 
         @Schema(description = "Jira 프로젝트 키", example = "LOGLENS")

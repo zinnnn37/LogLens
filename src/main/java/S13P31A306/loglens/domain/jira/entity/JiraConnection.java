@@ -23,6 +23,7 @@ public class JiraConnection extends BaseEntity {
      * Jira 인스턴스 URL
      * 예: https://your-domain.atlassian.net
      */
+    @Sensitive
     @Column(name = "jira_url", nullable = false, length = 255)
     private String jiraUrl;
 
@@ -30,6 +31,7 @@ public class JiraConnection extends BaseEntity {
      * Jira 계정 이메일
      * API 인증에 사용됩니다.
      */
+    @Sensitive
     @Column(name = "jira_email", nullable = false, length = 255)
     private String jiraEmail;
 

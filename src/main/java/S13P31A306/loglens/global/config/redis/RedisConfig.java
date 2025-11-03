@@ -1,5 +1,6 @@
 package S13P31A306.loglens.global.config.redis;
 
+import S13P31A306.loglens.global.annotation.Sensitive;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +21,7 @@ public class RedisConfig {
     @Value("${spring.data.redis.port}")
     private int port;
 
+    @Sensitive
     @Value("${spring.data.redis.password}")
     private String password;
 

@@ -1,5 +1,6 @@
 package S13P31A306.loglens.global.util;
 
+import S13P31A306.loglens.global.annotation.Sensitive;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -35,7 +36,7 @@ public class EncryptionUtils {
      * @param secretKey 암호화 시크릿 키 (최소 16자 이상 권장)
      * @throws IllegalStateException secretKey가 null이거나 비어있을 경우
      */
-    public EncryptionUtils(@Value("${encryption.secret-key}") String secretKey) {
+    public EncryptionUtils(@Value("${encryption.secret-key}") @Sensitive String secretKey) {
         // secretKey null/empty 검증
         if (secretKey == null || secretKey.trim().isEmpty()) {
             String errorMessage = "ENCRYPTION_SECRET_KEY must be set in environment variables. " +
