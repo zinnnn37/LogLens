@@ -17,6 +17,7 @@ import java.util.List;
 @Slf4j
 public class DependencyLogSender {
 
+    private static final String API_KEY_HEADER = "X-API-Key";
     private final WebClient webClient;
     private final boolean enabled;
 
@@ -26,16 +27,20 @@ public class DependencyLogSender {
      * @param collectorUrl Collector 서버 URL
      * @param enabled 전송 활성화 여부
      */
-    public DependencyLogSender(String collectorUrl, boolean enabled) {
+    public DependencyLogSender(String collectorUrl, String apiKey, boolean enabled) {
         this.webClient = WebClient.builder()
                 .baseUrl(collectorUrl)
                 .defaultHeader("Content-Type", "application/json")
+                .defaultHeader(API_KEY_HEADER, apiKey)
                 .build();
 
         this.enabled = enabled;
 
         log.info("DependencyLogSender 초기화 완료");
         log.info("  - Collector URL: {}", collectorUrl);
+        log.info("  - API Key: {}...{}",
+                apiKey != null && apiKey.length() > 8 ? apiKey.substring(0, 8) : "****",
+                apiKey != null && apiKey.length() > 12 ? apiKey.substring(apiKey.length() - 4) : "****");
         log.info("  - 전송 활성화: {}", enabled);
     }
 
