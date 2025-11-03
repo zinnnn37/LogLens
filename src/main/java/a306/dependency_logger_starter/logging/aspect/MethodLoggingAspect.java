@@ -37,6 +37,13 @@ public class MethodLoggingAspect {
 
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_INSTANT;
 
+    // IP 주소 관련 헤더 상수 (우선순위 순)
+    private static final String[] IP_HEADER_CANDIDATES = {
+            "X-Forwarded-For",  // 가장 표준적, 프록시/로드밸런서에서 사용
+            "X-Real-IP",        // Nginx 등에서 사용
+            "Proxy-Client-IP"   // 일부 프록시에서 사용
+    };
+
     /**
      * Controller 메서드
      */
@@ -155,10 +162,13 @@ public class MethodLoggingAspect {
 
             if (attributes != null) {
                 HttpServletRequest request = attributes.getRequest();
+                String clientIp = extractClientIp(request);
+
                 return new HttpInfo(
                         request.getMethod(),
                         request.getRequestURI(),
                         request.getQueryString(),
+                        clientIp,
                         attributes
                 );
             }
@@ -166,6 +176,31 @@ public class MethodLoggingAspect {
             log.debug("HTTP 정보 추출 실패: {}", e.getMessage());
         }
         return null;
+    }
+
+    /**
+     * 클라이언트 IP 주소 추출
+     * 프록시를 통과한 경우 헤더에서 원본 IP를 추출
+     */
+    private String extractClientIp(HttpServletRequest request) {
+        // 1. 헤더에서 IP 추출 시도
+        for (String header : IP_HEADER_CANDIDATES) {
+            String ip = request.getHeader(header);
+            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+                // X-Forwarded-For는 여러 IP가 쉼표로 구분되어 있을 수 있음
+                // 가장 첫 번째 IP가 원본 클라이언트 IP
+                if (ip.contains(",")) {
+                    ip = ip.split(",")[0].trim();
+                }
+                log.debug("클라이언트 IP 추출 ({}): {}", header, ip);
+                return ip;
+            }
+        }
+
+        // 2. 헤더에 없으면 직접 연결 IP 사용
+        String remoteAddr = request.getRemoteAddr();
+        log.debug("클라이언트 IP 추출 (RemoteAddr): {}", remoteAddr);
+        return remoteAddr;
     }
 
     /**
@@ -192,6 +227,9 @@ public class MethodLoggingAspect {
                 http.put("endpoint", httpInfo.uri);
                 if (httpInfo.queryString != null) {
                     http.put("queryString", httpInfo.queryString);
+                }
+                if (httpInfo.clientIp != null) {
+                    http.put("clientIp", httpInfo.clientIp);
                 }
                 request.put("http", http);
             }
@@ -251,6 +289,9 @@ public class MethodLoggingAspect {
                     http.put("endpoint", httpInfo.uri);
                     if (httpInfo.statusCode != null) {
                         http.put("statusCode", httpInfo.statusCode);
+                    }
+                    if (httpInfo.clientIp != null) {
+                        http.put("clientIp", httpInfo.clientIp);
                     }
                     response.put("http", http);
                 }
@@ -391,13 +432,15 @@ public class MethodLoggingAspect {
         final String method;
         final String uri;
         final String queryString;
+        final String clientIp;
         Integer statusCode;
         final ServletRequestAttributes attributes;
 
-        HttpInfo(String method, String uri, String queryString, ServletRequestAttributes attributes) {
+        HttpInfo(String method, String uri, String queryString, String clientIp, ServletRequestAttributes attributes) {
             this.method = method;
             this.uri = uri;
             this.queryString = queryString;
+            this.clientIp = clientIp;
             this.attributes = attributes;
             this.statusCode = null;
         }
