@@ -1,0 +1,37 @@
+package S13P31A306.loglens.domain.jira.dto.request;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.*;
+
+/**
+ * Jira 연동 설정 요청 DTO
+ */
+public record JiraConnectRequest(
+        @NotNull(message = "PROJECT_ID_REQUIRED")
+        @Schema(description = "LogLens 프로젝트 ID", example = "1")
+        Integer projectId,
+
+        @NotBlank(message = "JIRA_URL_REQUIRED")
+        @Size(max = 255, message = "JIRA_URL_TOO_LONG")
+        @Pattern(regexp = "^https?://[\\w.-]+\\.[a-zA-Z]{2,}/?.*$", message = "JIRA_URL_INVALID_FORMAT")
+        @Schema(description = "Jira 인스턴스 URL", example = "https://your-domain.atlassian.net")
+        String jiraUrl,
+
+        @NotBlank(message = "JIRA_EMAIL_REQUIRED")
+        @Email(message = "JIRA_EMAIL_INVALID_FORMAT")
+        @Size(max = 255, message = "JIRA_EMAIL_TOO_LONG")
+        @Schema(description = "Jira 계정 이메일", example = "admin@example.com")
+        String jiraEmail,
+
+        @NotBlank(message = "JIRA_API_TOKEN_REQUIRED")
+        @Size(max = 255, message = "JIRA_API_TOKEN_TOO_LONG")
+        @Schema(description = "Jira API 토큰", example = "ATATT3xFfGF0...")
+        String jiraApiToken,
+
+        @NotBlank(message = "JIRA_PROJECT_KEY_REQUIRED")
+        @Size(max = 255, message = "JIRA_PROJECT_KEY_TOO_LONG")
+        @Pattern(regexp = "^[A-Z][A-Z0-9]{1,9}$", message = "JIRA_PROJECT_KEY_INVALID_FORMAT")
+        @Schema(description = "Jira 프로젝트 키", example = "LOGLENS")
+        String jiraProjectKey
+) {
+}
