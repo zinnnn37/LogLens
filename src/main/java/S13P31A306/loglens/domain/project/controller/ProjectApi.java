@@ -4,6 +4,7 @@ import S13P31A306.loglens.domain.project.dto.request.ProjectCreateRequest;
 import S13P31A306.loglens.domain.project.dto.request.ProjectMemberInviteRequest;
 import S13P31A306.loglens.domain.project.dto.response.ProjectCreateResponse;
 import S13P31A306.loglens.global.config.swagger.annotation.ApiInternalServerError;
+import S13P31A306.loglens.global.constants.SwaggerMessages;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
 import S13P31A306.loglens.global.dto.response.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,7 +27,7 @@ public interface ProjectApi {
 	@Operation(
 			summary = "프로젝트 생성",
 			description = "새로운 프로젝트를 생성합니다.",
-			security = @SecurityRequirement(name = "BearerAuthentication"),
+			security = @SecurityRequirement(name = SwaggerMessages.BEARER_AUTH),
 			responses = {
 					@ApiResponse(
 							responseCode = "201",
@@ -178,7 +179,7 @@ public interface ProjectApi {
 	@Operation(
 			summary = "프로젝트 목록 조회",
 			description = "참여 중인 프로젝트 목록을 조회합니다",
-			security = @SecurityRequirement(name = "BearerAuthentication"),
+			security = @SecurityRequirement(name = SwaggerMessages.BEARER_AUTH),
 			responses = {
 					@ApiResponse(
 							responseCode = "200",
@@ -235,7 +236,7 @@ public interface ProjectApi {
 	@Operation(
 			summary = "프로젝트 상세 정보 조회",
 			description = "프로젝트 상세 정보를 조회합니다",
-			security = @SecurityRequirement(name = "BearerAuthentication"),
+			security = @SecurityRequirement(name = SwaggerMessages.BEARER_AUTH),
 			responses = {
 					@ApiResponse(
 							responseCode = "200",
@@ -322,7 +323,7 @@ public interface ProjectApi {
 	@Operation(
 			summary = "프로젝트 삭제",
 			description = "프로젝트를 삭제합니다",
-			security = @SecurityRequirement(name = "BearerAuthentication"),
+			security = @SecurityRequirement(name = SwaggerMessages.BEARER_AUTH),
 			responses = {
 					@ApiResponse(
 							responseCode = "200",
@@ -394,7 +395,7 @@ public interface ProjectApi {
 	@Operation(
 			summary = "멤버 초대",
 			description = "프로젝트에 멤버를 추가합니다",
-			security = @SecurityRequirement(name = "BearerAuthentication"),
+			security = @SecurityRequirement(name = SwaggerMessages.BEARER_AUTH),
 			responses = {
 					@ApiResponse(
 							responseCode = "201",
@@ -490,7 +491,7 @@ public interface ProjectApi {
 	@Operation(
 			summary = "프로젝트 멤버 삭제",
 			description = "프로젝트에 참여 중인 멤버를 삭제합니다",
-			security = @SecurityRequirement(name = "BearerAuthentication"),
+			security = @SecurityRequirement(name = SwaggerMessages.BEARER_AUTH),
 			responses = {
 					@ApiResponse(
 							responseCode = "200",

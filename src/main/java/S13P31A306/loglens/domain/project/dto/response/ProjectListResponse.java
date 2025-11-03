@@ -36,8 +36,8 @@ public record ProjectListResponse(
             @Schema(description = "프로젝트 설명", example = "로그 수집 및 분석 프로젝트")
             String description,
 
-            @Schema(description = "프로젝트 API KEY", example = "pk_1a2b3c4d5e6f")
-            String apiKey,
+            @Schema(description = "프로젝트 UUID", example = "pk_1a2b3c4d5e6f")
+            String uuid,
 
             @Schema(description = "프로젝트에 참여 중인 멤버 수", example = "6")
             int memberCount,

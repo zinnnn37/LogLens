@@ -20,6 +20,8 @@ public enum SwaggerMessages {
 
     private final String message;
 
+    public static final String BEARER_AUTH = "bearerAuth";
+
     public String message() {
         return this.message;
     }
