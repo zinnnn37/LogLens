@@ -20,6 +20,10 @@ public class Component extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    @NotNull
+    @Column(name = "project_id", nullable = false)
+    private Integer projectId;
+
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 

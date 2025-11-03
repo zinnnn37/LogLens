@@ -9,11 +9,11 @@ test:
   image: gradle:8.5-jdk21
   tags:
     - docker  # Runner에 설정된 태그 추가
-#  variables:
-#    SPRING_PROFILES_ACTIVE: test
+  variables:
+    SPRING_PROFILES_ACTIVE: test
   script:
     - chmod +x ./gradlew
-#    - ./gradlew test
+    - ./gradlew test
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     #    - if: $CI_COMMIT_BRANCH == "be/master"

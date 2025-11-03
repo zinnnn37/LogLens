@@ -6,6 +6,7 @@ import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,13 +38,16 @@ public class DependencyGraphController {
     @PostMapping("/relations")
     @Operation(summary = "의존성 그래프 배치 저장", description = "프로젝트의 의존성 관계를 일괄 저장합니다")
     public ResponseEntity<BaseResponse> createDependenciesBatch(
-            @Valid @RequestBody DependencyGraphBatchRequest request) {
+            @Valid @RequestBody DependencyGraphBatchRequest request,
+            HttpServletRequest httpRequest) {
+
+        Integer projectId = (Integer) httpRequest.getAttribute("projectId");
 
         log.info("📥 의존성 그래프 배치 저장 요청");
 //        log.info("  - 프로젝트: {}", request.projectName());
         log.info("  - 의존성 개수: {}", request.dependencies().size());
 
-        dependencyGraphService.saveAll(request);
+        dependencyGraphService.saveAll(request, projectId);
 
         return ApiResponseFactory.success(DEPENDENCY_GRAPHS_BATCH_CREATED);
     }
