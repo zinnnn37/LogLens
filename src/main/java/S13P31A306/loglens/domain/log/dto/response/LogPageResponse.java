@@ -8,8 +8,6 @@ import lombok.Data;
 @Data
 @Builder
 public class LogPageResponse {
-    @Schema(description = "프로젝트 ID", example = "1")
-    private Integer projectId;
 
     @Schema(description = "로그 목록")
     private List<LogResponse> logs;

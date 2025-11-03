@@ -8,8 +8,8 @@ import org.springframework.format.annotation.DateTimeFormat;
 
 @Data
 public class LogSearchRequest {
-    @Schema(description = "프로젝트 ID", example = "1")
-    private Integer projectId;
+    @Schema(description = "프로젝트 UUID", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String projectUuid;
 
     @Schema(description = "페이지네이션 커서", example = "eyJzb3J0IjpbMTcwNTMxMjgwMDAwMCwiYWJjMTIzIl19")
     private String cursor;

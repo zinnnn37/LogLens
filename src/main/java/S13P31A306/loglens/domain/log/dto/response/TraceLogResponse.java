@@ -8,8 +8,6 @@ import lombok.Data;
 @Data
 @Builder
 public class TraceLogResponse {
-    @Schema(description = "프로젝트 ID", example = "1")
-    private Integer projectId;
 
     @Schema(description = "Trace ID", example = "abc123def456")
     private String traceId;
