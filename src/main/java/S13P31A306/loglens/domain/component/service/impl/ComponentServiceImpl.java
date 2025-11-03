@@ -25,10 +25,22 @@ public class ComponentServiceImpl implements ComponentService {
 
     @Override
     @Transactional
-    public void saveAll(ComponentBatchRequest request) {
-        List<Component> components = componentMapper.toEntityList(request.components());
+    public void saveAll(ComponentBatchRequest request, Integer projectId) {
+        Integer existingCount = componentRepository.countByProjectId(projectId);
+        if (existingCount > 0) {
+            log.info("🗑️ 기존 컴포넌트 삭제 시작: projectId={}, 개수={}", projectId, existingCount);
+            componentRepository.deleteByProjectId(projectId);
+            log.info("✅ 기존 컴포넌트 삭제 완료");
+        }
+
+        List<Component> components = componentMapper.toEntityList(request.components(), projectId);  // ✅ projectId 전달
         componentRepository.saveAll(components);
 
         log.info("✅ 배치 저장 완료: {} 개 저장됨", components.size());
     }
+
+//    @Override
+//    public List<Component> findByProjectId(Integer projectId) {
+//        return List.of();
+//    }
 }
