@@ -8,9 +8,7 @@ import S13P31A306.loglens.domain.project.dto.response.*;
 import S13P31A306.loglens.domain.project.service.ProjectService;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
-import S13P31A306.loglens.global.dto.response.SuccessResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
