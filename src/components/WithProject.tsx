@@ -5,7 +5,6 @@ import MemberInviteModal from './modal/MemberInviteModal';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { ProjectInfoDTO } from '@/types/project';
 
-
 export interface WithProjectProps {
   projects?: ProjectInfoDTO[];
   onSelect?: (id: number) => void;
@@ -31,7 +30,9 @@ const WithProject = ({
 }: WithProjectProps) => {
   const list = projects ?? [];
 
-  const [invitingProjectId, setInvitingProjectId] = useState<number | null>(null);
+  const [invitingProjectId, setInvitingProjectId] = useState<number | null>(
+    null,
+  );
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const becameEmptyRef = useRef(false);
@@ -75,7 +76,7 @@ const WithProject = ({
                 >
                   {list.map(p => (
                     <motion.div
-                      key={p.projectId} 
+                      key={p.projectId}
                       layout="position"
                       initial={{ opacity: 0, y: 8, scale: 0.99 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -87,11 +88,11 @@ const WithProject = ({
                       }}
                       role="button"
                       tabIndex={0}
-                      onClick={() => onSelect?.(p.projectId)} 
+                      onClick={() => onSelect?.(p.projectId)}
                       onKeyDown={e => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          onSelect?.(p.projectId); 
+                          onSelect?.(p.projectId);
                         }
                       }}
                       className="focus:ring-ring/40 cursor-pointer rounded-xl bg-white px-5 py-4 shadow-sm transition [will-change:transform,opacity] hover:shadow-md focus:ring-2 focus:outline-none"
@@ -99,7 +100,7 @@ const WithProject = ({
                       <div className="flex items-center justify-between gap-4">
                         <div className="min-w-0">
                           <p className="text-foreground truncate font-semibold">
-                            {p.projectName} 
+                            {p.projectName}
                           </p>
                           <p className="text-muted-foreground text-sm">
                             멤버 {p.memberCount}명{DOT}로그{' '}
@@ -113,7 +114,7 @@ const WithProject = ({
                             className="gap-2"
                             onClick={e => {
                               e.stopPropagation();
-                              setInvitingProjectId(p.projectId); 
+                              setInvitingProjectId(p.projectId);
                             }}
                           >
                             <UserPlus2 className="h-4 w-4" />
@@ -126,12 +127,12 @@ const WithProject = ({
                           >
                             <motion.button
                               whileTap={{ scale: 0.96 }}
-                              aria-label={`${p.projectName} 프로젝트 삭제`} 
-                              disabled={deletingId === p.projectId} 
-                              onClick={e => handleDelete(e, p.projectId)} 
+                              aria-label={`${p.projectName} 프로젝트 삭제`}
+                              disabled={deletingId === p.projectId}
+                              onClick={e => handleDelete(e, p.projectId)}
                             >
                               <Trash2 className="h-4 w-4" />
-                              {deletingId === p.projectId 
+                              {deletingId === p.projectId
                                 ? '삭제 중…'
                                 : '프로젝트 삭제'}
                             </motion.button>

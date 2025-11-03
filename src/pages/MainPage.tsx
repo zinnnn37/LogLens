@@ -54,20 +54,22 @@ const MainPage = () => {
     setShowEmptyMain(!isLoading && projects.length === 0);
   }, [isLoading, projects.length]);
 
-  // 삭제버튼 눌렀을 때 alert-dialog 
+  // 삭제버튼 눌렀을 때 alert-dialog
   const handleDeleteRequest = (id: number) => {
     const projectToConfirm = projects.find(p => p.projectId === id);
     if (projectToConfirm) {
       setProjectToConfirmDelete(projectToConfirm);
     } else {
       console.error('삭제할 프로젝트 정보를 찾을 수 없습니다.');
-      toast.error('프로젝트 정보를 찾을 수 없어 삭제할 수 없습니다.');
+      toast.error('프로젝트 정보를 찾을   수 없어 삭제할 수 없습니다.');
     }
   };
 
   // alert-dialog 에서 삭제
   const executeDelete = async () => {
-    if (!projectToConfirmDelete) { return; }
+    if (!projectToConfirmDelete) {
+      return;
+    }
 
     try {
       // 프로젝트 삭제 API 호출
@@ -91,7 +93,7 @@ const MainPage = () => {
   if (isLoading) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+        <Loader2 className="text-muted-foreground h-10 w-10 animate-spin" />
       </main>
     );
   }
@@ -147,7 +149,8 @@ const MainPage = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              "{projectToConfirmDelete?.projectName}" 프로젝트를 삭제하시겠습니까?
+              "{projectToConfirmDelete?.projectName}" 프로젝트를
+              삭제하시겠습니까?
             </AlertDialogTitle>
             <AlertDialogDescription>
               이 작업은 되돌릴 수 없습니다. 프로젝트와 관련된 모든 데이터가
@@ -170,4 +173,3 @@ const MainPage = () => {
 };
 
 export default MainPage;
-

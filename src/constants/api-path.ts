@@ -20,7 +20,6 @@ export const API_PATH = {
   DELETE_PROJECT: (projectId: number) => `/api/projects/${projectId}`,
 
   // 프로젝트 내 멤버 삭제
-  DELETE_MEMBER: (projectId: number, memberId: number) => `/api/projects/${projectId}/members/${memberId}`,
+  DELETE_MEMBER: (projectId: number, memberId: number) =>
+    `/api/projects/${projectId}/members/${memberId}`,
 } as const;
-
-

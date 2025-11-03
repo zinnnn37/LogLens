@@ -22,7 +22,6 @@ interface ProjectCreateModalProps {
   onCreate: (payload: CreateProjectPayload) => Promise<ProjectDTO>;
 
   onComplete: (newProject: ProjectDTO) => void;
-
 }
 
 // ==== 상수/검증 ====
@@ -141,23 +140,23 @@ const ProjectCreateModal = ({
               <Input
                 id="project-name"
                 ref={nameInputRef}
-                name="projectName" 
-                value={form.projectName} 
-                onChange={ev => handleChange({ projectName: ev.target.value })} 
+                name="projectName"
+                value={form.projectName}
+                onChange={ev => handleChange({ projectName: ev.target.value })}
                 placeholder="프로젝트명을 입력해 주세요"
                 required
                 minLength={NAME_MIN}
                 maxLength={NAME_MAX}
                 aria-required="true"
-                aria-invalid={Boolean(errors?.projectName)} 
+                aria-invalid={Boolean(errors?.projectName)}
                 aria-describedby={
                   errors?.projectName ? 'project-name-error' : undefined
-                } 
+                }
                 disabled={completing}
               />
-              {errors?.projectName ? ( 
+              {errors?.projectName ? (
                 <p id="project-name-error" className="text-destructive text-sm">
-                  {errors.projectName} 
+                  {errors.projectName}
                 </p>
               ) : null}
             </div>
@@ -199,7 +198,6 @@ const ProjectCreateModal = ({
             </Button>
           </div>
         </div>
-
       </DialogContent>
     </Dialog>
   );

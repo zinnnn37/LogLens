@@ -86,17 +86,10 @@ const InstallGuideStep2 = ({
 
       {/* 하단 내비게이션 */}
       <div className="flex items-center justify-center gap-8">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onPrev}
-        >
+        <Button type="button" variant="outline" onClick={onPrev}>
           이전
         </Button>
-        <Button
-          type="button"
-          onClick={onComplete}
-        >
+        <Button type="button" onClick={onComplete}>
           완료
         </Button>
       </div>
