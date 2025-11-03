@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ProjectRepository extends JpaRepository<Project, Integer> {
 
@@ -33,4 +34,5 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             "WHERE p.id IN (SELECT pm.project.id FROM ProjectMember pm WHERE pm.user.id = :userId)")
     List<Project> findProjectsWithMembersByUserId(@Param("userId") int userId);
 
+    Optional<Project> findByProjectUuid(String apiKey);
 }
