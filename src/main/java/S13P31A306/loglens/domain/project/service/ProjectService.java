@@ -48,6 +48,8 @@ public interface ProjectService {
      */
     ProjectDetailResponse getProjectDetail(int projectId);
 
+    Integer getProjectIdByUuid(String uuid);
+
     /**
      * 프로젝트 삭제
      *
