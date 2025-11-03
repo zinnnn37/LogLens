@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.dependency.filter;
 
+import S13P31A306.loglens.domain.project.service.ProjectService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,8 +19,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
     private static final String API_KEY_HEADER = "X-API-Key";
     private static final String PROJECT_ID_ATTRIBUTE = "projectId";
-
-//    private final ProjectService projectService;
+    private final ProjectService projectService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -42,8 +42,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
             try {
                 // API Key로 project_id 조회 (캐시 적용됨)
-//                Long projectId = projectService.getProjectIdByApiKey(apiKey);
-                Integer projectId = getProjectIdByApiKey(apiKey);
+                Integer projectId = projectService.getProjectIdByApiKey(apiKey);
 
                 // request attribute에 저장 (Controller에서 사용)
                 request.setAttribute(PROJECT_ID_ATTRIBUTE, projectId);
@@ -68,11 +67,5 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     private boolean shouldAuthenticate(String uri) {
         return uri.startsWith("/api/dependencies/") ||
                 uri.startsWith("/api/components/");
-    }
-
-    private Integer getProjectIdByApiKey(String apiKey) {
-        // ⚠️ 임시 하드코딩 (ProjectService 구현 전까지)
-        log.warn("⚠️ [TEMPORARY] projectId를 1로 하드코딩 중...");
-        return 1;
     }
 }
