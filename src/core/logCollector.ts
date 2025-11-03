@@ -2,6 +2,8 @@
 
 import { LogFormatter } from '../utils/logFormatter';
 import type { LogEntry, CollectorConfig } from '../types/logTypes';
+import { loglens } from './logger';
+import { getClientIp } from '../utils/ip';
 
 class LogCollector {
   private static logs: LogEntry[] = [];
@@ -81,17 +83,20 @@ class LogCollector {
 
     const endpoint = this.config.autoFlush?.endpoint;
     if (!endpoint) {
-      console.warn('[LogCollector] No endpoint configured for flush');
+      loglens.warn('[LogCollector] No endpoint configured for flush');
       return;
     }
 
     const logsToSend = [...this.logs];
     this.logs = [];
 
+    const ipAddress = await getClientIp();
+
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
+          ip: ipAddress || '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ logs: logsToSend }),
