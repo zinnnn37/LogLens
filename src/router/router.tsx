@@ -2,7 +2,6 @@ import { createBrowserRouter } from 'react-router-dom';
 
 import Layout from '@/components/layout/Layout';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import Home from '@/pages/Home';
 import NotFound from '@/pages/NotFound';
 import { ROUTE_PATH } from '@/router/route-path';
 import LoginPage from '@/pages/LoginPage';
@@ -23,10 +22,6 @@ export const router = createBrowserRouter([
       {
         element: <Layout />,
         children: [
-          {
-            path: '/',
-            element: <Home />,
-          },
           {
             path: ROUTE_PATH.NOT_FOUND,
             element: <NotFound />,
