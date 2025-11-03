@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Getter
@@ -49,7 +50,7 @@ public class Project extends BaseTimeEntity {
 
     @PrePersist
     public void generateUUID() {
-        if (this.projectUuid == null) {
+        if (Objects.isNull(this.projectUuid)) {
             String uuidKey = this.projectName + LocalTime.now();
             this.projectUuid = UUID.nameUUIDFromBytes(uuidKey.getBytes()).toString();
         }
