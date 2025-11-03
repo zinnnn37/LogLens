@@ -14,18 +14,46 @@ npm install soo1-loglens
 
 ### 1단계: 초기화
 
-앱 시작 시 `LogCollector.init()`을 호출해주세요
+#### front-end
+앱 시작 시 하단 코드를 호출해주세요
+```ts
+// 기본값 사용
+initLogLens({ domain: "https://your-domain.com" }); // api/logs/frontend url로 로그가 수집됩니다
+
+// 옵션 커스텀
+initLogLens({
+  domain: "https://your-domain.com",
+  maxLogs: 500,
+  autoFlushEnabled: true,
+  autoFlushInterval: 10000,
+  captureErrors: true
+});
+```
 
 ```ts
-// 기본값
+// api 요청 옵션 기본값
 {
   maxLogs: 1000,     // 최대 로그 갯수
   autoFlush: {
-    enabled: false,  // 자동 로그 전송 여부
-    interval: 60000, // 1초마다 전송
-    endpoint: '',    // 로그 분석 API 엔드포인트
+    enabled: true,   // 자동 로그 전송 여부, false 설정 시 로그가 수집되지 않습니다
+    interval: 30000, // 30초마다 전송
+    endpoint: '',    // loglens gradle 라이브러리를 추가한 백엔드 endpoint
   },
 };
+```
+
+#### back-end
+```java
+@RestController
+@RequestMapping("/api/logs") // 엔드포인트 예시. initLogLens()에 넣는 endpoint와 통일해주세요
+public class LogController {
+    
+    // 인터셉터가 처리하여 비어있어도 됩니다
+    @PostMapping
+    public void dummy() {
+        // 실행 안됨 (인터셉터에서 return false)
+    }
+}
 ```
 
 ### 2단계: 함수 래핑
