@@ -5,6 +5,7 @@ import S13P31A306.loglens.domain.component.mapper.ComponentMapper;
 import S13P31A306.loglens.domain.component.service.ComponentService;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,11 +27,16 @@ public class ComponentController {
 
     @PostMapping("/batch")
     public ResponseEntity<BaseResponse> createComponentsBatch(
-            @Valid @RequestBody ComponentBatchRequest request) {
+            @Valid @RequestBody ComponentBatchRequest request,
+            HttpServletRequest httpRequest) {  // ✅ 추가
 
-        log.info("📥 컴포넌트 배치 저장 요청: 개수={}", request.components().size());
+        // ✅ ApiKeyFilter에서 설정한 projectId 가져오기
+        Integer projectId = (Integer) httpRequest.getAttribute("projectId");
 
-        componentService.saveAll(request);
+        log.info("📥 컴포넌트 배치 저장 요청: 개수={}, projectId={}",
+                request.components().size(), projectId);
+
+        componentService.saveAll(request, projectId);  // ✅ projectId 전달
 
         return ApiResponseFactory.success(COMPONENTS_BATCH_CREATED);
     }

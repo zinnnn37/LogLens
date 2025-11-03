@@ -1,7 +1,7 @@
 package S13P31A306.loglens.domain.component.service;
 
 import S13P31A306.loglens.domain.component.dto.request.ComponentBatchRequest;
-import org.springframework.stereotype.Component;
+import S13P31A306.loglens.domain.component.entity.Component;
 
 import java.util.List;
 
@@ -10,7 +10,7 @@ public interface ComponentService {
     /**
      * 여러 컴포넌트 배치 저장
      */
-    void saveAll(ComponentBatchRequest request);
+    void saveAll(ComponentBatchRequest request, Integer projectId);
 
 //    /**
 //     * 프로젝트 ID로 컴포넌트 목록 조회

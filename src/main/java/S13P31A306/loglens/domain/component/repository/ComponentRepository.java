@@ -7,4 +7,7 @@ import java.util.Optional;
 
 public interface ComponentRepository extends JpaRepository<Component, Integer> {
     Optional<Component> findByName(String name);
+    Optional<Component> findByProjectIdAndName(Integer projectId, String name);
+    void deleteByProjectId(Integer projectId);
+    Integer countByProjectId(Integer projectId);
 }
