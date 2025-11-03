@@ -3,18 +3,12 @@ import { UserPlus2, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import MemberInviteModal from './modal/MemberInviteModal';
 import { AnimatePresence, motion } from 'framer-motion';
-
-export interface Project {
-  id: string;
-  name: string;
-  memberCount: number;
-  todayLogCount: number;
-}
+import type { ProjectInfoDTO } from '@/types/project';
 
 export interface WithProjectProps {
-  projects?: Project[];
-  onSelect?: (id: string) => void;
-  onDelete?: (id: string) => Promise<void> | void;
+  projects?: ProjectInfoDTO[];
+  onSelect?: (id: number) => void;
+  onDelete?: (id: number) => Promise<void> | void;
   onEmptyAfterExit?: () => void;
 }
 
@@ -36,8 +30,10 @@ const WithProject = ({
 }: WithProjectProps) => {
   const list = projects ?? [];
 
-  const [openInvite, setOpenInvite] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [invitingProjectId, setInvitingProjectId] = useState<number | null>(
+    null,
+  );
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const becameEmptyRef = useRef(false);
   const prevLenRef = useRef(list.length);
@@ -48,7 +44,7 @@ const WithProject = ({
     prevLenRef.current = curr;
   }, [list.length]);
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
     const ok = window.confirm('정말 이 프로젝트를 삭제하시겠습니까?');
     if (!ok) {
@@ -66,7 +62,6 @@ const WithProject = ({
     <div className="flex h-full w-full">
       <section className="min-w-0 flex-1">
         <div className="px-6 py-8">
-          {/* 멤버 초대 처럼 일정 영역 할당하고 그 안에서 내부 스크롤 생성 */}
           <div className="h-[60vh] max-h-[640px] min-h-[360px]">
             <div className="h-full overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable]">
               <motion.div layout className="flex flex-col gap-4">
@@ -81,7 +76,7 @@ const WithProject = ({
                 >
                   {list.map(p => (
                     <motion.div
-                      key={p.id}
+                      key={p.projectId}
                       layout="position"
                       initial={{ opacity: 0, y: 8, scale: 0.99 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -93,11 +88,11 @@ const WithProject = ({
                       }}
                       role="button"
                       tabIndex={0}
-                      onClick={() => onSelect?.(p.id)}
+                      onClick={() => onSelect?.(p.projectId)}
                       onKeyDown={e => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          onSelect?.(p.id);
+                          onSelect?.(p.projectId);
                         }
                       }}
                       className="focus:ring-ring/40 cursor-pointer rounded-xl bg-white px-5 py-4 shadow-sm transition [will-change:transform,opacity] hover:shadow-md focus:ring-2 focus:outline-none"
@@ -105,11 +100,11 @@ const WithProject = ({
                       <div className="flex items-center justify-between gap-4">
                         <div className="min-w-0">
                           <p className="text-foreground truncate font-semibold">
-                            {p.name}
+                            {p.projectName}
                           </p>
                           <p className="text-muted-foreground text-sm">
-                            멤버 {p.memberCount}명{DOT}오늘 로그{' '}
-                            {formatK(p.todayLogCount)}건
+                            멤버 {p.memberCount}명{DOT}로그{' '}
+                            {formatK(p.logCount)}건
                           </p>
                         </div>
 
@@ -119,7 +114,7 @@ const WithProject = ({
                             className="gap-2"
                             onClick={e => {
                               e.stopPropagation();
-                              setOpenInvite(true);
+                              setInvitingProjectId(p.projectId);
                             }}
                           >
                             <UserPlus2 className="h-4 w-4" />
@@ -132,12 +127,12 @@ const WithProject = ({
                           >
                             <motion.button
                               whileTap={{ scale: 0.96 }}
-                              aria-label={`${p.name} 프로젝트 삭제`}
-                              disabled={deletingId === p.id}
-                              onClick={e => handleDelete(e, p.id)}
+                              aria-label={`${p.projectName} 프로젝트 삭제`}
+                              disabled={deletingId === p.projectId}
+                              onClick={e => handleDelete(e, p.projectId)}
                             >
                               <Trash2 className="h-4 w-4" />
-                              {deletingId === p.id
+                              {deletingId === p.projectId
                                 ? '삭제 중…'
                                 : '프로젝트 삭제'}
                             </motion.button>
@@ -152,8 +147,13 @@ const WithProject = ({
           </div>
         </div>
       </section>
-
-      <MemberInviteModal open={openInvite} onOpenChange={setOpenInvite} />
+      {invitingProjectId !== null && (
+        <MemberInviteModal
+          open={true}
+          onOpenChange={() => setInvitingProjectId(null)}
+          projectId={invitingProjectId}
+        />
+      )}
     </div>
   );
 };

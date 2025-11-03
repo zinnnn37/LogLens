@@ -1,42 +1,33 @@
-// src/components/modals/project-create/steps/ProjectCreate3.tsx
+// src/components/modals/project-create/steps/InstallGuideStep1.tsx
 import { useState } from 'react';
 import type { MouseEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Copy } from 'lucide-react';
 
-interface ProjectCreate3Props {
+// [수정] 네이밍 변경
+export interface InstallGuideStep1Props {
   projectName: string;
-  installCmd: string;
-  onPrev: () => void;
-  onComplete: () => void;
-  /**
-   * 완료 처리 중 비활성화/레이블 변경을 위해 사용 (옵션)
-   */
-  completing?: boolean;
-  /**
-   * 상위에서 커스텀 복사 로직을 주입하고 싶을 때 사용.
-   * 미제공 시 기본 clipboard API로 처리.
-   */
+  apiKey: string;
+  onNext: () => void;
   onCopy?: (text: string) => Promise<void> | void;
 }
 
-const ProjectCreate3 = ({
+const InstallGuideStep1 = ({
   projectName,
-  installCmd,
-  onPrev,
-  onComplete,
-  completing,
+  apiKey,
+  onNext,
   onCopy,
-}: ProjectCreate3Props) => {
+}: InstallGuideStep1Props) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+
     try {
       if (onCopy) {
-        await onCopy(installCmd);
+        await onCopy(apiKey);
       } else {
-        await navigator.clipboard.writeText(installCmd);
+        await navigator.clipboard.writeText(apiKey);
       }
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
@@ -48,7 +39,7 @@ const ProjectCreate3 = ({
   return (
     <div className="space-y-6">
       {/* 프로젝트명 표시 */}
-      <div className="text- m">
+      <div className="text-m">
         <span className="font-semibold">프로젝트명 :</span>{' '}
         <span>{projectName}</span>
       </div>
@@ -65,18 +56,17 @@ const ProjectCreate3 = ({
         </ul>
       </div>
 
-      {/* Step2. 설치 명령어 */}
+      {/* Step1. API 키 확인 */}
       <section className="space-y-3">
-        <h3 className="text-base font-semibold">
-          Step2. 프로젝트 서버에서 설치
-        </h3>
+        <h3 className="text-base font-semibold">Step1. API 키 확인</h3>
 
         <div className="rounded-md bg-[#F7FAFC] p-4">
-          <p className="text-sm">아래 명령어를 서버에서 실행하세요.</p>
+          <p className="text-sm">Fluent Bit 설치 시 필요한 인증 키 입니다.</p>
 
           <div className="bg-background mt-2 flex items-center justify-between gap-2 rounded-md border-1 p-3 text-sm">
             <span className="truncate" aria-live="polite" aria-atomic="true">
-              {installCmd}
+              {/* [수정] apiKey가 비어있을 때(로딩 중) 대비 */}
+              {apiKey || '...'}
             </span>
 
             <Button
@@ -84,6 +74,7 @@ const ProjectCreate3 = ({
               variant="outline"
               size="icon"
               onClick={handleCopy}
+              disabled={!apiKey}
             >
               <Copy className="h-4 w-4" />
               <span className="sr-only">{copied ? '복사됨' : '복사'}</span>
@@ -94,24 +85,12 @@ const ProjectCreate3 = ({
 
       {/* 하단 내비게이션 */}
       <div className="flex items-center justify-center gap-8">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onPrev}
-          disabled={Boolean(completing)}
-        >
-          이전
-        </Button>
-        <Button
-          type="button"
-          onClick={onComplete}
-          disabled={Boolean(completing)}
-        >
-          {completing ? '생성 중...' : '완료'}
+        <Button type="button" onClick={onNext}>
+          다음
         </Button>
       </div>
     </div>
   );
 };
 
-export default ProjectCreate3;
+export default InstallGuideStep1;

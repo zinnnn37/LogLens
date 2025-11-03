@@ -1,40 +1,39 @@
-// src/components/modals/project-create/steps/ProjectCreate2.tsx
+// src/components/modals/project-create/steps/InstallGuideStep2.tsx
 import { useState } from 'react';
 import type { MouseEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Copy } from 'lucide-react';
 
-interface ProjectCreate2Props {
+export interface InstallGuideStep2Props {
   projectName: string;
-  apiKey: string;
-  onNext: () => void;
+  onPrev: () => void;
+  onComplete: () => void;
   onCopy?: (text: string) => Promise<void> | void;
-  onPrev?: () => void;
 }
 
-const ProjectCreate2 = ({
+const FLUENT_BIT_INSTALL_COMMAND =
+  'curl -sL https://example.com/install.sh | sudo bash -s -- --api-key YOUR_API_KEY';
+
+const InstallGuideStep2 = ({
   projectName,
-  apiKey,
-  onNext,
-  onCopy,
   onPrev,
-}: ProjectCreate2Props) => {
+  onComplete,
+  onCopy,
+}: InstallGuideStep2Props) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-
     try {
+      const cmdToCopy = FLUENT_BIT_INSTALL_COMMAND;
       if (onCopy) {
-        await onCopy(apiKey);
+        await onCopy(cmdToCopy);
       } else {
-        await navigator.clipboard.writeText(apiKey);
+        await navigator.clipboard.writeText(cmdToCopy);
       }
       setCopied(true);
-      // 2~3초 후 상태 리셋
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      // 실패해도 UX 중단하지 않음(필요 시 토스트/에러 추가)
       setCopied(false);
     }
   };
@@ -59,16 +58,17 @@ const ProjectCreate2 = ({
         </ul>
       </div>
 
-      {/* Step1. API 키 확인 */}
       <section className="space-y-3">
-        <h3 className="text-base font-semibold">Step1. API 키 확인</h3>
+        <h3 className="text-base font-semibold">
+          Step2. 프로젝트 서버에서 설치
+        </h3>
 
         <div className="rounded-md bg-[#F7FAFC] p-4">
-          <p className="text-sm">Fluent Bit 설치 시 필요한 인증 키 입니다.</p>
+          <p className="text-sm">아래 명령어를 서버에서 실행하세요.</p>
 
           <div className="bg-background mt-2 flex items-center justify-between gap-2 rounded-md border-1 p-3 text-sm">
             <span className="truncate" aria-live="polite" aria-atomic="true">
-              [{apiKey}]
+              {FLUENT_BIT_INSTALL_COMMAND}
             </span>
 
             <Button
@@ -86,20 +86,15 @@ const ProjectCreate2 = ({
 
       {/* 하단 내비게이션 */}
       <div className="flex items-center justify-center gap-8">
-        <div>
-          {onPrev ? (
-            <Button type="button" variant="outline" onClick={onPrev}>
-              이전
-            </Button>
-          ) : null}
-        </div>
-
-        <Button type="button" onClick={onNext}>
-          다음
+        <Button type="button" variant="outline" onClick={onPrev}>
+          이전
+        </Button>
+        <Button type="button" onClick={onComplete}>
+          완료
         </Button>
       </div>
     </div>
   );
 };
 
-export default ProjectCreate2;
+export default InstallGuideStep2;

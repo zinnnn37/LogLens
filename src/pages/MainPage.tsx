@@ -1,60 +1,102 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import NoProjectIllust from '@/assets/images/NoProjectIllust.png';
-import type { Project } from '@/components/WithProject';
 import WithProject from '@/components/WithProject';
 import ProjectCreateModal from '@/components/modal/ProjectCreateModal';
-
-const DEV_SEED_ON_FIRST_CREATE = true;
-
-// 더미 목록 (WithProject의 더미와 톤만 맞춤)
-const SEED_DUMMIES: Project[] = [
-  { id: 'p1', name: '자율 프로젝트', memberCount: 2, todayLogCount: 1200 },
-  { id: 'p2', name: '공통 프로젝트', memberCount: 2, todayLogCount: 1200 },
-  { id: 'p3', name: '개인 프로젝트', memberCount: 2, todayLogCount: 1200 },
-];
+import { Loader2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
+import { useProjectStore } from '@/stores/projectStore';
+import {
+  fetchProjects,
+  createProject,
+  deleteProject,
+} from '@/services/projectService';
+import { ApiError } from '@/types/api';
+import type { ProjectInfoDTO } from '@/types/project';
 
 const MainPage = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [showEmptyMain, setShowEmptyMain] = useState(true);
-
-  useEffect(() => {
-    if (projects.length > 0) {
-      setShowEmptyMain(false);
-    }
-  }, [projects.length]);
+  const projects = useProjectStore(state => state.projects);
+  const setProjectsInStore = useProjectStore(state => state.setProjects);
 
   const [openCreate, setOpenCreate] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showEmptyMain, setShowEmptyMain] = useState(false);
 
-  // 한번에 여러개 만들기 (더미용)
-  const handleComplete = (projectId: string) => {
-    if (DEV_SEED_ON_FIRST_CREATE && projects.length === 0) {
-      const created: Project = {
-        id: projectId,
-        name: `새 프로젝트 1`,
-        memberCount: 1,
-        todayLogCount: 0,
-      };
-      setProjects([created, ...SEED_DUMMIES]);
-      setShowEmptyMain(false);
+  const [projectToConfirmDelete, setProjectToConfirmDelete] =
+    useState<ProjectInfoDTO | null>(null);
+
+  useEffect(() => {
+    const loadProjects = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetchProjects();
+        setProjectsInStore(response);
+      } catch (error) {
+        console.error('프로젝트 목록 로드 실패', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadProjects();
+  }, [setProjectsInStore]);
+
+  useEffect(() => {
+    setShowEmptyMain(!isLoading && projects.length === 0);
+  }, [isLoading, projects.length]);
+
+  // 삭제버튼 눌렀을 때 alert-dialog
+  const handleDeleteRequest = (id: number) => {
+    const projectToConfirm = projects.find(p => p.projectId === id);
+    if (projectToConfirm) {
+      setProjectToConfirmDelete(projectToConfirm);
+    } else {
+      console.error('삭제할 프로젝트 정보를 찾을 수 없습니다.');
+      toast.error('프로젝트 정보를 찾을   수 없어 삭제할 수 없습니다.');
+    }
+  };
+
+  // alert-dialog 에서 삭제
+  const executeDelete = async () => {
+    if (!projectToConfirmDelete) {
       return;
     }
 
-    setProjects(prev => [
-      ...prev,
-      {
-        id: projectId,
-        name: `새 프로젝트 ${prev.length + 1}`,
-        memberCount: 1,
-        todayLogCount: 0,
-      },
-    ]);
-    setShowEmptyMain(false);
+    try {
+      // 프로젝트 삭제 API 호출
+      await deleteProject({ projectId: projectToConfirmDelete.projectId });
+
+      toast.success(
+        `"${projectToConfirmDelete.projectName}" 프로젝트가 삭제되었습니다.`,
+      );
+    } catch (error) {
+      console.error('프로젝트 삭제 실패', error);
+      if (error instanceof ApiError && error.response) {
+        toast.error(error.response.message);
+      } else {
+        toast.error('프로젝트 삭제에 실패했습니다.');
+      }
+    } finally {
+      setProjectToConfirmDelete(null);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setProjects(prev => prev.filter(p => p.id !== id));
-  };
+  if (isLoading) {
+    return (
+      <main className="flex flex-1 flex-col items-center justify-center">
+        <Loader2 className="text-muted-foreground h-10 w-10 animate-spin" />
+      </main>
+    );
+  }
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-10">
@@ -78,7 +120,7 @@ const MainPage = () => {
       ) : (
         <WithProject
           projects={projects}
-          onDelete={handleDelete}
+          onDelete={handleDeleteRequest}
           onEmptyAfterExit={() => setShowEmptyMain(true)}
         />
       )}
@@ -90,9 +132,42 @@ const MainPage = () => {
       <ProjectCreateModal
         open={openCreate}
         onOpenChange={setOpenCreate}
-        onCreate={async () => ({ projectId: `proj_${Date.now()}` })}
-        onComplete={handleComplete}
+        onCreate={createProject}
+        onComplete={() => {
+          setOpenCreate(false);
+        }}
       />
+
+      <AlertDialog
+        open={projectToConfirmDelete !== null}
+        onOpenChange={open => {
+          if (!open) {
+            setProjectToConfirmDelete(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              "{projectToConfirmDelete?.projectName}" 프로젝트를
+              삭제하시겠습니까?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              이 작업은 되돌릴 수 없습니다. 프로젝트와 관련된 모든 데이터가
+              영구적으로 삭제됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 };
