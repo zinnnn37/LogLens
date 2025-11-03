@@ -11,7 +11,7 @@ import S13P31A306.loglens.domain.jira.repository.JiraConnectionRepository;
 import S13P31A306.loglens.domain.jira.service.JiraIntegrationService;
 import S13P31A306.loglens.domain.jira.validator.JiraValidator;
 import S13P31A306.loglens.global.exception.BusinessException;
-import S13P31A306.loglens.global.util.EncryptionUtils;
+import S13P31A306.loglens.global.utils.EncryptionUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

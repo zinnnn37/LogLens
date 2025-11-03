@@ -12,7 +12,7 @@ import S13P31A306.loglens.domain.jira.repository.JiraConnectionRepository;
 import S13P31A306.loglens.domain.jira.validator.JiraValidator;
 import S13P31A306.loglens.global.constants.GlobalErrorCode;
 import S13P31A306.loglens.global.exception.BusinessException;
-import S13P31A306.loglens.global.util.EncryptionUtils;
+import S13P31A306.loglens.global.utils.EncryptionUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
