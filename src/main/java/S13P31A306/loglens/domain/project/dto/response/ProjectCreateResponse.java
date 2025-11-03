@@ -13,7 +13,7 @@ public record ProjectCreateResponse(
         String description,
 
         @Schema(description = "프로젝트 API KEY", example = "pk_1a2b3c4d5e6f")
-        String apiKey,
+        String projectUuid,
 
         @Schema(description = "프로젝트 생성 시간", example = "2025-10-29T10:30:00")
         String createdAt,

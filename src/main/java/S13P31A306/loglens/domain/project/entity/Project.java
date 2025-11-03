@@ -32,7 +32,7 @@ public class Project extends BaseTimeEntity {
     private String description;
 
     @Sensitive
-    @Column(name = "api_key", length = 64)
+    @Column(name = "project_uuid", length = 64)
     private String apiKey; // TODO: NOT NULL & UNIQUE로 수정 필요
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)

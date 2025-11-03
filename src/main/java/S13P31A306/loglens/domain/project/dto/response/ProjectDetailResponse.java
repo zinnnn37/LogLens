@@ -16,7 +16,7 @@ public record ProjectDetailResponse(
         String description,
 
         @Schema(description = "프로젝트 API KEY", example = "pk_1a2b3c4d5e6f")
-        String apiKey,
+        String projectUuid,
 
         @Schema(description = "멤버 정보 리스트")
         List<Member> members,
