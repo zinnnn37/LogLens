@@ -1,5 +1,5 @@
 // src/components/Sidebar.tsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ComponentProps } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -22,6 +22,9 @@ import {
 import { logout } from '@/services/authApi';
 import { useAuthStore } from '@/stores/authStore';
 import { ROUTE_PATH } from '@/router/route-path';
+
+import { useProjectStore } from '@/stores/projectStore';
+import { fetchProjects, createProject } from '@/services/projectService';
 
 // --- Sidebar Props ---
 type SidebarProps = ComponentProps<'aside'> & {
@@ -71,26 +74,23 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
   // Jira API 연동 모달 Open 상태 관리
   const [openJira, setOpenJira] = useState(false);
 
-  // TODO : 더미데이터, 추후 API 를 통하여 실제 값 불러오기
-  const handlePrepare = async (_payload: {
-    name: string;
-    description?: string;
-  }) => {
-    return {
-      apiKey: 'll_live_****************************',
-      installCmd:
-        'curl -fsSL https://get.loglens.sh | bash -s -- --project=example',
-      provisionId: 'provision-temp-123',
-    };
-  };
+  // 프로젝트 목록(store)
+  const projects = useProjectStore(state => state.projects);
+  const setProjectsInStore = useProjectStore(state => state.setProjects);
 
-  // TODO : 프로젝트 생성 API 함수 정의하기.
-  const handleCreate = async (_args: {
-    payload: { name: string; description?: string };
-    provisionId?: string;
-  }) => {
-    return { projectId: 'proj_temp_123' };
-  };
+  // 초기 프로젝트 목록 로드 (메인페이지 패턴과 동일)
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const response = await fetchProjects();
+        setProjectsInStore(response);
+      } catch (error) {
+        // 목록 로드 실패 시 콘솔만 (UX 정책은 추후)
+        console.error('프로젝트 목록 로드 실패', error);
+      }
+    };
+    loadProjects();
+  }, [setProjectsInStore]);
 
   // 로그아웃 핸들러
   const handleLogout = async () => {
@@ -111,7 +111,7 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
       className={`border-sidebar-border flex h-[100dvh] w-56 flex-col border-r p-2 ${className || ''}`}
       {...props}
     >
-      {/* 1) 상단 그룹 */}
+      {/* 상단 그룹 */}
       <div className="font-godoM flex min-h-0 flex-1 flex-col">
         {/* 로고 */}
         <div className="mb-3 flex h-14 flex-shrink-0 items-center px-2">
@@ -137,7 +137,16 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
                   새 프로젝트 생성
                 </NavButton>
               </li>
-              {/* TODO: 프로젝트 목록 API 통해 불러와서 보여주기 */}
+
+              {/* 프로젝트 목록, TODO : 클릭 시 라우팅 */}
+              {projects.map(p => (
+                <li key={p.projectId}>
+                  <div className={itemBase}>
+                    {/* 프로젝트 이름*/}
+                    <span className="truncate">{p.projectName}</span>
+                  </div>
+                </li>
+              ))}
             </ul>
           </section>
 
@@ -187,7 +196,7 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
         </nav>
       </div>
 
-      {/* 2) 하단 그룹 */}
+      {/* 하단 그룹 */}
       <div className="flex-shrink-0">
         <hr className="border-sidebar-border my-4" />
         <nav className="font-godoM flex flex-col gap-1">
@@ -207,10 +216,9 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
       <ProjectCreateModal
         open={openCreate}
         onOpenChange={setOpenCreate}
-        onPrepare={handlePrepare}
-        onCreate={handleCreate}
+        onCreate={createProject}
         onComplete={() => {
-          // TODO :생성 완료 시 사용자에게 알려줄 것 정의하기.
+          setOpenCreate(false);
         }}
       />
 

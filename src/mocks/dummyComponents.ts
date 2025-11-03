@@ -79,11 +79,13 @@ export const DUMMY_COMPONENTS_DATA: ComponentListData = {
     totalComponents: 5,
     byType: {
       FRONTEND: 0,
-      BE: 5,
+      BE: 0,
+      BACKEND: 5,
       INFRA: 0,
       EXTERNAL: 0,
     },
     byLayer: {
+      PRESENTATION: 0,
       CONTROLLER: 3,
       SERVICE: 1,
       REPOSITORY: 1,
