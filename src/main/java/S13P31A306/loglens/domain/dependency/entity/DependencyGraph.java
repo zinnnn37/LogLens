@@ -4,6 +4,7 @@ import S13P31A306.loglens.global.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 @Entity
@@ -18,8 +19,9 @@ public class DependencyGraph extends BaseEntity {
      * 프로젝트 ID (FK)
      * projects 테이블과 연관
      */
-//    @Column(name = "project_id", nullable = false)
-//    private Integer projectId;
+    @NotNull
+    @Column(name = "project_id", nullable = false)
+    private Integer projectId;
 
     /**
      * 호출하는 컴포넌트 이름
