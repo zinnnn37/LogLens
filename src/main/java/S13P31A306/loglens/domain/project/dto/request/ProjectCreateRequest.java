@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 
 public record ProjectCreateRequest(
         @NotBlank(message = "PROJECT_NAME_REQUIRED")
-        @Size(min = 2, max = 100)
+        @Size(min = 2, max = 100, message = "INVALID_PROJECT_NAME_LENGTH")
         @Schema(description = "프로젝트 이름 (2~100자, 중복 불가)")
         String projectName,
 
