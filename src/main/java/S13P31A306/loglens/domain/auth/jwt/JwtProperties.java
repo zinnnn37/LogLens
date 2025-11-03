@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.auth.jwt;
 
+import S13P31A306.loglens.global.annotation.Sensitive;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -7,6 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @ConfigurationProperties(prefix = "jwt")
 public record JwtProperties(
+        @Sensitive
         String secret,
         long accessTokenValidityInSeconds,
         long refreshTokenValidityInSeconds

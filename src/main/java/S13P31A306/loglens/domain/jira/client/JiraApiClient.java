@@ -3,6 +3,7 @@ package S13P31A306.loglens.domain.jira.client;
 import S13P31A306.loglens.domain.jira.client.dto.JiraIssueRequest;
 import S13P31A306.loglens.domain.jira.client.dto.JiraIssueResponse;
 import S13P31A306.loglens.domain.jira.constants.JiraErrorCode;
+import S13P31A306.loglens.global.annotation.Sensitive;
 import S13P31A306.loglens.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +41,7 @@ public class JiraApiClient {
      * @param projectKey  Jira 프로젝트 키
      * @return 연결 성공 여부
      */
-    public boolean testConnection(String jiraUrl, String email, String apiToken, String projectKey) {
+    public boolean testConnection(String jiraUrl, String email, @Sensitive String apiToken, String projectKey) {
         log.debug("{} 🔍 Jira 연결 테스트 시작: projectKey={}", LOG_PREFIX, projectKey);
 
         try {
@@ -85,7 +86,7 @@ public class JiraApiClient {
     public JiraIssueResponse createIssue(
             String jiraUrl,
             String email,
-            String apiToken,
+            @Sensitive String apiToken,
             JiraIssueRequest request
     ) {
         log.debug("{} 🎫 Jira 이슈 생성 요청: summary={}", LOG_PREFIX, request.fields().summary());
@@ -132,7 +133,7 @@ public class JiraApiClient {
      * @param apiToken Jira API 토큰
      * @return 인증 헤더가 설정된 WebClient
      */
-    private WebClient createWebClient(String baseUrl, String email, String apiToken) {
+    private WebClient createWebClient(String baseUrl, String email, @Sensitive String apiToken) {
         String auth = email + ":" + apiToken;
         String encodedAuth = Base64.getEncoder()
                 .encodeToString(auth.getBytes(StandardCharsets.UTF_8));
