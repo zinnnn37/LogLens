@@ -6,6 +6,7 @@ import S13P31A306.loglens.domain.project.dto.request.ProjectCreateRequest;
 import S13P31A306.loglens.domain.project.dto.request.ProjectMemberInviteRequest;
 import S13P31A306.loglens.domain.project.dto.response.*;
 import S13P31A306.loglens.domain.project.service.ProjectService;
+import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
 import S13P31A306.loglens.global.dto.response.SuccessResponse;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +25,10 @@ public class ProjectController implements ProjectApi {
 	@Override
 	public ResponseEntity<? extends BaseResponse> createProject(ProjectCreateRequest request) {
 		ProjectCreateResponse response = projectService.createProject(request);
-		return ResponseEntity
-				.status(HttpStatus.CREATED)
-				.body(SuccessResponse.of(ProjectSuccessCode.PROJECT_CREATED, response));
+		return ApiResponseFactory.success(
+				ProjectSuccessCode.PROJECT_CREATED,
+				response
+		);
 	}
 
 	@GetMapping
@@ -38,8 +40,9 @@ public class ProjectController implements ProjectApi {
 			String order
 	) {
 		ProjectListResponse response = projectService.getProjects(page, size, sort, order);
-		return ResponseEntity.ok(
-				SuccessResponse.of(ProjectSuccessCode.PROJECT_LIST_RETRIEVED, response)
+		return ApiResponseFactory.success(
+				ProjectSuccessCode.PROJECT_LIST_RETRIEVED,
+				response
 		);
 	}
 
@@ -47,8 +50,9 @@ public class ProjectController implements ProjectApi {
 	@Override
 	public ResponseEntity<? extends BaseResponse> getProjectDetail(@PathVariable int projectId) {
 		ProjectDetailResponse response = projectService.getProjectDetail(projectId);
-		return ResponseEntity.ok(
-				SuccessResponse.of(ProjectSuccessCode.PROJECT_RETRIEVED, response)
+		return ApiResponseFactory.success(
+				ProjectSuccessCode.PROJECT_RETRIEVED,
+				response
 		);
 	}
 
@@ -56,8 +60,9 @@ public class ProjectController implements ProjectApi {
 	@Override
 	public ResponseEntity<? extends BaseResponse> deleteProject(@PathVariable int projectId) {
 		projectService.deleteProject(projectId);
-		return ResponseEntity.ok(
-				SuccessResponse.of(ProjectSuccessCode.PROJECT_DELETED)
+		return ApiResponseFactory.success(
+				ProjectSuccessCode.PROJECT_DELETED,
+				projectId
 		);
 	}
 
@@ -68,9 +73,10 @@ public class ProjectController implements ProjectApi {
 			ProjectMemberInviteRequest request
 	) {
 		ProjectMemberInviteResponse response = projectService.inviteMember(projectId, request);
-		return ResponseEntity
-				.status(HttpStatus.CREATED)
-				.body(SuccessResponse.of(ProjectSuccessCode.MEMBER_INVITED, response));
+		return ApiResponseFactory.success(
+				ProjectSuccessCode.MEMBER_INVITED,
+				response
+		);
 	}
 
 	@DeleteMapping("/{projectId}/members/{memberId}")
@@ -80,8 +86,9 @@ public class ProjectController implements ProjectApi {
 			@PathVariable int memberId
 	) {
 		projectService.deleteMember(projectId, memberId);
-		return ResponseEntity.ok(
-				SuccessResponse.of(ProjectSuccessCode.MEMBER_DELETED)
+		return ApiResponseFactory.success(
+				ProjectSuccessCode.MEMBER_DELETED,
+				projectId
 		);
 	}
 }
