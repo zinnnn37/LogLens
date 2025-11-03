@@ -8,8 +8,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Entity
@@ -33,16 +35,24 @@ public class Project extends BaseTimeEntity {
 
     @Sensitive
     @Column(name = "project_uuid", length = 64)
-    private String apiKey; // TODO: NOT NULL & UNIQUE로 수정 필요
+    private String projectUuid; // TODO: NOT NULL & UNIQUE로 수정 필요
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProjectMember> members = new ArrayList<>();
 
     @Builder
-    public Project(String projectName, String description, String apiKey) {
+    public Project(String projectName, String description, String projectUuid) {
         this.projectName = projectName;
         this.description = description;
-        this.apiKey = apiKey;
+        this.projectUuid = projectUuid;
+    }
+
+    @PrePersist
+    public void generateUUID() {
+        if (this.projectUuid == null) {
+            String uuidKey = this.projectName + LocalTime.now();
+            this.projectUuid = UUID.nameUUIDFromBytes(uuidKey.getBytes()).toString();
+        }
     }
 
 }
