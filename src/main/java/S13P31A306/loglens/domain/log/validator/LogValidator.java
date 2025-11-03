@@ -4,6 +4,7 @@ import S13P31A306.loglens.domain.log.constants.LogErrorCode;
 import S13P31A306.loglens.domain.log.dto.request.LogSearchRequest;
 import S13P31A306.loglens.domain.log.entity.LogLevel;
 import S13P31A306.loglens.domain.log.entity.SourceType;
+import S13P31A306.loglens.domain.project.service.ProjectService;
 import S13P31A306.loglens.domain.project.util.ProjectMembershipHelper;
 import S13P31A306.loglens.global.exception.BusinessException;
 import java.util.Arrays;
@@ -23,6 +24,7 @@ public class LogValidator {
     private static final int MAX_SIZE = 100;
 
     private final ProjectMembershipHelper projectMembershipHelper;
+    private final ProjectService projectService;
 
     /**
      * 로그 검색 요청 전체 유효성 검증
@@ -31,7 +33,7 @@ public class LogValidator {
      */
     public void validate(LogSearchRequest request) {
         log.debug("{} 로그 검색 요청 검증 시작", LOG_PREFIX);
-        validateProjectId(request.getProjectId());
+        validateProjectUuid(request.getProjectUuid());
         validateSize(request.getSize());
         validateTimeRange(request);
         validateLogLevel(request.getLogLevel());
@@ -41,21 +43,22 @@ public class LogValidator {
     }
 
     /**
-     * 프로젝트 ID 검증 및 멤버십 확인
+     * 프로젝트 UUID 검증 및 멤버십 확인
      *
-     * @param projectId 프로젝트 ID
+     * @param projectUuid 프로젝트 UUID
      */
-    private void validateProjectId(Integer projectId) {
-        log.debug("{} 프로젝트 ID 검증: {}", LOG_PREFIX, projectId);
-        if (Objects.isNull(projectId)) {
-            log.warn("{} 프로젝트 ID 누락", LOG_PREFIX);
-            throw new BusinessException(LogErrorCode.PROJECT_ID_REQUIRED);
+    private void validateProjectUuid(String projectUuid) {
+        log.debug("{} 프로젝트 UUID 검증: {}", LOG_PREFIX, projectUuid);
+        if (Objects.isNull(projectUuid) || projectUuid.isBlank()) {
+            log.warn("{} 프로젝트 UUID 누락", LOG_PREFIX);
+            throw new BusinessException(LogErrorCode.PROJECT_UUID_REQUIRED);
         }
 
-        // 현재 사용자가 해당 프로젝트의 멤버인지 검증
+        // UUID로 projectId를 조회하고 멤버십 검증
+        Integer projectId = projectService.getProjectIdByUuid(projectUuid);
         projectMembershipHelper.validateProjectMembership(projectId);
 
-        log.debug("{} 프로젝트 ID 검증 완료", LOG_PREFIX);
+        log.debug("{} 프로젝트 UUID 검증 완료", LOG_PREFIX);
     }
 
     /**

@@ -10,7 +10,6 @@ import S13P31A306.loglens.domain.log.dto.response.TraceLogResponse;
 import S13P31A306.loglens.domain.log.mapper.LogMapper;
 import S13P31A306.loglens.domain.log.repository.LogRepository;
 import S13P31A306.loglens.domain.log.service.LogService;
-import S13P31A306.loglens.domain.project.service.ProjectService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Base64;
 import java.util.List;
@@ -30,19 +29,16 @@ public class LogServiceImpl implements LogService {
     private final LogRepository logRepository;
     private final LogMapper logMapper;
     private final ObjectMapper objectMapper; // For cursor encoding/decoding
-    private final ProjectService projectService;
 
     @Override
     public LogPageResponse getLogs(LogSearchRequest request) {
-        log.info("{} 로그 목록 조회 시작: projectId={}", LOG_PREFIX, request.getProjectId());
+        log.info("{} 로그 목록 조회 시작: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
 
-        String projectUuid = getProjectUuid(request.getProjectId());
-        LogSearchResult result = searchLogs(projectUuid, request);
+        LogSearchResult result = searchLogs(request.getProjectUuid(), request);
         List<LogResponse> logResponses = mapToLogResponses(result);
         PaginationResponse pagination = createPaginationResponse(result);
 
         LogPageResponse response = LogPageResponse.builder()
-                .projectId(request.getProjectId())
                 .logs(logResponses)
                 .pagination(pagination)
                 .build();
@@ -55,15 +51,13 @@ public class LogServiceImpl implements LogService {
 
     @Override
     public TraceLogResponse getLogsByTraceId(LogSearchRequest request) {
-        log.info("{} Trace ID로 로그 조회 시작: projectId={}, traceId={}",
-                LOG_PREFIX, request.getProjectId(), request.getTraceId());
+        log.info("{} Trace ID로 로그 조회 시작: projectUuid={}, traceId={}",
+                LOG_PREFIX, request.getProjectUuid(), request.getTraceId());
 
-        String projectUuid = getProjectUuid(request.getProjectId());
-        TraceLogSearchResult result = searchLogsByTraceId(projectUuid, request);
+        TraceLogSearchResult result = searchLogsByTraceId(request.getProjectUuid(), request);
         List<LogResponse> logResponses = mapToLogResponses(result);
 
         TraceLogResponse response = TraceLogResponse.builder()
-                .projectId(request.getProjectId())
                 .traceId(request.getTraceId())
                 .summary(result.summary())
                 .logs(logResponses)
@@ -111,16 +105,6 @@ public class LogServiceImpl implements LogService {
                 .build();
     }
 
-    /**
-     * projectId를 projectUuid로 변환
-     *
-     * @param projectId MySQL Project 테이블의 ID
-     * @return OpenSearch에 저장된 project_uuid
-     */
-    private String getProjectUuid(Integer projectId) {
-        log.debug("{} 프로젝트 UUID 조회 요청: projectId={}", LOG_PREFIX, projectId);
-        return projectService.getProjectUuid(projectId);
-    }
 
     /**
      * 커서 인코딩 (페이지네이션용)

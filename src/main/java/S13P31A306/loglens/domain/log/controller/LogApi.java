@@ -51,7 +51,6 @@ public interface LogApi {
                                                               "status": 200,
                                                               "timestamp": "2025-11-03T15:00:00Z",
                                                               "data": {
-                                                                "projectId": 1,
                                                                 "logs": [
                                                                   {
                                                                     "logId": "abc123xyz789",
@@ -85,7 +84,6 @@ public interface LogApi {
                                                               "status": 200,
                                                               "timestamp": "2025-11-03T15:01:00Z",
                                                               "data": {
-                                                                "projectId": 1,
                                                                 "traceId": "trace-abc-123",
                                                                 "summary": {
                                                                   "totalLogs": 5,

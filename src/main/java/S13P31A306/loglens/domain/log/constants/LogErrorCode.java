@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum LogErrorCode implements ErrorCode {
     // 400 Bad Request
-    PROJECT_ID_REQUIRED("LG400-09", "projectId는 필수입니다.", 400),
+    PROJECT_UUID_REQUIRED("LG400-09", "project-uuid는 필수입니다.", 400),
     INVALID_CURSOR("LG400-10", "커서 형식이 올바르지 않습니다.", 400),
     INVALID_SIZE("LG400-11", "size는 1 이상 100 이하여야 합니다.", 400),
     INVALID_START_TIME_FORMAT("LG400-12", "startTime 형식이 올바르지 않습니다.", 400),
