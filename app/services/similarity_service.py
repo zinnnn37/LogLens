@@ -20,7 +20,7 @@ class SimilarityService:
         log_vector: List[float],
         k: int = 5,
         filters: Optional[Dict[str, Any]] = None,
-        project_id: Optional[str] = None,
+        project_uuid: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Find similar logs using KNN search
@@ -29,7 +29,7 @@ class SimilarityService:
             log_vector: Query vector
             k: Number of results to return
             filters: Optional filters (e.g., level, service_name)
-            project_id: Project ID for multi-tenancy filtering
+            project_uuid: Project UUID for multi-tenancy filtering
 
         Returns:
             List of similar logs with scores
@@ -60,11 +60,18 @@ class SimilarityService:
         filter_clauses = []
         if filters:
             for field, value in filters.items():
-                filter_clauses.append({"term": {field: value}})
+                # Handle exists filter
+                if isinstance(value, dict) and "exists" in value:
+                    if value["exists"]:
+                        filter_clauses.append({"exists": {"field": field}})
+                    else:
+                        filter_clauses.append({"bool": {"must_not": {"exists": {"field": field}}}})
+                else:
+                    filter_clauses.append({"term": {field: value}})
 
-        # Always filter by project_id if provided
-        if project_id:
-            filter_clauses.append({"term": {"project_id": project_id}})
+        # Always filter by project_uuid if provided
+        if project_uuid:
+            filter_clauses.append({"term": {"project_uuid": project_uuid}})
 
         if filter_clauses:
             query["query"]["bool"]["filter"] = filter_clauses
@@ -88,7 +95,7 @@ class SimilarityService:
         self,
         question_vector: List[float],
         k: int = 3,
-        project_id: Optional[str] = None,
+        project_uuid: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Find similar questions in QA cache
@@ -96,7 +103,7 @@ class SimilarityService:
         Args:
             question_vector: Question embedding vector
             k: Number of results to return
-            project_id: Project ID for multi-tenancy filtering
+            project_uuid: Project UUID for multi-tenancy filtering
 
         Returns:
             List of similar QA pairs with scores
@@ -119,10 +126,10 @@ class SimilarityService:
             },
         }
 
-        # Add project_id filter if provided
-        if project_id:
+        # Add project_uuid filter if provided
+        if project_uuid:
             query["query"]["bool"]["filter"] = [
-                {"term": {"metadata.project_id": project_id}}
+                {"term": {"metadata.project_uuid": project_uuid}}
             ]
 
         response = self.client.search(index="qa-cache", body=query)
@@ -145,7 +152,7 @@ class SimilarityService:
         self,
         trace_id: str,
         center_timestamp: str,
-        project_id: str,
+        project_uuid: str,
         max_logs: int = 100,
         time_window_seconds: int = 3,
     ) -> List[Dict[str, Any]]:
@@ -155,7 +162,7 @@ class SimilarityService:
         Args:
             trace_id: The trace ID to search for
             center_timestamp: Center timestamp (ISO format string)
-            project_id: Project ID for multi-tenancy filtering
+            project_uuid: Project UUID for multi-tenancy filtering
             max_logs: Maximum number of logs to return (default: 100)
             time_window_seconds: Time window in seconds (±3 seconds by default)
 
@@ -184,7 +191,7 @@ class SimilarityService:
                 "bool": {
                     "must": [
                         {"term": {"trace_id": trace_id}},
-                        {"term": {"project_id": project_id}},
+                        {"term": {"project_uuid": project_uuid}},
                     ],
                     "filter": [
                         {

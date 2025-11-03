@@ -9,14 +9,11 @@ from enum import Enum
 
 
 class LogLevel(str, Enum):
-    """Log level enumeration"""
+    """Log level enumeration (INFO/WARN/ERROR only)"""
 
-    TRACE = "TRACE"
-    DEBUG = "DEBUG"
     INFO = "INFO"
     WARN = "WARN"
     ERROR = "ERROR"
-    FATAL = "FATAL"
 
 
 class SourceType(str, Enum):
@@ -79,7 +76,7 @@ class ApplicationLog(BaseModel):
 
     # Core identification
     log_id: int = Field(..., description="Unique log ID (integer from database)")
-    project_id: str = Field(..., description="Project ID for multi-tenancy (UUID string)")
+    project_uuid: str = Field(..., description="Project UUID for multi-tenancy")
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Log timestamp")
 
     # Service and logging context
@@ -100,7 +97,9 @@ class ApplicationLog(BaseModel):
 
     # Tracing
     trace_id: Optional[str] = Field(None, description="Trace ID for distributed tracing")
-    user_id: Optional[str] = Field(None, description="User ID if available")
+
+    # Requester identification (DevSecOps)
+    requester_ip: Optional[str] = Field(None, description="Requester IP address for user identification")
 
     # Performance
     duration: Optional[int] = Field(None, description="Execution duration in ms")
@@ -120,7 +119,7 @@ class ApplicationLog(BaseModel):
         json_schema_extra = {
             "example": {
                 "log_id": 12345,
-                "project_id": "550e8400-e29b-41d4-a716-446655440000",
+                "project_uuid": "550e8400-e29b-41d4-a716-446655440000",
                 "timestamp": "2024-01-15T10:30:00.000Z",
                 "service_name": "user-service",
                 "logger": "com.example.user.UserService",
@@ -133,7 +132,7 @@ class ApplicationLog(BaseModel):
                 "class_name": "UserService",
                 "thread_name": "http-nio-8080-exec-1",
                 "trace_id": "abc123",
-                "user_id": "user_456",
+                "requester_ip": "203.0.113.45",
                 "duration": 150,
                 "stack_trace": "java.lang.NullPointerException: ...",
                 "log_details": {

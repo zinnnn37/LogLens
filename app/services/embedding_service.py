@@ -16,6 +16,7 @@ class EmbeddingService:
             model=settings.EMBEDDING_MODEL,
             api_key=settings.OPENAI_API_KEY,
             base_url=settings.OPENAI_BASE_URL,
+            dimensions=1536,  # Reduce from 3072 to 1536 for efficiency
         )
         # TTL Cache: 1000 items, 1 hour TTL (3600 seconds)
         # Key: (text, model), Value: embedding vector

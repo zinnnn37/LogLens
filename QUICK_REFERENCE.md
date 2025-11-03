@@ -24,8 +24,8 @@ scripts/
 ## 주요 기능
 
 ### 1. AI 로그 분석 API
-- `GET /api/v1/logs/{log_id}/analysis?project_id={project_id}`
-- **Multi-tenancy**: project_id 기반 데이터 격리
+- `GET /api/v1/logs/{log_id}/analysis?project_uuid={project_uuid}`
+- **Multi-tenancy**: project_uuid 기반 데이터 격리
 - **Trace 기반 분석**: trace_id로 연관 로그 수집 (±3초, 최대 100개)
 - **2단계 캐싱**: Trace 캐싱 (97-99%) + 유사도 캐싱 (80%)
 - GPT-4o mini로 분석 (summary, error_cause, solution)
@@ -50,7 +50,7 @@ SIMILARITY_THRESHOLD=0.8           # 유사도 80% 이상이면 캐시 사용
 
 ## OpenSearch 인덱스
 1. **logs-YYYY-MM**: 통합 인덱스 (logs + log_details + ai_analysis)
-   - project_id (multi-tenancy)
+   - project_uuid (multi-tenancy)
    - logger, source_type, layer (ERD 필드)
    - log_details (nested object): HTTP 요청/응답, 예외 상세
    - ai_analysis: 분석 결과 + analysis_type (SINGLE/TRACE_BASED)
@@ -76,7 +76,7 @@ uvicorn app.main:app --reload --port 8000
 
 ## API 엔드포인트
 - `GET /api/v1/health` - 헬스체크
-- `GET /api/v1/logs/{log_id}/analysis?project_id={project_id}` - 로그 AI 분석
+- `GET /api/v1/logs/{log_id}/analysis?project_uuid={project_uuid}` - 로그 AI 분석
 - `POST /api/v1/chatbot/ask` - 챗봇 질의
 
 ## 핵심 파일 (라인수)

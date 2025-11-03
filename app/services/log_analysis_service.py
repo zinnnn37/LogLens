@@ -19,12 +19,12 @@ class LogAnalysisService:
         self.client = opensearch_client
         self.threshold = settings.SIMILARITY_THRESHOLD
 
-    async def analyze_log(self, log_id: int, project_id: str) -> LogAnalysisResponse:
+    async def analyze_log(self, log_id: int, project_uuid: str) -> LogAnalysisResponse:
         """
         Analyze a log using AI with trace-based context and similarity-based caching
 
         Strategy:
-        1. Get the log from OpenSearch (filtered by project_id)
+        1. Get the log from OpenSearch (filtered by project_uuid)
         2. Check if already analyzed
         3. If trace_id exists, collect related logs (±3 seconds, max 100)
         4. Check for similar trace analysis (caching)
@@ -32,16 +32,16 @@ class LogAnalysisService:
         6. Save analysis
 
         Args:
-            log_id: Log ID to analyze (integer)
-            project_id: Project ID for multi-tenancy (UUID string)
+            log_id: Log ID to analyze (integer from database)
+            project_uuid: Project UUID for multi-tenancy
 
         Returns:
             Analysis result
         """
-        # Step 1: Get the log from OpenSearch (filtered by project_id)
-        log_data = await self._get_log(log_id, project_id)
+        # Step 1: Get the log from OpenSearch (filtered by project_uuid)
+        log_data = await self._get_log(log_id, project_uuid)
         if not log_data:
-            raise ValueError(f"Log not found: {log_id} for project: {project_id}")
+            raise ValueError(f"Log not found: {log_id} for project: {project_uuid}")
 
         # Step 2: Check if already analyzed
         if log_data.get("ai_analysis"):
@@ -59,12 +59,12 @@ class LogAnalysisService:
 
         related_logs = []
         if trace_id and timestamp:
-            # Collect related logs by trace_id (±3 seconds, max 100, filtered by project_id)
+            # Collect related logs by trace_id (±3 seconds, max 100, filtered by project_uuid)
             try:
                 related_logs = await similarity_service.find_logs_by_trace_id(
                     trace_id=trace_id,
                     center_timestamp=timestamp,
-                    project_id=project_id,
+                    project_uuid=project_uuid,
                     max_logs=100,
                 )
                 print(f"Found {len(related_logs)} related logs for trace_id: {trace_id}")
@@ -79,7 +79,7 @@ class LogAnalysisService:
                 if log.get("ai_analysis"):
                     # Reuse trace-level analysis
                     cached_analysis = log["ai_analysis"]
-                    await self._save_analysis(log_id, cached_analysis)
+                    await self._save_analysis(log_id, cached_analysis, project_uuid)
 
                     return LogAnalysisResponse(
                         log_id=log_id,
@@ -100,14 +100,14 @@ class LogAnalysisService:
             log_vector=log_vector,
             k=5,
             filters={"ai_analysis": {"exists": True}},
-            project_id=project_id,
+            project_uuid=project_uuid,
         )
 
         if similar_logs and similar_logs[0]["score"] >= self.threshold:
             similar_log = similar_logs[0]
             similar_analysis = similar_log["data"]["ai_analysis"]
 
-            await self._save_analysis(log_id, similar_analysis)
+            await self._save_analysis(log_id, similar_analysis, project_uuid)
 
             return LogAnalysisResponse(
                 log_id=log_id,
@@ -127,13 +127,13 @@ class LogAnalysisService:
 
         # Step 7: Save analysis to all logs in the trace
         analysis_dict = analysis_result.dict()
-        await self._save_analysis(log_id, analysis_dict, project_id)
+        await self._save_analysis(log_id, analysis_dict, project_uuid)
 
         if related_logs:
             # Save to all logs in the trace for future cache hits
             for log in related_logs:
                 if log.get("log_id") != log_id:
-                    await self._save_analysis(log["log_id"], analysis_dict, project_id)
+                    await self._save_analysis(log["log_id"], analysis_dict, project_uuid)
 
         return LogAnalysisResponse(
             log_id=log_id,
@@ -143,8 +143,8 @@ class LogAnalysisService:
             similarity_score=None,
         )
 
-    async def _get_log(self, log_id: int, project_id: str) -> Optional[dict]:
-        """Get log from OpenSearch filtered by project_id"""
+    async def _get_log(self, log_id: int, project_uuid: str) -> Optional[dict]:
+        """Get log from OpenSearch filtered by project_uuid"""
         try:
             response = self.client.search(
                 index="logs-*",
@@ -153,7 +153,7 @@ class LogAnalysisService:
                         "bool": {
                             "must": [
                                 {"term": {"log_id": log_id}},
-                                {"term": {"project_id": project_id}},
+                                {"term": {"project_uuid": project_uuid}},
                             ]
                         }
                     }
@@ -163,7 +163,7 @@ class LogAnalysisService:
                 return response["hits"]["hits"][0]["_source"]
             return None
         except Exception as e:
-            print(f"Error fetching log {log_id} for project {project_id}: {e}")
+            print(f"Error fetching log {log_id} for project {project_uuid}: {e}")
             return None
 
     async def _analyze_with_llm(self, log_data: dict) -> LogAnalysisResult:
@@ -250,8 +250,8 @@ class LogAnalysisService:
 
         return "\n".join(formatted)
 
-    async def _save_analysis(self, log_id: int, analysis: dict, project_id: str):
-        """Save analysis result to log filtered by project_id"""
+    async def _save_analysis(self, log_id: int, analysis: dict, project_uuid: str):
+        """Save analysis result to log filtered by project_uuid"""
         try:
             self.client.update_by_query(
                 index="logs-*",
@@ -264,14 +264,14 @@ class LogAnalysisService:
                         "bool": {
                             "must": [
                                 {"term": {"log_id": log_id}},
-                                {"term": {"project_id": project_id}},
+                                {"term": {"project_uuid": project_uuid}},
                             ]
                         }
                     },
                 },
             )
         except Exception as e:
-            print(f"Error saving analysis for log {log_id} in project {project_id}: {e}")
+            print(f"Error saving analysis for log {log_id} in project {project_uuid}: {e}")
 
     async def _map_summarize_chunks(
         self, logs: List[dict], chunk_size: int

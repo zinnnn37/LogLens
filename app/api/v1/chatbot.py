@@ -28,15 +28,15 @@ async def ask_chatbot(request: ChatRequest):
     1. Generates question embedding
     2. Checks QA cache with 2-stage validation:
        a. Semantic similarity (vector search, similarity >= 0.8)
-       b. Metadata matching (project_id, filters, time_range) + TTL validation
+       b. Metadata matching (project_uuid, filters, time_range) + TTL validation
     3. Returns cached answer if found (saves ~40-60% cost)
     4. Otherwise:
-       - Searches relevant logs using vector similarity (filtered by project_id)
+       - Searches relevant logs using vector similarity (filtered by project_uuid)
        - Generates answer using GPT-4o mini with RAG and chat history
        - Caches the QA pair with metadata and dynamic TTL
 
     Args:
-        request: ChatRequest with question, project_id, chat_history, and optional filters
+        request: ChatRequest with question, project_uuid, chat_history, and optional filters
 
     Returns:
         ChatResponse with answer and related logs
@@ -47,7 +47,7 @@ async def ask_chatbot(request: ChatRequest):
     try:
         result = await chatbot_service.ask(
             question=request.question,
-            project_id=request.project_id,  # Multi-tenancy support
+            project_uuid=request.project_uuid,  # Multi-tenancy support
             chat_history=request.chat_history,  # Chat history support
             filters=request.filters,
             time_range=request.time_range,
@@ -68,7 +68,7 @@ async def ask_chatbot_stream(request: ChatRequest, background_tasks: BackgroundT
     - Errors are sent as "data: {\"error\": \"...\"}\\n\\n"
 
     Args:
-        request: ChatRequest with question, project_id, chat_history, and optional filters
+        request: ChatRequest with question, project_uuid, chat_history, and optional filters
 
     Returns:
         StreamingResponse with text/event-stream
@@ -86,7 +86,7 @@ async def ask_chatbot_stream(request: ChatRequest, background_tasks: BackgroundT
                 cache_candidates = await similarity_service.find_similar_questions(
                     question_vector=question_vector,
                     k=settings.CACHE_CANDIDATE_SIZE,
-                    project_id=request.project_id
+                    project_uuid=request.project_uuid
                 )
 
                 # 캐시 히트 시 전체 답변 전송
@@ -97,7 +97,7 @@ async def ask_chatbot_stream(request: ChatRequest, background_tasks: BackgroundT
                                 candidate.get("metadata", {}),
                                 request.filters,
                                 request.time_range,
-                                request.project_id
+                                request.project_uuid
                             ):
                                 cached_answer = candidate["answer"]
                                 yield f"data: {cached_answer}\n\n"
@@ -109,7 +109,7 @@ async def ask_chatbot_stream(request: ChatRequest, background_tasks: BackgroundT
                 log_vector=question_vector,
                 k=chatbot_service.max_context,
                 filters=request.filters,
-                project_id=request.project_id,
+                project_uuid=request.project_uuid,
             )
 
             # 4. Prepare context
@@ -153,7 +153,7 @@ async def ask_chatbot_stream(request: ChatRequest, background_tasks: BackgroundT
                 answer=full_answer,
                 related_log_ids=related_log_ids,
                 metadata={
-                    "project_id": request.project_id,
+                    "project_uuid": request.project_uuid,
                     "filters": request.filters,
                     "time_range": request.time_range,
                 },
@@ -163,9 +163,9 @@ async def ask_chatbot_stream(request: ChatRequest, background_tasks: BackgroundT
         except Exception as e:
             # Log the error with context
             logger.error(
-                f"Stream error for project {request.project_id}: {str(e)}",
+                f"Stream error for project {request.project_uuid}: {str(e)}",
                 extra={
-                    "project_id": request.project_id,
+                    "project_uuid": request.project_uuid,
                     "question": request.question[:100],  # Truncate for logging
                     "error": str(e),
                 },

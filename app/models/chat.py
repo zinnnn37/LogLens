@@ -26,7 +26,7 @@ class ChatRequest(BaseModel):
     """Chatbot question request with history support"""
 
     question: str = Field(..., description="User's question about logs")
-    project_id: str = Field(..., description="Project ID for multi-tenancy isolation")
+    project_uuid: str = Field(..., description="Project UUID for multi-tenancy isolation")
     chat_history: Optional[List[ChatMessage]] = Field(
         default=None,
         description="Previous conversation history"
@@ -40,7 +40,7 @@ class ChatRequest(BaseModel):
         json_schema_extra = {
             "example": {
                 "question": "그 중 가장 심각한 건?",
-                "project_id": "proj-123",
+                "project_uuid": "550e8400-e29b-41d4-a716-446655440000",
                 "chat_history": [
                     {"role": "user", "content": "최근 에러 알려줘"},
                     {"role": "assistant", "content": "NPE 3건, DB 타임아웃 2건 발생했습니다"}

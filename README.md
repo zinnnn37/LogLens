@@ -8,8 +8,8 @@ Spring Boot 애플리케이션에서 수집된 로그를 AI로 분석하고, 챗
 
 ### 주요 기능
 
-1. **AI 로그 분석** (`/api/v1/logs/{log_id}/analysis?project_id={project_id}`)
-   - **Multi-tenancy 지원**: project_id 기반 데이터 격리
+1. **AI 로그 분석** (`/api/v1/logs/{log_id}/analysis?project_uuid={project_uuid}`)
+   - **Multi-tenancy 지원**: project_uuid 기반 데이터 격리
    - **Trace 기반 분석**: trace_id로 연관 로그 수집 (±3초, 최대 100개)
    - **2단계 캐싱**:
      - Trace 캐싱 (97-99% 비용 절감)
@@ -105,11 +105,11 @@ uvicorn app.main:app --reload --port 8000
 #### 1. 로그 분석
 
 ```bash
-GET /api/v1/logs/{log_id}/analysis?project_id={project_id}
+GET /api/v1/logs/{log_id}/analysis?project_uuid={project_uuid}
 ```
 
 **Query Parameters**:
-- `project_id` (required): 프로젝트 ID (multi-tenancy)
+- `project_uuid` (required): 프로젝트 UUID (multi-tenancy)
 
 **응답 예시**:
 ```json
@@ -286,10 +286,10 @@ curl "http://localhost:8080/api/test/error"
 # 2. OpenSearch에서 로그 ID 확인
 curl "http://localhost:9200/logs-*/_search?q=level:ERROR&pretty" | grep log_id
 
-# 3. AI 분석 요청 (project_id 포함)
+# 3. AI 분석 요청 (project_uuid 포함)
 LOG_ID="..."  # 위에서 확인한 ID
-PROJECT_ID="project_001"
-curl "http://localhost:8000/api/v1/logs/$LOG_ID/analysis?project_id=$PROJECT_ID" | jq
+PROJECT_UUID="550e8400-e29b-41d4-a716-446655440000"
+curl "http://localhost:8000/api/v1/logs/$LOG_ID/analysis?project_uuid=$PROJECT_UUID" | jq
 ```
 
 ### 2. Trace 캐싱 확인

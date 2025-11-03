@@ -9,6 +9,20 @@ import sys
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Load environment variables (.env.test first for local testing)
+from dotenv import load_dotenv
+
+# Try loading .env.test first (for local testing), fallback to .env
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+env_test_path = os.path.join(project_root, '.env.test')
+env_path = os.path.join(project_root, '.env')
+
+if os.path.exists(env_test_path):
+    load_dotenv(env_test_path)
+    print("🔧 Using .env.test for local testing")
+else:
+    load_dotenv(env_path)
+
 from app.core.opensearch import opensearch_client
 
 
@@ -17,17 +31,16 @@ def create_logs_index_template():
 
     template_body = {
         "index_patterns": ["logs-*"],
-        "template": {
-            "settings": {
-                "number_of_shards": 1,
-                "number_of_replicas": 0,
-                "index.knn": True,  # Enable KNN
-            },
-            "mappings": {
+        "settings": {
+            "number_of_shards": 1,
+            "number_of_replicas": 0,
+            "index.knn": True,  # Enable KNN
+        },
+        "mappings": {
                 "properties": {
                     # Core identification fields
                     "log_id": {"type": "long"},  # Integer log ID from database
-                    "project_id": {"type": "keyword"},  # UUID string for multi-tenancy
+                    "project_uuid": {"type": "keyword"},  # Multi-tenancy support (UUID)
                     "timestamp": {"type": "date"},
 
                     # Service and logging context
@@ -37,7 +50,7 @@ def create_logs_index_template():
                     "layer": {"type": "keyword"},  # Controller/Service/Repository
 
                     # Log content
-                    "log_level": {"type": "keyword"},  # Logstash sends this field (ERROR/WARN/INFO)
+                    "log_level": {"type": "keyword"},  # INFO/WARN/ERROR only
                     "level": {"type": "keyword"},      # Compatibility alias for AI code
                     "message": {"type": "text"},
                     "comment": {"type": "text"},  # Additional comment
@@ -49,7 +62,9 @@ def create_logs_index_template():
 
                     # Tracing
                     "trace_id": {"type": "keyword"},
-                    "user_id": {"type": "keyword"},
+
+                    # Requester identification (DevSecOps)
+                    "requester_ip": {"type": "ip"},  # Requester IP address for user identification
 
                     # Performance
                     "duration": {"type": "integer"},  # milliseconds
@@ -68,17 +83,17 @@ def create_logs_index_template():
                             # HTTP request/response details
                             "http_method": {"type": "keyword"},  # GET/POST/PUT/DELETE
                             "request_uri": {"type": "text"},
-                            "request_headers": {"type": "flattened"},  # JSON object
-                            "request_body": {"type": "flattened"},  # JSON object
+                            "request_headers": {"type": "object"},  # JSON object
+                            "request_body": {"type": "object"},  # JSON object
                             "response_status": {"type": "integer"},  # HTTP status code
-                            "response_body": {"type": "flattened"},  # JSON object
+                            "response_body": {"type": "object"},  # JSON object
 
                             # Code location
                             "class_name": {"type": "keyword"},
                             "method_name": {"type": "keyword"},
 
                             # Additional context
-                            "additional_info": {"type": "flattened"},  # JSON object
+                            "additional_info": {"type": "object"},  # JSON object
                         }
                     },
 
@@ -88,7 +103,7 @@ def create_logs_index_template():
                         "dimension": 1536,  # text-embedding-3-large
                         "method": {
                             "name": "hnsw",
-                            "space_type": "cosinesimil",  # Cosine similarity for text embeddings
+                            "space_type": "innerproduct",  # Equivalent to cosine for normalized OpenAI embeddings
                             "engine": "faiss",
                         },
                     },
@@ -110,20 +125,19 @@ def create_logs_index_template():
                     # System fields
                     "indexed_at": {"type": "date"},
                 }
-            },
         },
     }
 
     try:
         # Delete existing template if exists
         try:
-            opensearch_client.indices.delete_index_template(name="logs-template")
+            opensearch_client.indices.delete_template(name="logs-template")
             print("🗑️  Deleted existing logs template")
         except:
             pass
 
         # Create new template
-        opensearch_client.indices.put_index_template(
+        opensearch_client.indices.put_template(
             name="logs-template", body=template_body
         )
         print("✅ Created logs index template")
@@ -150,7 +164,7 @@ def create_qa_cache_index():
                     "dimension": 1536,
                     "method": {
                         "name": "hnsw",
-                        "space_type": "cosinesimil",  # Changed to cosinesimil for consistency
+                        "space_type": "innerproduct",  # Equivalent to cosine for normalized OpenAI embeddings
                         "engine": "faiss",
                     },
                 },
@@ -162,8 +176,8 @@ def create_qa_cache_index():
                     "type": "object",
                     "properties": {
                         "project_id": {"type": "keyword"},  # UUID string
-                        "filters": {"type": "flattened"},  # Dynamic filters object
-                        "time_range": {"type": "flattened"},  # Time range object
+                        "filters": {"type": "object"},  # Dynamic filters object
+                        "time_range": {"type": "object"},  # Time range object
                     }
                 },
 

@@ -32,7 +32,7 @@ class ChatbotService:
     async def ask(
         self,
         question: str,
-        project_id: str,
+        project_uuid: str,
         chat_history: Optional[List[ChatMessage]] = None,
         filters: Optional[Dict[str, Any]] = None,
         time_range: Optional[Dict[str, str]] = None,
@@ -44,7 +44,7 @@ class ChatbotService:
         1. Generate question embedding
         2. Check QA cache for similar questions (2-stage validation)
            a. Semantic similarity (vector search)
-           b. Metadata matching (filters, time_range, project_id) + TTL validation
+           b. Metadata matching (filters, time_range, project_uuid) + TTL validation
         3. If found, return cached answer
         4. Otherwise:
            - Search relevant logs
@@ -53,7 +53,7 @@ class ChatbotService:
 
         Args:
             question: User's question
-            project_id: Project ID for multi-tenancy isolation
+            project_uuid: Project UUID for multi-tenancy isolation
             chat_history: Previous conversation history
             filters: Optional filters for log search
             time_range: Optional time range filter
@@ -71,7 +71,7 @@ class ChatbotService:
             cache_candidates = await similarity_service.find_similar_questions(
                 question_vector=question_vector,
                 k=settings.CACHE_CANDIDATE_SIZE,  # Get more candidates
-                project_id=project_id  # Filter by project_id
+                project_uuid=project_uuid  # Filter by project_uuid
             )
 
             # 2b. Validate metadata and TTL
@@ -86,13 +86,13 @@ class ChatbotService:
                         candidate.get("metadata", {}),
                         filters,
                         time_range,
-                        project_id
+                        project_uuid
                     ):
                         # Cache hit!
                         cached = candidate
                         related_logs = await self._get_logs_by_ids(
                             cached.get("related_log_ids", []),
-                            project_id
+                            project_uuid
                         )
 
                         return ChatResponse(
@@ -106,7 +106,7 @@ class ChatbotService:
             log_vector=question_vector,
             k=self.max_context,
             filters=filters,
-            project_id=project_id,  # Project isolation
+            project_uuid=project_uuid,  # Project isolation
         )
 
         # Step 4: Prepare context from logs
@@ -144,7 +144,7 @@ class ChatbotService:
             answer=answer,
             related_log_ids=related_log_ids,
             metadata={
-                "project_id": project_id,
+                "project_uuid": project_uuid,
                 "filters": filters,
                 "time_range": time_range,
             },
@@ -187,8 +187,8 @@ class ChatbotService:
         except Exception as e:
             print(f"Error caching QA pair: {e}")
 
-    async def _get_logs_by_ids(self, log_ids: List[int], project_id: str) -> List[RelatedLog]:
-        """Get logs by IDs filtered by project_id"""
+    async def _get_logs_by_ids(self, log_ids: List[int], project_uuid: str) -> List[RelatedLog]:
+        """Get logs by IDs filtered by project_uuid"""
         if not log_ids:
             return []
 
@@ -201,7 +201,7 @@ class ChatbotService:
                         "bool": {
                             "must": [
                                 {"terms": {"log_id": log_ids}},
-                                {"term": {"project_id": project_id}},  # Project isolation
+                                {"term": {"project_uuid": project_uuid}},  # Project isolation
                             ]
                         }
                     },
@@ -224,7 +224,7 @@ class ChatbotService:
                 )
             return logs
         except Exception as e:
-            print(f"Error fetching logs by IDs for project {project_id}: {e}")
+            print(f"Error fetching logs by IDs for project {project_uuid}: {e}")
             return []
 
     def _format_context_logs(self, logs_data: List[Dict[str, Any]]) -> str:
@@ -254,18 +254,18 @@ Log {i}:
         cached_metadata: Dict[str, Any],
         filters: Optional[Dict[str, Any]],
         time_range: Optional[Dict[str, str]],
-        project_id: str,
+        project_uuid: str,
     ) -> bool:
         """
         Check if cached metadata matches current request metadata
 
         All fields must match exactly for cache hit:
-        - project_id (required)
+        - project_uuid (required)
         - filters (optional)
         - time_range (optional)
         """
-        # Project ID must match (required for multi-tenancy)
-        if cached_metadata.get("project_id") != project_id:
+        # Project UUID must match (required for multi-tenancy)
+        if cached_metadata.get("project_uuid") != project_uuid:
             return False
 
         # Filters must match exactly (None == None is valid)
