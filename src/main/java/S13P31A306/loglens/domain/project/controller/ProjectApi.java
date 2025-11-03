@@ -7,6 +7,8 @@ import S13P31A306.loglens.global.config.swagger.annotation.ApiInternalServerErro
 import S13P31A306.loglens.global.dto.response.BaseResponse;
 import S13P31A306.loglens.global.dto.response.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -26,7 +28,10 @@ public interface ProjectApi {
 	@Operation(
 			summary = "프로젝트 생성",
 			description = "새로운 프로젝트를 생성합니다.",
-			security = @SecurityRequirement(name = "BearerAuthentication"),
+			security = @SecurityRequirement(name = "bearerAuth"),
+			parameters = {
+					@Parameter(in = ParameterIn.HEADER, name = "Authorization", description = "Bearer {access_token}", required = true, schema = @Schema(type = "string"))
+			},
 			responses = {
 					@ApiResponse(
 							responseCode = "201",
@@ -46,7 +51,7 @@ public interface ProjectApi {
 													        "projectId": 0,
 													        "projectName": "loglens",
 													        "description": "",
-													        "projectUuid": null,
+													        "projectUuid": "a3d5f7b9-1c2e-4d8a-9f3b-6e7c8d9a0b1c",
 													        "createdAt": "2025-11-03T13:36:36.27739",
 													        "updatedAt": "2025-11-03T13:36:36.27739"
 													    },
@@ -88,68 +93,6 @@ public interface ProjectApi {
 							)
 					),
 					@ApiResponse(
-							responseCode = "400",
-							description = "입력값 유효성 검증 실패",
-							content = @Content(
-									mediaType = "application/json",
-									schema = @Schema(implementation = ErrorResponse.class),
-									examples = @ExampleObject(
-											name = "ProjectNameInvalidFormat",
-											summary = "프로젝트 설명 길이 제한",
-											value = """
-													{
-													    "code": "G400",
-													    "message": "입력값이 유효하지 않습니다",
-													    "status": 400,
-													    "data": {
-													        "path": "/api/projects",
-													        "errors": [
-													            {
-													                "field": "projectName",
-													                "rejectedValue": "01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
-													                "code": "G400",
-													                "reason": "입력값이 유효하지 않습니다"
-													            }
-													        ]
-													    },
-													    "timestamp": "2025-11-03T04:35:27.024Z"
-													}
-												"""
-									)
-							)
-					),
-					@ApiResponse(
-							responseCode = "400",
-							description = "입력값 유효성 검증 실패",
-							content = @Content(
-									mediaType = "application/json",
-									schema = @Schema(implementation = ErrorResponse.class),
-									examples = @ExampleObject(
-											name = "ProjectDescriptionInvalidFormat",
-											summary = "프로젝트 이름 길이 제한",
-											value = """
-													{
-														"code": "G400",
-														"message": "입력값이 유효하지 않습니다",
-														"status": 400,
-														"data": {
-															"path": "/api/projects",
-															"errors": [
-																{
-																	"field": "description",
-																	"rejectedValue": "0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
-																	"code": "G400",
-																	"reason": "입력값이 유효하지 않습니다"
-																}
-															]
-														},
-														"timestamp": "2025-11-03T04:35:59.208Z"
-													}
-													"""
-									)
-							)
-					),
-					@ApiResponse(
 							responseCode = "409",
 							description = "중복된 입력값",
 							content = @Content(
@@ -178,7 +121,14 @@ public interface ProjectApi {
 	@Operation(
 			summary = "프로젝트 목록 조회",
 			description = "참여 중인 프로젝트 목록을 조회합니다",
-			security = @SecurityRequirement(name = "BearerAuthentication"),
+			security = @SecurityRequirement(name = "bearerAuth"),
+			parameters = {
+					@Parameter(in = ParameterIn.HEADER, name = "Authorization", description = "Bearer {access_token}", required = true, schema = @Schema(type = "string")),
+					@Parameter(in = ParameterIn.QUERY, name = "page", description = "페이지 번호 (0부터 시작)", schema = @Schema(type = "integer", defaultValue = "0")),
+					@Parameter(in = ParameterIn.QUERY, name = "size", description = "페이지당 항목 수 (1~100)", schema = @Schema(type = "integer", defaultValue = "10")),
+					@Parameter(in = ParameterIn.QUERY, name = "sort", description = "정렬 기준 (CREATED_AT, PROJECT_NAME, UPDATED_AT)", schema = @Schema(type = "string", defaultValue = "CREATED_AT")),
+					@Parameter(in = ParameterIn.QUERY, name = "order", description = "정렬 방향 (ASC, DESC)", schema = @Schema(type = "string", defaultValue = "DESC"))
+			},
 			responses = {
 					@ApiResponse(
 							responseCode = "200",
@@ -200,7 +150,7 @@ public interface ProjectApi {
 																	"projectId": 2,
 																	"projectName": "loglens",
 																	"description": "",
-																	"apiKey": null,
+																	"projectUuid": "a3d5f7b9-1c2e-4d8a-9f3b-6e7c8d9a0b1c",
 																	"memberCount": 1,
 																	"createdAt": "2025-11-03T13:36:36.27739",
 																	"updatedAt": "2025-11-03T13:36:36.27739"
@@ -235,7 +185,11 @@ public interface ProjectApi {
 	@Operation(
 			summary = "프로젝트 상세 정보 조회",
 			description = "프로젝트 상세 정보를 조회합니다",
-			security = @SecurityRequirement(name = "BearerAuthentication"),
+			security = @SecurityRequirement(name = "bearerAuth"),
+			parameters = {
+					@Parameter(in = ParameterIn.HEADER, name = "Authorization", description = "Bearer {access_token}", required = true, schema = @Schema(type = "string")),
+					@Parameter(in = ParameterIn.PATH, name = "projectId", description = "프로젝트 ID", required = true, schema = @Schema(type = "integer", example = "1"))
+			},
 			responses = {
 					@ApiResponse(
 							responseCode = "200",
@@ -255,7 +209,7 @@ public interface ProjectApi {
 													        "projectId": 0,
 													        "projectName": "loglens",
 													        "description": "",
-													        "projectUuid": null,
+													        "projectUuid": "a3d5f7b9-1c2e-4d8a-9f3b-6e7c8d9a0b1c",
 													        "members": [
 													            {
 													                "userId": 1,
@@ -322,7 +276,11 @@ public interface ProjectApi {
 	@Operation(
 			summary = "프로젝트 삭제",
 			description = "프로젝트를 삭제합니다",
-			security = @SecurityRequirement(name = "BearerAuthentication"),
+			security = @SecurityRequirement(name = "bearerAuth"),
+			parameters = {
+					@Parameter(in = ParameterIn.HEADER, name = "Authorization", description = "Bearer {access_token}", required = true, schema = @Schema(type = "string")),
+					@Parameter(in = ParameterIn.PATH, name = "projectId", description = "프로젝트 ID", required = true, schema = @Schema(type = "integer", example = "1"))
+			},
 			responses = {
 					@ApiResponse(
 							responseCode = "200",
@@ -394,7 +352,11 @@ public interface ProjectApi {
 	@Operation(
 			summary = "멤버 초대",
 			description = "프로젝트에 멤버를 추가합니다",
-			security = @SecurityRequirement(name = "BearerAuthentication"),
+			security = @SecurityRequirement(name = "bearerAuth"),
+			parameters = {
+					@Parameter(in = ParameterIn.HEADER, name = "Authorization", description = "Bearer {access_token}", required = true, schema = @Schema(type = "string")),
+					@Parameter(in = ParameterIn.PATH, name = "projectId", description = "프로젝트 ID", required = true, schema = @Schema(type = "integer", example = "1"))
+			},
 			responses = {
 					@ApiResponse(
 							responseCode = "201",
@@ -411,8 +373,13 @@ public interface ProjectApi {
 													    "message": "멤버가 성공적으로 초대되었습니다.",
 													    "status": 201,
 													    "data": {
-													        "projectId": 0,
-													        "member": null
+													        "projectId": 1,
+													        "member": {
+													            "userId": 2,
+													            "userName": "김철수",
+													            "email": "kim@email.com",
+													            "joinedAt": "2025-11-03T13:49:12"
+													        }
 													    },
 													    "timestamp": "2025-11-03T04:49:12.688Z"
 													}
@@ -490,7 +457,12 @@ public interface ProjectApi {
 	@Operation(
 			summary = "프로젝트 멤버 삭제",
 			description = "프로젝트에 참여 중인 멤버를 삭제합니다",
-			security = @SecurityRequirement(name = "BearerAuthentication"),
+			security = @SecurityRequirement(name = "bearerAuth"),
+			parameters = {
+					@Parameter(in = ParameterIn.HEADER, name = "Authorization", description = "Bearer {access_token}", required = true, schema = @Schema(type = "string")),
+					@Parameter(in = ParameterIn.PATH, name = "projectId", description = "프로젝트 ID", required = true, schema = @Schema(type = "integer", example = "1")),
+					@Parameter(in = ParameterIn.PATH, name = "memberId", description = "삭제할 멤버의 사용자 ID", required = true, schema = @Schema(type = "integer", example = "2"))
+			},
 			responses = {
 					@ApiResponse(
 							responseCode = "200",
