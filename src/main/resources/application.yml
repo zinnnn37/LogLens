@@ -71,3 +71,13 @@ management: # Spring-Actuator 설정
 llm:
   api:
     key: ${LLM_API_KEY:}
+
+# ===================================================================
+# OpenSearch 설정 (OpenSearch Configuration)
+# ===================================================================
+opensearch:
+  scheme: https
+  host: opensearch.loglens.store
+  port: 443
+  username: ${OPENSEARCH_USERNAME:admin}
+  password: ${OPENSEARCH_PASSWORD:admin}
