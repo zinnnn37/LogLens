@@ -43,6 +43,8 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 public class LogRepositoryImpl implements LogRepository {
 
+    private static final String LOG_PREFIX = "[LogRepository]";
+
     private final OpenSearchClient openSearchClient;
     private final ObjectMapper objectMapper;
     private static final String LOG_INDEX_PATTERN = "logs-*";
@@ -52,6 +54,7 @@ public class LogRepositoryImpl implements LogRepository {
 
     @Override
     public LogSearchResult findWithCursor(String projectUuid, LogSearchRequest request) {
+        log.debug("{} OpenSearch에서 커서 기반 로그 조회 시작: projectUuid={}, request={}", LOG_PREFIX, projectUuid, request);
         int requestSize = request.getSize();
         int querySize = requestSize + 1;
 
@@ -66,17 +69,23 @@ public class LogRepositoryImpl implements LogRepository {
 
         // 4. OpenSearch 쿼리 실행
         try {
+            log.debug("{} OpenSearch에 검색 요청 실행", LOG_PREFIX);
             SearchResponse<Log> response = openSearchClient.search(searchRequest, Log.class);
+            log.debug("{} OpenSearch 응답 수신: {} hits", LOG_PREFIX, response.hits().total().value());
+
             // 5. 응답 처리
-            return processSearchResponse(response, requestSize);
+            LogSearchResult result = processSearchResponse(response, requestSize);
+            log.debug("{} 커서 기반 로그 조회 완료: {} logs, hasNext={}", LOG_PREFIX, result.logs().size(), result.hasNext());
+            return result;
         } catch (IOException e) {
-            log.error("OpenSearch findWithCursor 중 에러 발생", e);
+            log.error("{} OpenSearch findWithCursor 중 에러 발생", LOG_PREFIX, e);
             throw new BusinessException(GlobalErrorCode.OPENSEARCH_OPERATION_FAILED, null, e);
         }
     }
 
     @Override
     public TraceLogSearchResult findByTraceId(String projectUuid, LogSearchRequest request) {
+        log.debug("{} OpenSearch에서 Trace ID 기반 로그 조회 시작: projectUuid={}, request={}", LOG_PREFIX, projectUuid, request);
         // 1. 검색 쿼리 생성
         Query query = buildSearchQuery(projectUuid, request);
 
@@ -85,14 +94,19 @@ public class LogRepositoryImpl implements LogRepository {
 
         // 3. OpenSearch 쿼리 실행
         try {
+            log.debug("{} OpenSearch에 Trace ID 검색 요청 실행", LOG_PREFIX);
             SearchResponse<Log> response = openSearchClient.search(searchRequest, Log.class);
+            log.debug("{} OpenSearch 응답 수신: {} hits", LOG_PREFIX, response.hits().total().value());
+
             // 4. 응답 처리
             List<Log> logs = extractLogsFromHits(response.hits().hits());
             LogSummaryResponse summary = buildSummaryFromAggregations(response, logs.size());
 
-            return new TraceLogSearchResult(logs, summary);
+            TraceLogSearchResult result = new TraceLogSearchResult(logs, summary);
+            log.debug("{} Trace ID 기반 로그 조회 완료: {} logs", LOG_PREFIX, result.logs().size());
+            return result;
         } catch (IOException e) {
-            log.error("OpenSearch findByTraceId 중 에러 발생", e);
+            log.error("{} OpenSearch findByTraceId 중 에러 발생", LOG_PREFIX, e);
             throw new BusinessException(GlobalErrorCode.OPENSEARCH_OPERATION_FAILED, null, e);
         }
     }
@@ -105,6 +119,7 @@ public class LogRepositoryImpl implements LogRepository {
      * 검색 쿼리 생성
      */
     private Query buildSearchQuery(String projectUuid, LogSearchRequest request) {
+        log.debug("{} 검색 쿼리 빌드 시작", LOG_PREFIX);
         BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
         buildFilterClauses(projectUuid, request, boolQueryBuilder);
         return new Query.Builder().bool(boolQueryBuilder.build()).build();
@@ -165,6 +180,7 @@ public class LogRepositoryImpl implements LogRepository {
      * 검색 응답을 LogSearchResult로 변환
      */
     private LogSearchResult processSearchResponse(SearchResponse<Log> response, int requestSize) {
+        log.debug("{} 검색 응답 처리 시작", LOG_PREFIX);
         List<Hit<Log>> hits = response.hits().hits();
         List<Log> logs = extractLogsFromHits(hits);
 
@@ -176,7 +192,9 @@ public class LogRepositoryImpl implements LogRepository {
             nextSortValues = extractSortValues(hits.get(requestSize - 1));
         }
 
-        return new LogSearchResult(logs, hasNext, nextSortValues);
+        LogSearchResult result = new LogSearchResult(logs, hasNext, nextSortValues);
+        log.debug("{} 검색 응답 처리 완료: {} logs, hasNext={}", LOG_PREFIX, result.logs().size(), result.hasNext());
+        return result;
     }
 
     /**
@@ -211,7 +229,9 @@ public class LogRepositoryImpl implements LogRepository {
      * Aggregation 결과로부터 LogSummaryResponse 생성
      */
     private LogSummaryResponse buildSummaryFromAggregations(SearchResponse<Log> response, int totalLogs) {
+        log.debug("{} Aggregation 기반 요약 정보 빌드 시작", LOG_PREFIX);
         if (totalLogs == 0) {
+            log.debug("{} 로그가 없어 빈 요약 정보 반환", LOG_PREFIX);
             return LogSummaryResponse.builder().totalLogs(0).build();
         }
 
@@ -223,7 +243,7 @@ public class LogRepositoryImpl implements LogRepository {
 
         Map<String, Long> levelCounts = extractLevelCounts(aggs);
 
-        return LogSummaryResponse.builder()
+        LogSummaryResponse summary = LogSummaryResponse.builder()
                 .totalLogs(totalLogs)
                 .durationMs(durationMs)
                 .startTime(startTime)
@@ -232,6 +252,8 @@ public class LogRepositoryImpl implements LogRepository {
                 .warnCount(levelCounts.getOrDefault("WARN", 0L))
                 .infoCount(levelCounts.getOrDefault("INFO", 0L))
                 .build();
+        log.debug("{} 요약 정보 빌드 완료: totalLogs={}", LOG_PREFIX, totalLogs);
+        return summary;
     }
 
     /**
@@ -308,12 +330,16 @@ public class LogRepositoryImpl implements LogRepository {
      * 커서 디코딩
      */
     private Object[] decodeCursor(String cursor) {
+        log.debug("{} 커서 디코딩 시작", LOG_PREFIX);
         if (Objects.isNull(cursor) || cursor.isEmpty()) {
             return null;
         }
         try {
-            return objectMapper.readValue(Base64.getDecoder().decode(cursor), Object[].class);
+            Object[] decoded = objectMapper.readValue(Base64.getDecoder().decode(cursor), Object[].class);
+            log.debug("{} 커서 디코딩 완료", LOG_PREFIX);
+            return decoded;
         } catch (Exception e) {
+            log.warn("{} 커서 디코딩 실패: cursor={}", LOG_PREFIX, cursor, e);
             throw new BusinessException(LogErrorCode.INVALID_CURSOR);
         }
     }
