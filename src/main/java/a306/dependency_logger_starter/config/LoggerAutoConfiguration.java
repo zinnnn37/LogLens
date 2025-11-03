@@ -6,6 +6,7 @@ import a306.dependency_logger_starter.logging.aspect.ExceptionHandlerLoggingAspe
 import a306.dependency_logger_starter.logging.aspect.MethodLoggingAspect;
 import a306.dependency_logger_starter.logging.async.AsyncExecutor;
 import a306.dependency_logger_starter.logging.async.MDCTaskDecorator;
+import a306.dependency_logger_starter.logging.filter.FrontendLogFilter;
 import a306.dependency_logger_starter.logging.filter.TraceIdFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -118,5 +119,37 @@ public class LoggerAutoConfiguration {
     )
     public ExceptionHandlerLoggingAspect exceptionHandlerLoggingAspect(ObjectMapper objectMapper) {
         return new ExceptionHandlerLoggingAspect(objectMapper);
+    }
+
+    /**
+     * 프론트엔드 로그 수집 필터
+     * POST /api/logs/frontend 요청을 처리하여 yml 설정 경로에 로그 저장
+     *
+     * 로그 경로: ${logging.file.path}/fe/${logging.file.name}
+     * 예: ./logs/fe/app.log
+     */
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "dependency.logger.frontend",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = false
+    )
+    public FilterRegistrationBean<FrontendLogFilter> frontendLogFilter(
+            @Value("${logging.file.path:./logs}") String logBasePath,
+            @Value("${logging.file.name:app.log}") String logFileName) {
+
+        // 프론트엔드 로그 경로: {logBasePath}/fe/{logFileName}
+        String frontendLogPath = logBasePath + "/fe/" + logFileName;
+
+        FilterRegistrationBean<FrontendLogFilter> registration =
+                new FilterRegistrationBean<>();
+
+        registration.setFilter(new FrontendLogFilter(frontendLogPath));
+        registration.addUrlPatterns("/api/logs/frontend");
+        registration.setOrder(Ordered.LOWEST_PRECEDENCE);
+        registration.setName("frontendLogFilter");
+
+        return registration;
     }
 }
