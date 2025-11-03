@@ -5,23 +5,53 @@ import { LightZone } from './core/lightZone';
 import { ErrorCapture } from './core/errorCapture';
 import { loglens } from './core/logger';
 import { withLogLens } from './wrappers/trace';
-import type { CollectorConfig } from './types/logTypes.d';
 import { LogCollector } from './core/logCollector';
 
 export type InitLogLensConfig = {
-  logCollector?: Partial<CollectorConfig> | null;
+  domain: string;
+  maxLogs?: number;
+  autoFlushInterval?: number;
+  autoFlushEnabled?: boolean; // 수집 여부
   captureErrors?: boolean;
 };
 
-const initLogLens = (config?: InitLogLensConfig): void => {
-  // 컨텍스트 전파
+const DEFAULT_CONFIG = {
+  maxLogs: 1000,
+  autoFlushInterval: 60000,
+  autoFlushEnabled: true,
+  captureErrors: false,
+};
+
+const initLogLens = (config: InitLogLensConfig): void => {
+  const finalConfig = {
+    ...DEFAULT_CONFIG,
+    ...config,
+  };
+
   LightZone.init();
 
-  // 로그 수집기 초기화
-  LogCollector.init(config?.logCollector || null);
+  // autoFlushEnabled가 false면 수집 안 함
+  if (finalConfig.autoFlushEnabled) {
+    let domain = finalConfig.domain.trim();
+    if (domain.endsWith('/')) {
+      domain = domain.slice(0, -1);
+    }
 
-  // 에러 캡처링 활성화
-  if (config?.captureErrors) {
+    const endpoint = `${domain}/api/logs/frontend`;
+
+    LogCollector.init({
+      maxLogs: finalConfig.maxLogs,
+      autoFlush: {
+        enabled: true,
+        interval: finalConfig.autoFlushInterval,
+        endpoint: endpoint,
+      },
+    });
+  } else {
+    LogCollector.init(null); // 수집 비활성화
+  }
+
+  if (finalConfig.captureErrors) {
     ErrorCapture.init();
   }
 };

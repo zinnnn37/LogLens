@@ -8,8 +8,8 @@ class LogCollector {
   private static config: CollectorConfig = {
     maxLogs: 1000,
     autoFlush: {
-      enabled: false,
-      interval: 60000,
+      enabled: true,
+      interval: 30000,
       endpoint: '',
     },
   };
@@ -24,7 +24,7 @@ class LogCollector {
         maxLogs: 1000,
         autoFlush: {
           enabled: false,
-          interval: 60000,
+          interval: 30000,
           endpoint: '',
         },
       };
@@ -41,6 +41,10 @@ class LogCollector {
    * 로그 추가
    */
   static addLog(log: LogEntry): void {
+    if (this.config.autoFlush?.enabled === false) {
+      return;
+    }
+
     this.logs.push(log);
     console.log('[LogCollector] New log added:');
     console.log(this.logs);
