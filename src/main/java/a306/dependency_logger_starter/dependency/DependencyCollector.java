@@ -92,28 +92,30 @@ public class DependencyCollector {
 
             String componentKey = getComponentKey(targetClass);
 
-            // ✅ 중복 체크 추가
-            if (componentMap.containsKey(componentKey)) {
-                log.debug("⭐️ 이미 수집됨: {}", targetClass.getSimpleName());
-                continue;
+            // ✅ 컴포넌트가 이미 있더라도 의존성은 수집해야 함
+            boolean isNewComponent = !componentMap.containsKey(componentKey);
+
+            if (isNewComponent) {
+                // 컴포넌트 생성
+                Component component = new Component(
+                        targetClass.getSimpleName(),
+                        targetClass.getSimpleName(),
+                        targetClass.getPackage().getName(),
+                        LayerDetector.detectLayer(targetClass)
+                );
+
+                componentMap.put(componentKey, component);
+                log.debug("📦 수집: {}", component.name());
+            } else {
+                log.debug("⭐️ 이미 수집됨 (의존성은 계속 분석): {}", targetClass.getSimpleName());
             }
 
-            // 컴포넌트 생성
-            Component component = new Component(
-                    targetClass.getSimpleName(),
-                    targetClass.getSimpleName(),
-                    targetClass.getPackage().getName(),
-                    LayerDetector.detectLayer(targetClass)
-            );
-
-            componentMap.put(componentKey, component);
-            log.debug("📦 수집: {}", component.name());
-
-            // 의존성 수집
+            // ✅ 의존성은 항상 수집
             List<Component> dependencies = collectDependenciesForBean(
                     bean, targetClass, componentMap);
 
             // 관계 추가
+            Component component = componentMap.get(componentKey);
             for (Component dep : dependencies) {
                 DependencyRelation relation = new DependencyRelation(
                         component.name(),
@@ -289,7 +291,7 @@ public class DependencyCollector {
                 log.debug("      🔍 파라미터 타입: {}", typeName);
 
                 if (!isServiceOrRepositoryType(typeName, paramType)) {
-                    log.debug("        ❌ Service/Repository 아님");
+                    log.debug("typeName: " + typeName);
                     continue;
                 }
 
