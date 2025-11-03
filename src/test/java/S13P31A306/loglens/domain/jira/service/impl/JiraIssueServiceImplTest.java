@@ -1,7 +1,7 @@
 package S13P31A306.loglens.domain.jira.service.impl;
 
 import S13P31A306.loglens.domain.auth.entity.User;
-import S13P31A306.loglens.domain.auth.respository.UserRepository;
+import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.domain.jira.client.JiraApiClient;
 import S13P31A306.loglens.domain.jira.client.dto.JiraIssueRequest;
 import S13P31A306.loglens.domain.jira.client.dto.JiraIssueResponse;
@@ -45,10 +45,10 @@ class JiraIssueServiceImplTest {
     private JiraIssueServiceImpl jiraIssueService;
 
     @Mock
-    private JiraConnectionRepository jiraConnectionRepository;
+    private AuthenticationHelper authenticationHelper;
 
     @Mock
-    private UserRepository userRepository;
+    private JiraConnectionRepository jiraConnectionRepository;
 
     @Mock
     private JiraApiClient jiraApiClient;
@@ -134,6 +134,7 @@ class JiraIssueServiceImplTest {
             );
 
             // Mocking
+            given(authenticationHelper.getCurrentUserId()).willReturn(userId);
             willDoNothing().given(jiraValidator).validateProjectAccess(projectId, userId);
             willDoNothing().given(jiraValidator).validateLogExists(logId);
             given(jiraConnectionRepository.findByProjectId(projectId)).willReturn(Optional.of(connection));
@@ -141,11 +142,11 @@ class JiraIssueServiceImplTest {
             given(jiraMapper.toJiraApiRequest(any(), eq(jiraProjectKey), anyString())).willReturn(jiraRequest);
             given(jiraApiClient.createIssue(jiraUrl, jiraEmail, decryptedToken, jiraRequest))
                     .willReturn(jiraResponse);
-            given(userRepository.findById(userId)).willReturn(Optional.of(user));
+            given(authenticationHelper.getCurrentUser()).willReturn(user);
             given(jiraMapper.toCreatedByResponse(user)).willReturn(createdBy);
 
             // when
-            JiraIssueCreateResponse response = jiraIssueService.createIssue(request, userId);
+            JiraIssueCreateResponse response = jiraIssueService.createIssue(request);
 
             // then
             assertThat(response).isNotNull();
@@ -157,13 +158,14 @@ class JiraIssueServiceImplTest {
             assertThat(response.createdBy().name()).isEqualTo("Test User");
 
             // verify
+            verify(authenticationHelper, times(1)).getCurrentUserId();
             verify(jiraValidator, times(1)).validateProjectAccess(projectId, userId);
             verify(jiraValidator, times(1)).validateLogExists(logId);
             verify(jiraConnectionRepository, times(1)).findByProjectId(projectId);
             verify(encryptionUtils, times(1)).decrypt(encryptedToken);
             verify(jiraMapper, times(1)).toJiraApiRequest(any(), eq(jiraProjectKey), anyString());
             verify(jiraApiClient, times(1)).createIssue(jiraUrl, jiraEmail, decryptedToken, jiraRequest);
-            verify(userRepository, times(1)).findById(userId);
+            verify(authenticationHelper, times(1)).getCurrentUser();
             verify(jiraMapper, times(1)).toCreatedByResponse(user);
         }
 
@@ -182,14 +184,16 @@ class JiraIssueServiceImplTest {
                     "High"
             );
 
+            given(authenticationHelper.getCurrentUserId()).willReturn(userId);
             willThrow(new BusinessException(GlobalErrorCode.FORBIDDEN))
                     .given(jiraValidator).validateProjectAccess(projectId, userId);
 
             // when & then
-            assertThatThrownBy(() -> jiraIssueService.createIssue(request, userId))
+            assertThatThrownBy(() -> jiraIssueService.createIssue(request))
                     .isInstanceOf(BusinessException.class);
 
             // verify
+            verify(authenticationHelper, times(1)).getCurrentUserId();
             verify(jiraValidator, times(1)).validateProjectAccess(projectId, userId);
             verify(jiraValidator, times(0)).validateLogExists(any());
             verify(jiraConnectionRepository, times(0)).findByProjectId(any());
@@ -211,15 +215,17 @@ class JiraIssueServiceImplTest {
                     "High"
             );
 
+            given(authenticationHelper.getCurrentUserId()).willReturn(userId);
             willDoNothing().given(jiraValidator).validateProjectAccess(projectId, userId);
             willThrow(new BusinessException(GlobalErrorCode.NOT_FOUND))
                     .given(jiraValidator).validateLogExists(logId);
 
             // when & then
-            assertThatThrownBy(() -> jiraIssueService.createIssue(request, userId))
+            assertThatThrownBy(() -> jiraIssueService.createIssue(request))
                     .isInstanceOf(BusinessException.class);
 
             // verify
+            verify(authenticationHelper, times(1)).getCurrentUserId();
             verify(jiraValidator, times(1)).validateProjectAccess(projectId, userId);
             verify(jiraValidator, times(1)).validateLogExists(logId);
             verify(jiraConnectionRepository, times(0)).findByProjectId(any());
@@ -241,16 +247,18 @@ class JiraIssueServiceImplTest {
                     "High"
             );
 
+            given(authenticationHelper.getCurrentUserId()).willReturn(userId);
             willDoNothing().given(jiraValidator).validateProjectAccess(projectId, userId);
             willDoNothing().given(jiraValidator).validateLogExists(logId);
             given(jiraConnectionRepository.findByProjectId(projectId)).willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> jiraIssueService.createIssue(request, userId))
+            assertThatThrownBy(() -> jiraIssueService.createIssue(request))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining(GlobalErrorCode.NOT_FOUND.getMessage());
 
             // verify
+            verify(authenticationHelper, times(1)).getCurrentUserId();
             verify(jiraValidator, times(1)).validateProjectAccess(projectId, userId);
             verify(jiraValidator, times(1)).validateLogExists(logId);
             verify(jiraConnectionRepository, times(1)).findByProjectId(projectId);
@@ -298,6 +306,7 @@ class JiraIssueServiceImplTest {
                     )
             );
 
+            given(authenticationHelper.getCurrentUserId()).willReturn(userId);
             willDoNothing().given(jiraValidator).validateProjectAccess(projectId, userId);
             willDoNothing().given(jiraValidator).validateLogExists(logId);
             given(jiraConnectionRepository.findByProjectId(projectId)).willReturn(Optional.of(connection));
@@ -307,88 +316,19 @@ class JiraIssueServiceImplTest {
                     .given(jiraApiClient).createIssue(jiraUrl, jiraEmail, decryptedToken, jiraRequest);
 
             // when & then
-            assertThatThrownBy(() -> jiraIssueService.createIssue(request, userId))
+            assertThatThrownBy(() -> jiraIssueService.createIssue(request))
                     .isInstanceOf(BusinessException.class);
 
             // verify
+            verify(authenticationHelper, times(1)).getCurrentUserId();
             verify(jiraValidator, times(1)).validateProjectAccess(projectId, userId);
             verify(jiraValidator, times(1)).validateLogExists(logId);
             verify(jiraConnectionRepository, times(1)).findByProjectId(projectId);
             verify(encryptionUtils, times(1)).decrypt(encryptedToken);
             verify(jiraMapper, times(1)).toJiraApiRequest(any(), eq(jiraProjectKey), anyString());
             verify(jiraApiClient, times(1)).createIssue(jiraUrl, jiraEmail, decryptedToken, jiraRequest);
-            verify(userRepository, times(0)).findById(any());
+            verify(authenticationHelper, times(0)).getCurrentUser();
         }
 
-        @Test
-        @DisplayName("사용자_정보_없으면_예외가_발생한다")
-        void 사용자_정보_없으면_예외가_발생한다() {
-            // given
-            Integer userId = 1;
-            Integer projectId = 1;
-            Integer logId = 100;
-            JiraIssueCreateRequest request = new JiraIssueCreateRequest(
-                    projectId,
-                    logId,
-                    "Test Issue",
-                    "Test Description",
-                    "Bug",
-                    "High"
-            );
-
-            String jiraUrl = "https://test.atlassian.net";
-            String jiraEmail = "admin@example.com";
-            String encryptedToken = "encrypted-token";
-            String decryptedToken = "decrypted-token";
-            String jiraProjectKey = "TEST";
-
-            JiraConnection connection = JiraConnection.builder()
-                    .projectId(projectId)
-                    .jiraUrl(jiraUrl)
-                    .jiraEmail(jiraEmail)
-                    .jiraApiToken(encryptedToken)
-                    .jiraProjectKey(jiraProjectKey)
-                    .build();
-
-            JiraIssueRequest jiraRequest = new JiraIssueRequest(
-                    new JiraIssueRequest.Fields(
-                            new JiraIssueRequest.Project(jiraProjectKey),
-                            "Test Issue",
-                            new JiraIssueRequest.Description("doc", 1, List.of()),
-                            new JiraIssueRequest.IssueType("Bug"),
-                            new JiraIssueRequest.Priority("High")
-                    )
-            );
-
-            JiraIssueResponse jiraResponse = new JiraIssueResponse(
-                    "10001",
-                    "TEST-1234",
-                    jiraUrl + "/rest/api/3/issue/10001"
-            );
-
-            willDoNothing().given(jiraValidator).validateProjectAccess(projectId, userId);
-            willDoNothing().given(jiraValidator).validateLogExists(logId);
-            given(jiraConnectionRepository.findByProjectId(projectId)).willReturn(Optional.of(connection));
-            given(encryptionUtils.decrypt(encryptedToken)).willReturn(decryptedToken);
-            given(jiraMapper.toJiraApiRequest(any(), eq(jiraProjectKey), anyString())).willReturn(jiraRequest);
-            given(jiraApiClient.createIssue(jiraUrl, jiraEmail, decryptedToken, jiraRequest))
-                    .willReturn(jiraResponse);
-            given(userRepository.findById(userId)).willReturn(Optional.empty());
-
-            // when & then
-            assertThatThrownBy(() -> jiraIssueService.createIssue(request, userId))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining(GlobalErrorCode.USER_NOT_FOUND.getMessage());
-
-            // verify
-            verify(jiraValidator, times(1)).validateProjectAccess(projectId, userId);
-            verify(jiraValidator, times(1)).validateLogExists(logId);
-            verify(jiraConnectionRepository, times(1)).findByProjectId(projectId);
-            verify(encryptionUtils, times(1)).decrypt(encryptedToken);
-            verify(jiraMapper, times(1)).toJiraApiRequest(any(), eq(jiraProjectKey), anyString());
-            verify(jiraApiClient, times(1)).createIssue(jiraUrl, jiraEmail, decryptedToken, jiraRequest);
-            verify(userRepository, times(1)).findById(userId);
-            verify(jiraMapper, times(0)).toCreatedByResponse(any());
-        }
     }
 }

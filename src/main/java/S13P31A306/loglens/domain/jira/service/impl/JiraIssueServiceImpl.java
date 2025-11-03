@@ -1,7 +1,7 @@
 package S13P31A306.loglens.domain.jira.service.impl;
 
 import S13P31A306.loglens.domain.auth.entity.User;
-import S13P31A306.loglens.domain.auth.respository.UserRepository;
+import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.domain.jira.client.JiraApiClient;
 import S13P31A306.loglens.domain.jira.client.dto.JiraIssueRequest;
 import S13P31A306.loglens.domain.jira.client.dto.JiraIssueResponse;
@@ -32,8 +32,8 @@ public class JiraIssueServiceImpl implements JiraIssueService {
 
     private static final String LOG_PREFIX = "[JiraIssue]";
 
+    private final AuthenticationHelper authenticationHelper;
     private final JiraConnectionRepository jiraConnectionRepository;
-    private final UserRepository userRepository;
     private final JiraApiClient jiraApiClient;
     private final JiraValidator jiraValidator;
     private final JiraMapper jiraMapper;
@@ -41,13 +41,15 @@ public class JiraIssueServiceImpl implements JiraIssueService {
 
     /**
      * Jira 이슈 생성
+     * 현재 인증된 사용자의 정보를 사용합니다.
      *
      * @param request 이슈 생성 요청 DTO
-     * @param userId  요청 사용자 ID
      * @return JiraIssueCreateResponse 이슈 생성 응답 DTO
      */
     @Override
-    public JiraIssueCreateResponse createIssue(JiraIssueCreateRequest request, Integer userId) {
+    public JiraIssueCreateResponse createIssue(JiraIssueCreateRequest request) {
+        // 현재 인증된 사용자 ID 조회
+        Integer userId = authenticationHelper.getCurrentUserId();
         log.info("{} 🎫 Jira 이슈 생성 시작: projectId={}, logId={}, userId={}",
                 LOG_PREFIX, request.projectId(), request.logId(), userId);
 
@@ -92,8 +94,7 @@ public class JiraIssueServiceImpl implements JiraIssueService {
         log.info("{} ✅ Jira 이슈 생성 완료: issueKey={}", LOG_PREFIX, jiraResponse.key());
 
         // 8. 사용자 정보 조회
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(GlobalErrorCode.USER_NOT_FOUND));
+        User user = authenticationHelper.getCurrentUser();
         CreatedByResponse createdBy = jiraMapper.toCreatedByResponse(user);
 
         // 9. 응답 생성

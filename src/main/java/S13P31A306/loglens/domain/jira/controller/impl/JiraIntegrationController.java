@@ -1,6 +1,5 @@
 package S13P31A306.loglens.domain.jira.controller.impl;
 
-import S13P31A306.loglens.domain.auth.model.CustomUserDetails;
 import S13P31A306.loglens.domain.jira.constants.JiraSuccessCode;
 import S13P31A306.loglens.domain.jira.controller.JiraIntegrationApi;
 import S13P31A306.loglens.domain.jira.dto.request.JiraConnectRequest;
@@ -15,7 +14,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,21 +35,18 @@ public class JiraIntegrationController implements JiraIntegrationApi {
     /**
      * Jira 연동 설정
      *
-     * @param request        연동 요청 DTO
-     * @param authentication 인증 정보
+     * @param request 연동 요청 DTO
      * @return ResponseEntity<BaseResponse>
      */
     @Override
     @PostMapping("/connect")
     public ResponseEntity<? extends BaseResponse> connect(
-            @Valid @RequestBody JiraConnectRequest request,
-            Authentication authentication
+            @Valid @RequestBody JiraConnectRequest request
     ) {
         log.info("📥 Jira 연동 설정 요청: projectId={}, jiraUrl={}",
                 request.projectId(), request.jiraUrl());
 
-        Integer userId = extractUserId(authentication);
-        JiraConnectResponse response = jiraIntegrationService.connect(request, userId);
+        JiraConnectResponse response = jiraIntegrationService.connect(request);
 
         log.info("✅ Jira 연동 설정 완료: connectionId={}, projectId={}",
                 response.id(), response.projectId());
@@ -62,35 +57,22 @@ public class JiraIntegrationController implements JiraIntegrationApi {
     /**
      * Jira 이슈 생성
      *
-     * @param request        이슈 생성 요청 DTO
-     * @param authentication 인증 정보
+     * @param request 이슈 생성 요청 DTO
      * @return ResponseEntity<BaseResponse>
      */
     @Override
     @PostMapping("/issues")
     public ResponseEntity<? extends BaseResponse> createIssue(
-            @Valid @RequestBody JiraIssueCreateRequest request,
-            Authentication authentication
+            @Valid @RequestBody JiraIssueCreateRequest request
     ) {
         log.info("📥 Jira 이슈 생성 요청: projectId={}, logId={}, summary={}",
                 request.projectId(), request.logId(), request.summary());
 
-        Integer userId = extractUserId(authentication);
-        JiraIssueCreateResponse response = jiraIssueService.createIssue(request, userId);
+        JiraIssueCreateResponse response = jiraIssueService.createIssue(request);
 
         log.info("✅ Jira 이슈 생성 완료: issueKey={}, projectId={}",
                 response.issueKey(), request.projectId());
 
         return ApiResponseFactory.success(JiraSuccessCode.JIRA_ISSUE_CREATE_SUCCESS, response);
-    }
-
-    /**
-     * Authentication에서 사용자 ID 추출
-     *
-     * @param authentication 인증 정보
-     * @return 사용자 ID
-     */
-    private Integer extractUserId(Authentication authentication) {
-        return ((CustomUserDetails) authentication.getPrincipal()).getUserId();
     }
 }

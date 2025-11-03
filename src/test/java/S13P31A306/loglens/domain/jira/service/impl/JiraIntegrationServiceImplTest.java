@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.jira.service.impl;
 
+import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.domain.jira.client.JiraApiClient;
 import S13P31A306.loglens.domain.jira.constants.JiraErrorCode;
 import S13P31A306.loglens.domain.jira.dto.request.JiraConnectRequest;
@@ -36,6 +37,9 @@ class JiraIntegrationServiceImplTest {
 
     @InjectMocks
     private JiraIntegrationServiceImpl jiraIntegrationService;
+
+    @Mock
+    private AuthenticationHelper authenticationHelper;
 
     @Mock
     private JiraConnectionRepository jiraConnectionRepository;
@@ -100,6 +104,7 @@ class JiraIntegrationServiceImplTest {
             );
 
             // Mocking
+            given(authenticationHelper.getCurrentUserId()).willReturn(userId);
             willDoNothing().given(jiraValidator).validateProjectAccess(projectId, userId);
             willDoNothing().given(jiraValidator).validateDuplicateConnection(projectId);
             given(encryptionUtils.encrypt(jiraApiToken)).willReturn(encryptedToken);
@@ -110,7 +115,7 @@ class JiraIntegrationServiceImplTest {
             given(jiraMapper.toConnectResponse(savedConnection)).willReturn(expectedResponse);
 
             // when
-            JiraConnectResponse response = jiraIntegrationService.connect(request, userId);
+            JiraConnectResponse response = jiraIntegrationService.connect(request);
 
             // then
             assertThat(response).isNotNull();
@@ -122,6 +127,7 @@ class JiraIntegrationServiceImplTest {
             assertThat(response.connectionTest().status()).isEqualTo("SUCCESS");
 
             // verify
+            verify(authenticationHelper, times(1)).getCurrentUserId();
             verify(jiraValidator, times(1)).validateProjectAccess(projectId, userId);
             verify(jiraValidator, times(1)).validateDuplicateConnection(projectId);
             verify(encryptionUtils, times(1)).encrypt(jiraApiToken);
@@ -145,14 +151,16 @@ class JiraIntegrationServiceImplTest {
                     "TEST"
             );
 
+            given(authenticationHelper.getCurrentUserId()).willReturn(userId);
             willThrow(new BusinessException(GlobalErrorCode.FORBIDDEN))
                     .given(jiraValidator).validateProjectAccess(projectId, userId);
 
             // when & then
-            assertThatThrownBy(() -> jiraIntegrationService.connect(request, userId))
+            assertThatThrownBy(() -> jiraIntegrationService.connect(request))
                     .isInstanceOf(BusinessException.class);
 
             // verify
+            verify(authenticationHelper, times(1)).getCurrentUserId();
             verify(jiraValidator, times(1)).validateProjectAccess(projectId, userId);
             verify(jiraValidator, times(0)).validateDuplicateConnection(any());
             verify(encryptionUtils, times(0)).encrypt(anyString());
@@ -174,15 +182,17 @@ class JiraIntegrationServiceImplTest {
                     "TEST"
             );
 
+            given(authenticationHelper.getCurrentUserId()).willReturn(userId);
             willDoNothing().given(jiraValidator).validateProjectAccess(projectId, userId);
             willThrow(new BusinessException(JiraErrorCode.JIRA_CONNECTION_ALREADY_EXISTS))
                     .given(jiraValidator).validateDuplicateConnection(projectId);
 
             // when & then
-            assertThatThrownBy(() -> jiraIntegrationService.connect(request, userId))
+            assertThatThrownBy(() -> jiraIntegrationService.connect(request))
                     .isInstanceOf(BusinessException.class);
 
             // verify
+            verify(authenticationHelper, times(1)).getCurrentUserId();
             verify(jiraValidator, times(1)).validateProjectAccess(projectId, userId);
             verify(jiraValidator, times(1)).validateDuplicateConnection(projectId);
             verify(encryptionUtils, times(0)).encrypt(anyString());
@@ -209,16 +219,18 @@ class JiraIntegrationServiceImplTest {
                     jiraProjectKey
             );
 
+            given(authenticationHelper.getCurrentUserId()).willReturn(userId);
             willDoNothing().given(jiraValidator).validateProjectAccess(projectId, userId);
             willDoNothing().given(jiraValidator).validateDuplicateConnection(projectId);
             given(jiraApiClient.testConnection(jiraUrl, jiraEmail, jiraApiToken, jiraProjectKey))
                     .willReturn(false);
 
             // when & then
-            assertThatThrownBy(() -> jiraIntegrationService.connect(request, userId))
+            assertThatThrownBy(() -> jiraIntegrationService.connect(request))
                     .isInstanceOf(BusinessException.class);
 
             // verify
+            verify(authenticationHelper, times(1)).getCurrentUserId();
             verify(jiraValidator, times(1)).validateProjectAccess(projectId, userId);
             verify(jiraValidator, times(1)).validateDuplicateConnection(projectId);
             verify(jiraApiClient, times(1)).testConnection(jiraUrl, jiraEmail, jiraApiToken, jiraProjectKey);

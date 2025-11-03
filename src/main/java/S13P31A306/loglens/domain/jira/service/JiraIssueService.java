@@ -12,10 +12,10 @@ public interface JiraIssueService {
     /**
      * Jira 이슈 생성
      * 로그 정보를 기반으로 Jira 이슈를 생성합니다.
+     * 현재 인증된 사용자의 정보를 사용합니다.
      *
      * @param request 이슈 생성 요청 DTO
-     * @param userId  요청 사용자 ID
      * @return JiraIssueCreateResponse 이슈 생성 응답 DTO
      */
-    JiraIssueCreateResponse createIssue(JiraIssueCreateRequest request, Integer userId);
+    JiraIssueCreateResponse createIssue(JiraIssueCreateRequest request);
 }

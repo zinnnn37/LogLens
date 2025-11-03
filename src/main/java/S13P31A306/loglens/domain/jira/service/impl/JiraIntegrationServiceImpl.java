@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.jira.service.impl;
 
+import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.domain.jira.client.JiraApiClient;
 import S13P31A306.loglens.domain.jira.constants.JiraErrorCode;
 import S13P31A306.loglens.domain.jira.dto.request.JiraConnectRequest;
@@ -27,6 +28,7 @@ public class JiraIntegrationServiceImpl implements JiraIntegrationService {
 
     private static final String LOG_PREFIX = "[JiraIntegration]";
 
+    private final AuthenticationHelper authenticationHelper;
     private final JiraConnectionRepository jiraConnectionRepository;
     private final JiraApiClient jiraApiClient;
     private final JiraValidator jiraValidator;
@@ -35,14 +37,16 @@ public class JiraIntegrationServiceImpl implements JiraIntegrationService {
 
     /**
      * Jira 연동 설정
+     * 현재 인증된 사용자의 정보를 사용합니다.
      *
      * @param request 연동 요청 DTO
-     * @param userId  요청 사용자 ID
      * @return JiraConnectResponse 연동 응답 DTO
      */
     @Override
     @Transactional
-    public JiraConnectResponse connect(JiraConnectRequest request, Integer userId) {
+    public JiraConnectResponse connect(JiraConnectRequest request) {
+        // 현재 인증된 사용자 ID 조회
+        Integer userId = authenticationHelper.getCurrentUserId();
         log.info("{} 🔗 Jira 연동 설정 시작: projectId={}, userId={}", LOG_PREFIX, request.projectId(), userId);
 
         // 1. 프로젝트 존재 여부 및 권한 확인

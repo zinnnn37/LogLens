@@ -12,10 +12,10 @@ public interface JiraIntegrationService {
     /**
      * Jira 연동 설정
      * Jira 인스턴스와 연동하고 연결 테스트를 수행합니다.
+     * 현재 인증된 사용자의 정보를 사용합니다.
      *
      * @param request 연동 요청 DTO
-     * @param userId  요청 사용자 ID
      * @return JiraConnectResponse 연동 응답 DTO
      */
-    JiraConnectResponse connect(JiraConnectRequest request, Integer userId);
+    JiraConnectResponse connect(JiraConnectRequest request);
 }

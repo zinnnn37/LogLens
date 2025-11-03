@@ -77,5 +77,6 @@ llm:
 # ===================================================================
 encryption:
   # API 토큰 등 민감 정보 암호화에 사용되는 시크릿 키
-  # 프로덕션 환경에서는 반드시 환경 변수로 설정하세요 (최소 32자 이상 권장)
-  secret-key: ${ENCRYPTION_SECRET_KEY:loglens-default-secret-key-32ch}
+  # 환경 변수 ENCRYPTION_SECRET_KEY 설정이 필수입니다 (최소 16자 이상 권장)
+  # 예: export ENCRYPTION_SECRET_KEY="your-secure-secret-key-here"
+  secret-key: ${ENCRYPTION_SECRET_KEY}

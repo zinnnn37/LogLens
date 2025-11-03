@@ -30,16 +30,35 @@ public class EncryptionUtils {
     /**
      * 생성자
      * application.yml의 secret-key를 사용하여 암호화 키를 생성합니다.
+     * ENCRYPTION_SECRET_KEY 환경변수가 설정되지 않은 경우 예외가 발생합니다.
      *
      * @param secretKey 암호화 시크릿 키 (최소 16자 이상 권장)
+     * @throws IllegalStateException secretKey가 null이거나 비어있을 경우
      */
-    public EncryptionUtils(@Value("${encryption.secret-key:loglens-default-secret-key-32ch}") String secretKey) {
+    public EncryptionUtils(@Value("${encryption.secret-key}") String secretKey) {
+        // secretKey null/empty 검증
+        if (secretKey == null || secretKey.trim().isEmpty()) {
+            String errorMessage = "ENCRYPTION_SECRET_KEY must be set in environment variables. " +
+                    "Please configure encryption.secret-key in application.yml or set ENCRYPTION_SECRET_KEY environment variable.";
+            log.error("{} {}", LOG_PREFIX, errorMessage);
+            throw new IllegalStateException(errorMessage);
+        }
+
+        // secretKey 최소 길이 검증 (보안 강화)
+        if (secretKey.length() < 16) {
+            String errorMessage = "ENCRYPTION_SECRET_KEY must be at least 16 characters long. Current length: " + secretKey.length();
+            log.error("{} {}", LOG_PREFIX, errorMessage);
+            throw new IllegalStateException(errorMessage);
+        }
+
         try {
             // 시크릿 키를 SHA-256으로 해싱하여 32바이트 키 생성
             MessageDigest sha = MessageDigest.getInstance("SHA-256");
             byte[] key = sha.digest(secretKey.getBytes(StandardCharsets.UTF_8));
             this.keyBytes = Arrays.copyOf(key, 32); // AES-256용 32바이트
             this.ivBytes = Arrays.copyOf(key, 16);  // IV용 16바이트
+
+            log.info("{} ✅ 암호화 유틸리티 초기화 완료", LOG_PREFIX);
         } catch (Exception e) {
             log.error("{} 암호화 키 생성 실패", LOG_PREFIX, e);
             throw new IllegalStateException("암호화 초기화 실패", e);

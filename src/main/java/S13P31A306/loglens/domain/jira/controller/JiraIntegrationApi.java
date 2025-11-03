@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.RequestBody;
 
 /**
@@ -136,8 +135,7 @@ public interface JiraIntegrationApi {
             }
     )
     ResponseEntity<? extends BaseResponse> connect(
-            @Valid @RequestBody JiraConnectRequest request,
-            Authentication authentication
+            @Valid @RequestBody JiraConnectRequest request
     );
 
     @Operation(
@@ -216,7 +214,6 @@ public interface JiraIntegrationApi {
             }
     )
     ResponseEntity<? extends BaseResponse> createIssue(
-            @Valid @RequestBody JiraIssueCreateRequest request,
-            Authentication authentication
+            @Valid @RequestBody JiraIssueCreateRequest request
     );
 }
