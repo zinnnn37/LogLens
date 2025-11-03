@@ -63,4 +63,12 @@ public interface ProjectService {
      */
     void deleteMember(int projectId, int memberId);
 
+    /**
+     * 프로젝트 UUID 조회
+     *
+     * @param projectId 프로젝트 ID
+     * @return 프로젝트 UUID
+     */
+    String getProjectUuid(int projectId);
+
 }

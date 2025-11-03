@@ -1,5 +1,15 @@
 package S13P31A306.loglens.domain.project.service.impl;
 
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.ACCESS_FORBIDDEN;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.CANNOT_DELETE_SELF;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.MEMBER_DELETE_FORBIDDEN;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.MEMBER_EXISTS;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.MEMBER_NOT_FOUND;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PROJECT_DELETE_FORBIDDEN;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PROJECT_NAME_DUPLICATED;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PROJECT_NOT_FOUND;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.USER_NOT_FOUND;
+
 import S13P31A306.loglens.domain.auth.entity.User;
 import S13P31A306.loglens.domain.auth.respository.UserRepository;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
@@ -17,16 +27,13 @@ import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import S13P31A306.loglens.domain.project.service.ProjectService;
 import S13P31A306.loglens.global.exception.BusinessException;
+import java.util.Comparator;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Comparator;
-import java.util.List;
-
-import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.*;
 
 @Slf4j
 @Service
@@ -225,6 +232,17 @@ public class ProjectServiceImpl implements ProjectService {
         projectMemberRepository.deleteByProjectIdAndUserId(projectId, memberId);
 
         log.info("{} 멤버 삭제 완료: project={}", LOG_PREFIX, project.getProjectName());
+    }
+
+    @Override
+    public String getProjectUuid(int projectId) {
+        log.debug("{} 프로젝트 UUID 조회: projectId={}", LOG_PREFIX, projectId);
+
+        Project project = findProjectById(projectId);
+        String projectUuid = project.getProjectUuid();
+
+        log.debug("{} 프로젝트 UUID 조회 완료: projectUuid={}", LOG_PREFIX, projectUuid);
+        return projectUuid;
     }
 
     private Comparator<Project> getComparator(String sort, String order) {
