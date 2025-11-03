@@ -4,14 +4,12 @@ import type { ComponentProps } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   PlusSquare,
-  Settings,
   MessageSquare,
   LogOut,
   BookOpen,
 } from 'lucide-react';
 
 import ProjectCreateModal from '@/components/modal/ProjectCreateModal';
-import { JiraIntegrationModal } from '@/components/modal/JiraIntegrationModal';
 import DocsTOC from '@/components/DocsTOC';
 import {
   Accordion,
@@ -71,8 +69,7 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
 
   // 프로젝트 생성 모달 Open 상태 관리
   const [openCreate, setOpenCreate] = useState(false);
-  // Jira API 연동 모달 Open 상태 관리
-  const [openJira, setOpenJira] = useState(false);
+
 
   // 프로젝트 목록(store)
   const projects = useProjectStore(state => state.projects);
@@ -156,9 +153,7 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
               <p className="font-pretendard">Support</p>
             </NavHeading>
             <div className="flex min-h-0 flex-1 flex-col gap-1">
-              <NavButton icon={Settings} onClick={() => setOpenJira(true)}>
-                Jira API 연결
-              </NavButton>
+             
 
               <Accordion
                 type="single"
@@ -222,8 +217,7 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
         }}
       />
 
-      {/* Jira API 연동 모달 */}
-      <JiraIntegrationModal open={openJira} onOpenChange={setOpenJira} />
+    
     </aside>
   );
 };

@@ -1,8 +1,10 @@
+// src/components/WithProject.tsx
 import { Button } from '@/components/ui/button';
-import { UserPlus2, Trash2 } from 'lucide-react';
+import { UserPlus2, Trash2, Link2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import MemberInviteModal from './modal/MemberInviteModal';
 import { AnimatePresence, motion } from 'framer-motion';
+import { JiraIntegrationModal } from '@/components/modal/JiraIntegrationModal';
 import type { ProjectInfoDTO } from '@/types/project';
 
 export interface WithProjectProps {
@@ -13,9 +15,7 @@ export interface WithProjectProps {
 }
 
 const formatK = (n: number) => {
-  if (n < 1000) {
-    return `${n}`;
-  }
+  if (n < 1000) { return `${n}`; }
   const k = n / 1000;
   return `${Number.isInteger(k) ? k.toFixed(0) : k.toFixed(1)}K`;
 };
@@ -33,10 +33,12 @@ const WithProject = ({
   const [invitingProjectId, setInvitingProjectId] = useState<number | null>(
     null,
   );
+  const [jiraProjectId, setJiraProjectId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const becameEmptyRef = useRef(false);
   const prevLenRef = useRef(list.length);
+
   useEffect(() => {
     const prev = prevLenRef.current;
     const curr = list.length;
@@ -47,9 +49,7 @@ const WithProject = ({
   const handleDelete = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
     const ok = window.confirm('정말 이 프로젝트를 삭제하시겠습니까?');
-    if (!ok) {
-      return;
-    }
+    if (!ok) { return; }
     try {
       setDeletingId(id);
       await onDelete?.(id);
@@ -103,12 +103,27 @@ const WithProject = ({
                             {p.projectName}
                           </p>
                           <p className="text-muted-foreground text-sm">
-                            멤버 {p.memberCount}명{DOT}로그{' '}
-                            {formatK(p.logCount)}건
+                            멤버 {p.memberCount}명{DOT}로그 {formatK(p.logCount)}건
                           </p>
                         </div>
 
                         <div className="flex items-center gap-2">
+
+                          {/* TODO : 연결상태 확인할 수 있는지 체크 후 조건부 렌더링 추가 */}
+                          {/* Jira 연결 버튼 */}
+                          <Button
+                            variant="outline"
+                            className="gap-2"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setJiraProjectId(p.projectId);
+                            }}
+                          >
+                            <Link2 className="h-4 w-4" />
+                            Jira 연결
+                          </Button>
+
+                          {/* 멤버 초대 */}
                           <Button
                             variant="secondary"
                             className="gap-2"
@@ -121,6 +136,7 @@ const WithProject = ({
                             초대
                           </Button>
 
+                          {/* 프로젝트 삭제 */}
                           <Button
                             asChild
                             className="gap-2 bg-[#ff6347] text-white hover:bg-[#ff6347]/90 disabled:opacity-60"
@@ -147,11 +163,22 @@ const WithProject = ({
           </div>
         </div>
       </section>
+
+      {/* 멤버 초대 모달 */}
       {invitingProjectId !== null && (
         <MemberInviteModal
           open={true}
           onOpenChange={() => setInvitingProjectId(null)}
           projectId={invitingProjectId}
+        />
+      )}
+
+      {/* Jira 연동 모달 */}
+      {jiraProjectId !== null && (
+        <JiraIntegrationModal
+          open={true}
+          onOpenChange={() => setJiraProjectId(null)}
+          projectId={jiraProjectId}
         />
       )}
     </div>
