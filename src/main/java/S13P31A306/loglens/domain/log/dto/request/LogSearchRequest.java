@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.log.dto.request;
 
+import S13P31A306.loglens.global.annotation.Sensitive;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -8,6 +9,8 @@ import org.springframework.format.annotation.DateTimeFormat;
 
 @Data
 public class LogSearchRequest {
+
+    @Sensitive
     @Schema(description = "프로젝트 UUID", example = "550e8400-e29b-41d4-a716-446655440000")
     private String projectUuid;
 
