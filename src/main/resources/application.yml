@@ -71,3 +71,12 @@ management: # Spring-Actuator 설정
 llm:
   api:
     key: ${LLM_API_KEY:}
+
+# ===================================================================
+# 암호화 설정 (Encryption Configuration)
+# ===================================================================
+encryption:
+  # API 토큰 등 민감 정보 암호화에 사용되는 시크릿 키
+  # 환경 변수 ENCRYPTION_SECRET_KEY 설정이 필수입니다 (최소 16자 이상 권장)
+  # 예: export ENCRYPTION_SECRET_KEY="your-secure-secret-key-here"
+  secret-key: ${ENCRYPTION_SECRET_KEY}
