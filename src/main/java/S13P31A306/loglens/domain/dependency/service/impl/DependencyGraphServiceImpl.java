@@ -28,20 +28,31 @@ public class DependencyGraphServiceImpl implements DependencyGraphService {
 
     @Override
     @Transactional
-    public void saveAll(DependencyGraphBatchRequest request) {
-//        log.info("📊 의존성 관계 저장 시작: 프로젝트={}, 관계 수={}",
-//                request.projectName(), request.dependencies().size());
+    public void saveAll(DependencyGraphBatchRequest request, Integer projectId) {
+        Integer existingCount = dependencyGraphRepository.countByProjectId(projectId);
+        if (existingCount > 0) {
+            log.info("🗑️ 기존 의존성 관계 삭제 시작: projectId={}, 개수={}", projectId, existingCount);
+            dependencyGraphRepository.deleteByProjectId(projectId);
+            log.info("✅ 기존 의존성 관계 삭제 완료");
+        }
+
+        log.info("📊 의존성 관계 저장 시작: projectId={}, 관계 수={}",
+                projectId, request.dependencies().size());
 
         int savedCount = 0;
+        int skippedCount = 0;
 
         for (DependencyRelationRequest relation : request.dependencies()) {
-            // name으로 컴포넌트 조회
-            Optional<Component> fromComponent = componentRepository.findByName(relation.from());
-            Optional<Component> toComponent = componentRepository.findByName(relation.to());
+            // ✅ projectId와 name으로 컴포넌트 조회
+            Optional<Component> fromComponent = componentRepository
+                    .findByProjectIdAndName(projectId, relation.from());
+            Optional<Component> toComponent = componentRepository
+                    .findByProjectIdAndName(projectId, relation.to());
 
             // 둘 다 있으면 저장
             if (fromComponent.isPresent() && toComponent.isPresent()) {
                 DependencyGraph graph = DependencyGraph.builder()
+                        .projectId(projectId)  // ✅ projectId 설정
                         .from(fromComponent.get().getId())
                         .to(toComponent.get().getId())
                         .build();
@@ -49,10 +60,13 @@ public class DependencyGraphServiceImpl implements DependencyGraphService {
                 dependencyGraphRepository.save(graph);
                 savedCount++;
             } else {
-                log.warn("⚠️ 컴포넌트를 찾을 수 없음: from={}, to={}", relation.from(), relation.to());
+                log.warn("⚠️ 컴포넌트를 찾을 수 없음 (projectId={}): from={}, to={}",
+                        projectId, relation.from(), relation.to());
+                skippedCount++;
             }
         }
 
-        log.info("✅ 의존성 관계 저장 완료: {} 개", savedCount);
+        log.info("✅ 의존성 관계 저장 완료: {} 개 저장, {} 개 스킵 (projectId={})",
+                savedCount, skippedCount, projectId);
     }
 }
