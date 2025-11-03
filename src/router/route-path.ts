@@ -8,6 +8,7 @@ export const ROUTE_PATH = {
   DEPENDENCY_GRAPH: '/dependency-graph',
   AI_CHAT: '/chatbot',
   REQUEST_FLOW: '/request-flow',
+  DOCS: '/docs',
   NOT_FOUND: '*',
   MAIN: '/main',
 } as const;

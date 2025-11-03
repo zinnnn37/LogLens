@@ -13,6 +13,8 @@ import type {
   DeleteMemberParams,
   DeleteProjectParams,
 } from '@/types/project';
+import type { ArchitectureData } from '@/types/architecture';
+import type { ComponentListData } from '@/types/component';
 import { useProjectStore } from '@/stores/projectStore';
 
 // 프로젝트 생성 함수
@@ -128,6 +130,50 @@ export const deleteMember = async ({
     useProjectStore.getState().removeMember(projectId, memberId);
   } catch (error) {
     console.log('멤버 삭제 실패', error);
+    throw error;
+  }
+};
+
+/**
+ * 프로젝트 아키텍처 흐름 조회 (GET /api/projects/{projectId}/architecture)
+ * @param projectId - 조회할 프로젝트 ID
+ * @param params - { startDate, endDate } 기간 파라미터 (옵션)
+ */
+export const getArchitecture = async (
+  projectId: number,
+  params?: { startDate?: string; endDate?: string },
+): Promise<ArchitectureData> => {
+  try {
+    const architecture = await apiClient.get<ArchitectureData>(
+      API_PATH.ARCHITECTURE(String(projectId)),
+      params,
+    );
+
+    return architecture;
+  } catch (error) {
+    console.error('아키텍처 조회 실패', error);
+    throw error;
+  }
+};
+
+/**
+ * 프로젝트 컴포넌트 목록 조회 (GET /api/projects/{projectId}/components)
+ * @param projectId - 조회할 프로젝트 ID
+ * @param params - { limit, offset } 페이지네이션 파라미터 (옵션)
+ */
+export const getComponents = async (
+  projectId: number,
+  params?: { limit?: number; offset?: number },
+): Promise<ComponentListData> => {
+  try {
+    const components = await apiClient.get<ComponentListData>(
+      API_PATH.COMPONENTS(String(projectId)),
+      params,
+    );
+
+    return components;
+  } catch (error) {
+    console.error('컴포넌트 목록 조회 실패', error);
     throw error;
   }
 };

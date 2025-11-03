@@ -16,6 +16,13 @@ export const API_PATH = {
   // 멤버 초대
   INVITE_MEMBERS: (projectId: number) => `/api/projects/${projectId}/members`,
 
+  // 아키텍처 흐름 조회
+  ARCHITECTURE: (projectId: string) =>
+    `/api/projects/${projectId}/architecture`,
+
+  // 컴포넌트 목록 조회
+  COMPONENTS: (projectId: string) => `/api/projects/${projectId}/components`,
+
   // 프로젝트 삭제
   DELETE_PROJECT: (projectId: number) => `/api/projects/${projectId}`,
 

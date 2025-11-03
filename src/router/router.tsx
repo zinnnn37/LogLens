@@ -13,6 +13,7 @@ import LogsPage from '@/pages/LogsPage';
 import DashboardPage from '@/pages/DashboradPage';
 import DependencyGraphPage from '@/pages/DependencyGraphPage';
 import ChatbotPage from '@/pages/ChatbotPage';
+import Docs from '@/pages/Docs';
 
 export const router = createBrowserRouter([
   // 인증이 필요한 페이지들
@@ -53,6 +54,10 @@ export const router = createBrowserRouter([
           {
             path: ROUTE_PATH.AI_CHAT,
             element: <ChatbotPage />,
+          },
+          {
+            path: ROUTE_PATH.DOCS,
+            element: <Docs />,
           },
         ],
       },

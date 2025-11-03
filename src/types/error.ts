@@ -1,33 +1,37 @@
 export interface FrequentError {
   rank: number;
-  errorCode: string;
-  errorMessage: string;
+  exceptionType: string;
+  message: string;
   count: number;
   percentage: number;
   firstOccurrence: string;
   lastOccurrence: string;
-  affectedUsers: number;
-  trend: 'INCREASING' | 'STABLE' | 'DECREASING';
-  trendPercentage: number;
   stackTrace: string;
-  severity: 'HIGH' | 'MEDIUM' | 'LOW';
-  components: string[];
+  components: {
+    id: number;
+    name: string;
+  }[];
 }
 
 export interface FrequentErrorsSummary {
   totalErrors: number;
-  totalUniqueErrors: number;
+  uniqueErrorTypes: number;
   top10Percentage: number;
-  mostAffectedComponent: string;
-  criticalErrorCount: number;
 }
 
 export interface FrequentErrorsData {
-  projectId: string;
+  projectId: number;
   period: {
-    startDate: string;
-    endDate: string;
+    startTime: string;
+    endTime: string;
   };
   errors: FrequentError[];
   summary: FrequentErrorsSummary;
+}
+
+export interface FrequentErrorsResponse {
+  code: number;
+  message: string;
+  data: FrequentErrorsData;
+  timestamp: string;
 }
