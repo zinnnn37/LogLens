@@ -75,8 +75,9 @@ public class LoggerAutoConfiguration {
     @Bean
     public DependencyLogSender dependencyLogSender(
             @Value("${dependency.logger.collector.url:http://localhost:8081}") String collectorUrl,
+            @Value("${dependency.logger.api-key}") String apiKey,
             @Value("${dependency.logger.sender.enabled:true}") boolean enabled) {
-        return new DependencyLogSender(collectorUrl, enabled);
+        return new DependencyLogSender(collectorUrl, apiKey, enabled);
     }
 
     /**
