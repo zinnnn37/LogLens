@@ -29,6 +29,8 @@ public enum PublicEndPoint {
 
     // Component test
     COMPONENT("/api/components/**"),
+    DEPENDENCY("/api/dependencies/**"),
+    H2("/h2-console/**"),
 
     // Root
     ROOT("/");

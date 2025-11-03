@@ -100,6 +100,9 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
+                .headers(headers -> headers
+                        .frameOptions(frameOptions -> frameOptions.sameOrigin()))
+
                 // 인증 실패 및 권한 거부 예외 처리
                 .exceptionHandling(handler -> handler
                         .authenticationEntryPoint(customAuthenticationEntryPoint)
