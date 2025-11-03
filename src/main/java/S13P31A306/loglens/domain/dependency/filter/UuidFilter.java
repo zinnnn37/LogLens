@@ -11,13 +11,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Objects;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ApiKeyFilter extends OncePerRequestFilter {
+public class UuidFilter extends OncePerRequestFilter {
 
-    private static final String API_KEY_HEADER = "X-API-Key";
+    private static final String UUID_HEADER = "X-UUID";
     private static final String PROJECT_ID_ATTRIBUTE = "projectId";
     private final ProjectService projectService;
 
@@ -30,9 +31,9 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
         // Collector API 경로만 필터링 (/api/dependencies/*, /api/components/*)
         if (shouldAuthenticate(requestURI)) {
-            String apiKey = request.getHeader(API_KEY_HEADER);
+            String uuid = request.getHeader(UUID_HEADER);
 
-            if (apiKey == null || apiKey.trim().isEmpty()) {
+            if (Objects.isNull(uuid) || uuid.trim().isEmpty()) {
                 log.warn("API Key가 없는 요청: {}", requestURI);
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
@@ -42,7 +43,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
             try {
                 // API Key로 project_id 조회 (캐시 적용됨)
-                Integer projectId = projectService.getProjectIdByApiKey(apiKey);
+                Integer projectId = projectService.getProjectIdByUuid(uuid);
 
                 // request attribute에 저장 (Controller에서 사용)
                 request.setAttribute(PROJECT_ID_ATTRIBUTE, projectId);
@@ -50,7 +51,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
                 log.debug("✅ API Key 인증 성공: projectId={}, uri={}", projectId, requestURI);
 
             } catch (IllegalArgumentException e) {
-                log.warn("❌ 유효하지 않은 API Key: {}", apiKey.substring(0, Math.min(8, apiKey.length())));
+                log.warn("❌ 유효하지 않은 API Key: {}", uuid.substring(0, Math.min(8, uuid.length())));
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
                 response.getWriter().write("{\"error\": \"Invalid API Key\"}");
