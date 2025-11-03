@@ -174,6 +174,18 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    public Integer getProjectIdByUuid(String uuid) {
+        log.info("{} UUID로 프로젝트 조회 시도", LOG_PREFIX);
+
+        return projectRepository.findByProjectUuid(uuid)
+                .map(Project::getId)
+                .orElseThrow(() -> {
+                    log.warn("{} 유효하지 않은 API Key입니다.", LOG_PREFIX);
+                    return new BusinessException(PROJECT_NOT_FOUND);
+                });
+    }
+
+    @Override
     @Transactional
     public void deleteProject(int projectId) {
         log.info("{} 프로젝트 삭제 시도", LOG_PREFIX);
