@@ -1,6 +1,7 @@
-package S13P31A306.loglens.domain.log.controller;
+package S13P31A306.loglens.domain.log.controller.impl;
 
 import S13P31A306.loglens.domain.log.constants.LogSuccessCode;
+import S13P31A306.loglens.domain.log.controller.LogApi;
 import S13P31A306.loglens.domain.log.dto.request.LogSearchRequest;
 import S13P31A306.loglens.domain.log.dto.response.LogPageResponse;
 import S13P31A306.loglens.domain.log.dto.response.TraceLogResponse;
