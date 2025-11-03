@@ -7,6 +7,7 @@ import S13P31A306.loglens.domain.log.dto.request.LogSearchRequest;
 import S13P31A306.loglens.domain.log.dto.response.LogSummaryResponse;
 import S13P31A306.loglens.domain.log.entity.Log;
 import S13P31A306.loglens.domain.log.repository.LogRepository;
+import S13P31A306.loglens.global.constants.GlobalErrorCode;
 import S13P31A306.loglens.global.exception.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -50,7 +51,7 @@ public class LogRepositoryImpl implements LogRepository {
     private static final int MAX_TRACE_LOGS = 1000;
 
     @Override
-    public LogSearchResult findWithCursor(String projectUuid, LogSearchRequest request) throws IOException {
+    public LogSearchResult findWithCursor(String projectUuid, LogSearchRequest request) {
         int requestSize = request.getSize();
         int querySize = requestSize + 1;
 
@@ -64,14 +65,18 @@ public class LogRepositoryImpl implements LogRepository {
         SearchRequest searchRequest = buildSearchRequestWithCursor(query, sortOptions, querySize, request.getCursor());
 
         // 4. OpenSearch 쿼리 실행
-        SearchResponse<Log> response = openSearchClient.search(searchRequest, Log.class);
-
-        // 5. 응답 처리
-        return processSearchResponse(response, requestSize);
+        try {
+            SearchResponse<Log> response = openSearchClient.search(searchRequest, Log.class);
+            // 5. 응답 처리
+            return processSearchResponse(response, requestSize);
+        } catch (IOException e) {
+            log.error("OpenSearch findWithCursor 중 에러 발생", e);
+            throw new BusinessException(GlobalErrorCode.OPENSEARCH_OPERATION_FAILED, null, e);
+        }
     }
 
     @Override
-    public TraceLogSearchResult findByTraceId(String projectUuid, LogSearchRequest request) throws IOException {
+    public TraceLogSearchResult findByTraceId(String projectUuid, LogSearchRequest request) {
         // 1. 검색 쿼리 생성
         Query query = buildSearchQuery(projectUuid, request);
 
@@ -79,13 +84,17 @@ public class LogRepositoryImpl implements LogRepository {
         SearchRequest searchRequest = buildTraceSearchRequest(query);
 
         // 3. OpenSearch 쿼리 실행
-        SearchResponse<Log> response = openSearchClient.search(searchRequest, Log.class);
+        try {
+            SearchResponse<Log> response = openSearchClient.search(searchRequest, Log.class);
+            // 4. 응답 처리
+            List<Log> logs = extractLogsFromHits(response.hits().hits());
+            LogSummaryResponse summary = buildSummaryFromAggregations(response, logs.size());
 
-        // 4. 응답 처리
-        List<Log> logs = extractLogsFromHits(response.hits().hits());
-        LogSummaryResponse summary = buildSummaryFromAggregations(response, logs.size());
-
-        return new TraceLogSearchResult(logs, summary);
+            return new TraceLogSearchResult(logs, summary);
+        } catch (IOException e) {
+            log.error("OpenSearch findByTraceId 중 에러 발생", e);
+            throw new BusinessException(GlobalErrorCode.OPENSEARCH_OPERATION_FAILED, null, e);
+        }
     }
 
     // ============================================================

@@ -12,7 +12,6 @@ import S13P31A306.loglens.domain.log.repository.LogRepository;
 import S13P31A306.loglens.domain.log.service.LogService;
 import S13P31A306.loglens.domain.project.service.ProjectService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
@@ -34,7 +33,7 @@ public class LogServiceImpl implements LogService {
     private final ProjectService projectService;
 
     @Override
-    public LogPageResponse getLogs(LogSearchRequest request) throws IOException {
+    public LogPageResponse getLogs(LogSearchRequest request) {
         log.info("{} 로그 목록 조회 시작: projectId={}", LOG_PREFIX, request.getProjectId());
 
         String projectUuid = getProjectUuid(request.getProjectId());
@@ -55,7 +54,7 @@ public class LogServiceImpl implements LogService {
     }
 
     @Override
-    public TraceLogResponse getLogsByTraceId(LogSearchRequest request) throws IOException {
+    public TraceLogResponse getLogsByTraceId(LogSearchRequest request) {
         log.info("{} Trace ID로 로그 조회 시작: projectId={}, traceId={}",
                 LOG_PREFIX, request.getProjectId(), request.getTraceId());
 
@@ -76,14 +75,14 @@ public class LogServiceImpl implements LogService {
         return response;
     }
 
-    private LogSearchResult searchLogs(String projectUuid, LogSearchRequest request) throws IOException {
+    private LogSearchResult searchLogs(String projectUuid, LogSearchRequest request) {
         log.debug("{} OpenSearch에서 로그 조회: projectUuid={}", LOG_PREFIX, projectUuid);
         LogSearchResult result = logRepository.findWithCursor(projectUuid, request);
         log.debug("{} OpenSearch 조회 완료: 로그 개수={}", LOG_PREFIX, result.logs().size());
         return result;
     }
 
-    private TraceLogSearchResult searchLogsByTraceId(String projectUuid, LogSearchRequest request) throws IOException {
+    private TraceLogSearchResult searchLogsByTraceId(String projectUuid, LogSearchRequest request) {
         log.debug("{} OpenSearch에서 Trace ID로 로그 조회: projectUuid={}, traceId={}", LOG_PREFIX, projectUuid,
                 request.getTraceId());
         TraceLogSearchResult result = logRepository.findByTraceId(projectUuid, request);
