@@ -43,6 +43,14 @@ type ZoneContext = {
  */
 
 /**
+ * MyError 타입 정의
+ * Error 객체에 __traceId 속성 추가
+ */
+interface MyError extends Error {
+  __traceId?: string;
+}
+
+/**
  * LightZone 클래스
  * @description 비동기 컨텍스트 전파 및 관리
  * - Promise 기반 비동기 함수에서 traceId 등 컨텍스트 자동 전파
@@ -62,8 +70,8 @@ class LightZone {
   private static isPatched = false;
   private static OriginalPromise: PromiseConstructor | null = null;
 
-  private static originalSetTimeout = globalThis.setTimeout;
-  private static originalSetInterval = globalThis.setInterval;
+  private static originalSetTimeout: typeof globalThis.setTimeout;
+  private static originalSetInterval: typeof globalThis.setInterval;
 
   static init(): void {
     if (this.isPatched) {
@@ -121,8 +129,13 @@ class LightZone {
     this.stack = [];
     this.isPatched = false;
 
-    globalThis.setTimeout = this.originalSetTimeout;
-    globalThis.setInterval = this.originalSetInterval;
+    // 원본 함수 복원
+    if (this.originalSetTimeout) {
+      globalThis.setTimeout = this.originalSetTimeout;
+    }
+    if (this.originalSetInterval) {
+      globalThis.setInterval = this.originalSetInterval;
+    }
   }
 
   private static patchPromise(): void {
@@ -185,7 +198,7 @@ class LightZone {
     }
 
     // 전역 Promise 교체
-    globalThis.Promise = ZonedPromise;
+    globalThis.Promise = ZonedPromise as any;
 
     // 정적 메서드 패치
     ZonedPromise.resolve = function <T>(
@@ -237,8 +250,9 @@ class LightZone {
   private static patchTimer(): void {
     const zone = this;
 
-    this.originalSetTimeout = globalThis.setTimeout;
-    this.originalSetInterval = globalThis.setInterval;
+    // this 바인딩 미리 처리
+    this.originalSetTimeout = globalThis.setTimeout.bind(globalThis);
+    this.originalSetInterval = globalThis.setInterval.bind(globalThis);
 
     (globalThis as any).setTimeout = function (
       callback: Function,
@@ -262,16 +276,18 @@ class LightZone {
         }
         return callback(...cbArgs);
       };
+
+      // 이미 바인딩된 함수 호출
       return zone.originalSetTimeout(wrappedCallback, delay, ...args);
     };
 
-    // Node.js 충돌 때문에 any 캐스팅
     (globalThis as any).setInterval = function (
       callback: Function,
       delay?: number,
       ...args: any[]
     ) {
       const capturedContext = zone.current();
+
       const wrappedCallback = function (...cbArgs: any[]) {
         if (capturedContext) {
           zone.stack.push(capturedContext);
@@ -287,8 +303,11 @@ class LightZone {
         }
         return callback(...cbArgs);
       };
+
+      // 이미 바인딩된 함수 호출
       return zone.originalSetInterval(wrappedCallback, delay, ...args);
     };
+
     console.log('[LogLens] Timers patched - TraceId propagation enabled');
   }
 
