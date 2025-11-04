@@ -1,6 +1,7 @@
 package S13P31A306.loglens.domain.project.controller;
 
 import S13P31A306.loglens.domain.project.dto.request.ProjectCreateRequest;
+import S13P31A306.loglens.domain.project.dto.request.ProjectListRequest;
 import S13P31A306.loglens.domain.project.dto.request.ProjectMemberInviteRequest;
 import S13P31A306.loglens.domain.project.dto.response.ProjectCreateResponse;
 import S13P31A306.loglens.global.config.swagger.annotation.ApiInternalServerError;
@@ -16,9 +17,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @ApiInternalServerError
 @Tag(name = "Project API", description = "프로젝트 관련 API")
@@ -227,10 +228,7 @@ public interface ProjectApi {
 			}
 	)
 	ResponseEntity<? extends BaseResponse> getProjects(
-			@RequestParam(defaultValue = "0") int page,
-			@RequestParam(defaultValue = "10") int size,
-			@RequestParam(defaultValue = "CREATED_AT") String sort,
-			@RequestParam(defaultValue = "DESC") String order
+			@Valid @ModelAttribute ProjectListRequest request
 	);
 
 	@Operation(
