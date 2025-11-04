@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: demo
+
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+
+# 서버 포트 8081로 설정
+server:
+  port: 8081
+
+logging:
+  level:
+    a306.dependency_logger_starter: TRACE
+  file:
+    name: ./logs/be/app.log
+
+dependency:
+  logger:
+    api-key: 99293c70-6c65-3b76-b24a-1e2aa7aad6da
+
+    collector:
+      url: http://localhost:8080
+#      url: https://api.loglens.co.kr  # 8080으로 변경
+    enabled: true
+
+    frontend:
+      enabled: true
+      log-path: ./logs/fe/app.log
