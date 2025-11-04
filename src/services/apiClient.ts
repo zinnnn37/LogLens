@@ -19,7 +19,7 @@ class ApiClient {
   constructor(baseURL = import.meta.env.VITE_API_BASE_URL) {
     this.instance = axios.create({
       baseURL: `${baseURL}`,
-      timeout: 10000,
+      timeout: 25000,
       headers: {
         'Content-Type': 'application/json',
       },
