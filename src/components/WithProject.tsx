@@ -29,7 +29,6 @@ const WithProject = ({ projects, onSelect, onDelete, onEmptyAfterExit }: WithPro
     null,
   );
   const [jiraProjectId, setJiraProjectId] = useState<number | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const becameEmptyRef = useRef(false);
   const prevLenRef = useRef(list.length);
@@ -40,19 +39,7 @@ const WithProject = ({ projects, onSelect, onDelete, onEmptyAfterExit }: WithPro
     becameEmptyRef.current = prev > 0 && curr === 0;
     prevLenRef.current = curr;
   }, [list.length]);
-
-  const handleDelete = async (e: React.MouseEvent, id: number) => {
-    e.stopPropagation();
-    const ok = window.confirm('정말 이 프로젝트를 삭제하시겠습니까?');
-    if (!ok) { return; }
-    try {
-      setDeletingId(id);
-      await onDelete?.(id);
-    } finally {
-      setDeletingId(prev => (prev === id ? null : prev));
-    }
-  };
-
+  
   return (
     <div className="flex h-full w-full">
       <section className="min-w-0 flex-1">
