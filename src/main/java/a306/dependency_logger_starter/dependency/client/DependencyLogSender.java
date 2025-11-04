@@ -17,7 +17,7 @@ import java.util.List;
 @Slf4j
 public class DependencyLogSender {
 
-    private static final String API_KEY_HEADER = "X-API-Key";
+    private static final String UUID_HEADER = "X-UUID";
     private final WebClient webClient;
     private final boolean enabled;
 
@@ -31,7 +31,7 @@ public class DependencyLogSender {
         this.webClient = WebClient.builder()
                 .baseUrl(collectorUrl)
                 .defaultHeader("Content-Type", "application/json")
-                .defaultHeader(API_KEY_HEADER, apiKey)
+                .defaultHeader(UUID_HEADER, apiKey)
                 .build();
 
         this.enabled = enabled;
