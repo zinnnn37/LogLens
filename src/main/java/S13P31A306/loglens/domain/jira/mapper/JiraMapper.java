@@ -27,20 +27,24 @@ public interface JiraMapper {
      * JiraConnectRequest → JiraConnection Entity
      *
      * @param request        연동 요청 DTO
+     * @param projectId      프로젝트 ID
      * @param encryptedToken 암호화된 API 토큰
      * @return JiraConnection Entity
      */
+    @Mapping(target = "projectId", source = "projectId")
     @Mapping(target = "jiraApiToken", source = "encryptedToken")
-    JiraConnection toEntity(JiraConnectRequest request, String encryptedToken);
+    JiraConnection toEntity(JiraConnectRequest request, Integer projectId, String encryptedToken);
 
     /**
      * JiraConnection Entity → JiraConnectResponse
      *
-     * @param connection JiraConnection Entity
+     * @param connection  JiraConnection Entity
+     * @param projectUuid 프로젝트 UUID
      * @return JiraConnectResponse DTO
      */
+    @Mapping(target = "projectUuid", source = "projectUuid")
     @Mapping(target = "connectionTest", expression = "java(createConnectionTestResponse())")
-    JiraConnectResponse toConnectResponse(JiraConnection connection);
+    JiraConnectResponse toConnectResponse(JiraConnection connection, String projectUuid);
 
     /**
      * User Entity → CreatedByResponse
