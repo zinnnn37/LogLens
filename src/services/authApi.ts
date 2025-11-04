@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import { useAuthStore } from '@/stores/authStore';
 import type {
   SignupRequest,
   SignupResponse,
@@ -30,16 +31,28 @@ export const signup = async (data: SignupRequest): Promise<SignupResponse> => {
  * 로그인 API
  * POST /api/auth/tokens
  */
-export const login = async (data: LoginRequest): Promise<LoginResponse> => {
-  return apiClient.post<LoginResponse>('/api/auth/tokens', data);
-};
+export const login = async (payload: LoginRequest): Promise<LoginResponse> => {
+  const res = await apiClient.post<LoginResponse>('/api/auth/tokens', payload);
 
+  useAuthStore.getState().setAuth({
+    accessToken: res.accessToken,
+    user: { userId: Number(res.userId) },
+  });
+
+  return res;
+};
 /**
  * 로그아웃 API
  * DELETE /api/auth/tokens
  */
 export const logout = async (): Promise<void> => {
-  return apiClient.delete<void>('/api/auth/tokens');
+  try {
+    await apiClient.delete<void>('/api/auth/tokens');
+  } catch (err) {
+    console.warn('서버 로그아웃 실패 :', err);
+  } finally {
+    useAuthStore.getState().clearAuth();
+  }
 };
 
 /**

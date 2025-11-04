@@ -17,7 +17,7 @@ export interface SearchUserParams {
  */
 export interface UserSearchResult {
   userId: number;
-  username: string;
+  name: string;
   email: string;
 }
 
