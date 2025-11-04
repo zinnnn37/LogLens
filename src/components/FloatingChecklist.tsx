@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle2, Circle, ListChecks, Minimize2 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -20,10 +20,31 @@ const INITIAL_CHECKLIST: ChecklistItem[] = [
   { id: '5', label: '대시보드에서 로그 확인', completed: false },
 ];
 
+const STORAGE_KEY = 'loglens-checklist';
+
 const FloatingChecklist = () => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [checklist, setChecklist] =
-    useState<ChecklistItem[]>(INITIAL_CHECKLIST);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(() => {
+    // localStorage에서 저장된 체크리스트 불러오기
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error('Failed to load checklist from localStorage:', error);
+    }
+    return INITIAL_CHECKLIST;
+  });
+
+  // 체크리스트가 변경될 때마다 localStorage에 저장
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(checklist));
+    } catch (error) {
+      console.error('Failed to save checklist to localStorage:', error);
+    }
+  }, [checklist]);
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
