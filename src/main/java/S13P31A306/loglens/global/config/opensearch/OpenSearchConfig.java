@@ -1,5 +1,9 @@
 package S13P31A306.loglens.global.config.opensearch;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.security.cert.X509Certificate;
 import java.util.Optional;
 import javax.net.ssl.SSLContext;
@@ -28,7 +32,7 @@ import org.springframework.util.StringUtils;
 @Configuration
 public class OpenSearchConfig {
 
-    private static final String LOG_REFIX = "[OpenSearchConfig]";
+    private static final String LOG_PREFIX = "[OpenSearchConfig]";
 
     @Value("${opensearch.scheme:http}")
     private String scheme;
@@ -51,7 +55,32 @@ public class OpenSearchConfig {
                 .setHttpClientConfigCallback(configCallback)
                 .build();
 
-        return new OpenSearchClient(new RestClientTransport(restClient, new JacksonJsonpMapper()));
+        // Jackson ObjectMapper 커스터마이징
+        ObjectMapper objectMapper = createObjectMapper();
+
+        log.info("{} OpenSearch 클라이언트 생성 완료 ({}://{}:{})", LOG_PREFIX, scheme, host, port);
+
+        return new OpenSearchClient(new RestClientTransport(restClient, new JacksonJsonpMapper(objectMapper)));
+    }
+
+    /**
+     * Jackson ObjectMapper 설정 분리
+     */
+    private ObjectMapper createObjectMapper() {
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        // JavaTimeModule 등록 (LocalDateTime, ZonedDateTime 등 처리)
+        objectMapper.registerModule(new JavaTimeModule());
+
+        // 역직렬화 설정
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        objectMapper.configure(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL, true);
+        objectMapper.configure(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE, false);
+
+        // 직렬화 설정 (날짜를 타임스탬프가 아닌 ISO 8601 문자열로)
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        return objectMapper;
     }
 
     private RestClientBuilder.HttpClientConfigCallback createHttpClientConfigCallback() {
@@ -87,13 +116,13 @@ public class OpenSearchConfig {
             SSLContext sslContext = SSLContext.getInstance("TLS");
             sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
 
-            log.info("{} OpenSearch 클라이언트의 SSL 인증서 검증을 비활성화", LOG_REFIX);
+            log.info("{} OpenSearch 클라이언트의 SSL 인증서 검증을 비활성화", LOG_PREFIX);
             return ClientTlsStrategyBuilder.create()
                     .setSslContext(sslContext)
                     .setHostnameVerifier((hostname, session) -> true)
                     .build();
         } catch (Exception e) {
-            log.error("{} OpenSearch 클라이언트의 SSL 설정", LOG_REFIX, e);
+            log.error("{} OpenSearch 클라이언트의 SSL 설정", LOG_PREFIX, e);
             throw new RuntimeException("OpenSearch SSL 설정 실패", e);
         }
     }
@@ -105,7 +134,7 @@ public class OpenSearchConfig {
                     new AuthScope(new HttpHost(scheme, host, port)),
                     new UsernamePasswordCredentials(username, password.toCharArray())
             );
-            log.info("{} OpenSearch 클라이언트에 사용자 자격증명을 설정", LOG_REFIX);
+            log.info("{} OpenSearch 클라이언트에 사용자 자격증명을 설정", LOG_PREFIX);
             return Optional.of(credentialsProvider);
         }
         return Optional.empty();
