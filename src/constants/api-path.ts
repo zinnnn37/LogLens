@@ -10,6 +10,7 @@ export const API_PATH = {
   // 프로젝트 상세 조회
   PROJECT_DETAIL: (projectId: number) => `/api/projects/${projectId}`,
 
+  // 이름으로 유저 검색
   SEARCH_USERS: '/api/auth/users/search',
 
   // 멤버 초대
