@@ -17,6 +17,8 @@ class LogCollector {
   };
   private static flushTimer: ReturnType<typeof setInterval> | null = null;
 
+  private static isSending = false; // 전송 중 상태 플래그
+
   /**
    * 설정 초기화
    */
@@ -45,7 +47,6 @@ class LogCollector {
   static addLog(log: LogEntry): void {
     this.logs.push(log);
     console.log('[LogCollector] New log added:');
-    console.log(this.logs);
 
     const formatted = LogFormatter.toConsole(log);
     console.log(formatted);
@@ -94,13 +95,13 @@ class LogCollector {
   /**
    * 수동 전송 (설정 무시하고 강제 전송)
    */
-  static async send(endpoint?: string): Promise<void> {
+  static async send(): Promise<void> {
     if (this.logs.length === 0) {
       loglens.warn('[LogCollector] No logs to send');
       return;
     }
 
-    const targetEndpoint = endpoint || this.config.autoFlush?.endpoint;
+    const targetEndpoint = this.config.autoFlush?.endpoint;
 
     if (!targetEndpoint) {
       loglens.warn('[LogCollector] No endpoint provided for manual send');
@@ -114,6 +115,13 @@ class LogCollector {
    * 실제 전송 로직 (공통)
    */
   private static async sendLogs(endpoint: string): Promise<void> {
+    // 전송 중이면 대기
+    if (this.isSending) {
+      console.warn('[LogCollector] Already sending logs');
+      return;
+    }
+
+    this.isSending = true;
     const logsToSend = [...this.logs];
     this.logs = [];
 
@@ -136,7 +144,10 @@ class LogCollector {
       console.log(`[LogCollector] Successfully sent ${logsToSend.length} logs`);
     } catch (error) {
       console.error('[LogCollector] Failed to send logs:', error);
+      // 실패 시 앞에 다시 추가
       this.logs.unshift(...logsToSend);
+    } finally {
+      this.isSending = false;
     }
   }
 
