@@ -1,13 +1,23 @@
 // src/index.ts
 
-export { useLogger } from './react/useLogger';
 import { LightZone } from './core/lightZone';
 import { ErrorCapture } from './core/errorCapture';
 import { loglens } from './core/logger';
 import { withLogLens } from './wrappers/trace';
 import { LogCollector } from './core/logCollector';
 
-export type InitLogLensConfig = {
+export { useLogger } from './react/useLogger';
+export { useLogLens } from './react/useLogLens';
+export {
+  initLogLens,
+  withLogLens,
+  // LightZone,
+  // ErrorCapture,
+  loglens,
+  // LogCollector,
+};
+
+type InitLogLensConfig = {
   domain: string;
   maxLogs?: number;
   autoFlushInterval?: number;
@@ -30,31 +40,25 @@ const initLogLens = (config: InitLogLensConfig): void => {
 
   LightZone.init();
 
-  // autoFlushEnabled가 false면 수집 안 함
-  if (finalConfig.autoFlushEnabled) {
-    let domain = finalConfig.domain.trim();
-    if (domain.endsWith('/')) {
-      domain = domain.slice(0, -1);
-    }
+  const trimmedDomain = finalConfig.domain.trim();
+  const domain = trimmedDomain.endsWith('/')
+    ? trimmedDomain.slice(0, -1)
+    : trimmedDomain;
 
-    const endpoint = `${domain}/api/logs/frontend`;
+  const endpoint = `${domain}/api/logs/frontend`;
 
-    LogCollector.init({
-      maxLogs: finalConfig.maxLogs,
-      autoFlush: {
-        enabled: true,
-        interval: finalConfig.autoFlushInterval,
-        endpoint: endpoint,
-      },
-    });
-  } else {
-    LogCollector.init(null); // 수집 비활성화
-  }
+  console.log('[LogLens] Log collection enabled. Endpoint:', endpoint);
+
+  LogCollector.init({
+    maxLogs: finalConfig.maxLogs,
+    autoFlush: {
+      enabled: finalConfig.autoFlushEnabled,
+      interval: finalConfig.autoFlushInterval,
+      endpoint: endpoint,
+    },
+  });
 
   if (finalConfig.captureErrors) {
     ErrorCapture.init();
   }
 };
-
-export { useLogLens } from './react/useLogLens';
-export { initLogLens, withLogLens, LightZone, ErrorCapture, loglens };
