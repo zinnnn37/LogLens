@@ -80,3 +80,13 @@ encryption:
   # 환경 변수 ENCRYPTION_SECRET_KEY 설정이 필수입니다 (최소 16자 이상 권장)
   # 예: export ENCRYPTION_SECRET_KEY="your-secure-secret-key-here"
   secret-key: ${ENCRYPTION_SECRET_KEY}
+
+# ===================================================================
+# OpenSearch 설정 (OpenSearch Configuration)
+# ===================================================================
+opensearch:
+  scheme: https
+  host: opensearch.loglens.store
+  port: 443
+  username: ${OPENSEARCH_USERNAME:admin}
+  password: ${OPENSEARCH_PASSWORD:admin}
