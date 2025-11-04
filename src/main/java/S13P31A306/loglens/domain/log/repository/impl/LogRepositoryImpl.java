@@ -69,6 +69,19 @@ public class LogRepositoryImpl implements LogRepository {
 
         // 4. OpenSearch 쿼리 실행
         try {
+            // 쿼리 디버깅을 위한 상세 로그
+            log.debug("{} 실제 projectUuid 값: [{}]", LOG_PREFIX, projectUuid);
+            log.debug("{} 검색 인덱스: {}", LOG_PREFIX, LOG_INDEX_PATTERN);
+            log.debug("{} 쿼리 크기: {}", LOG_PREFIX, querySize);
+
+            // OpenSearch 쿼리를 JSON으로 직렬화하여 출력
+            try {
+                String queryJson = objectMapper.writeValueAsString(searchRequest);
+                log.debug("{} OpenSearch 쿼리 JSON: {}", LOG_PREFIX, queryJson);
+            } catch (Exception e) {
+                log.warn("{} 쿼리 JSON 직렬화 실패", LOG_PREFIX, e);
+            }
+
             log.debug("{} OpenSearch에 검색 요청 실행", LOG_PREFIX);
             SearchResponse<Log> response = openSearchClient.search(searchRequest, Log.class);
             log.debug("{} OpenSearch 응답 수신: {} hits", LOG_PREFIX, response.hits().total().value());
