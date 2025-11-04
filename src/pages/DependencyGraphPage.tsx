@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Architecture from '@/components/Architecture';
 import DependencyComponents from '@/components/DependencyComponents';
 import ComponentDependencyGraph from '@/components/ComponentDependencyGraph';
+import FloatingChecklist from '@/components/FloatingChecklist';
 import { DUMMY_ARCHITECTURE_DATA } from '@/mocks/dummyArchitecture';
 import { DUMMY_COMPONENTS_DATA } from '@/mocks/dummyComponents';
 import { DUMMY_COMPONENT_DEPENDENCY } from '@/mocks/dummyComponentDependency';
@@ -83,6 +84,7 @@ const DependencyGraphPage = () => {
           </div>
         )}
       </div>
+      <FloatingChecklist />
     </div>
   );
 };

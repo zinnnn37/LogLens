@@ -5,6 +5,7 @@ import DetailLogSearchBox, {
 } from '@/components/DetailLogSearchBox';
 import LogTrendCard from '@/components/LogTrendCard';
 import TrafficGraphCard from '@/components/TrafficGraphCard';
+import FloatingChecklist from '@/components/FloatingChecklist';
 import { DUMMY_LOG_SEARCH_RESULTS } from '@/mocks/dummyLogSearch';
 import type { LogRow } from '@/components/LogResultsTable';
 import DetailLogSearchTable from '@/components/DetailLogSearchTable';
@@ -159,6 +160,8 @@ const LogsPage = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      <FloatingChecklist />
     </div>
   );
 };
