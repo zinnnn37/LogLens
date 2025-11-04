@@ -49,6 +49,23 @@ const loglens = {
       executionTimeMs: null,
     });
   },
+
+  // 추가
+  send: async (): Promise<void> => {
+    return LogCollector.send();
+  },
+
+  flush: async (): Promise<void> => {
+    return LogCollector.flush();
+  },
+
+  getLogs: () => {
+    return LogCollector.getLogs();
+  },
+
+  clear: () => {
+    LogCollector.clear();
+  },
 };
 
 export { loglens };
