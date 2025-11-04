@@ -43,10 +43,6 @@ class LogCollector {
    * 로그 추가
    */
   static addLog(log: LogEntry): void {
-    if (this.config.autoFlush?.enabled === false) {
-      return;
-    }
-
     this.logs.push(log);
     console.log('[LogCollector] New log added:');
     console.log(this.logs);
@@ -81,12 +77,43 @@ class LogCollector {
       return;
     }
 
+    if (!this.config.autoFlush?.enabled) {
+      loglens.warn('[LogCollector] Auto flush is disabled');
+      return;
+    }
+
     const endpoint = this.config.autoFlush?.endpoint;
     if (!endpoint) {
       loglens.warn('[LogCollector] No endpoint configured for flush');
       return;
     }
 
+    await this.sendLogs(endpoint);
+  }
+
+  /**
+   * 수동 전송 (설정 무시하고 강제 전송)
+   */
+  static async send(endpoint?: string): Promise<void> {
+    if (this.logs.length === 0) {
+      loglens.warn('[LogCollector] No logs to send');
+      return;
+    }
+
+    const targetEndpoint = endpoint || this.config.autoFlush?.endpoint;
+
+    if (!targetEndpoint) {
+      loglens.warn('[LogCollector] No endpoint provided for manual send');
+      return;
+    }
+
+    await this.sendLogs(targetEndpoint);
+  }
+
+  /**
+   * 실제 전송 로직 (공통)
+   */
+  private static async sendLogs(endpoint: string): Promise<void> {
     const logsToSend = [...this.logs];
     this.logs = [];
 
@@ -108,7 +135,7 @@ class LogCollector {
 
       console.log(`[LogCollector] Successfully sent ${logsToSend.length} logs`);
     } catch (error) {
-      console.error('[LogCollector] Failed to flush logs:', error);
+      console.error('[LogCollector] Failed to send logs:', error);
       this.logs.unshift(...logsToSend);
     }
   }
