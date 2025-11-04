@@ -15,14 +15,21 @@ export interface WithProjectProps {
 }
 
 const formatK = (n: number) => {
-  if (n < 1000) { return `${n}`; }
+  if (n < 1000) {
+    return `${n}`;
+  }
   const k = n / 1000;
   return `${Number.isInteger(k) ? k.toFixed(0) : k.toFixed(1)}K`;
 };
 
 const DOT = ' • ';
 
-const WithProject = ({ projects, onSelect, onDelete, onEmptyAfterExit }: WithProjectProps) => {
+const WithProject = ({
+  projects,
+  onSelect,
+  onDelete,
+  onEmptyAfterExit,
+}: WithProjectProps) => {
   const list = projects ?? [];
 
   const [invitingProjectId, setInvitingProjectId] = useState<number | null>(
@@ -39,7 +46,7 @@ const WithProject = ({ projects, onSelect, onDelete, onEmptyAfterExit }: WithPro
     becameEmptyRef.current = prev > 0 && curr === 0;
     prevLenRef.current = curr;
   }, [list.length]);
-  
+
   return (
     <div className="flex h-full w-full">
       <section className="min-w-0 flex-1">
@@ -63,7 +70,11 @@ const WithProject = ({ projects, onSelect, onDelete, onEmptyAfterExit }: WithPro
                       initial={{ opacity: 0, y: 8, scale: 0.99 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -10, scale: 0.98 }}
-                      transition={{ duration: 0.18, ease: 'easeOut', layout: { duration: 0.18, ease: 'easeOut' } }}
+                      transition={{
+                        duration: 0.18,
+                        ease: 'easeOut',
+                        layout: { duration: 0.18, ease: 'easeOut' },
+                      }}
                       role="button"
                       tabIndex={0}
                       onClick={() => onSelect?.(p.projectId)}
@@ -77,15 +88,17 @@ const WithProject = ({ projects, onSelect, onDelete, onEmptyAfterExit }: WithPro
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div className="min-w-0">
-                          <p className="text-foreground truncate font-semibold">{p.projectName}</p>
+                          <p className="text-foreground truncate font-semibold">
+                            {p.projectName}
+                          </p>
                           <p className="text-muted-foreground text-sm">
-                            멤버 {p.memberCount}명{DOT}로그 {formatK(p.logCount)}건
-                            멤버 {p.memberCount}명{DOT}로그 {formatK(p.logCount)}건
+                            멤버 {p.memberCount}명{DOT}로그{' '}
+                            {formatK(p.logCount)}건 멤버 {p.memberCount}명{DOT}
+                            로그 {formatK(p.logCount)}건
                           </p>
                         </div>
 
                         <div className="flex items-center gap-2">
-
                           {/* TODO : 연결상태 확인할 수 있는지 체크 후 조건부 렌더링 추가 */}
                           {/* Jira 연결 버튼 */}
                           <Button
@@ -114,7 +127,10 @@ const WithProject = ({ projects, onSelect, onDelete, onEmptyAfterExit }: WithPro
                           </Button>
 
                           {/* 프로젝트 삭제 */}
-                          <Button asChild className="gap-2 bg-[#ff6347] text-white hover:bg-[#ff6347]/90">
+                          <Button
+                            asChild
+                            className="gap-2 bg-[#ff6347] text-white hover:bg-[#ff6347]/90"
+                          >
                             <motion.button
                               whileTap={{ scale: 0.96 }}
                               aria-label={`${p.projectName} 프로젝트 삭제`}
@@ -141,7 +157,11 @@ const WithProject = ({ projects, onSelect, onDelete, onEmptyAfterExit }: WithPro
       {/* 멤버 초대 모달 */}
 
       {invitingProjectId !== null && (
-        <MemberInviteModal open={true} onOpenChange={() => setInvitingProjectId(null)} projectId={invitingProjectId} />
+        <MemberInviteModal
+          open={true}
+          onOpenChange={() => setInvitingProjectId(null)}
+          projectId={invitingProjectId}
+        />
       )}
 
       {/* Jira 연동 모달 */}

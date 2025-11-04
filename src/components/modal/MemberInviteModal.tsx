@@ -246,7 +246,8 @@ const MemberInviteModal = ({
                   <div className="space-y-3">
                     <AnimatePresence initial={false}>
                       {searchResults.map(user => {
-                        const isMe = myUserId != null && user.userId === myUserId;
+                        const isMe =
+                          myUserId != null && user.userId === myUserId;
                         return (
                           <motion.div
                             {...motionProps}
@@ -403,7 +404,8 @@ const MemberInviteModal = ({
             <AlertDialogHeader>
               <AlertDialogTitle>멤버 삭제</AlertDialogTitle>
               <AlertDialogDescription>
-                {memberToConfirmDelete?.name} ({memberToConfirmDelete?.email}) 님을
+                {memberToConfirmDelete?.name} ({memberToConfirmDelete?.email})
+                님을
                 <br />
                 {projectName} 프로젝트에서 탈퇴시키겠습니까?
               </AlertDialogDescription>

@@ -30,14 +30,9 @@ export const API_PATH = {
   DELETE_MEMBER: (projectId: number, memberId: number) =>
     `/api/projects/${projectId}/members/${memberId}`,
 
-
   // Jira 연동 설정
   JIRA_INTEGRATION: '/api/integrations/jira/connect',
 
-  
   // Jira 이슈 생성
   JIRA_CREATE_ISSUE: '/api/integrations/jira/issues',
-
-
-
 } as const;

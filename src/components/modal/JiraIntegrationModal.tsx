@@ -52,14 +52,18 @@ export const JiraIntegrationModal = ({
       newErrors.jiraApiToken = 'API 토큰을 입력해주세요.';
     }
 
-    if (!formData.jiraProjectKey.trim()) { newErrors.jiraProjectKey = '프로젝트 키를 입력해주세요.'; }
+    if (!formData.jiraProjectKey.trim()) {
+      newErrors.jiraProjectKey = '프로젝트 키를 입력해주세요.';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleConnect = async () => {
-    if (!validateForm()) { return; }
+    if (!validateForm()) {
+      return;
+    }
 
     setIsConnecting(true);
     try {
@@ -105,7 +109,9 @@ export const JiraIntegrationModal = ({
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isConnecting) { void handleConnect(); }
+    if (!isConnecting) {
+      void handleConnect();
+    }
   };
 
   return (

@@ -2,12 +2,7 @@
 import { useEffect, useState } from 'react';
 import type { ComponentProps } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  PlusSquare,
-  MessageSquare,
-  LogOut,
-  BookOpen,
-} from 'lucide-react';
+import { PlusSquare, MessageSquare, LogOut, BookOpen } from 'lucide-react';
 
 import ProjectCreateModal from '@/components/modal/ProjectCreateModal';
 import DocsTOC from '@/components/DocsTOC';
@@ -69,7 +64,6 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
 
   // 프로젝트 생성 모달 Open 상태 관리
   const [openCreate, setOpenCreate] = useState(false);
-
 
   // 프로젝트 목록(store)
   const projects = useProjectStore(state => state.projects);
@@ -153,8 +147,6 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
               <p className="font-pretendard">Support</p>
             </NavHeading>
             <div className="flex min-h-0 flex-1 flex-col gap-1">
-             
-
               <Accordion
                 type="single"
                 collapsible
@@ -216,8 +208,6 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
           setOpenCreate(false);
         }}
       />
-
-    
     </aside>
   );
 };
