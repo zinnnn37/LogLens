@@ -136,18 +136,11 @@ public class ProjectServiceImpl implements ProjectService {
         int start = page * size;
 
         // 범위를 벗어난 페이지 요청 처리
-        if (start >= totalElements && totalElements > 0) {
+        if (start >= totalElements) {
             log.warn("{} 페이지 범위 초과 - start={}, total={}",
                     LOG_PREFIX, start, totalElements);
 
-            return new ProjectListResponse(
-                    List.of(),
-                    new ProjectListResponse.Pagination(page, size, sort.toString(), order.toString()),
-                    totalElements,
-                    (int) Math.ceil((double) totalElements / size),
-                    false,
-                    true
-            );
+            throw new BusinessException(PAGE_SIZE_EXCCEED);
         }
 
         int end = Math.min(start + size, allProjects.size());
