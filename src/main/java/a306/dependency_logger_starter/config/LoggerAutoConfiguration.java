@@ -136,11 +136,7 @@ public class LoggerAutoConfiguration {
             matchIfMissing = false
     )
     public FilterRegistrationBean<FrontendLogFilter> frontendLogFilter(
-            @Value("${logging.file.path:./logs}") String logBasePath,
-            @Value("${logging.file.name:app.log}") String logFileName) {
-
-        // 프론트엔드 로그 경로: {logBasePath}/fe/{logFileName}
-        String frontendLogPath = logBasePath + "/fe/" + logFileName;
+            @Value("${dependency.logger.frontend.log-path:./logs/fe/app.log}") String frontendLogPath) {
 
         FilterRegistrationBean<FrontendLogFilter> registration =
                 new FilterRegistrationBean<>();
