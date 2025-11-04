@@ -1,9 +1,9 @@
 package S13P31A306.loglens.domain.log.entity;
 
-import S13P31A306.loglens.domain.component.entity.ComponentType;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,73 +14,79 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Log {
-    // This field will be populated from the OpenSearch document's _id
-    private String id;
 
-    // ========== 핵심 식별 필드 (Core Identification) ==========
+    private String id; // _id from OpenSearch
+
+    // ========== 핵심 식별 필드 ==========
     @JsonProperty("log_id")
-    private Long logId;  // OpenSearch의 고유 로그 ID (Auto-increment)
+    private Long logId;
 
     @JsonProperty("project_uuid")
-    private String projectUuid;  // 프로젝트 UUID (UUID 문자열)
+    private String projectUuid;
 
-    private LocalDateTime timestamp;  // 로그 발생 시각 (ISO 8601)
+    @JsonProperty("timestamp")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    private OffsetDateTime timestamp;
 
     @JsonProperty("requester_ip")
-    private String requesterIp;  // 요청자 IP 주소
+    private String requesterIp;
 
-    // ========== 서비스 및 로깅 컨텍스트 (Service Context) ==========
+    // ========== 서비스 및 로깅 컨텍스트 ==========
     @JsonProperty("service_name")
-    private String serviceName;  // 서비스명 (예: user-service)
+    private String serviceName;
 
-    private String logger;  // 로거 전체 경로
+    private String logger;
 
     @JsonProperty("source_type")
-    private ComponentType sourceType;  // FE/BE/INFRA
+    private SourceType sourceType;
 
-    private String layer;  // Controller/Service/Repository
+    private String layer;
 
-    // ========== 로그 내용 (Log Content) ==========
+    // ========== 로그 내용 ==========
     @JsonProperty("log_level")
-    private LogLevel logLevel;  // 로그 레벨 (INFO/WARN/ERROR만 허용)
+    private LogLevel logLevel;
 
-    private String message;  // 로그 메시지
+    @JsonProperty("level")
+    private LogLevel level;
 
-    private String comment;  // 추가 코멘트
+    private String message;
 
-    // ========== 메서드 및 스레드 정보 (Method & Thread) ==========
+    private String comment;
+
+    // ========== 메서드 및 스레드 정보 ==========
     @JsonProperty("class_name")
-    private String className;  // 클래스명
+    private String className;
 
     @JsonProperty("method_name")
-    private String methodName;  // 메서드명
+    private String methodName;
 
     @JsonProperty("thread_name")
-    private String threadName;  // 스레드명 (선택)
+    private String threadName;
 
-    // ========== 트레이싱 (Tracing) ==========
+    // ========== 트레이싱 ==========
     @JsonProperty("trace_id")
-    private String traceId;  // 분산 트레이싱 ID
+    private String traceId;
 
-    // ========== 성능 (Performance) ==========
-    private Integer duration;  // 실행 시간 (밀리초)
+    // ========== 성능 ==========
+    private Integer duration;
 
-    // ========== 에러 정보 (Error Information) ==========
+    // ========== 에러 정보 ==========
     @JsonProperty("stack_trace")
-    private String stackTrace;  // 스택 트레이스 (에러 발생 시)
+    private String stackTrace;
 
-    // ========== 로그 상세 정보 (Log Details - Nested Object) ==========
+    // ========== 로그 상세 ==========
     @JsonProperty("log_details")
-    private Map<String, Object> logDetails;  // HTTP 요청/응답, 추가 정보 등
+    private Map<String, Object> logDetails;
 
-    // ========== AI 분석 결과 (AI Analysis - Nested Object) ==========
+    // ========== AI 분석 ==========
     @JsonProperty("log_vector")
-    private float[] logVector;  // 임베딩 벡터 (1536차원)
+    private float[] logVector;
 
     @JsonProperty("ai_analysis")
-    private Map<String, Object> aiAnalysis;  // AI 분석 결과
+    private Map<String, Object> aiAnalysis;
 
-    // ========== 시스템 필드 (System Fields) ==========
+    // ========== 시스템 필드 ==========
     @JsonProperty("indexed_at")
-    private LocalDateTime indexedAt;  // OpenSearch 인덱싱 시각
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    private OffsetDateTime indexedAt;
 }
