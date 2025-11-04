@@ -1,5 +1,3 @@
-// src/stores/projectStore.ts
-
 import { create } from 'zustand';
 import type {
   ProjectDTO,
@@ -118,7 +116,7 @@ export const useProjectStore = create<ProjectState>(set => ({
    * (DELETE /api/projects/{id}/members/{memberId})
    * 'deleteMember' 서비스가 호출하는 액션.
    */
-  removeMember: (projectId, memberId) =>
+  removeMember: (projectId, _memberId) =>
     set(state => ({
       projects: state.projects.map(project =>
         // 프로젝트 멤버카운트 -1
@@ -127,15 +125,9 @@ export const useProjectStore = create<ProjectState>(set => ({
           : project,
       ),
 
-      // 멤버 삭제
       currentProject:
         state.currentProject?.projectId === projectId
-          ? {
-              ...state.currentProject,
-              members: state.currentProject.members.filter(
-                member => member.userId !== memberId,
-              ),
-            }
+          ? null
           : state.currentProject,
     })),
 }));

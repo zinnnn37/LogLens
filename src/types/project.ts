@@ -8,6 +8,7 @@ export interface CreateProjectPayload {
 export interface ProjectDTO {
   projectId: number;
   projectName: string;
+  projectUuid: string;
   description: string;
   apiKey: string;
   createdAt: string;

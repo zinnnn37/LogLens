@@ -30,7 +30,6 @@ export interface ArchitectureData {
 
 export interface ArchitectureResponse {
   code: number;
-  status: string;
   message: string;
   data: ArchitectureData;
   timestamp: string;

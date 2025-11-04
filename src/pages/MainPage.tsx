@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import NoProjectIllust from '@/assets/images/NoProjectIllust.png';
 import WithProject from '@/components/WithProject';
 import ProjectCreateModal from '@/components/modal/ProjectCreateModal';
+import FloatingChecklist from '@/components/FloatingChecklist';
 import { Loader2 } from 'lucide-react';
 import {
   AlertDialog,
@@ -168,6 +169,7 @@ const MainPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <FloatingChecklist />
     </main>
   );
 };
