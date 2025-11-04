@@ -4,8 +4,10 @@ import { LogFormatter } from '../utils/logFormatter';
 import type { LogEntry, CollectorConfig } from '../types/logTypes';
 import { loglens } from './logger';
 import { getClientIp } from '../utils/ip';
+import { DataMasker } from './dataMasker';
 
 class LogCollector {
+  private static masker: DataMasker;
   private static logs: LogEntry[] = [];
   private static config: CollectorConfig = {
     maxLogs: 1000,
@@ -22,7 +24,7 @@ class LogCollector {
   /**
    * 설정 초기화
    */
-  static init(config: Partial<CollectorConfig> | null): void {
+  static async init(config: Partial<CollectorConfig> | null): Promise<void> {
     if (config === null) {
       this.config = {
         maxLogs: 1000,
@@ -35,6 +37,8 @@ class LogCollector {
     } else {
       this.config = { ...this.config, ...config };
     }
+
+    this.masker = await DataMasker.initialize();
 
     if (this.config.autoFlush?.enabled) {
       this.startAutoFlush();
@@ -124,6 +128,7 @@ class LogCollector {
     this.isSending = true;
     const logsToSend = [...this.logs];
     this.logs = [];
+    const maskedLogs = logsToSend.map((log) => this.masker.mask(log));
 
     const ipAddress = await getClientIp();
 
@@ -134,7 +139,7 @@ class LogCollector {
           ip: ipAddress || '',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ logs: logsToSend }),
+        body: JSON.stringify({ logs: maskedLogs }),
       });
 
       if (!response.ok) {
