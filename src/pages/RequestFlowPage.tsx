@@ -1,4 +1,5 @@
 import LogSearchBox from '@/components/LogSearchBox';
+import FloatingChecklist from '@/components/FloatingChecklist';
 
 const RequestFlowPage = () => {
   return (
@@ -10,6 +11,7 @@ const RequestFlowPage = () => {
         onSubmit={q => console.log('submit:', q)}
         onChange={q => console.log('change:', q)}
       />
+      <FloatingChecklist />
     </div>
   );
 };

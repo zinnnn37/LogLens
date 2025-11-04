@@ -2,6 +2,7 @@ import DashboardStatsCards from '@/components/DashboardStatsCards';
 import RecentAlertsCard from '@/components/RecentAlertsCard';
 import LogHeatmapCard from '@/components/LogHeatmapCard';
 import FrequentErrorsCard from '@/components/FrequentErrorsCard';
+import FloatingChecklist from '@/components/FloatingChecklist';
 import { DUMMY_DASHBOARD_STATS } from '@/mocks/dummyDashboardStats';
 import { DUMMY_ALERTS } from '@/mocks/dummyAlerts';
 import { DUMMY_HEATMAP_DATA } from '@/mocks/dummyHeatmap';
@@ -25,6 +26,7 @@ const DashboardPage = () => {
           <p className="text-gray-400">오른쪽 카드 예정</p>
         </div>
       </div>
+      <FloatingChecklist />
     </div>
   );
 };

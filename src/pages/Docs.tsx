@@ -1,4 +1,5 @@
 import CodeBlock from '@/components/CodeBlock';
+import FloatingChecklist from '@/components/FloatingChecklist';
 
 const Docs = () => {
   return (
@@ -857,6 +858,7 @@ dependency:
           </section>
         </div>
       </div>
+      <FloatingChecklist />
     </div>
   );
 };
