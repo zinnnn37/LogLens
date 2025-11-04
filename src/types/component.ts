@@ -10,17 +10,11 @@ export type ComponentLayer =
   | 'SERVICE'
   | 'REPOSITORY'
   | 'VALIDATOR';
-export type ComponentStatus = 'ACTIVE' | 'WARNING' | 'ERROR';
 export type RelationshipType =
   | 'HTTP_REQUEST'
   | 'METHOD_CALL'
   | 'DATABASE_QUERY'
   | 'API_CALL';
-
-export interface ComponentDependencies {
-  upstreamCount: number;
-  downstreamCount: number;
-}
 
 export interface Component {
   id: string;
@@ -29,8 +23,6 @@ export interface Component {
   layer: ComponentLayer;
   packageName: string;
   technology: string;
-  dependencies: ComponentDependencies;
-  status: ComponentStatus;
 }
 
 export interface ComponentPagination {
@@ -44,7 +36,6 @@ export interface ComponentSummary {
   totalComponents: number;
   byType: Record<ComponentType, number>;
   byLayer: Record<ComponentLayer, number>;
-  byStatus: Record<ComponentStatus, number>;
 }
 
 export interface ComponentListData {
@@ -56,7 +47,6 @@ export interface ComponentListData {
 
 export interface ComponentListResponse {
   code: number;
-  status: string;
   message: string;
   data: ComponentListData;
   timestamp: string;
@@ -122,7 +112,6 @@ export interface ComponentDependencyData {
 
 export interface ComponentDependencyResponse {
   code: number;
-  status: string;
   message: string;
   data: ComponentDependencyData;
   timestamp: string;
