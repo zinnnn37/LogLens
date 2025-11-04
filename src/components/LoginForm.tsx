@@ -43,7 +43,7 @@ export const LoginForm = ({
       console.log('로그인 성공:', response);
 
       // 로그인 성공 시 메인 페이지로 이동
-      navigate('/');
+      navigate('/main');
     } catch (error) {
       if (error instanceof ApiError) {
         setApiError(error.response?.message || '로그인에 실패했습니다.');
