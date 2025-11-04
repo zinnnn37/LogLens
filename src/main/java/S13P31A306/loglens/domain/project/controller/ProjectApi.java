@@ -174,7 +174,6 @@ public interface ProjectApi {
                             responseCode = "200",
                             description = "프로젝트 목록 조회 성공",
                             content = @Content(
-                                    mediaType = "application/json",
                                     schema = @Schema(implementation = ProjectListResponse.class),
                                     examples = @ExampleObject(
                                             name = "ProjectListRetrieved",
@@ -236,7 +235,6 @@ public interface ProjectApi {
                             responseCode = "200",
                             description = "프로젝트 상세 정보 조회 성공",
                             content = @Content(
-                                    mediaType = "application/json",
                                     schema = @Schema(implementation = ProjectDetailResponse.class),
                                     examples = @ExampleObject(
                                             name = "ProjectDetailRetrieved",
@@ -328,7 +326,6 @@ public interface ProjectApi {
                             responseCode = "200",
                             description = "프로젝트 삭제 성공",
                             content = @Content(
-                                    mediaType = "application/json",
                                     schema = @Schema(implementation = BaseResponse.class),
                                     examples = @ExampleObject(
                                             name = "ProjectDeleted",
@@ -499,7 +496,6 @@ public interface ProjectApi {
                             responseCode = "200",
                             description = "멤버 삭제 성공",
                             content = @Content(
-                                    mediaType = "application/json",
                                     schema = @Schema(implementation = BaseResponse.class),
                                     examples = @ExampleObject(
                                             name = "MemberDeleted",
