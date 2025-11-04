@@ -1,7 +1,6 @@
 package S13P31A306.loglens.domain.project.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.List;
 
 public record ProjectListResponse(
@@ -27,17 +26,11 @@ public record ProjectListResponse(
 ) {
 
     public record ProjectInfo(
-            @Schema(description = "프로젝트 ID", example = "42")
-            int projectId,
-
             @Schema(description = "프로직트 이름", example = "LogLens")
             String projectName,
 
             @Schema(description = "프로젝트 설명", example = "로그 수집 및 분석 프로젝트")
             String description,
-
-            @Schema(description = "프로젝트 UUID", example = "pk_1a2b3c4d5e6f")
-            String uuid,
 
             @Schema(description = "프로젝트에 참여 중인 멤버 수", example = "6")
             int memberCount,
@@ -64,5 +57,4 @@ public record ProjectListResponse(
             String order
     ) {
     }
-
 }
