@@ -20,6 +20,7 @@ public interface ProjectMapper  {
      * @param project 생성된 프로젝트
      * @return ProjectCreateResponse 생성된 프로젝트 DTO
      */
+    @Mapping(source = "id", target = "projectId")
     ProjectCreateResponse toCreateResponse(Project project);
 
     /**
