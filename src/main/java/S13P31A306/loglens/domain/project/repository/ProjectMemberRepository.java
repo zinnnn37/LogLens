@@ -1,18 +1,17 @@
 package S13P31A306.loglens.domain.project.repository;
 
 import S13P31A306.loglens.domain.project.entity.ProjectMember;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Integer> {
 
     /**
      * 멤버 초대 시 중복 여부 확인
-     * 
+     *
      * @param projectId 프로젝트 ID
-     * @param userId 사용자 ID
+     * @param userId    사용자 ID
      * @return boolean 프로젝트 초대 가능 여부(이미 초대된 경우 false)
      */
     boolean existsByProjectIdAndUserId(int projectId, int userId);
@@ -27,9 +26,9 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, In
 
     /**
      * 멤버 삭제
-     * 
+     *
      * @param projectId 프로젝트 ID
-     * @param userId 멤버 ID
+     * @param userId    멤버 ID
      */
     void deleteByProjectIdAndUserId(int projectId, int userId);
 
@@ -37,7 +36,7 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, In
      * 프로젝트 내 특정 멤버 찾기
      *
      * @param projectId 프로젝트 ID
-     * @param userId 멤버 ID
+     * @param userId    멤버 ID
      * @return Optional<ProjectMember> 검색된 멤버 정보
      */
     Optional<ProjectMember> findByProjectIdAndUserId(int projectId, int userId);
