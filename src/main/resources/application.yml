@@ -34,8 +34,7 @@ dependency:
     api-key: 99293c70-6c65-3b76-b24a-1e2aa7aad6da
 
     collector:
-      url: http://localhost:8080
-#      url: https://api.loglens.co.kr  # 8080으로 변경
+      url: https://api.loglens.store
     enabled: true
 
     frontend:
