@@ -154,7 +154,7 @@ const MemberInviteModal = ({
     try {
       await inviteMember(projectId, { userId: userToConfirmInvite.userId });
       await loadCurrentMembers();
-      toast.success(`'${userToConfirmInvite.username}' 님을 초대했습니다.`);
+      toast.success(`'${userToConfirmInvite.name}' 님을 초대했습니다.`);
     } catch (err) {
       console.error('멤버 초대 실패', err);
       if (err instanceof ApiError && err.response) {
@@ -248,7 +248,7 @@ const MemberInviteModal = ({
                         >
                           <div className="flex min-w-0 flex-1 items-center justify-between gap-6">
                             <p className="truncate font-semibold">
-                              {user.username}
+                              {user.name}
                             </p>
                             <p className="text-muted-foreground truncate">
                               {user.email}
@@ -347,7 +347,7 @@ const MemberInviteModal = ({
             <AlertDialogHeader>
               <AlertDialogTitle>멤버 초대</AlertDialogTitle>
               <AlertDialogDescription>
-                '**{userToConfirmInvite?.username}**' (
+                '**{userToConfirmInvite?.name}**' (
                 {userToConfirmInvite?.email}) 님을
                 <br />
                 '**{projectName}**' 프로젝트 멤버로 초대하시겠습니까?
