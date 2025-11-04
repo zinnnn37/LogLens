@@ -28,6 +28,7 @@ import {
 } from '@/services/projectService';
 import { searchUsers } from '@/services/userService';
 import { useProjectStore } from '@/stores/projectStore';
+import { useAuthStore } from '@/stores/authStore';
 import type { ProjectMember } from '@/types/project';
 import type { UserSearchResult } from '@/types/user';
 import { ApiError } from '@/types/api';
@@ -72,6 +73,9 @@ const MemberInviteModal = ({
   const [memberToConfirmDelete, setMemberToConfirmDelete] =
     useState<ProjectMember | null>(null);
 
+  // 현재 로그인 사용자 id
+  const myUserId = useAuthStore(s => s.user?.userId ?? null);
+
   // 현재 프로젝트 내 멤버
   const loadCurrentMembers = useCallback(async () => {
     if (currentProject?.projectId !== projectId) {
@@ -94,7 +98,6 @@ const MemberInviteModal = ({
       setIsSearching(false);
       setInvitingId(null);
       setRemovingId(null);
-      // [추가] 모달 열릴 때 확인 state 초기화
       setUserToConfirmInvite(null);
       setMemberToConfirmDelete(null);
     } else {
@@ -115,7 +118,6 @@ const MemberInviteModal = ({
     setIsSearching(true);
     debounceTimeout.current = setTimeout(async () => {
       try {
-        // searchUsers 서비스 함수 호출
         const response = await searchUsers({ name: trimmedSearch, size: 10 });
 
         // 현재 포함되어 있는 멤버는 제외
@@ -185,6 +187,9 @@ const MemberInviteModal = ({
         projectId: projectId,
         memberId: memberToConfirmDelete.userId,
       });
+
+      await loadCurrentMembers();
+
       toast.success(`'${memberToConfirmDelete.name}' 님을 삭제했습니다.`);
     } catch (err) {
       console.error('멤버 삭제 실패', err);
@@ -240,35 +245,47 @@ const MemberInviteModal = ({
                   </h3>
                   <div className="space-y-3">
                     <AnimatePresence initial={false}>
-                      {searchResults.map(user => (
-                        <motion.div
-                          {...motionProps}
-                          key={user.userId}
-                          className="bg-muted/50 flex items-center justify-between rounded-2xl px-6 py-2"
-                        >
-                          <div className="flex min-w-0 flex-1 items-center justify-between gap-6">
-                            <p className="truncate font-semibold">
-                              {user.name}
-                            </p>
-                            <p className="text-muted-foreground truncate">
-                              {user.email}
-                            </p>
-                          </div>
-                          <Button
-                            variant="default"
-                            size="sm"
-                            className="ml-4 rounded-lg px-4"
-                            onClick={() => handleInviteRequest(user)}
-                            disabled={invitingId === user.userId}
+                      {searchResults.map(user => {
+                        const isMe = myUserId != null && user.userId === myUserId;
+                        return (
+                          <motion.div
+                            {...motionProps}
+                            key={user.userId}
+                            className="bg-muted/50 rounded-2xl px-6 py-2"
                           >
-                            {invitingId === user.userId ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              '초대'
-                            )}
-                          </Button>
-                        </motion.div>
-                      ))}
+                            {/* 이름 / 이메일 / 액션(초대) - 액션 열 고정폭 */}
+                            <div className="grid w-full grid-cols-[minmax(0,1fr)_minmax(0,1fr)_72px] items-center gap-6">
+                              <p className="truncate font-semibold">
+                                {user.name}
+                                {isMe ? ' (나)' : ''}
+                              </p>
+                              <p className="text-muted-foreground truncate">
+                                {user.email}
+                              </p>
+                              {/* 액션: 없을 때도 동일 폭 확보 */}
+                              {!isMe ? (
+                                <div className="flex justify-end">
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="rounded-lg px-4"
+                                    onClick={() => handleInviteRequest(user)}
+                                    disabled={invitingId === user.userId}
+                                  >
+                                    {invitingId === user.userId ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      '초대'
+                                    )}
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div aria-hidden className="h-8 w-[72px]" />
+                              )}
+                            </div>
+                          </motion.div>
+                        );
+                      })}
                       {!isSearching && searchResults.length === 0 && (
                         <p className="text-muted-foreground py-4 text-center text-sm">
                           검색 결과가 없습니다.
@@ -302,34 +319,47 @@ const MemberInviteModal = ({
                   </motion.div>
                 )}
                 {!isLoadingMembers &&
-                  currentMembers.map(m => (
-                    <motion.div
-                      {...motionProps}
-                      key={m.userId}
-                      className="flex items-center justify-between rounded-2xl bg-[#D5E3F2]/40 px-6 py-2"
-                    >
-                      <div className="flex min-w-0 flex-1 items-center justify-between gap-6">
-                        <p className="truncate font-semibold">{m.name}</p>
-                        <p className="text-muted-foreground truncate">
-                          {m.email}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="ml-2"
-                        onClick={() => handleRemoveRequest(m)}
-                        aria-label={`${m.name} 삭제`}
-                        disabled={removingId === m.userId}
+                  currentMembers.map(m => {
+                    const isMe = myUserId != null && m.userId === myUserId;
+                    return (
+                      <motion.div
+                        {...motionProps}
+                        key={m.userId}
+                        className="rounded-2xl bg-[#D5E3F2]/40 px-6 py-2"
                       >
-                        {removingId === m.userId ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-5 w-5" />
-                        )}
-                      </Button>
-                    </motion.div>
-                  ))}
+                        {/* 이름 / 이메일 / 액션(삭제) - 액션 열 고정폭 */}
+                        <div className="grid w-full grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px] items-center gap-6">
+                          <p className="truncate font-semibold">
+                            {m.name}
+                            {isMe ? ' (나)' : ''}
+                          </p>
+                          <p className="text-muted-foreground truncate">
+                            {m.email}
+                          </p>
+                          {!isMe ? (
+                            <div className="flex justify-end">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="ml-2"
+                                onClick={() => handleRemoveRequest(m)}
+                                aria-label={`${m.name} 삭제`}
+                                disabled={removingId === m.userId}
+                              >
+                                {removingId === m.userId ? (
+                                  <Loader2 className="h-5 w-5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-5 w-5" />
+                                )}
+                              </Button>
+                            </div>
+                          ) : (
+                            <div aria-hidden className="h-9 w-10" />
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
               </AnimatePresence>
             </div>
           </div>
@@ -347,10 +377,9 @@ const MemberInviteModal = ({
             <AlertDialogHeader>
               <AlertDialogTitle>멤버 초대</AlertDialogTitle>
               <AlertDialogDescription>
-                '**{userToConfirmInvite?.name}**' (
-                {userToConfirmInvite?.email}) 님을
+                {userToConfirmInvite?.name} ({userToConfirmInvite?.email}) 님을
                 <br />
-                '**{projectName}**' 프로젝트 멤버로 초대하시겠습니까?
+                {projectName} 프로젝트 멤버로 초대하시겠습니까?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -374,10 +403,9 @@ const MemberInviteModal = ({
             <AlertDialogHeader>
               <AlertDialogTitle>멤버 삭제</AlertDialogTitle>
               <AlertDialogDescription>
-                '**{memberToConfirmDelete?.name}**' (
-                {memberToConfirmDelete?.email}) 님을
+                {memberToConfirmDelete?.name} ({memberToConfirmDelete?.email}) 님을
                 <br />
-                '**{projectName}**' 프로젝트에서 탈퇴시키겠습니까?
+                {projectName} 프로젝트에서 탈퇴시키겠습니까?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
