@@ -1,5 +1,7 @@
 package S13P31A306.loglens.domain.project.service;
 
+import S13P31A306.loglens.domain.project.constants.ProjectOrderParam;
+import S13P31A306.loglens.domain.project.constants.ProjectSortParam;
 import S13P31A306.loglens.domain.project.dto.request.ProjectCreateRequest;
 import S13P31A306.loglens.domain.project.dto.request.ProjectMemberInviteRequest;
 import S13P31A306.loglens.domain.project.dto.response.ProjectCreateResponse;
@@ -38,8 +40,7 @@ public interface ProjectService {
      * @param order 정렬 방향 - default desc
      * @return ProjectListResponse 프로젝트 리스트
      */
-    ProjectListResponse getProjects(int page, int size, String sort, String order);
-
+    ProjectListResponse getProjects(int page, int size, ProjectSortParam sort, ProjectOrderParam order);
     /**
      * 프로젝트 상세 조회
      *

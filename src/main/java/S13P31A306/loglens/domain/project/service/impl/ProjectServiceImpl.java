@@ -3,6 +3,8 @@ package S13P31A306.loglens.domain.project.service.impl;
 import S13P31A306.loglens.domain.auth.entity.User;
 import S13P31A306.loglens.domain.auth.respository.UserRepository;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
+import S13P31A306.loglens.domain.project.constants.ProjectOrderParam;
+import S13P31A306.loglens.domain.project.constants.ProjectSortParam;
 import S13P31A306.loglens.domain.project.dto.request.ProjectCreateRequest;
 import S13P31A306.loglens.domain.project.dto.request.ProjectMemberInviteRequest;
 import S13P31A306.loglens.domain.project.dto.response.ProjectCreateResponse;
@@ -118,7 +120,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectListResponse getProjects(int page, int size, String sort, String order) {
+    public ProjectListResponse getProjects(int page, int size, ProjectSortParam sort, ProjectOrderParam order) {
         log.info("{} 프로젝트 목록 조회: page={}, size={}, sort={}, order={}", LOG_PREFIX, page, size, sort, order);
 
         Integer userId = authHelper.getCurrentUserId();
@@ -130,16 +132,32 @@ public class ProjectServiceImpl implements ProjectService {
         allProjects.sort(comparator);
 
         // 페이징: Fetch Join 사용하여 DB 페이징 불가
+        int totalElements = allProjects.size();
         int start = page * size;
+
+        // 범위를 벗어난 페이지 요청 처리
+        if (start >= totalElements && totalElements > 0) {
+            log.warn("{} 페이지 범위 초과 - start={}, total={}",
+                    LOG_PREFIX, start, totalElements);
+
+            return new ProjectListResponse(
+                    List.of(),
+                    new ProjectListResponse.Pagination(page, size, sort.toString(), order.toString()),
+                    totalElements,
+                    (int) Math.ceil((double) totalElements / size),
+                    false,
+                    true
+            );
+        }
+
         int end = Math.min(start + size, allProjects.size());
+
         List<Project> pagedProjects = allProjects.subList(start, end);
 
         // DTO 변환 (기존 Mapper 그대로 사용)
         List<ProjectListResponse.ProjectInfo> projectInfos =
                 projectMapper.toProjectInfoList(pagedProjects);
 
-        // 페이지 정보
-        int totalElements = allProjects.size();
         int totalPages = (int) Math.ceil((double) totalElements / size);
 
         log.info("{} 프로젝트 목록 조회 완료: page={}, size={}, total={}",
@@ -147,7 +165,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         return new ProjectListResponse(
                 projectInfos,
-                new ProjectListResponse.Pagination(page, size, sort, order),
+                new ProjectListResponse.Pagination(page, size, sort.toString(), order.toString()),
                 totalElements,
                 totalPages,
                 page == 0,
@@ -239,14 +257,13 @@ public class ProjectServiceImpl implements ProjectService {
         log.info("{} 멤버 삭제 완료: project={}", LOG_PREFIX, project.getProjectName());
     }
 
-    private Comparator<Project> getComparator(String sort, String order) {
-        // TODO: 용어 통일 필요?
-        Comparator<Project> comparator = switch (sort.toLowerCase()) {
-            case "PROJECT_NAME" -> Comparator.comparing(Project::getProjectName);
-            case "UPDATED_AT" -> Comparator.comparing(Project::getUpdatedAt);
-            default -> Comparator.comparing(Project::getCreatedAt);
+    private Comparator<Project> getComparator(ProjectSortParam sort, ProjectOrderParam order) {
+        Comparator<Project> comparator = switch (sort) {
+            case PROJECT_NAME -> Comparator.comparing(Project::getProjectName);
+            case UPDATED_AT -> Comparator.comparing(Project::getUpdatedAt);
+            case CREATED_AT -> Comparator.comparing(Project::getCreatedAt);
         };
-        return order.equalsIgnoreCase("asc") ? comparator : comparator.reversed();
+        return order == ProjectOrderParam.ASC ? comparator : comparator.reversed();
     }
 
     private Project findProjectById(int projectId) {
