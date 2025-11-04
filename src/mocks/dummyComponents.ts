@@ -10,11 +10,6 @@ export const DUMMY_COMPONENTS_DATA: ComponentListData = {
       layer: 'CONTROLLER',
       packageName: 'com.example.controller.UserController',
       technology: 'Spring Boot',
-      dependencies: {
-        upstreamCount: 1,
-        downstreamCount: 3,
-      },
-      status: 'ACTIVE',
     },
     {
       id: 'comp_002',
@@ -23,11 +18,6 @@ export const DUMMY_COMPONENTS_DATA: ComponentListData = {
       layer: 'CONTROLLER',
       packageName: 'com.example.controller.AuthController',
       technology: 'Spring Boot',
-      dependencies: {
-        upstreamCount: 1,
-        downstreamCount: 2,
-      },
-      status: 'ACTIVE',
     },
     {
       id: 'comp_003',
@@ -36,11 +26,6 @@ export const DUMMY_COMPONENTS_DATA: ComponentListData = {
       layer: 'CONTROLLER',
       packageName: 'com.example.controller.OrderController',
       technology: 'Spring Boot',
-      dependencies: {
-        upstreamCount: 1,
-        downstreamCount: 4,
-      },
-      status: 'WARNING',
     },
     {
       id: 'comp_004',
@@ -49,11 +34,6 @@ export const DUMMY_COMPONENTS_DATA: ComponentListData = {
       layer: 'SERVICE',
       packageName: 'com.example.service.UserService',
       technology: 'Spring Boot',
-      dependencies: {
-        upstreamCount: 2,
-        downstreamCount: 2,
-      },
-      status: 'ACTIVE',
     },
     {
       id: 'comp_005',
@@ -62,11 +42,6 @@ export const DUMMY_COMPONENTS_DATA: ComponentListData = {
       layer: 'REPOSITORY',
       packageName: 'com.example.repository.UserRepository',
       technology: 'Spring Data JPA',
-      dependencies: {
-        upstreamCount: 3,
-        downstreamCount: 1,
-      },
-      status: 'ACTIVE',
     },
   ],
   pagination: {
@@ -90,11 +65,6 @@ export const DUMMY_COMPONENTS_DATA: ComponentListData = {
       SERVICE: 1,
       REPOSITORY: 1,
       VALIDATOR: 0,
-    },
-    byStatus: {
-      ACTIVE: 4,
-      WARNING: 1,
-      ERROR: 0,
     },
   },
 };

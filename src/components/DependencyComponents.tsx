@@ -1,8 +1,4 @@
-import type {
-  ComponentListData,
-  Component,
-  ComponentStatus,
-} from '@/types/component';
+import type { ComponentListData, Component } from '@/types/component';
 
 interface DependencyComponentsProps {
   data: ComponentListData | null;
@@ -10,24 +6,6 @@ interface DependencyComponentsProps {
   onClose?: () => void;
   onComponentClick?: (componentId: string, componentName: string) => void;
 }
-
-// 상태별 배지 색상
-const STATUS_COLORS: Record<
-  ComponentStatus,
-  { bg: string; text: string; border: string }
-> = {
-  ACTIVE: {
-    bg: 'bg-green-50',
-    text: 'text-green-700',
-    border: 'border-green-200',
-  },
-  WARNING: {
-    bg: 'bg-yellow-50',
-    text: 'text-yellow-700',
-    border: 'border-yellow-200',
-  },
-  ERROR: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-};
 
 const DependencyComponents = ({
   data,
@@ -76,7 +54,7 @@ const DependencyComponents = ({
       </div>
 
       {/* 요약 정보 */}
-      <div className="grid grid-cols-3 gap-4 border-b p-4">
+      <div className="grid grid-cols-2 gap-4 border-b p-4">
         <div className="rounded-lg bg-blue-50 p-3">
           <div className="text-xs text-blue-600">레이어별</div>
           <div className="mt-1 space-y-1 text-xs">
@@ -102,27 +80,12 @@ const DependencyComponents = ({
               ))}
           </div>
         </div>
-
-        <div className="rounded-lg bg-purple-50 p-3">
-          <div className="text-xs text-purple-600">상태별</div>
-          <div className="mt-1 space-y-1 text-xs">
-            {Object.entries(data.summary.byStatus)
-              .filter(([, count]) => count > 0)
-              .map(([status, count]) => (
-                <div key={status} className="flex justify-between">
-                  <span className="text-gray-600">{status}</span>
-                  <span className="font-medium text-gray-900">{count}</span>
-                </div>
-              ))}
-          </div>
-        </div>
       </div>
 
       {/* 컴포넌트 그리드 */}
       <div className="max-h-[500px] overflow-y-auto p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           {data.components.map((component: Component) => {
-            const statusColor = STATUS_COLORS[component.status];
             return (
               <div
                 key={component.id}
@@ -139,15 +102,10 @@ const DependencyComponents = ({
                       {component.packageName}
                     </p>
                   </div>
-                  <span
-                    className={`ml-2 rounded-full border px-2 py-0.5 text-xs font-medium ${statusColor.bg} ${statusColor.text} ${statusColor.border}`}
-                  >
-                    {component.status}
-                  </span>
                 </div>
 
                 {/* 메타 정보 */}
-                <div className="mb-3 space-y-1 text-xs">
+                <div className="space-y-1 pt-4 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500">레이어</span>
                     <span className="font-medium text-gray-700">
@@ -158,22 +116,6 @@ const DependencyComponents = ({
                     <span className="text-gray-500">기술</span>
                     <span className="font-medium text-gray-700">
                       {component.technology}
-                    </span>
-                  </div>
-                </div>
-
-                {/* 의존성 정보 */}
-                <div className="flex items-center gap-3 border-t pt-3 text-xs">
-                  <div className="flex items-center gap-1">
-                    <span className="text-gray-500">Upstream:</span>
-                    <span className="font-medium text-blue-600">
-                      {component.dependencies.upstreamCount}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-gray-500">Downstream:</span>
-                    <span className="font-medium text-green-600">
-                      {component.dependencies.downstreamCount}
                     </span>
                   </div>
                 </div>
