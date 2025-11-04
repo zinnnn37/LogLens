@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.dashboard.controller.impl;
 
+import S13P31A306.loglens.domain.dashboard.constants.DashboardSuccessCode;
 import S13P31A306.loglens.domain.dashboard.controller.DashboardApi;
 import S13P31A306.loglens.domain.dashboard.dto.response.DashboardOverviewResponse;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
@@ -26,7 +27,10 @@ public class DashboardController implements DashboardApi {
             @RequestParam(required = false) String endTime
     ) {
         DashboardOverviewResponse response = dashboardService.getStatisticsOverview(projectId, startTime, endTime);
-        return ApiResponseFactory.success(/* SuccessCode */, response);
+        return ApiResponseFactory.success(
+                DashboardSuccessCode.OVERVIEW_RETRIVED,
+                response
+        );
     }
 
     /**
