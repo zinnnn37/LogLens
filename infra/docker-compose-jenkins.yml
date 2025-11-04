@@ -30,5 +30,5 @@ volumes:
 
 networks:
   loglens-network:
+    external: true
     name: loglens-network
-    driver: bridge
