@@ -10,8 +10,7 @@ export const API_PATH = {
   // 프로젝트 상세 조회
   PROJECT_DETAIL: (projectId: number) => `/api/projects/${projectId}`,
 
-  // 이름으로 멤버 검색, 뒤에 파라미터는 호출하는 곳에서
-  SEARCH_USERS: '/api/auth/users',
+  SEARCH_USERS: '/api/auth/users/search',
 
   // 멤버 초대
   INVITE_MEMBERS: (projectId: number) => `/api/projects/${projectId}/members`,
