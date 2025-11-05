@@ -28,7 +28,7 @@ public class DashboardController implements DashboardApi {
     ) {
         DashboardOverviewResponse response = dashboardService.getStatisticsOverview(projectId, startTime, endTime);
         return ApiResponseFactory.success(
-                DashboardSuccessCode.OVERVIEW_RETRIVED,
+                DashboardSuccessCode.OVERVIEW_RETRIEVED,
                 response
         );
     }
