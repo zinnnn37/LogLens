@@ -15,7 +15,7 @@ RUN groupadd -r spring && useradd -r -g spring spring
 WORKDIR /app
 
 # JAR 파일 복사
-COPY --chown=spring:spring build/libs/*.jar app.jar
+COPY --chown=spring:spring build/libs/*-SNAPSHOT.jar app.jar
 
 # 포트 노출
 EXPOSE 8080
