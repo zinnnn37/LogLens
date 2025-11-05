@@ -8,13 +8,13 @@ export const API_PATH = {
   PROJECT: '/api/projects',
 
   // 프로젝트 상세 조회
-  PROJECT_DETAIL: (projectId: number) => `/api/projects/${projectId}`,
+  PROJECT_DETAIL: (projectUuid: string) => `/api/projects/${projectUuid}`,
 
   // 이름으로 유저 검색
   SEARCH_USERS: '/api/auth/users/search',
 
   // 멤버 초대
-  INVITE_MEMBERS: (projectId: number) => `/api/projects/${projectId}/members`,
+  INVITE_MEMBERS: (projectUuid: string) => `/api/projects/${projectUuid}/members`,
 
   // 아키텍처 흐름 조회
   ARCHITECTURE: (projectId: string) =>
@@ -24,11 +24,11 @@ export const API_PATH = {
   COMPONENTS: (projectId: string) => `/api/projects/${projectId}/components`,
 
   // 프로젝트 삭제
-  DELETE_PROJECT: (projectId: number) => `/api/projects/${projectId}`,
+  DELETE_PROJECT: (projectUuid: string) => `/api/projects/${projectUuid}`,
 
   // 프로젝트 내 멤버 삭제
-  DELETE_MEMBER: (projectId: number, memberId: number) =>
-    `/api/projects/${projectId}/members/${memberId}`,
+  DELETE_MEMBER: (projectUuid: string, memberId: number) =>
+    `/api/projects/${projectUuid}/members/${memberId}`,
 
   // Jira 연동 설정
   JIRA_INTEGRATION: '/api/integrations/jira/connect',
