@@ -14,8 +14,7 @@ public interface ProjectMemberMapper {
      * @param projectMember 초대된 프로젝트 멤버
      * @return ProjectMemberInviteResponse 멤버 초대 응답 DTO
      */
-    @Mapping(source = "project.id", target = "projectId")
-    @Mapping(source = ".", target = "member")
+    @Mapping(source = "projectMember", target = "member")
     ProjectMemberInviteResponse toInviteResponse(ProjectMember projectMember);
 
     /**
