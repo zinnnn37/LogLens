@@ -6,7 +6,9 @@ import S13P31A306.loglens.domain.project.dto.response.ProjectListResponse;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.entity.ProjectMember;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -37,20 +39,23 @@ public interface ProjectMapper {
      * 프로젝트 단일 정보
      *
      * @param project
+     * @param jiraConnectionMap Jira 연결 정보 Map (projectId -> 연결 여부)
      * @return
      */
     @Mapping(source = "members", target = "memberCount", qualifiedByName = "getMemberCount")
+    @Mapping(source = "project", target = "jiraConnectionExist", qualifiedByName = "getJiraConnectionExist")
     @Mapping(target = "createdAt", source = "createdAt", dateFormat = "yyyy-MM-dd'T'HH:mm:ss")
     @Mapping(target = "updatedAt", source = "updatedAt", dateFormat = "yyyy-MM-dd'T'HH:mm:ss")
-    ProjectListResponse.ProjectInfo toProjectInfo(Project project);
+    ProjectListResponse.ProjectInfo toProjectInfo(Project project, @Context Map<Integer, Boolean> jiraConnectionMap);
 
     /**
      * 프로젝트 리스트 조회
      *
      * @param projects 프로젝트 리스트
+     * @param jiraConnectionMap Jira 연결 정보 Map (projectId -> 연결 여부)
      * @return List<ProjectListResponse.ProjectInfo>
      */
-    List<ProjectListResponse.ProjectInfo> toProjectInfoList(List<Project> projects);
+    List<ProjectListResponse.ProjectInfo> toProjectInfoList(List<Project> projects, @Context Map<Integer, Boolean> jiraConnectionMap);
 
     /**
      * ProjectMember를 Member DTO로 변환
@@ -74,5 +79,10 @@ public interface ProjectMapper {
     @Named("getMemberCount")
     default int getMemberCount(List<ProjectMember> members) {
         return !Objects.isNull(members) ? members.size() : 0;
+    }
+
+    @Named("getJiraConnectionExist")
+    default boolean getJiraConnectionExist(Project project, @Context Map<Integer, Boolean> jiraConnectionMap) {
+        return jiraConnectionMap.getOrDefault(project.getId(), false);
     }
 }

@@ -42,7 +42,10 @@ public record ProjectListResponse(
             String createdAt,
 
             @Schema(description = "프로젝트 업데이트 시간", example = "2025-10-29T10:30:00")
-            String updatedAt
+            String updatedAt,
+
+            @Schema(description = "Jira 연동 여부", example = "true")
+            boolean jiraConnectionExist
     ) {
     }
 

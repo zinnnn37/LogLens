@@ -216,12 +216,12 @@ public interface UserApi {
                                         "content": [
                                           {
                                             "userId": 101,
-                                            "username": "홍길동",
+                                            "name": "홍길동",
                                             "email": "hong1@example.com"
                                           },
                                           {
                                             "userId": 104,
-                                            "username": "홍길동",
+                                            "name": "홍길동",
                                             "email": "hong2@example.com"
                                           }
                                         ],

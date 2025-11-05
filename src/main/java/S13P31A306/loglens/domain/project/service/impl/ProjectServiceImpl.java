@@ -13,6 +13,7 @@ import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.USER_
 import S13P31A306.loglens.domain.auth.entity.User;
 import S13P31A306.loglens.domain.auth.respository.UserRepository;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
+import S13P31A306.loglens.domain.jira.repository.JiraConnectionRepository;
 import S13P31A306.loglens.domain.project.dto.request.ProjectCreateRequest;
 import S13P31A306.loglens.domain.project.dto.request.ProjectMemberInviteRequest;
 import S13P31A306.loglens.domain.project.dto.response.ProjectCreateResponse;
@@ -29,6 +30,8 @@ import S13P31A306.loglens.domain.project.service.ProjectService;
 import S13P31A306.loglens.global.exception.BusinessException;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -48,6 +51,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final UserRepository userRepository;
     private final ProjectMapper projectMapper;
     private final ProjectMemberMapper projectMemberMapper;
+    private final JiraConnectionRepository jiraConnectionRepository;
 
     private final AuthenticationHelper authHelper;
 
@@ -141,9 +145,16 @@ public class ProjectServiceImpl implements ProjectService {
         int end = Math.min(start + size, allProjects.size());
         List<Project> pagedProjects = allProjects.subList(start, end);
 
-        // DTO 변환 (기존 Mapper 그대로 사용)
+        // Jira 연결 정보를 Map으로 생성
+        Map<Integer, Boolean> jiraConnectionMap = pagedProjects.stream()
+                .collect(Collectors.toMap(
+                        Project::getId,
+                        project -> jiraConnectionRepository.existsByProjectId(project.getId())
+                ));
+
+        // DTO 변환
         List<ProjectListResponse.ProjectInfo> projectInfos =
-                projectMapper.toProjectInfoList(pagedProjects);
+                projectMapper.toProjectInfoList(pagedProjects, jiraConnectionMap);
 
         // 페이지 정보
         int totalElements = allProjects.size();
