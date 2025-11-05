@@ -14,7 +14,7 @@ public interface ProjectService {
 
     /**
      * 프로젝트 생성
-     * 
+     *
      * @param request 생성할 프로젝트 정보
      * @return ProjectCreateResponse 생성한 프로젝트 정보
      */
@@ -23,18 +23,18 @@ public interface ProjectService {
     /**
      * 멤버 초대
      *
-     * @param projectId 사용자를 초대할 프로젝트 ID
-     * @param request 초대할 사용자 ID
+     * @param projectUuid 사용자를 초대할 프로젝트 UUID
+     * @param request     초대할 사용자 ID
      * @return ProjectMemberInviteResponse 초대한 사용자 정보
      */
-    ProjectMemberInviteResponse inviteMember(int projectId, ProjectMemberInviteRequest request);
+    ProjectMemberInviteResponse inviteMember(String projectUuid, ProjectMemberInviteRequest request);
 
     /**
      * 프로젝트 목록 조회
      *
-     * @param page 출력할 페이지 번호 - default 0
-     * @param size 한 페이지에 나타낼 프로젝트의 수 - default 10
-     * @param sort 정렬 조건 - default createdAt
+     * @param page  출력할 페이지 번호 - default 0
+     * @param size  한 페이지에 나타낼 프로젝트의 수 - default 10
+     * @param sort  정렬 조건 - default createdAt
      * @param order 정렬 방향 - default desc
      * @return ProjectListResponse 프로젝트 리스트
      */
@@ -43,34 +43,26 @@ public interface ProjectService {
     /**
      * 프로젝트 상세 조회
      *
-     * @param projectId 프로젝트 ID
+     * @param projectUuid 프로젝트 UUID
      * @return ProjectDetailResponse
      */
-    ProjectDetailResponse getProjectDetail(int projectId);
+    ProjectDetailResponse getProjectDetail(String projectUuid);
 
     Integer getProjectIdByUuid(String uuid);
 
     /**
      * 프로젝트 삭제
      *
-     * @param projectId 프로젝트 ID
+     * @param projectUuid 프로젝트 UUID
      */
-    void deleteProject(int projectId);
+    void deleteProject(String projectUuid);
 
     /**
      * 멤버 삭제
      *
-     * @param projectId 프로젝트 ID
-     * @param memberId 멤버 ID
+     * @param projectUuid 프로젝트 UUID
+     * @param memberId    멤버 ID
      */
-    void deleteMember(int projectId, int memberId);
-
-    /**
-     * 프로젝트 UUID 조회
-     *
-     * @param projectId 프로젝트 ID
-     * @return 프로젝트 UUID
-     */
-    String getProjectUuid(int projectId);
+    void deleteMember(String projectUuid, int memberId);
 
 }
