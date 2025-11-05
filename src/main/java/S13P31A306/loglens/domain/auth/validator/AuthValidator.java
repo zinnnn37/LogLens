@@ -132,10 +132,10 @@ public class AuthValidator {
         log.debug("{} 사용자 인증 확인: user={}", LOG_PREFIX, userDetails.getUsername());
     }
 
-    public String validateAndGetUsername(final UserDetails userDetails) {
+    public String validateAndGetEmail(final UserDetails userDetails) {
         validateUserDetails(userDetails);
-        String username = userDetails.getUsername();
-        log.debug("{} 사용자 username 추출: {}", LOG_PREFIX, username);
-        return username;
+        String email = userDetails.getUsername();
+        log.debug("{} 사용자 email 추출: {}", LOG_PREFIX, email);
+        return email;
     }
 }
