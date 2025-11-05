@@ -1,7 +1,7 @@
 package S13P31A306.loglens.domain.log.dto.response;
 
-import S13P31A306.loglens.domain.component.entity.ComponentType;
 import S13P31A306.loglens.domain.log.entity.LogLevel;
+import S13P31A306.loglens.domain.log.entity.SourceType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
@@ -20,8 +20,8 @@ public class LogResponse {
     @Schema(description = "로그 레벨", example = "ERROR")
     private LogLevel logLevel;
 
-    @Schema(description = "소스 컴포넌트 타입", example = "BE")
-    private ComponentType sourceType;
+    @Schema(description = "소스 타입", example = "BE")
+    private SourceType sourceType;
 
     @Schema(description = "로그 메시지", example = "NullPointerException occurred in UserService")
     private String message;
