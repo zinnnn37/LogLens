@@ -5,6 +5,10 @@ set -e
 echo "🚀 BLUE/GREEN 배포 시작"
 echo "⏰ 시작 시간: $(date '+%Y-%m-%d %H:%M:%S')"
 
+# 작업 디렉토리 설정
+CURRENT_DIR=$(pwd)
+echo "📂 작업 디렉토리: $CURRENT_DIR"
+
 # 서비스 설정
 SERVICE_NAME="loglens"
 IMAGE_NAME="${SERVICE_NAME}:latest"
@@ -34,8 +38,8 @@ fi
 # 환경 상태에 따른 처리
 if [ "$BLUE_RUNNING" = true ] && [ "$GREEN_RUNNING" = true ]; then
     echo "⚠️ 두 환경 모두 실행 중입니다. green 환경을 중지합니다..."
-    docker stop ${SERVICE_NAME}-green 2>/dev/null || true
-    docker rm ${SERVICE_NAME}-green 2>/dev/null || true
+    cd "${CURRENT_DIR}"
+    docker compose -f "docker-compose-green.yml" down 2>/dev/null || true
     CURRENT_ENV="blue"
 elif [ "$BLUE_RUNNING" = true ]; then
     CURRENT_ENV="blue"
@@ -77,34 +81,32 @@ echo "🎯 $NEW_ENV 환경 시작 중..."
 # 기존 컨테이너 정리 (비활성 슬롯)
 if docker ps -a -q -f name=${SERVICE_NAME}-${NEW_ENV} | grep -q .; then
     echo "🧹 기존 컨테이너 제거: ${SERVICE_NAME}-${NEW_ENV}"
-    docker stop ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || true
-    docker rm ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || true
+    cd "${CURRENT_DIR:-$(pwd)}"
+    docker compose -f "docker-compose-${NEW_ENV}.yml" down 2>/dev/null || true
 fi
 
-# 환경 변수 기본값 설정
-SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-prod}"
-SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL:-jdbc:h2:mem:testdb}"
-SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME:-sa}"
-SPRING_DATASOURCE_PASSWORD="${SPRING_DATASOURCE_PASSWORD:-}"
-SPRING_REDIS_HOST="${SPRING_REDIS_HOST:-loglens-redis}"
-SPRING_REDIS_PORT="${SPRING_REDIS_PORT:-6379}"
-SPRING_REDIS_PASSWORD="${SPRING_REDIS_PASSWORD:-}"
+# Docker Compose 파일 경로 확인
+COMPOSE_FILE="${CURRENT_DIR:-$(pwd)}/docker-compose-${NEW_ENV}.yml"
 
-# 새 컨테이너 실행
+if [ ! -f "$COMPOSE_FILE" ]; then
+    echo "❌ Docker Compose 파일을 찾을 수 없습니다: $COMPOSE_FILE"
+    exit 1
+fi
+
+# .env 파일 확인
+ENV_FILE="${CURRENT_DIR:-$(pwd)}/.env"
+if [ ! -f "$ENV_FILE" ]; then
+    echo "⚠️ .env 파일을 찾을 수 없습니다: $ENV_FILE"
+    echo "⚠️ Jenkins 환경 변수로 실행됩니다."
+fi
+
+# Docker Compose로 새 컨테이너 실행
 echo "🐳 컨테이너 실행: ${SERVICE_NAME}-${NEW_ENV}"
-docker run -d \
-    --name ${SERVICE_NAME}-${NEW_ENV} \
-    --network $NETWORK_NAME \
-    -p ${NEW_PORT}:8080 \
-    -e SPRING_PROFILES_ACTIVE="$SPRING_PROFILES_ACTIVE" \
-    -e SPRING_DATASOURCE_URL="$SPRING_DATASOURCE_URL" \
-    -e SPRING_DATASOURCE_USERNAME="$SPRING_DATASOURCE_USERNAME" \
-    -e SPRING_DATASOURCE_PASSWORD="$SPRING_DATASOURCE_PASSWORD" \
-    -e SPRING_REDIS_HOST="$SPRING_REDIS_HOST" \
-    -e SPRING_REDIS_PORT="$SPRING_REDIS_PORT" \
-    -e SPRING_REDIS_PASSWORD="$SPRING_REDIS_PASSWORD" \
-    --restart unless-stopped \
-    $IMAGE_NAME
+echo "📄 사용할 Compose 파일: $COMPOSE_FILE"
+
+# Working directory를 infra로 변경하여 docker compose 실행
+cd "${CURRENT_DIR:-$(pwd)}"
+docker compose -f "docker-compose-${NEW_ENV}.yml" up -d
 
 # 컨테이너 시작 대기
 echo "⏳ 컨테이너 시작 대기중..."
@@ -233,11 +235,11 @@ if [ "$SUCCESS" = false ]; then
         echo "   - 로그 확인: docker logs ${SERVICE_NAME}-${NEW_ENV}"
         echo "   - 컨테이너 접속: docker exec -it ${SERVICE_NAME}-${NEW_ENV} bash"
         echo "   - 컨테이너 상태: docker inspect ${SERVICE_NAME}-${NEW_ENV}"
-        echo "   - 컨테이너 제거: docker stop ${SERVICE_NAME}-${NEW_ENV} && docker rm ${SERVICE_NAME}-${NEW_ENV}"
+        echo "   - 컨테이너 제거: cd ${CURRENT_DIR:-$(pwd)} && docker compose -f docker-compose-${NEW_ENV}.yml down"
     else
         echo "🔄 컨테이너를 제거합니다..."
-        docker stop ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || true
-        docker rm ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || true
+        cd "${CURRENT_DIR:-$(pwd)}"
+        docker compose -f "docker-compose-${NEW_ENV}.yml" down 2>/dev/null || true
     fi
 
     exit 1
@@ -267,8 +269,8 @@ if [ "$HAS_SUDO" = false ] || [ "$HAS_NGINX" = false ]; then
     # 이전 환경 정리
     if [ "$CURRENT_ENV" != "" ]; then
         echo "🧹 이전 환경 정리 중: ${SERVICE_NAME}-${CURRENT_ENV}"
-        docker stop ${SERVICE_NAME}-${CURRENT_ENV} 2>/dev/null || true
-        docker rm ${SERVICE_NAME}-${CURRENT_ENV} 2>/dev/null || true
+        cd "${CURRENT_DIR:-$(pwd)}"
+        docker compose -f "docker-compose-${CURRENT_ENV}.yml" down 2>/dev/null || true
         echo "✅ 이전 환경 제거 완료"
     fi
 
@@ -278,7 +280,6 @@ if [ "$HAS_SUDO" = false ] || [ "$HAS_NGINX" = false ]; then
 fi
 
 # nginx 설정 파일 경로 확인 (절대경로 사용)
-CURRENT_DIR=$(pwd)
 NGINX_CONFIG_FILE="${CURRENT_DIR}/nginx/nginx-${NEW_ENV}.conf"
 OLD_NGINX_CONFIG_FILE="${CURRENT_DIR}/nginx/nginx-${OLD_ENV}.conf"
 
@@ -324,8 +325,8 @@ if [ -f "$NGINX_CONFIG_FILE" ]; then
         # 디버그 모드에서는 컨테이너를 유지
         if [ "$DEBUG_MODE" != "true" ]; then
             echo "🔄 실패한 컨테이너 제거 중..."
-            docker stop ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || true
-            docker rm ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || true
+            cd "${CURRENT_DIR:-$(pwd)}"
+            docker compose -f "docker-compose-${NEW_ENV}.yml" down 2>/dev/null || true
         fi
         exit 1
     fi
@@ -356,8 +357,8 @@ if [ "$CURRENT_ENV" != "" ]; then
     echo "🔍 기존 컨테이너 상태 확인:"
     docker ps --filter "name=${SERVICE_NAME}-${OLD_ENV}" --format "table {{.Names}}\t{{.Status}}"
 
-    docker stop ${SERVICE_NAME}-${OLD_ENV} 2>/dev/null || true
-    docker rm ${SERVICE_NAME}-${OLD_ENV} 2>/dev/null || true
+    cd "${CURRENT_DIR:-$(pwd)}"
+    docker compose -f "docker-compose-${OLD_ENV}.yml" down 2>/dev/null || true
 
     echo "✅ 기존 $OLD_ENV 환경 정리 완료"
 
