@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-public interface LogMetricsRepository extends JpaRepository<Project, Integer> {
+public interface LogMetricsRepository extends JpaRepository<LogMetrics, Integer> {
 
     /**
      * 특정 프로젝트의 가장 최신 로그 메트릭 조회
