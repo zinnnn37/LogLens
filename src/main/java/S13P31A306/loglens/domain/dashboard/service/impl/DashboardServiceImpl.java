@@ -34,6 +34,135 @@ public class DashboardServiceImpl implements DashboardService {
     private final DashboardMapper mapper;
 
     @Override
+    @Cacheable(value = "componentDependencies", key = "#projectUuid + '::' + #componentId")
+    public ComponentDependencyResponse getComponentDependencies(
+            final String projectUuid,
+            final Integer componentId,
+            final UserDetails userDetails) {
+
+        log.debug("{} 컴포넌트 의존성 조회 시작: projectUuid={}, componentId={}",
+                LOG_PREFIX, projectUuid, componentId);
+
+        // 1. 권한 검증
+        Integer projectId = validator.validateProjectAccess(projectUuid, userDetails);
+        validator.validateComponentAccess(componentId, projectId);
+
+        // 2. 의존성 그래프 조회
+        List<DependencyGraph> allDependencies = dependencyGraphService
+                .findAllDependenciesByComponentId(componentId);
+
+        // 3. 관련된 모든 컴포넌트 ID 수집
+        Set<Integer> allComponentIds = new HashSet<>();
+        allComponentIds.add(componentId);
+        allDependencies.forEach(edge -> {
+            allComponentIds.add(edge.getFrom());
+            allComponentIds.add(edge.getTo());
+        });
+
+        // 4. 컴포넌트 정보 일괄 조회
+        Map<Integer, Component> componentMap = componentService
+                .getComponentMapByIds(allComponentIds);
+
+        // 5. 메트릭 정보 일괄 조회 ✅
+        Map<Integer, ComponentMetrics> metricsMap = componentMetricsService
+                .getMetricsByComponentIds(new ArrayList<>(allComponentIds));
+
+        // 6. ComponentInfo 리스트 생성 (메트릭 포함)
+        List<ComponentInfo> componentInfos = ComponentInfo.fromMaps(
+                allComponentIds,
+                componentMap,
+                metricsMap
+        );
+
+        // 7. 그래프 생성
+        DependencyGraphResponse graph = DependencyGraphResponse.from(allDependencies);
+
+        // 8. 전체 메트릭 요약 생성 ✅
+        ComponentDependencyResponse.GraphMetricsSummary summary =
+                calculateGraphMetricsSummary(componentInfos, componentMap);
+
+        log.debug("{} 컴포넌트 의존성 조회 완료: componentId={}, totalComponents={}, edges={}",
+                LOG_PREFIX, componentId, componentInfos.size(), graph.edges().size());
+
+        return new ComponentDependencyResponse(componentInfos, graph, summary);
+    }
+
+    /**
+     * 그래프 전체 메트릭 요약 계산
+     */
+    private ComponentDependencyResponse.GraphMetricsSummary calculateGraphMetricsSummary(
+            List<ComponentInfo> componentInfos,
+            Map<Integer, Component> componentMap) {
+
+        // 메트릭이 있는 컴포넌트만 필터링
+        List<ComponentInfo> componentsWithMetrics = componentInfos.stream()
+                .filter(c -> c.metrics() != null && c.metrics().callCount() != null)
+                .toList();
+
+        if (componentsWithMetrics.isEmpty()) {
+            return new ComponentDependencyResponse.GraphMetricsSummary(
+                    componentInfos.size(),
+                    0, 0, 0, 0.0,
+                    null, null
+            );
+        }
+
+        // 전체 합산
+        int totalCalls = componentsWithMetrics.stream()
+                .mapToInt(c -> c.metrics().callCount())
+                .sum();
+
+        int totalErrors = componentsWithMetrics.stream()
+                .mapToInt(c -> c.metrics().errorCount())
+                .sum();
+
+        int totalWarns = componentsWithMetrics.stream()
+                .mapToInt(c -> c.metrics().warnCount())
+                .sum();
+
+        // 평균 에러율
+        double averageErrorRate = componentsWithMetrics.stream()
+                .mapToDouble(c -> c.metrics().errorRate())
+                .average()
+                .orElse(0.0);
+        averageErrorRate = Math.round(averageErrorRate * 100.0) / 100.0;
+
+        // 에러가 가장 많은 컴포넌트
+        ComponentDependencyResponse.ComponentMetricRank highestErrorComponent =
+                componentsWithMetrics.stream()
+                        .max(Comparator.comparingInt(c -> c.metrics().errorCount()))
+                        .map(c -> new ComponentDependencyResponse.ComponentMetricRank(
+                                c.id(),
+                                c.name(),
+                                c.metrics().errorCount(),
+                                c.metrics().errorRate()
+                        ))
+                        .orElse(null);
+
+        // 호출이 가장 많은 컴포넌트
+        ComponentDependencyResponse.ComponentMetricRank highestCallComponent =
+                componentsWithMetrics.stream()
+                        .max(Comparator.comparingInt(c -> c.metrics().callCount()))
+                        .map(c -> new ComponentDependencyResponse.ComponentMetricRank(
+                                c.id(),
+                                c.name(),
+                                c.metrics().callCount(),
+                                c.metrics().errorRate()
+                        ))
+                        .orElse(null);
+
+        return new ComponentDependencyResponse.GraphMetricsSummary(
+                componentInfos.size(),
+                totalCalls,
+                totalErrors,
+                totalWarns,
+                averageErrorRate,
+                highestErrorComponent,
+                highestCallComponent
+        );
+    }
+
+    @Override
     public DashboardOverviewResponse getStatisticsOverview(int projectId, String startTime, String endTime) {
         return null;
     }
@@ -47,52 +176,5 @@ public class DashboardServiceImpl implements DashboardService {
         List<Component> components = componentService.getProjectComponents(projectId);
 
         return mapper.toProjectComponentsResponse(projectId, components);
-    }
-
-    @Override
-    @Cacheable(value = "componentDependencies", key = "#projectUuid + '::' + #componentId")
-    public ComponentDependencyResponse getComponentDependencies(
-            final String projectUuid,
-            final Integer componentId,
-            final UserDetails userDetails) {
-
-        log.debug("{} 컴포넌트 의존성 조회 시작: projectUuid={}, componentId={}",
-                LOG_PREFIX, projectUuid, componentId);
-
-        Integer projectId = validator.validateProjectAccess(projectUuid, userDetails);
-        validator.validateComponentAccess(componentId, projectId);
-
-        List<DependencyGraph> allDependencies = dependencyGraphService.findAllDependenciesByComponentId(componentId);
-
-        // 3. 관련된 모든 컴포넌트 ID 수집
-        Set<Integer> allComponentIds = new HashSet<>();
-        allComponentIds.add(componentId);
-        allDependencies.forEach(edge -> {
-            allComponentIds.add(edge.getFrom());
-            allComponentIds.add(edge.getTo());
-        });
-
-        // 4. 컴포넌트 정보 조회
-        Map<Integer, Component> componentMap = componentService
-                .getComponentMapByIds(allComponentIds);
-
-        // 5. 메트릭 정보 조회
-        Map<Integer, ComponentMetrics> metricsMap = componentMetricsService
-                .getMetricsByComponentIds(new ArrayList<>(allComponentIds));
-
-        // 6. ComponentInfo 리스트 생성
-        List<ComponentInfo> componentInfos = ComponentInfo.fromMaps(
-                allComponentIds,
-                componentMap,
-                metricsMap
-        );
-
-        // 7. 그래프 생성
-        DependencyGraphResponse graph = DependencyGraphResponse.from(allDependencies);
-
-        log.debug("{} 컴포넌트 의존성 조회 완료: componentId={}, totalComponents={}, edges={}",
-                LOG_PREFIX, componentId, componentInfos.size(), graph.edges().size());
-
-        return new ComponentDependencyResponse(componentInfos, graph);
     }
 }
