@@ -23,23 +23,23 @@ public class ProjectValidator {
                 ));
     }
 
-    public void validateProjectAccess(final Project project, final String username) {
+    public void validateProjectAccess(final Project project, final String email) {
         log.debug("{} 프로젝트 접근 권한 검증: projectId={}, projectName={}, user={}",
-                LOG_PREFIX, project.getId(), project.getProjectName(), username);
+                LOG_PREFIX, project.getId(), project.getProjectName(), email);
 
-        if (!hasProjectAccess(project, username)) {
+        if (!hasProjectAccess(project, email)) {
             log.warn("{} 프로젝트 접근 권한 없음: projectId={}, projectName={}, user={}",
-                    LOG_PREFIX, project.getId(), project.getProjectName(), username);
+                    LOG_PREFIX, project.getId(), project.getProjectName(), email);
             throw new BusinessException(
                     ProjectErrorCode.ACCESS_FORBIDDEN
             );
         }
     }
 
-    private boolean hasProjectAccess(final Project project, final String username) {
+    private boolean hasProjectAccess(final Project project, final String email) {
         return project.getMembers().stream()
                 .anyMatch(member ->
-                        member.getUser().getName().equals(username)
+                        member.getUser().getEmail().equals(email)
                 );
     }
 }
