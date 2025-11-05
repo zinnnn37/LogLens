@@ -35,7 +35,7 @@ export interface SearchCriteria {
   logLevel: string[];
   startTime: string; // ISO: 'YYYY-MM-DDTHH:mm:ss'
   endTime: string; // ISO: 'YYYY-MM-DDTHH:mm:ss'
-  sort: string;
+  sort: string; // ex) 'TIMESTAMP,DESC'
 }
 
 interface DetailLogSearchBoxProps {
@@ -56,21 +56,29 @@ const LOG_LEVEL_OPTIONS = [
 ];
 
 const DetailLogSearchBox = ({ onSearch }: DetailLogSearchBoxProps) => {
-  // (상태는 동일)
+  // 검색어/타입
   const [searchType, setSearchType] = useState<'traceId' | 'keyword'>('traceId');
   const [searchValue, setSearchValue] = useState('');
+
+  // 필터
   const [sourceType, setSourceType] = useState<string[]>([]);
   const [logLevel, setLogLevel] = useState<string[]>([]);
-  const [startDate, setStartDate] = useState('');
+
+  // 시간(분리 입력 → ISO 조합)
+  const [startDate, setStartDate] = useState(''); // YYYY-MM-DD
   const [startClock, setStartClock] = useState(''); // HH:mm:ss
   const [endDate, setEndDate] = useState('');
   const [endClock, setEndClock] = useState(''); // HH:mm:ss
+
+  // 정렬
   const [sort, setSort] = useState('TIMESTAMP,DESC');
 
   // ===== helpers =====
   // date + clock → 'YYYY-MM-DDTHH:mm:ss'
   const composeISO = (date: string, clock: string) => {
-    if (!date || !clock || clock.length < 8) { return ''; }
+    if (!date || !clock || clock.length < 8) {
+      return '';
+    }
     return `${date}T${clock}`;
   };
 
@@ -83,8 +91,12 @@ const DetailLogSearchBox = ({ onSearch }: DetailLogSearchBoxProps) => {
   const { icon: SearchIcon, placeholder } = getSearchProps();
 
   const getDropdownButtonText = (label: string, values: string[]) => {
-    if (values.length === 0) { return `${label}`; }
-    if (values.length > 1) { return `${label} (${values.length}개)`; }
+    if (values.length === 0) {
+      return `${label}`;
+    }
+    if (values.length > 1) {
+      return `${label} (${values.length}개)`;
+    }
     const allOptions = [...SOURCE_TYPE_OPTIONS, ...LOG_LEVEL_OPTIONS];
     return allOptions.find(opt => opt.id === values[0])?.label || values[0];
   };
@@ -107,28 +119,33 @@ const DetailLogSearchBox = ({ onSearch }: DetailLogSearchBoxProps) => {
 
   return (
     <div className="flex w-full flex-nowrap items-center gap-2 rounded-lg border bg-white p-4 shadow-sm">
-      <Select
-        value={searchType}
-        onValueChange={(v: 'traceId' | 'keyword') => setSearchType(v)}
-      >
-        <SelectTrigger className="w-auto min-w-[120px]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="traceId">TraceID</SelectItem>
-          <SelectItem value="keyword">키워드</SelectItem>
-        </SelectContent>
-      </Select>
-      <div className="relative min-w-[250px] flex-1">
+      {/* 검색 타입 */}
+      <div className="relative min-w-[350px] flex-1">
         <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <Input
           type="text"
           placeholder={placeholder}
-          className="pl-10"
+          className="pl-10 pr-[120px]" 
           value={searchValue}
           onChange={e => setSearchValue(e.target.value)}
         />
+        <div className="absolute top-0 right-2 h-full flex items-center">
+          <Select
+            value={searchType}
+            onValueChange={(v: 'traceId' | 'keyword') => setSearchType(v)}
+          >
+            <SelectTrigger className="w-auto border-0 bg-transparent text-xs text-gray-600 shadow-none focus:ring-0">
+              <SelectValue placeholder="검색 타입" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="traceId">TraceID</SelectItem>
+              <SelectItem value="keyword">Keyword</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
+      {/* 시스템 필터 */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -158,6 +175,8 @@ const DetailLogSearchBox = ({ onSearch }: DetailLogSearchBoxProps) => {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* 레벨 필터 */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -205,7 +224,7 @@ const DetailLogSearchBox = ({ onSearch }: DetailLogSearchBoxProps) => {
         </DropdownMenuTrigger>
 
         <DropdownMenuContent
-          className="w-auto p-4 relative" 
+          className="w-auto p-4 relative"
           onSelect={e => e.preventDefault()}
         >
           <Button
