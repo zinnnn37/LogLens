@@ -10,6 +10,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { ApiError } from '@/types/api';
+import { useProjectStore } from '@/stores/projectStore';
+import { fetchProjects } from '@/services/projectService';
+import { connectJiraIntegration } from '@/services/jiraService';
 import type {
   JiraIntegrationModalProps,
   JiraFormData,
@@ -20,7 +25,7 @@ import type {
 export const JiraIntegrationModal = ({
   open,
   onOpenChange,
-  projectUuid, 
+  projectUuid,
 }: JiraIntegrationModalProps) => {
   const [formData, setFormData] = useState<JiraFormData>({
     jiraUrl: '',
@@ -31,6 +36,8 @@ export const JiraIntegrationModal = ({
 
   const [errors, setErrors] = useState<JiraFormErrors>({});
   const [isConnecting, setIsConnecting] = useState(false);
+
+  const setProjectsInStore = useProjectStore(state => state.setProjects);
 
   const validateForm = (): boolean => {
     const newErrors: JiraFormErrors = {};
@@ -60,6 +67,9 @@ export const JiraIntegrationModal = ({
     return Object.keys(newErrors).length === 0;
   };
 
+  /**
+   * Jira 연동 API 호출
+   */
   const handleConnect = async () => {
     if (!validateForm()) {
       return;
@@ -68,21 +78,20 @@ export const JiraIntegrationModal = ({
     setIsConnecting(true);
     try {
       const requestBody: JiraConnectRequest = {
-        projectUuid, 
+        projectUuid,
         jiraUrl: formData.jiraUrl,
         jiraEmail: formData.jiraEmail,
         jiraApiToken: formData.jiraApiToken,
         jiraProjectKey: formData.jiraProjectKey,
       };
 
-      // TODO: 실제 API 연동
-      // const res = await apiClient.post('/api/integrations/jira/connect', requestBody)
+      await connectJiraIntegration(requestBody);
 
-      console.log('Connect request:', requestBody);
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulated API call
-
-      alert('Jira 연동 성공!');
+      toast.success('Jira 연동에 성공했습니다.');
       onOpenChange(false);
+
+      const updatedProjects = await fetchProjects();
+      setProjectsInStore(updatedProjects);
 
       // reset
       setFormData({
@@ -93,7 +102,11 @@ export const JiraIntegrationModal = ({
       });
       setErrors({});
     } catch (error) {
-      alert('연동에 실패했습니다. 입력 정보를 확인해주세요.');
+      if (error instanceof ApiError && error.response) {
+        toast.error(error.response.message);
+      } else {
+        toast.error('연동에 실패했습니다. 입력 정보를 확인해주세요.');
+      }
       console.error('Jira connection failed:', error);
     } finally {
       setIsConnecting(false);
@@ -206,7 +219,7 @@ export const JiraIntegrationModal = ({
 
             {/* 프로젝트 키 */}
             <div className="grid gap-3">
-              <Label htmlFor="jira-project-key">프로젝트 키</Label>
+              <Label htmlFor="jira-project-key">프로젝트 키 <span className="text-destructive">*</span></Label>
               <Input
                 id="jira-project-key"
                 value={formData.jiraProjectKey}
