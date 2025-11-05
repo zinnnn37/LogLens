@@ -188,16 +188,20 @@ public interface ProjectApi {
                                                                 {
                                                                     "projectName": "LogLens",
                                                                     "description": "로그 수집 및 분석 프로젝트",
+                                                                    "projectUuid": "pk_1a2b3c4d5e6f",
                                                                     "memberCount": 6,
                                                                     "createdAt": "2025-11-03T13:36:36",
-                                                                    "updatedAt": "2025-11-03T13:36:36"
+                                                                    "updatedAt": "2025-11-03T13:36:36",
+                                                                    "jiraConnectionExist": true
                                                                 },
                                                                 {
                                                                     "projectName": "AI Monitor",
                                                                     "description": "AI 모델 상태 모니터링 서비스",
+                                                                    "projectUuid": "pk_9z8y7x6w5v4u",
                                                                     "memberCount": 4,
                                                                     "createdAt": "2025-10-15T09:00:00",
-                                                                    "updatedAt": "2025-10-20T09:00:00"
+                                                                    "updatedAt": "2025-10-20T09:00:00",
+                                                                    "jiraConnectionExist": false
                                                                 }
                                                             ],
                                                             "pageable": {
