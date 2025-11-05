@@ -3,6 +3,7 @@ package S13P31A306.loglens.domain.project.service.impl;
 import S13P31A306.loglens.domain.auth.entity.User;
 import S13P31A306.loglens.domain.auth.respository.UserRepository;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
+import S13P31A306.loglens.domain.project.constants.ProjectErrorCode;
 import S13P31A306.loglens.domain.project.dto.request.ProjectCreateRequest;
 import S13P31A306.loglens.domain.project.dto.request.ProjectMemberInviteRequest;
 import S13P31A306.loglens.domain.project.dto.response.ProjectCreateResponse;
@@ -225,6 +226,13 @@ public class ProjectServiceImpl implements ProjectService {
         projectMemberRepository.deleteByProjectIdAndUserId(projectId, memberId);
 
         log.info("{} 멤버 삭제 완료: project={}", LOG_PREFIX, project.getProjectName());
+    }
+
+    @Override
+    public Integer getProjectIdByUuid(String projectUuid) {
+        return projectRepository.findByProjectUuid(projectUuid)
+                .map(Project::getId)
+                .orElseThrow(() -> new BusinessException(ProjectErrorCode.PROJECT_NOT_FOUND));
     }
 
     private Comparator<Project> getComparator(String sort, String order) {
