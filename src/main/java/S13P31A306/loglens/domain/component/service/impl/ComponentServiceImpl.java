@@ -55,7 +55,7 @@ public class ComponentServiceImpl implements ComponentService {
                 .collect(Collectors.toMap(Component::getId, component -> component));
     }
 
-//    @Overridea
+//    @Override
 //    public List<Component> findByProjectId(Integer projectId) {
 //        return List.of();
 //    }
