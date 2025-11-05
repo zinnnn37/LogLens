@@ -59,15 +59,27 @@ pipeline {
                     echo "🔍 Final deployment status:"
                     docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}" | grep loglens || true
 
-                    # 활성 포트 확인
-                    if [ -f /etc/nginx/sites-enabled/loglens ]; then
-                        ACTIVE_PORT=$(grep "server localhost:" /etc/nginx/sites-enabled/loglens | head -1 | awk -F: '{print $2}' | tr -d '; ')
-                        echo "✅ Active port: $ACTIVE_PORT"
+                    # 활성 컨테이너 확인
+                    ACTIVE_CONTAINER=$(docker ps --format "{{.Names}}" | grep "loglens-" | head -1)
 
-                        # 헬스 체크
-                        curl -f http://localhost:${ACTIVE_PORT}/health-check || exit 1
+                    if [ -n "$ACTIVE_CONTAINER" ]; then
+                        echo "✅ Active container: $ACTIVE_CONTAINER"
+
+                        # Docker health status 확인
+                        HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' $ACTIVE_CONTAINER 2>/dev/null || echo "none")
+                        echo "🏥 Health status: $HEALTH_STATUS"
+
+                        if [ "$HEALTH_STATUS" = "healthy" ] || [ "$HEALTH_STATUS" = "none" ]; then
+                            # 컨테이너 내부에서 헬스 체크 실행
+                            docker exec $ACTIVE_CONTAINER curl -f http://localhost:8080/health-check || exit 1
+                            echo "✅ Health check passed!"
+                        else
+                            echo "❌ Container is not healthy: $HEALTH_STATUS"
+                            exit 1
+                        fi
                     else
-                        echo "⚠️ Nginx configuration not found, skipping health check"
+                        echo "⚠️ No active loglens container found"
+                        exit 1
                     fi
                 '''
             }

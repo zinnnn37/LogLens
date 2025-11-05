@@ -151,32 +151,32 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
         continue
     fi
 
-    # Health check (더 상세한 응답 확인)
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/health-check 2>/dev/null || echo "000")
+    # Docker 컨테이너의 health status 확인
+    HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || echo "none")
 
-    # 추가적으로 루트 엔드포인트도 확인
-    if [ "$HTTP_CODE" != "200" ]; then
-        ROOT_HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/ 2>/dev/null || echo "000")
-        if [ "$ROOT_HTTP_CODE" = "200" ]; then
-            echo "⚠️ 헬스체크 엔드포인트는 응답하지 않지만 루트 엔드포인트는 정상입니다."
-            HTTP_CODE="200"  # 루트가 정상이면 통과
-        fi
+    # Docker healthcheck가 없는 경우 컨테이너 내부에서 curl 실행
+    if [ "$HEALTH_STATUS" = "none" ]; then
+        HTTP_CODE=$(docker exec ${SERVICE_NAME}-${NEW_ENV} curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health-check 2>/dev/null || echo "000")
+    elif [ "$HEALTH_STATUS" = "healthy" ]; then
+        HTTP_CODE="200"
+    else
+        # starting, unhealthy 등의 상태
+        HTTP_CODE="000"
     fi
 
     if [ "$HTTP_CODE" = "200" ]; then
-        echo "✅ $NEW_ENV 환경이 정상 상태입니다!"
+        echo "✅ $NEW_ENV 환경이 정상 상태입니다! (Health status: $HEALTH_STATUS)"
         SUCCESS=true
 
-        # 추가 확인
+        # 추가 확인 - 컨테이너 내부에서 실행
         echo "🔍 엔드포인트 확인:"
-        curl -s http://localhost:${NEW_PORT}/ 2>/dev/null || echo "메인 엔드포인트 응답 실패"
+        docker exec ${SERVICE_NAME}-${NEW_ENV} curl -s http://localhost:8080/health-check 2>/dev/null || echo "헬스체크 응답 실패"
         echo ""
-        curl -s http://localhost:${NEW_PORT}/health-check 2>/dev/null || echo "헬스체크 응답 실패"
 
         break
     fi
 
-    echo "⏳ 헬스 체크 대기 중... (시도 $ATTEMPT/$MAX_ATTEMPTS, HTTP 상태: $HTTP_CODE)"
+    echo "⏳ 헬스 체크 대기 중... (시도 $ATTEMPT/$MAX_ATTEMPTS, Health: $HEALTH_STATUS, HTTP: $HTTP_CODE)"
 
     if [ $((ATTEMPT % 5)) -eq 0 ]; then
         echo "📋 진행 상황: $ATTEMPT/$MAX_ATTEMPTS 시도 완료"
