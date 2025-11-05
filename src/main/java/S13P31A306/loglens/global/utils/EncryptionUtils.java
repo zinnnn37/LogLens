@@ -1,4 +1,4 @@
-package S13P31A306.loglens.global.util;
+package S13P31A306.loglens.global.utils;
 
 import S13P31A306.loglens.global.annotation.Sensitive;
 import lombok.extern.slf4j.Slf4j;
@@ -39,15 +39,14 @@ public class EncryptionUtils {
     public EncryptionUtils(@Value("${encryption.secret-key}") @Sensitive String secretKey) {
         // secretKey null/empty 검증
         if (secretKey == null || secretKey.trim().isEmpty()) {
-            String errorMessage = "ENCRYPTION_SECRET_KEY must be set in environment variables. " +
-                    "Please configure encryption.secret-key in application.yml or set ENCRYPTION_SECRET_KEY environment variable.";
+            String errorMessage = "ENCRYPTION_SECRET_KEY 는 환경 변수로 설정해야 한다 ";
             log.error("{} {}", LOG_PREFIX, errorMessage);
             throw new IllegalStateException(errorMessage);
         }
 
         // secretKey 최소 길이 검증 (보안 강화)
         if (secretKey.length() < 16) {
-            String errorMessage = "ENCRYPTION_SECRET_KEY must be at least 16 characters long. Current length: " + secretKey.length();
+            String errorMessage = "ENCRYPTION_SECRET_KEY는 16자 이상이어야 한다. 현재 길이: " + secretKey.length();
             log.error("{} {}", LOG_PREFIX, errorMessage);
             throw new IllegalStateException(errorMessage);
         }

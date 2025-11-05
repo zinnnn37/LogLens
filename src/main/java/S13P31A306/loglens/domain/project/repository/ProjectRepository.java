@@ -23,7 +23,7 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
     /**
      * 로그인 한 사용자의 프로젝트 목록 조회
      *
-     * @param userId 사용자 id
+     * @param userId   사용자 id
      * @param pageable 출력할 페이지 위치
      * @return Page<Project> 현재 페이지의 프로젝트
      */

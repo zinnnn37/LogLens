@@ -13,9 +13,11 @@ import S13P31A306.loglens.domain.jira.entity.JiraConnection;
 import S13P31A306.loglens.domain.jira.mapper.JiraMapper;
 import S13P31A306.loglens.domain.jira.repository.JiraConnectionRepository;
 import S13P31A306.loglens.domain.jira.validator.JiraValidator;
+import S13P31A306.loglens.domain.project.entity.Project;
+import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import S13P31A306.loglens.global.constants.GlobalErrorCode;
 import S13P31A306.loglens.global.exception.BusinessException;
-import S13P31A306.loglens.global.util.EncryptionUtils;
+import S13P31A306.loglens.global.utils.EncryptionUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -51,6 +53,9 @@ class JiraIssueServiceImplTest {
     private JiraConnectionRepository jiraConnectionRepository;
 
     @Mock
+    private ProjectRepository projectRepository;
+
+    @Mock
     private JiraApiClient jiraApiClient;
 
     @Mock
@@ -72,18 +77,31 @@ class JiraIssueServiceImplTest {
             // given
             Integer userId = 1;
             Integer projectId = 1;
+            String projectUuid = "550e8400-e29b-41d4-a716-446655440000";
             Integer logId = 100;
             String summary = "Test Issue";
             String description = "Test Description";
 
             JiraIssueCreateRequest request = new JiraIssueCreateRequest(
-                    projectId,
+                    projectUuid,
                     logId,
                     summary,
                     description,
                     "Bug",
                     "High"
             );
+
+            Project mockProject = Project.builder()
+                    .projectName("Test Project")
+                    .projectUuid(projectUuid)
+                    .build();
+            try {
+                java.lang.reflect.Field idField = mockProject.getClass().getDeclaredField("id");
+                idField.setAccessible(true);
+                idField.set(mockProject, projectId);
+            } catch (Exception e) {
+                throw new RuntimeException("테스트 데이터 설정 실패", e);
+            }
 
             String jiraUrl = "https://test.atlassian.net";
             String jiraEmail = "admin@example.com";
@@ -135,6 +153,7 @@ class JiraIssueServiceImplTest {
 
             // Mocking
             given(authenticationHelper.getCurrentUserId()).willReturn(userId);
+            given(projectRepository.findByProjectUuid(projectUuid)).willReturn(Optional.of(mockProject));
             willDoNothing().given(jiraValidator).validateProjectAccess(projectId, userId);
             willDoNothing().given(jiraValidator).validateLogExists(logId);
             given(jiraConnectionRepository.findByProjectId(projectId)).willReturn(Optional.of(connection));
@@ -159,6 +178,7 @@ class JiraIssueServiceImplTest {
 
             // verify
             verify(authenticationHelper, times(1)).getCurrentUserId();
+            verify(projectRepository, times(1)).findByProjectUuid(projectUuid);
             verify(jiraValidator, times(1)).validateProjectAccess(projectId, userId);
             verify(jiraValidator, times(1)).validateLogExists(logId);
             verify(jiraConnectionRepository, times(1)).findByProjectId(projectId);
@@ -175,8 +195,9 @@ class JiraIssueServiceImplTest {
             // given
             Integer userId = 1;
             Integer projectId = 1;
+            String projectUuid = "550e8400-e29b-41d4-a716-446655440000";
             JiraIssueCreateRequest request = new JiraIssueCreateRequest(
-                    projectId,
+                    projectUuid,
                     100,
                     "Test Issue",
                     "Test Description",
@@ -184,7 +205,20 @@ class JiraIssueServiceImplTest {
                     "High"
             );
 
+            Project mockProject = Project.builder()
+                    .projectName("Test Project")
+                    .projectUuid(projectUuid)
+                    .build();
+            try {
+                java.lang.reflect.Field idField = mockProject.getClass().getDeclaredField("id");
+                idField.setAccessible(true);
+                idField.set(mockProject, projectId);
+            } catch (Exception e) {
+                throw new RuntimeException("테스트 데이터 설정 실패", e);
+            }
+
             given(authenticationHelper.getCurrentUserId()).willReturn(userId);
+            given(projectRepository.findByProjectUuid(projectUuid)).willReturn(Optional.of(mockProject));
             willThrow(new BusinessException(GlobalErrorCode.FORBIDDEN))
                     .given(jiraValidator).validateProjectAccess(projectId, userId);
 
@@ -194,6 +228,7 @@ class JiraIssueServiceImplTest {
 
             // verify
             verify(authenticationHelper, times(1)).getCurrentUserId();
+            verify(projectRepository, times(1)).findByProjectUuid(projectUuid);
             verify(jiraValidator, times(1)).validateProjectAccess(projectId, userId);
             verify(jiraValidator, times(0)).validateLogExists(any());
             verify(jiraConnectionRepository, times(0)).findByProjectId(any());
@@ -205,9 +240,10 @@ class JiraIssueServiceImplTest {
             // given
             Integer userId = 1;
             Integer projectId = 1;
+            String projectUuid = "550e8400-e29b-41d4-a716-446655440000";
             Integer logId = 100;
             JiraIssueCreateRequest request = new JiraIssueCreateRequest(
-                    projectId,
+                    projectUuid,
                     logId,
                     "Test Issue",
                     "Test Description",
@@ -215,7 +251,20 @@ class JiraIssueServiceImplTest {
                     "High"
             );
 
+            Project mockProject = Project.builder()
+                    .projectName("Test Project")
+                    .projectUuid(projectUuid)
+                    .build();
+            try {
+                java.lang.reflect.Field idField = mockProject.getClass().getDeclaredField("id");
+                idField.setAccessible(true);
+                idField.set(mockProject, projectId);
+            } catch (Exception e) {
+                throw new RuntimeException("테스트 데이터 설정 실패", e);
+            }
+
             given(authenticationHelper.getCurrentUserId()).willReturn(userId);
+            given(projectRepository.findByProjectUuid(projectUuid)).willReturn(Optional.of(mockProject));
             willDoNothing().given(jiraValidator).validateProjectAccess(projectId, userId);
             willThrow(new BusinessException(GlobalErrorCode.NOT_FOUND))
                     .given(jiraValidator).validateLogExists(logId);
@@ -226,6 +275,7 @@ class JiraIssueServiceImplTest {
 
             // verify
             verify(authenticationHelper, times(1)).getCurrentUserId();
+            verify(projectRepository, times(1)).findByProjectUuid(projectUuid);
             verify(jiraValidator, times(1)).validateProjectAccess(projectId, userId);
             verify(jiraValidator, times(1)).validateLogExists(logId);
             verify(jiraConnectionRepository, times(0)).findByProjectId(any());
@@ -237,9 +287,10 @@ class JiraIssueServiceImplTest {
             // given
             Integer userId = 1;
             Integer projectId = 1;
+            String projectUuid = "550e8400-e29b-41d4-a716-446655440000";
             Integer logId = 100;
             JiraIssueCreateRequest request = new JiraIssueCreateRequest(
-                    projectId,
+                    projectUuid,
                     logId,
                     "Test Issue",
                     "Test Description",
@@ -247,7 +298,20 @@ class JiraIssueServiceImplTest {
                     "High"
             );
 
+            Project mockProject = Project.builder()
+                    .projectName("Test Project")
+                    .projectUuid(projectUuid)
+                    .build();
+            try {
+                java.lang.reflect.Field idField = mockProject.getClass().getDeclaredField("id");
+                idField.setAccessible(true);
+                idField.set(mockProject, projectId);
+            } catch (Exception e) {
+                throw new RuntimeException("테스트 데이터 설정 실패", e);
+            }
+
             given(authenticationHelper.getCurrentUserId()).willReturn(userId);
+            given(projectRepository.findByProjectUuid(projectUuid)).willReturn(Optional.of(mockProject));
             willDoNothing().given(jiraValidator).validateProjectAccess(projectId, userId);
             willDoNothing().given(jiraValidator).validateLogExists(logId);
             given(jiraConnectionRepository.findByProjectId(projectId)).willReturn(Optional.empty());
@@ -259,6 +323,7 @@ class JiraIssueServiceImplTest {
 
             // verify
             verify(authenticationHelper, times(1)).getCurrentUserId();
+            verify(projectRepository, times(1)).findByProjectUuid(projectUuid);
             verify(jiraValidator, times(1)).validateProjectAccess(projectId, userId);
             verify(jiraValidator, times(1)).validateLogExists(logId);
             verify(jiraConnectionRepository, times(1)).findByProjectId(projectId);
@@ -272,15 +337,28 @@ class JiraIssueServiceImplTest {
             // given
             Integer userId = 1;
             Integer projectId = 1;
+            String projectUuid = "550e8400-e29b-41d4-a716-446655440000";
             Integer logId = 100;
             JiraIssueCreateRequest request = new JiraIssueCreateRequest(
-                    projectId,
+                    projectUuid,
                     logId,
                     "Test Issue",
                     "Test Description",
                     "Bug",
                     "High"
             );
+
+            Project mockProject = Project.builder()
+                    .projectName("Test Project")
+                    .projectUuid(projectUuid)
+                    .build();
+            try {
+                java.lang.reflect.Field idField = mockProject.getClass().getDeclaredField("id");
+                idField.setAccessible(true);
+                idField.set(mockProject, projectId);
+            } catch (Exception e) {
+                throw new RuntimeException("테스트 데이터 설정 실패", e);
+            }
 
             String jiraUrl = "https://test.atlassian.net";
             String jiraEmail = "admin@example.com";
@@ -307,6 +385,7 @@ class JiraIssueServiceImplTest {
             );
 
             given(authenticationHelper.getCurrentUserId()).willReturn(userId);
+            given(projectRepository.findByProjectUuid(projectUuid)).willReturn(Optional.of(mockProject));
             willDoNothing().given(jiraValidator).validateProjectAccess(projectId, userId);
             willDoNothing().given(jiraValidator).validateLogExists(logId);
             given(jiraConnectionRepository.findByProjectId(projectId)).willReturn(Optional.of(connection));
@@ -321,6 +400,7 @@ class JiraIssueServiceImplTest {
 
             // verify
             verify(authenticationHelper, times(1)).getCurrentUserId();
+            verify(projectRepository, times(1)).findByProjectUuid(projectUuid);
             verify(jiraValidator, times(1)).validateProjectAccess(projectId, userId);
             verify(jiraValidator, times(1)).validateLogExists(logId);
             verify(jiraConnectionRepository, times(1)).findByProjectId(projectId);

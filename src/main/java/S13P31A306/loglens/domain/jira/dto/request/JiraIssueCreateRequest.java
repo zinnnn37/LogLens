@@ -7,9 +7,9 @@ import jakarta.validation.constraints.*;
  * Jira 이슈 생성 요청 DTO
  */
 public record JiraIssueCreateRequest(
-        @NotNull(message = "PROJECT_ID_REQUIRED")
-        @Schema(description = "LogLens 프로젝트 ID", example = "1")
-        Integer projectId,
+        @NotBlank(message = "PROJECT_UUID_REQUIRED")
+        @Schema(description = "LogLens 프로젝트 UUID", example = "550e8400-e29b-41d4-a716-446655440000")
+        String projectUuid,
 
         @NotNull(message = "LOG_ID_REQUIRED")
         @Schema(description = "로그 ID", example = "12345")

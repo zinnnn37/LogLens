@@ -16,11 +16,10 @@ import java.util.Objects;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ApiKeyFilter extends OncePerRequestFilter {
+public class UuidFilter extends OncePerRequestFilter {
 
     private static final String UUID_HEADER = "X-UUID";
     private static final String PROJECT_ID_ATTRIBUTE = "projectId";
-
     private final ProjectService projectService;
 
     @Override
@@ -43,6 +42,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             }
 
             try {
+                // API Key로 project_id 조회 (캐시 적용됨)
                 Integer projectId = projectService.getProjectIdByUuid(uuid);
 
                 request.setAttribute(PROJECT_ID_ATTRIBUTE, projectId);
@@ -68,5 +68,4 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         return uri.startsWith("/api/dependencies/") ||
                 uri.startsWith("/api/components/");
     }
-
 }

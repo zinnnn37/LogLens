@@ -12,6 +12,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum JiraSuccessCode implements SuccessCode {
 
+    // 200 OK
+    JIRA_CONNECTION_STATUS_RETRIEVED("JI200-1", "Jira 연동 상태를 성공적으로 조회했습니다.", 200),
+
     // 201 Created
     JIRA_CONNECT_SUCCESS("JI201-1", "Jira 연동이 성공적으로 설정되었습니다.", 201),
     JIRA_ISSUE_CREATE_SUCCESS("JI201-2", "Jira 이슈가 성공적으로 생성되었습니다.", 201);
