@@ -1,6 +1,6 @@
 // src/components/WithProject.tsx
 import { Button } from '@/components/ui/button';
-import { UserPlus2, Trash2, Link2 } from 'lucide-react';
+import { UserPlus2, Trash2, Link2, Link } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import MemberInviteModal from './modal/MemberInviteModal';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -14,8 +14,6 @@ export interface WithProjectProps {
   onEmptyAfterExit?: () => void;
 }
 
-
-
 const WithProject = ({
   projects,
   onSelect,
@@ -24,10 +22,10 @@ const WithProject = ({
 }: WithProjectProps) => {
   const list = projects ?? [];
 
-  const [invitingProjectId, setInvitingProjectId] = useState<string | null>( 
+  const [invitingProjectId, setInvitingProjectId] = useState<string | null>(
     null,
   );
-  const [jiraProjectId, setJiraProjectId] = useState<string | null>(null); 
+  const [jiraProjectId, setJiraProjectId] = useState<string | null>(null);
 
   const becameEmptyRef = useRef(false);
   const prevLenRef = useRef(list.length);
@@ -57,7 +55,7 @@ const WithProject = ({
                 >
                   {list.map(p => (
                     <motion.div
-                      key={p.projectUuid} 
+                      key={p.projectUuid}
                       layout="position"
                       initial={{ opacity: 0, y: 8, scale: 0.99 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -69,39 +67,47 @@ const WithProject = ({
                       }}
                       role="button"
                       tabIndex={0}
-                      onClick={() => onSelect?.(p.projectUuid)} 
+                      onClick={() => onSelect?.(p.projectUuid)}
                       onKeyDown={e => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          onSelect?.(p.projectUuid); 
+                          onSelect?.(p.projectUuid);
                         }
                       }}
                       className="focus:ring-ring/40 cursor-pointer rounded-xl bg-white px-5 py-4 shadow-sm transition [will-change:transform,opacity] hover:shadow-md focus:ring-2 focus:outline-none"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div className="min-w-0">
-                          <p className="text-foreground truncate font-semibold">
-                            {p.projectName}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-foreground truncate font-semibold">
+                              {p.projectName}
+                            </p>
+                            {p.jiraConnectionExist && (
+                              <Link
+                                className="h-4 w-4 text-blue-600 shrink-0"
+                                aria-label="Jira 연결됨"
+                              />
+                            )}
+                          </div>
                           <p className="text-muted-foreground text-sm">
                             멤버 {p.memberCount}명
                           </p>
                         </div>
 
                         <div className="flex items-center gap-2">
-                          {/* TODO : 연결상태 확인할 수 있는지 체크 후 조건부 렌더링 추가 */}
-                          {/* Jira 연결 버튼 */}
-                          <Button
-                            variant="outline"
-                            className="gap-2"
-                            onClick={e => {
-                              e.stopPropagation();
-                              setJiraProjectId(p.projectUuid); 
-                            }}
-                          >
-                            <Link2 className="h-4 w-4" />
-                            Jira 연결
-                          </Button>
+                          {!p.jiraConnectionExist && (
+                            <Button
+                              variant="outline"
+                              className="gap-2"
+                              onClick={e => {
+                                e.stopPropagation();
+                                setJiraProjectId(p.projectUuid);
+                              }}
+                            >
+                              <Link2 className="h-4 w-4" />
+                              Jira 연결
+                            </Button>
+                          )}
 
                           {/* 멤버 초대 */}
                           <Button
@@ -109,7 +115,7 @@ const WithProject = ({
                             className="gap-2"
                             onClick={e => {
                               e.stopPropagation();
-                              setInvitingProjectId(p.projectUuid); 
+                              setInvitingProjectId(p.projectUuid);
                             }}
                           >
                             <UserPlus2 className="h-4 w-4" />
@@ -126,7 +132,7 @@ const WithProject = ({
                               aria-label={`${p.projectName} 프로젝트 삭제`}
                               onClick={e => {
                                 e.stopPropagation();
-                                onDelete?.(p.projectUuid); 
+                                onDelete?.(p.projectUuid);
                               }}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -149,7 +155,7 @@ const WithProject = ({
         <MemberInviteModal
           open={true}
           onOpenChange={() => setInvitingProjectId(null)}
-          projectUuid={invitingProjectId} 
+          projectUuid={invitingProjectId}
         />
       )}
 
@@ -158,7 +164,7 @@ const WithProject = ({
         <JiraIntegrationModal
           open={true}
           onOpenChange={() => setJiraProjectId(null)}
-          projectUuid={jiraProjectId} 
+          projectUuid={jiraProjectId}
         />
       )}
     </div>

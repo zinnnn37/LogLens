@@ -31,6 +31,7 @@ export interface ProjectInfoDTO {
   memberCount: number;
   createdAt: string;
   updatedAt?: string;
+  jiraConnectionExist: boolean;
 }
 
 /**
