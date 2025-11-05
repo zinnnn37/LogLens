@@ -1,6 +1,7 @@
 package S13P31A306.loglens.domain.dashboard.entity;
 
 import S13P31A306.loglens.domain.project.entity.Project;
+import S13P31A306.loglens.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "log_metrics")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class LogMetrics {
+public class LogMetrics extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
