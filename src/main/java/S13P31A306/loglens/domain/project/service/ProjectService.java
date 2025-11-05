@@ -64,6 +64,4 @@ public interface ProjectService {
      * @param memberId    멤버 ID
      */
     void deleteMember(String projectUuid, int memberId);
-
-    Integer getProjectIdByUuid(String projectUuid);
 }
