@@ -3,6 +3,7 @@ package S13P31A306.loglens.domain.dashboard.controller.impl;
 import S13P31A306.loglens.domain.dashboard.constants.DashboardSuccessCode;
 import S13P31A306.loglens.domain.dashboard.controller.DashboardApi;
 import S13P31A306.loglens.domain.dashboard.dto.response.ComponentDependencyResponse;
+import S13P31A306.loglens.domain.dashboard.dto.response.DashboardOverviewResponse;
 import S13P31A306.loglens.domain.dashboard.dto.response.ProjectComponentsResponse;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
 import S13P31A306.loglens.global.annotation.ValidUuid;
@@ -28,11 +29,15 @@ public class DashboardController implements DashboardApi {
      */
     @GetMapping("/statistics/overview")
     public ResponseEntity<? extends BaseResponse> getStatisticsOverview(
-            @RequestParam Integer projectId,
+            @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
-        return null;
+        DashboardOverviewResponse response = dashboardService.getStatisticsOverview(projectUuid, startTime, endTime);
+        return ApiResponseFactory.success(
+                DashboardSuccessCode.OVERVIEW_RETRIEVED,
+                response
+        );
     }
 
     /**
@@ -40,7 +45,7 @@ public class DashboardController implements DashboardApi {
      */
     @GetMapping("/statistics/top")
     public ResponseEntity<? extends BaseResponse> getTopFrequentErrors(
-            @RequestParam Integer projectId,
+            @RequestParam String projectUuid,
             @RequestParam(defaultValue = "10") Integer limit,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
@@ -53,7 +58,7 @@ public class DashboardController implements DashboardApi {
      */
     @GetMapping("/statistics/api-calls")
     public ResponseEntity<? extends BaseResponse> getApiCallStatistics(
-            @RequestParam Integer projectId,
+            @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
@@ -65,7 +70,7 @@ public class DashboardController implements DashboardApi {
      */
     @GetMapping("/statistics/logs/heatmap")
     public ResponseEntity<? extends BaseResponse> getLogHeatmap(
-            @RequestParam Integer projectId,
+            @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
@@ -77,7 +82,7 @@ public class DashboardController implements DashboardApi {
      */
     @GetMapping("/dashboards/dependencies/architecture")
     public ResponseEntity<? extends BaseResponse> getDependencyArchitecture(
-            @RequestParam Integer projectId
+            @RequestParam String projectUuid
     ) {
         return null;
     }
@@ -87,7 +92,7 @@ public class DashboardController implements DashboardApi {
      */
     @GetMapping("/dashboards/dependencies/components")
     public ResponseEntity<? extends BaseResponse> getDependencyComponents(
-            @RequestParam Integer projectId,
+            @RequestParam String projectUuid,
             @RequestParam(required = false) String layer,
             @RequestParam(required = false) String componentType
     ) {
@@ -144,7 +149,7 @@ public class DashboardController implements DashboardApi {
      */
     @GetMapping("/alerts")
     public ResponseEntity<? extends BaseResponse> getAlertFeed(
-            @RequestParam Integer projectId,
+            @RequestParam String projectUuid,
             @RequestParam(required = false) String severity, // "critical", "warning", "info"
             @RequestParam(required = false) Boolean isRead,
             @RequestParam(defaultValue = "0") Integer page,

@@ -6,6 +6,7 @@ import S13P31A306.loglens.domain.component.service.ComponentMetricsService;
 import S13P31A306.loglens.domain.component.service.ComponentService;
 import S13P31A306.loglens.domain.dashboard.dto.response.*;
 import S13P31A306.loglens.domain.dashboard.mapper.DashboardMapper;
+import S13P31A306.loglens.domain.dashboard.dto.response.DashboardOverviewResponse;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
 import S13P31A306.loglens.domain.dashboard.validator.DashboardValidator;
 import S13P31A306.loglens.domain.dependency.dto.response.DependencyGraphResponse;
@@ -15,6 +16,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
+import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,14 +31,25 @@ import java.util.*;
 public class DashboardServiceImpl implements DashboardService {
 
     private static final String LOG_PREFIX = "[DashboardService]";
+
     private final ComponentService componentService;
     private final ComponentMetricsService componentMetricsService;
     private final DependencyGraphService dependencyGraphService;
+    private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository projectMemberRepository;
     private final DashboardValidator validator;
     private final DashboardMapper mapper;
+//    private final OpenSearchClient openSearchClient;
 
     @Override
-    public DashboardOverviewResponse getStatisticsOverview(int projectId, String startTime, String endTime) {
+    public DashboardOverviewResponse getStatisticsOverview(String projectUuid, String startTime, String endTime) {
+        log.info("{} 대시보드 통계 개요 조회 시도", LOG_PREFIX);
+
+        // 권한 검증
+        validator.validateProjectAccess(projectUuid);
+
+
+
         return null;
     }
 

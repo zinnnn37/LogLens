@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.dashboard.validator;
 
+import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.domain.auth.validator.AuthValidator;
 import S13P31A306.loglens.domain.component.repository.ComponentRepository;
 import S13P31A306.loglens.domain.project.entity.Project;
@@ -16,10 +17,29 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class DashboardValidator {
+
     private static final String LOG_PREFIX = "[DashboardValidator]";
+
     private final ProjectValidator projectValidator;
     private final AuthValidator authValidator;
+    private final AuthenticationHelper authHelper;
     private final ComponentRepository componentRepository;
+
+    /**
+     * 프로젝트 접근 권한 검증
+     *
+     * @param projectUuid 프로젝트 UUID
+     * @return 프로젝트 ID
+     * @throws BusinessException 프로젝트가 존재하지 않거나 접근 권한 없음
+     */
+    public Integer validateProjectAccess(String projectUuid) {
+        log.debug("{} 프로젝트 접근 권한 확인: projectUuid={}", LOG_PREFIX, projectUuid);
+
+        int userId = authHelper.getCurrentUserId();
+
+
+    }
+
     /**
      * 프로젝트 존재 여부 및 접근 권한 검증
      *

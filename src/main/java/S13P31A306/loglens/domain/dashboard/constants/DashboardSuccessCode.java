@@ -8,9 +8,19 @@ import org.springframework.http.HttpStatus;
 @Getter
 @RequiredArgsConstructor
 public enum DashboardSuccessCode implements SuccessCode {
-    COMPONENTS_RETRIEVED("DASH200-1", "컴포넌트 목록을 성공적으로 조회했습니다.", HttpStatus.OK.value()),
-    COMPONENT_DEPENDENCY_RETRIEVED("DASH200-2", "컴포넌트 의존성 목록을 성공적으로 조회했습니다.", HttpStatus.OK.value());
+
+    // 200 OK
+    OVERVIEW_RETRIEVED("DSB200-1", "대시보드 통계를 성공적으로 조회했습니다.", HttpStatus.OK.value()),
+    FREQUENT_ERROR_RETRIEVED("DSB200-2", "자주 발생하는 에러를 성공적으로 조회했습니다.", HttpStatus.OK.value()),
+    API_STATISTICS_RETRIEVED("DSB200-3", "API 통계를 성공적으로 조회했습니다.", HttpStatus.OK.value()),
+    REQUEST_FLOW_RETRIEVED("DSB200-4", "요청 흐름을 성공적으로 조회했습니다.", HttpStatus.OK.value()),
+    HEATMAP_RETRIEVED("DSB200-5", "히트맵을 성공적으로 조회했습니다.", HttpStatus.OK.value()),
+    NOTIFICATION_FEED_RETRIEVED("DS200-6", "알림 피드를 성공적으로 조회했습니다.", HttpStatus.OK.value()),
+    COMPONENTS_RETRIEVED("DASH200-7", "컴포넌트 목록을 성공적으로 조회했습니다.", HttpStatus.OK.value()),
+    COMPONENT_DEPENDENCY_RETRIEVED("DASH200-8", "컴포넌트 의존성 목록을 성공적으로 조회했습니다.", HttpStatus.OK.value());
+
     private final String code;
     private final String message;
     private final int status;
+
 }
