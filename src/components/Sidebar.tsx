@@ -160,19 +160,24 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
               <p className="font-pretendard">Support</p>
             </NavHeading>
             <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => navigate(ROUTE_PATH.DOCS)}
-                className={itemBase}
-              >
-                <BookOpen className="text-primary h-4 w-4" />
-                사용자 가이드
-              </button>
-
-              {/* Docs 목차 - 스크롤 영역 */}
-              <div className="min-h-0 flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <DocsTOC />
-              </div>
+              <Accordion type="single" collapsible defaultValue="user-guide">
+                <AccordionItem value="user-guide" className="border-none">
+                  <AccordionTrigger
+                    className={`${itemBase} py-2 text-base font-normal hover:no-underline`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="text-primary h-4 w-4" />
+                      <span>사용자 가이드</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-0">
+                    {/* Docs 목차 - 스크롤 영역 */}
+                    <div className="min-h-0 overflow-y-auto pl-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      <DocsTOC />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
           </section>
         </nav>
