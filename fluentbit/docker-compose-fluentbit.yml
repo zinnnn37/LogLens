@@ -32,7 +32,7 @@ services:
       # PROJECT_NAME: 프로젝트 이름 (예: Loglens, Eatda)
       # ──────────────────────────────────────────────
       PROJECT_UUID: "8a61821c-121e-3fc8-8d4b-e318a8a3fd62"
-      PROJECT_NAME: "${PROJECT_NAME}"
+      PROJECT_NAME: "Loglens"
 
     ports:
       # ──────────────────────────────────────────────
