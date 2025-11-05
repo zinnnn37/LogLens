@@ -40,7 +40,7 @@ public class JiraConnection extends BaseEntity {
      * 민감 정보로 로그에 출력되지 않습니다.
      */
     @Sensitive
-    @Column(name = "jira_api_token", nullable = false, length = 255)
+    @Column(name = "jira_api_token", nullable = false, length = 512)
     private String jiraApiToken;
 
     /**
