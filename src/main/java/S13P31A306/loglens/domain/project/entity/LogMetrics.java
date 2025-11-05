@@ -1,6 +1,5 @@
-package S13P31A306.loglens.domain.dashboard.entity;
+package S13P31A306.loglens.domain.project.entity;
 
-import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
