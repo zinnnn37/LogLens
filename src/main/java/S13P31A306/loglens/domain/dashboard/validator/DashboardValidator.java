@@ -35,9 +35,14 @@ public class DashboardValidator {
     public Integer validateProjectAccess(String projectUuid) {
         log.debug("{} 프로젝트 접근 권한 확인: projectUuid={}", LOG_PREFIX, projectUuid);
 
-        int userId = authHelper.getCurrentUserId();
+        // 프로젝트 존재 검증
+        Project project = projectValidator.validateProjectExists(projectUuid);
 
+        // 프로젝트 멤버 여부 검증
+        Integer userId = authHelper.getCurrentUserId();
+        projectValidator.validateMemberExists(project.getId(), userId);
 
+        return project.getId();
     }
 
     /**
