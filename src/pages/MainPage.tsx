@@ -93,16 +93,16 @@ const MainPage = () => {
 
   if (isLoading) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center">
+      <div className="font-pretendard flex h-full items-center justify-center space-y-6 p-6 py-1">
         <Loader2 className="text-muted-foreground h-10 w-10 animate-spin" />
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-10">
+    <div className="font-pretendard relative space-y-6 p-6 py-1">
       {showEmptyMain ? (
-        <div className="flex flex-col items-center gap-6 text-center">
+        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 text-center">
           <img
             src={NoProjectIllust}
             alt="프로젝트 없음"
@@ -117,18 +117,26 @@ const MainPage = () => {
               <br />첫 프로젝트를 생성하세요.
             </p>
           </div>
+          <Button onClick={() => setOpenCreate(true)} className="mt-2">
+            + 새 프로젝트 생성
+          </Button>
         </div>
       ) : (
-        <WithProject
-          projects={projects}
-          onDelete={handleDeleteRequest}
-          onEmptyAfterExit={() => setShowEmptyMain(true)}
-        />
+        <>
+          <WithProject
+            projects={projects}
+            onDelete={handleDeleteRequest}
+            onEmptyAfterExit={() => setShowEmptyMain(true)}
+          />
+          {/* 플로팅 버튼 */}
+          <Button
+            onClick={() => setOpenCreate(true)}
+            className="fixed bottom-[72px] right-6 flex h-14 w-14 items-center justify-center rounded-full p-0 text-2xl shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
+          >
+            +
+          </Button>
+        </>
       )}
-
-      <Button onClick={() => setOpenCreate(true)} className="mt-2">
-        + 새 프로젝트 생성
-      </Button>
 
       <ProjectCreateModal
         open={openCreate}
@@ -170,7 +178,7 @@ const MainPage = () => {
         </AlertDialogContent>
       </AlertDialog>
       <FloatingChecklist />
-    </main>
+    </div>
   );
 };
 
