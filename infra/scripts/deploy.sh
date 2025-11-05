@@ -9,6 +9,19 @@ echo "⏰ 시작 시간: $(date '+%Y-%m-%d %H:%M:%S')"
 CURRENT_DIR=$(pwd)
 echo "📂 작업 디렉토리: $CURRENT_DIR"
 
+# Docker Compose 명령어 감지 (v2: docker compose, v1: docker-compose)
+DOCKER_COMPOSE_CMD=""
+if docker compose version >/dev/null 2>&1; then
+    DOCKER_COMPOSE_CMD="docker compose"
+    echo "✅ Docker Compose v2 감지"
+elif command -v docker-compose >/dev/null 2>&1; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+    echo "✅ Docker Compose v1 감지"
+else
+    echo "❌ Docker Compose를 찾을 수 없습니다!"
+    exit 1
+fi
+
 # 서비스 설정
 SERVICE_NAME="loglens"
 IMAGE_NAME="${SERVICE_NAME}:latest"
@@ -39,7 +52,7 @@ fi
 if [ "$BLUE_RUNNING" = true ] && [ "$GREEN_RUNNING" = true ]; then
     echo "⚠️ 두 환경 모두 실행 중입니다. green 환경을 중지합니다..."
     cd "${CURRENT_DIR}"
-    docker compose -f "docker-compose-green.yml" down 2>/dev/null || true
+    $DOCKER_COMPOSE_CMD -f "docker-compose-green.yml" down 2>/dev/null || true
     CURRENT_ENV="blue"
 elif [ "$BLUE_RUNNING" = true ]; then
     CURRENT_ENV="blue"
@@ -82,7 +95,7 @@ echo "🎯 $NEW_ENV 환경 시작 중..."
 if docker ps -a -q -f name=${SERVICE_NAME}-${NEW_ENV} | grep -q .; then
     echo "🧹 기존 컨테이너 제거: ${SERVICE_NAME}-${NEW_ENV}"
     cd "${CURRENT_DIR:-$(pwd)}"
-    docker compose -f "docker-compose-${NEW_ENV}.yml" down 2>/dev/null || true
+    $DOCKER_COMPOSE_CMD -f "docker-compose-${NEW_ENV}.yml" down 2>/dev/null || true
 fi
 
 # Docker Compose 파일 경로 확인
@@ -106,7 +119,7 @@ echo "📄 사용할 Compose 파일: $COMPOSE_FILE"
 
 # Working directory를 infra로 변경하여 docker compose 실행
 cd "${CURRENT_DIR:-$(pwd)}"
-docker compose -f "docker-compose-${NEW_ENV}.yml" up -d
+$DOCKER_COMPOSE_CMD -f "docker-compose-${NEW_ENV}.yml" up -d
 
 # 컨테이너 시작 대기
 echo "⏳ 컨테이너 시작 대기중..."
@@ -235,11 +248,11 @@ if [ "$SUCCESS" = false ]; then
         echo "   - 로그 확인: docker logs ${SERVICE_NAME}-${NEW_ENV}"
         echo "   - 컨테이너 접속: docker exec -it ${SERVICE_NAME}-${NEW_ENV} bash"
         echo "   - 컨테이너 상태: docker inspect ${SERVICE_NAME}-${NEW_ENV}"
-        echo "   - 컨테이너 제거: cd ${CURRENT_DIR:-$(pwd)} && docker compose -f docker-compose-${NEW_ENV}.yml down"
+        echo "   - 컨테이너 제거: cd ${CURRENT_DIR:-$(pwd)} && $DOCKER_COMPOSE_CMD -f docker-compose-${NEW_ENV}.yml down"
     else
         echo "🔄 컨테이너를 제거합니다..."
         cd "${CURRENT_DIR:-$(pwd)}"
-        docker compose -f "docker-compose-${NEW_ENV}.yml" down 2>/dev/null || true
+        $DOCKER_COMPOSE_CMD -f "docker-compose-${NEW_ENV}.yml" down 2>/dev/null || true
     fi
 
     exit 1
@@ -270,7 +283,7 @@ if [ "$HAS_SUDO" = false ] || [ "$HAS_NGINX" = false ]; then
     if [ "$CURRENT_ENV" != "" ]; then
         echo "🧹 이전 환경 정리 중: ${SERVICE_NAME}-${CURRENT_ENV}"
         cd "${CURRENT_DIR:-$(pwd)}"
-        docker compose -f "docker-compose-${CURRENT_ENV}.yml" down 2>/dev/null || true
+        $DOCKER_COMPOSE_CMD -f "docker-compose-${CURRENT_ENV}.yml" down 2>/dev/null || true
         echo "✅ 이전 환경 제거 완료"
     fi
 
@@ -326,7 +339,7 @@ if [ -f "$NGINX_CONFIG_FILE" ]; then
         if [ "$DEBUG_MODE" != "true" ]; then
             echo "🔄 실패한 컨테이너 제거 중..."
             cd "${CURRENT_DIR:-$(pwd)}"
-            docker compose -f "docker-compose-${NEW_ENV}.yml" down 2>/dev/null || true
+            $DOCKER_COMPOSE_CMD -f "docker-compose-${NEW_ENV}.yml" down 2>/dev/null || true
         fi
         exit 1
     fi
@@ -358,7 +371,7 @@ if [ "$CURRENT_ENV" != "" ]; then
     docker ps --filter "name=${SERVICE_NAME}-${OLD_ENV}" --format "table {{.Names}}\t{{.Status}}"
 
     cd "${CURRENT_DIR:-$(pwd)}"
-    docker compose -f "docker-compose-${OLD_ENV}.yml" down 2>/dev/null || true
+    $DOCKER_COMPOSE_CMD -f "docker-compose-${OLD_ENV}.yml" down 2>/dev/null || true
 
     echo "✅ 기존 $OLD_ENV 환경 정리 완료"
 
