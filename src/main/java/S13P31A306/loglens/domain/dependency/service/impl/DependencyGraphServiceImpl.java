@@ -12,7 +12,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * 의존성 그래프 Service 구현체
@@ -68,5 +70,15 @@ public class DependencyGraphServiceImpl implements DependencyGraphService {
 
         log.info("✅ 의존성 관계 저장 완료: {} 개 저장, {} 개 스킵 (projectId={})",
                 savedCount, skippedCount, projectId);
+    }
+
+    @Override
+    public List<DependencyGraph> findAllDependenciesByComponentId(Integer componentId) {
+        log.debug("의존성 관계 조회: componentId={}", componentId);
+
+        List<DependencyGraph> downstreamEdges = dependencyGraphRepository.findByFrom(componentId);
+        List<DependencyGraph> upstreamEdges = dependencyGraphRepository.findByTo(componentId);
+
+        return Stream.concat(downstreamEdges.stream(), upstreamEdges.stream()).toList();
     }
 }
