@@ -146,7 +146,7 @@ function transform_log(tag, timestamp, record)
     new_record["thread_name"] = record["thread_name"] or record["thread"] or nil
 
     ----------------------------------------------------
-    -- 6️⃣ execution_time / request / response / exception
+    -- 6️⃣ log_details: 상세 정보 수집 (스키마 준수)
     ----------------------------------------------------
     local exec_time = record["execution_time_ms"] or record["execution_time"] or nil
     if type(exec_time) == "string" then
@@ -157,30 +157,58 @@ function transform_log(tag, timestamp, record)
     local log_details = {}
     local has_details = false
 
+    -- execution_time (long)
     if exec_time then
         log_details["execution_time"] = exec_time
         has_details = true
     end
 
+    -- request 정보
     if record["request"] and type(record["request"]) == "table" then
         local req = record["request"]
+
+        -- http_method (keyword)
         log_details["http_method"] = req["method"] or (req["http"] and req["http"]["method"])
+
+        -- request_uri (text)
         log_details["request_uri"] = req["endpoint"] or (req["http"] and req["http"]["endpoint"])
+
+        -- request_headers (flattened) - headers가 있으면
+        if req["headers"] and type(req["headers"]) == "table" then
+            log_details["request_headers"] = req["headers"]
+        end
+
+        -- request_body (flattened) - parameters를 body로 매핑
+        if req["parameters"] and type(req["parameters"]) == "table" then
+            log_details["request_body"] = req["parameters"]
+        end
+
         has_details = true
     end
 
+    -- response 정보
     if record["response"] and type(record["response"]) == "table" then
         local res = record["response"]
+
+        -- response_status (integer)
         log_details["response_status"] = tonumber(res["statusCode"] or (res["http"] and res["http"]["statusCode"]))
-        log_details["response_body"] = res["result"] or nil
+
+        -- response_body (flattened)
+        if res["result"] then
+            log_details["response_body"] = res["result"]
+        end
+
         has_details = true
     end
 
+    -- exception 정보
     if record["exception"] then
+        -- exception_type (keyword)
         log_details["exception_type"] = tostring(record["exception"])
         has_details = true
     end
 
+    -- class_name, method_name (keyword)
     if new_record["class_name"] then
         log_details["class_name"] = new_record["class_name"]
         has_details = true
@@ -189,12 +217,36 @@ function transform_log(tag, timestamp, record)
         log_details["method_name"] = new_record["method_name"]
         has_details = true
     end
+
+    -- additional_info (flattened) - 기타 추가 정보
+    local additional_info = {}
+    local has_additional = false
+
+    -- 원본 request/response 객체를 additional_info에 보관
+    if record["request"] and type(record["request"]) == "table" then
+        additional_info["full_request"] = record["request"]
+        has_additional = true
+    end
+    if record["response"] and type(record["response"]) == "table" then
+        additional_info["full_response"] = record["response"]
+        has_additional = true
+    end
+    if record["exception"] and type(record["exception"]) == "table" then
+        additional_info["full_exception"] = record["exception"]
+        has_additional = true
+    end
+
+    if has_additional then
+        log_details["additional_info"] = additional_info
+        has_details = true
+    end
+
     if has_details then
         new_record["log_details"] = log_details
     end
 
     ----------------------------------------------------
-    -- 7️⃣ requester_ip 추출 (여러 소스에서 시도)
+    -- 7️⃣ requester_ip 및 stack_trace 추출
     ----------------------------------------------------
     local requester_ip = record["requester_ip"]
             or record["client_ip"]
@@ -213,7 +265,15 @@ function transform_log(tag, timestamp, record)
     end
 
     new_record["requester_ip"] = requester_ip or nil
-    new_record["stack_trace"] = record["stack_trace"] or nil
+
+    -- stack_trace (최상위 필드)
+    local stack_trace = record["stack_trace"] or record["stackTrace"] or nil
+    new_record["stack_trace"] = stack_trace
+
+    -- stack_trace를 log_details에도 추가 (스키마 준수)
+    if stack_trace and new_record["log_details"] then
+        new_record["log_details"]["stack_trace"] = stack_trace
+    end
 
     return 1, timestamp, new_record
 end
