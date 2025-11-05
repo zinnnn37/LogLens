@@ -16,7 +16,7 @@ import org.mapstruct.ReportingPolicy;
 public interface LogMapper {
 
     /**
-     * Log Entity -> LogResponse DTO 변환
+     * Log Entity -> LogResponse DTO 변환 id 필드: OpenSearch Document ID (_id)를 LogResponse의 logId로 매핑
      */
     @Mapping(source = "id", target = "logId")
     LogResponse toLogResponse(Log log);
