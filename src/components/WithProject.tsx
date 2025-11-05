@@ -57,14 +57,19 @@ const WithProject = ({
                   {list.map(p => (
                     <motion.div
                       key={p.projectUuid}
-                      layout="position"
-                      initial={{ opacity: 0, y: 8, scale: 0.99 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                      layout
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{
+                        opacity: 0,
+                        x: 50,
+                        transition: { duration: 0.25, ease: 'easeIn' }
+                      }}
                       transition={{
-                        duration: 0.18,
-                        ease: 'easeOut',
-                        layout: { duration: 0.18, ease: 'easeOut' },
+                        layout: {
+                          duration: 0.25,
+                          ease: [0.4, 0, 0.2, 1]
+                        },
                       }}
                       role="button"
                       tabIndex={0}

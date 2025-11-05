@@ -1,7 +1,7 @@
 // src/components/Sidebar.tsx
 import { useEffect, useState } from 'react';
 import type { ComponentProps } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   PlusSquare,
   MessageSquare,
@@ -63,6 +63,7 @@ const NavHeading = ({ children }: { children: React.ReactNode }) => {
 
 const Sidebar = ({ className, ...props }: SidebarProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { clearAuth } = useAuthStore();
 
   // 프로젝트 생성 모달 Open 상태 관리
@@ -204,6 +205,10 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
         onCreate={createProject}
         onComplete={() => {
           setOpenCreate(false);
+          // 현재 페이지가 메인이 아니면 메인으로 리다이렉트
+          if (location.pathname !== ROUTE_PATH.MAIN) {
+            navigate(ROUTE_PATH.MAIN);
+          }
         }}
       />
     </aside>
