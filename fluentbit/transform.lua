@@ -15,6 +15,236 @@ function detect_source_type(tag, timestamp, record)
     return 1, timestamp, record
 end
 
+-- ===========================================
+-- detect_infra_source_type: 인프라 로그 구분
+-- ===========================================
+function detect_infra_source_type(tag, timestamp, record)
+    record["source_type"] = "INFRA"
+    return 1, timestamp, record
+end
+
+-- ===========================================
+-- transform_docker_log: Docker 로그 변환
+-- ===========================================
+function transform_docker_log(tag, timestamp, record)
+    local new_record = {}
+
+    new_record["project_uuid"] = record["project_uuid"] or "default-project"
+    new_record["source_type"] = "INFRA"
+    new_record["layer"] = "Container"
+
+    -- 타임스탬프
+    new_record["timestamp"] = record["time"] or os.date("!%Y-%m-%dT%H:%M:%S.000Z", timestamp)
+
+    -- 컨테이너 정보
+    local container_name = record["container_name"] or "unknown"
+    new_record["service_name"] = container_name
+    new_record["logger"] = "docker." .. container_name
+
+    -- 로그 레벨 결정
+    local log_msg = record["log"] or ""
+    local level = "INFO"
+    if string.match(log_msg, "[Ee][Rr][Rr][Oo][Rr]") or string.match(log_msg, "[Ff][Aa][Ii][Ll]") then
+        level = "ERROR"
+    elseif string.match(log_msg, "[Ww][Aa][Rr][Nn]") then
+        level = "WARN"
+    end
+    new_record["log_level"] = level
+    new_record["level"] = level
+
+    -- 메시지
+    new_record["message"] = log_msg
+
+    -- 추가 정보
+    new_record["log_details"] = {
+        container_id = record["container_id"],
+        container_name = container_name,
+        stream = record["stream"]
+    }
+
+    new_record["trace_id"] = "docker-" .. (record["container_id"] or "unknown")
+    new_record["indexed_at"] = os.date("!%Y-%m-%dT%H:%M:%S.000Z")
+
+    return 1, timestamp, new_record
+end
+
+-- ===========================================
+-- transform_system_log: 시스템 로그 변환
+-- ===========================================
+function transform_system_log(tag, timestamp, record)
+    local new_record = {}
+
+    new_record["project_uuid"] = record["project_uuid"] or "default-project"
+    new_record["source_type"] = "INFRA"
+    new_record["layer"] = "System"
+
+    new_record["timestamp"] = record["time"] or os.date("!%Y-%m-%dT%H:%M:%S.000Z", timestamp)
+    new_record["service_name"] = record["ident"] or "syslog"
+    new_record["logger"] = "system." .. (record["ident"] or "unknown")
+
+    -- Priority 기반 로그 레벨 결정
+    local pri = tonumber(record["pri"]) or 6
+    local severity = pri % 8
+    local level = "INFO"
+    if severity <= 3 then
+        level = "ERROR"
+    elseif severity <= 4 then
+        level = "WARN"
+    end
+    new_record["log_level"] = level
+    new_record["level"] = level
+
+    new_record["message"] = record["message"] or ""
+
+    new_record["log_details"] = {
+        host = record["host"],
+        pid = record["pid"],
+        priority = record["pri"],
+        facility = math.floor(pri / 8)
+    }
+
+    new_record["trace_id"] = "system-" .. (record["host"] or "unknown")
+    new_record["indexed_at"] = os.date("!%Y-%m-%dT%H:%M:%S.000Z")
+
+    return 1, timestamp, new_record
+end
+
+-- ===========================================
+-- transform_systemd_log: systemd journal 로그 변환
+-- ===========================================
+function transform_systemd_log(tag, timestamp, record)
+    local new_record = {}
+
+    new_record["project_uuid"] = record["project_uuid"] or "default-project"
+    new_record["source_type"] = "INFRA"
+    new_record["layer"] = "SystemD"
+
+    new_record["timestamp"] = record["_SOURCE_REALTIME_TIMESTAMP"] or os.date("!%Y-%m-%dT%H:%M:%S.000Z", timestamp)
+
+    local unit = record["_SYSTEMD_UNIT"] or record["SYSLOG_IDENTIFIER"] or "unknown"
+    new_record["service_name"] = unit
+    new_record["logger"] = "systemd." .. unit
+
+    -- Priority 기반 로그 레벨
+    local priority = tonumber(record["PRIORITY"]) or 6
+    local level = "INFO"
+    if priority <= 3 then
+        level = "ERROR"
+    elseif priority == 4 then
+        level = "WARN"
+    end
+    new_record["log_level"] = level
+    new_record["level"] = level
+
+    new_record["message"] = record["MESSAGE"] or ""
+
+    new_record["log_details"] = {
+        unit = unit,
+        pid = record["_PID"],
+        hostname = record["_HOSTNAME"],
+        boot_id = record["_BOOT_ID"],
+        machine_id = record["_MACHINE_ID"]
+    }
+
+    new_record["trace_id"] = "systemd-" .. (record["_BOOT_ID"] or "unknown")
+    new_record["indexed_at"] = os.date("!%Y-%m-%dT%H:%M:%S.000Z")
+
+    return 1, timestamp, new_record
+end
+
+-- ===========================================
+-- transform_nginx_access_log: Nginx 액세스 로그 변환
+-- ===========================================
+function transform_nginx_access_log(tag, timestamp, record)
+    local new_record = {}
+
+    new_record["project_uuid"] = record["project_uuid"] or "default-project"
+    new_record["source_type"] = "INFRA"
+    new_record["layer"] = "WebServer"
+
+    new_record["timestamp"] = record["time"] or os.date("!%Y-%m-%dT%H:%M:%S.000Z", timestamp)
+    new_record["service_name"] = "nginx"
+    new_record["logger"] = "nginx.access"
+
+    -- HTTP 상태 코드 기반 로그 레벨
+    local code = tonumber(record["code"]) or 200
+    local level = "INFO"
+    if code >= 500 then
+        level = "ERROR"
+    elseif code >= 400 then
+        level = "WARN"
+    end
+    new_record["log_level"] = level
+    new_record["level"] = level
+
+    -- 메시지 구성
+    new_record["message"] = string.format("%s %s %s - %d",
+            record["method"] or "GET",
+            record["path"] or "/",
+            record["remote"] or "unknown",
+            code
+    )
+
+    new_record["requester_ip"] = record["remote"]
+
+    new_record["log_details"] = {
+        http_method = record["method"],
+        request_uri = record["path"],
+        response_status = code,
+        response_size = tonumber(record["size"]),
+        referer = record["referer"],
+        user_agent = record["agent"],
+        remote_addr = record["remote"],
+        remote_user = record["user"]
+    }
+
+    new_record["trace_id"] = "nginx-" .. (record["remote"] or "unknown") .. "-" .. os.time()
+    new_record["indexed_at"] = os.date("!%Y-%m-%dT%H:%M:%S.000Z")
+
+    return 1, timestamp, new_record
+end
+
+-- ===========================================
+-- transform_nginx_error_log: Nginx 에러 로그 변환
+-- ===========================================
+function transform_nginx_error_log(tag, timestamp, record)
+    local new_record = {}
+
+    new_record["project_uuid"] = record["project_uuid"] or "default-project"
+    new_record["source_type"] = "INFRA"
+    new_record["layer"] = "WebServer"
+
+    new_record["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%S.000Z", timestamp)
+    new_record["service_name"] = "nginx"
+    new_record["logger"] = "nginx.error"
+
+    -- Nginx 에러 로그는 대부분 ERROR
+    local log_msg = record["log"] or record["message"] or ""
+    local level = "ERROR"
+    if string.match(log_msg, "[Ww][Aa][Rr][Nn]") then
+        level = "WARN"
+    end
+    new_record["log_level"] = level
+    new_record["level"] = level
+
+    new_record["message"] = log_msg
+
+    -- 에러 로그에서 IP 추출 시도
+    local ip_pattern = "(%d+%.%d+%.%d+%.%d+)"
+    local ip = string.match(log_msg, ip_pattern)
+    if ip then
+        new_record["requester_ip"] = ip
+    end
+
+    new_record["log_details"] = {
+        error_type = "nginx_error"
+    }
+
+    new_record["trace_id"] = "nginx-error-" .. os.time()
+    new_record["indexed_at"] = os.date("!%Y-%m-%dT%H:%M:%S.000Z")
+
+    return 1, timestamp, new_record
+end
 
 -- ===========================================
 -- transform_log: Spring Boot 로그를 OpenSearch 스키마에 맞게 변환
