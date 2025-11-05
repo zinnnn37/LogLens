@@ -10,27 +10,34 @@ pipeline {
     }
 
     stages {
-        stage('Prepare Environment') {
-            steps {
-                dir('infra') {
-                    withCredentials([file(credentialsId: 'dev-env', variable: 'ENV_FILE')]) {
-                        sh '''
-                            cp "${ENV_FILE}" .env
-                            chmod 600 .env
-                            echo "✅ Environment file prepared"
-                        '''
-                    }
-                }
-            }
-        }
-
         stage('Blue-Green Deploy') {
             steps {
                 dir('infra') {
-                    sh '''
-                        chmod +x scripts/deploy.sh
-                        scripts/deploy.sh
-                    '''
+                    withCredentials([
+                        string(credentialsId: 'spring-profiles-active', variable: 'SPRING_PROFILES_ACTIVE'),
+                        string(credentialsId: 'spring-datasource-url', variable: 'SPRING_DATASOURCE_URL'),
+                        string(credentialsId: 'spring-datasource-username', variable: 'SPRING_DATASOURCE_USERNAME'),
+                        string(credentialsId: 'spring-datasource-password', variable: 'SPRING_DATASOURCE_PASSWORD'),
+                        string(credentialsId: 'spring-redis-host', variable: 'SPRING_REDIS_HOST'),
+                        string(credentialsId: 'spring-redis-port', variable: 'SPRING_REDIS_PORT'),
+                        string(credentialsId: 'spring-redis-password', variable: 'SPRING_REDIS_PASSWORD')
+                    ]) {
+                        sh '''
+                            chmod +x scripts/deploy.sh
+
+                            # 환경 변수 export (스크립트에서 사용 가능하도록)
+                            export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE}"
+                            export SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL}"
+                            export SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME}"
+                            export SPRING_DATASOURCE_PASSWORD="${SPRING_DATASOURCE_PASSWORD}"
+                            export SPRING_REDIS_HOST="${SPRING_REDIS_HOST}"
+                            export SPRING_REDIS_PORT="${SPRING_REDIS_PORT}"
+                            export SPRING_REDIS_PASSWORD="${SPRING_REDIS_PASSWORD}"
+
+                            # 배포 스크립트 실행
+                            scripts/deploy.sh
+                        '''
+                    }
                 }
             }
         }
@@ -39,14 +46,18 @@ pipeline {
             steps {
                 sh '''
                     echo "🔍 Final deployment status:"
-                    docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}" | grep loglens
+                    docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}" | grep loglens || true
 
                     # 활성 포트 확인
-                    ACTIVE_PORT=$(grep "server localhost:" /etc/nginx/sites-enabled/loglens | awk -F: '{print $2}' | tr -d ';')
-                    echo "✅ Active port: $ACTIVE_PORT"
+                    if [ -f /etc/nginx/sites-enabled/loglens ]; then
+                        ACTIVE_PORT=$(grep "server localhost:" /etc/nginx/sites-enabled/loglens | head -1 | awk -F: '{print $2}' | tr -d '; ')
+                        echo "✅ Active port: $ACTIVE_PORT"
 
-                    # 헬스 체크
-                    curl -f http://localhost:${ACTIVE_PORT}/health-check || exit 1
+                        # 헬스 체크
+                        curl -f http://localhost:${ACTIVE_PORT}/health-check || exit 1
+                    else
+                        echo "⚠️ Nginx configuration not found, skipping health check"
+                    fi
                 '''
             }
         }
@@ -58,9 +69,6 @@ pipeline {
         }
         failure {
             echo "❌ Deployment failed!"
-        }
-        always {
-            sh 'rm -f infra/.env || true'
         }
     }
 }

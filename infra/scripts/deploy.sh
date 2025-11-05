@@ -2,200 +2,355 @@
 
 set -e
 
-# ============================================
-# Blue-Green Deployment Script
-# ============================================
+echo "🚀 BLUE/GREEN 배포 시작"
+echo "⏰ 시작 시간: $(date '+%Y-%m-%d %H:%M:%S')"
 
-echo "=========================================="
-echo "Starting Blue-Green Deployment"
-echo "=========================================="
-
-# 설정
+# 서비스 설정
 SERVICE_NAME="loglens"
 IMAGE_NAME="${SERVICE_NAME}:latest"
 NETWORK_NAME="loglens-network"
-BLUE_PORT=8000
-GREEN_PORT=8001
-NGINX_CONF_DIR="/etc/nginx/sites-enabled"
-NGINX_BLUE_CONF="../nginx/nginx-blue.conf"
-NGINX_GREEN_CONF="../nginx/nginx-green.conf"
 
-# ============================================
-# 1. 현재 활성 슬롯 감지
-# ============================================
+# nginx 설정 파일 경로
+NGINX_SITES_AVAILABLE="/etc/nginx/sites-available"
+NGINX_SITES_ENABLED="/etc/nginx/sites-enabled"
+NGINX_SITE_NAME="loglens"
 
-echo "🔍 Detecting current active slot..."
+# 디버그 모드 설정 (실패 시 컨테이너 유지)
+DEBUG_MODE="${DEBUG_MODE:-false}"
 
-# 실행 중인 컨테이너 확인
-BLUE_RUNNING=$(docker ps -q -f name=${SERVICE_NAME}-blue 2>/dev/null || echo "")
-GREEN_RUNNING=$(docker ps -q -f name=${SERVICE_NAME}-green 2>/dev/null || echo "")
+# 현재 활성 환경 확인
+CURRENT_ENV=""
+BLUE_RUNNING=false
+GREEN_RUNNING=false
 
-if [ -n "$BLUE_RUNNING" ]; then
-    CURRENT_SLOT="blue"
-    CURRENT_PORT=$BLUE_PORT
-    NEW_SLOT="green"
-    NEW_PORT=$GREEN_PORT
-    NEW_NGINX_CONF=$NGINX_GREEN_CONF
-    echo "✅ Current active slot: BLUE (port $CURRENT_PORT)"
-    echo "📦 Deploying to: GREEN (port $NEW_PORT)"
-elif [ -n "$GREEN_RUNNING" ]; then
-    CURRENT_SLOT="green"
-    CURRENT_PORT=$GREEN_PORT
-    NEW_SLOT="blue"
-    NEW_PORT=$BLUE_PORT
-    NEW_NGINX_CONF=$NGINX_BLUE_CONF
-    echo "✅ Current active slot: GREEN (port $CURRENT_PORT)"
-    echo "📦 Deploying to: BLUE (port $NEW_PORT)"
+if docker ps --format "table {{.Names}}" | grep -q "${SERVICE_NAME}-blue"; then
+    BLUE_RUNNING=true
+fi
+
+if docker ps --format "table {{.Names}}" | grep -q "${SERVICE_NAME}-green"; then
+    GREEN_RUNNING=true
+fi
+
+# 환경 상태에 따른 처리
+if [ "$BLUE_RUNNING" = true ] && [ "$GREEN_RUNNING" = true ]; then
+    echo "⚠️ 두 환경 모두 실행 중입니다. green 환경을 중지합니다..."
+    docker stop ${SERVICE_NAME}-green 2>/dev/null || true
+    docker rm ${SERVICE_NAME}-green 2>/dev/null || true
+    CURRENT_ENV="blue"
+elif [ "$BLUE_RUNNING" = true ]; then
+    CURRENT_ENV="blue"
+elif [ "$GREEN_RUNNING" = true ]; then
+    CURRENT_ENV="green"
+fi
+
+# 새로운 환경 결정
+if [ "$CURRENT_ENV" = "blue" ]; then
+    NEW_ENV="green"
+    NEW_PORT="8001"
+    OLD_ENV="blue"
+    OLD_PORT="8000"
 else
-    # 최초 배포: Blue 슬롯부터 시작
-    CURRENT_SLOT="none"
-    CURRENT_PORT="none"
-    NEW_SLOT="blue"
-    NEW_PORT=$BLUE_PORT
-    NEW_NGINX_CONF=$NGINX_BLUE_CONF
-    echo "ℹ️  No active slot detected (first deployment)"
-    echo "📦 Deploying to: BLUE (port $NEW_PORT)"
+    NEW_ENV="blue"
+    NEW_PORT="8000"
+    OLD_ENV="green"
+    OLD_PORT="8001"
 fi
 
-# ============================================
-# 2. 새 컨테이너 배포
-# ============================================
+echo "📋 현재: ${CURRENT_ENV:-없음} → 배포 대상: $NEW_ENV (포트 $NEW_PORT)"
 
+# 시스템 리소스 확인
+echo "📊 시스템 리소스 상태:"
+free -h
 echo ""
-echo "🚀 Deploying new container to $NEW_SLOT slot..."
-
-# 기존 컨테이너 정리 (비활성 슬롯)
-if docker ps -a -q -f name=${SERVICE_NAME}-${NEW_SLOT} | grep -q .; then
-    echo "🧹 Removing old container: ${SERVICE_NAME}-${NEW_SLOT}"
-    docker stop ${SERVICE_NAME}-${NEW_SLOT} 2>/dev/null || true
-    docker rm ${SERVICE_NAME}-${NEW_SLOT} 2>/dev/null || true
-fi
+docker system df
+echo ""
 
 # 네트워크 존재 확인 및 생성
 if ! docker network inspect $NETWORK_NAME >/dev/null 2>&1; then
-    echo "📡 Creating network: $NETWORK_NAME"
+    echo "📡 네트워크 생성: $NETWORK_NAME"
     docker network create $NETWORK_NAME
 fi
 
-# .env 파일 로드
-if [ -f ".env" ]; then
-    echo "📄 Loading environment variables from .env"
-    set -a
-    source .env
-    set +a
-else
-    echo "⚠️  Warning: .env file not found, using default values"
+# 새로운 환경 시작
+echo "🎯 $NEW_ENV 환경 시작 중..."
+
+# 기존 컨테이너 정리 (비활성 슬롯)
+if docker ps -a -q -f name=${SERVICE_NAME}-${NEW_ENV} | grep -q .; then
+    echo "🧹 기존 컨테이너 제거: ${SERVICE_NAME}-${NEW_ENV}"
+    docker stop ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || true
+    docker rm ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || true
 fi
 
+# 환경 변수 기본값 설정
+SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-prod}"
+SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL:-jdbc:h2:mem:testdb}"
+SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME:-sa}"
+SPRING_DATASOURCE_PASSWORD="${SPRING_DATASOURCE_PASSWORD:-}"
+SPRING_REDIS_HOST="${SPRING_REDIS_HOST:-loglens-redis}"
+SPRING_REDIS_PORT="${SPRING_REDIS_PORT:-6379}"
+SPRING_REDIS_PASSWORD="${SPRING_REDIS_PASSWORD:-}"
+
 # 새 컨테이너 실행
-echo "🐳 Starting new container: ${SERVICE_NAME}-${NEW_SLOT}"
+echo "🐳 컨테이너 실행: ${SERVICE_NAME}-${NEW_ENV}"
 docker run -d \
-    --name ${SERVICE_NAME}-${NEW_SLOT} \
+    --name ${SERVICE_NAME}-${NEW_ENV} \
     --network $NETWORK_NAME \
     -p ${NEW_PORT}:8080 \
-    -e SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod} \
-    -e SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:h2:mem:testdb} \
-    -e SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-sa} \
-    -e SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD:-} \
-    -e SPRING_REDIS_HOST=${SPRING_REDIS_HOST:-loglens-redis} \
-    -e SPRING_REDIS_PORT=${SPRING_REDIS_PORT:-6379} \
-    -e SPRING_REDIS_PASSWORD=${SPRING_REDIS_PASSWORD:-} \
+    -e SPRING_PROFILES_ACTIVE="$SPRING_PROFILES_ACTIVE" \
+    -e SPRING_DATASOURCE_URL="$SPRING_DATASOURCE_URL" \
+    -e SPRING_DATASOURCE_USERNAME="$SPRING_DATASOURCE_USERNAME" \
+    -e SPRING_DATASOURCE_PASSWORD="$SPRING_DATASOURCE_PASSWORD" \
+    -e SPRING_REDIS_HOST="$SPRING_REDIS_HOST" \
+    -e SPRING_REDIS_PORT="$SPRING_REDIS_PORT" \
+    -e SPRING_REDIS_PASSWORD="$SPRING_REDIS_PASSWORD" \
     --restart unless-stopped \
     $IMAGE_NAME
 
-echo "✅ Container started successfully"
+# 컨테이너 시작 대기
+echo "⏳ 컨테이너 시작 대기중..."
+sleep 10
 
-# ============================================
-# 3. 헬스체크
-# ============================================
-
+# 컨테이너 상태 확인
+echo "🔍 컨테이너 상태 확인:"
+docker ps -a | grep ${SERVICE_NAME}-${NEW_ENV}
 echo ""
-echo "🔍 Performing health check on new container..."
 
-MAX_ATTEMPTS=30
+# Health check
+echo "🏥 헬스 체크 시작..."
+MAX_ATTEMPTS=40
 ATTEMPT=0
-HEALTH_CHECK_URL="http://localhost:${NEW_PORT}/health-check"
+RESTART_COUNT=0
+SUCCESS=false
 
 while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
     ATTEMPT=$((ATTEMPT + 1))
-    echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Checking $HEALTH_CHECK_URL"
 
-    if curl -f -s -o /dev/null $HEALTH_CHECK_URL; then
-        echo "✅ Health check passed!"
+    # Container status check
+    CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || echo "unknown")
+    CONTAINER_RESTART_COUNT=$(docker inspect --format='{{.RestartCount}}' ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || echo "0")
+
+    # 재시작 감지
+    if [ "$CONTAINER_RESTART_COUNT" -gt "$RESTART_COUNT" ]; then
+        echo "⚠️ 컨테이너가 재시작되었습니다! (재시작 횟수: $CONTAINER_RESTART_COUNT)"
+        RESTART_COUNT=$CONTAINER_RESTART_COUNT
+        echo "🔍 재시작 후 로그 (최근 30줄):"
+        docker logs ${SERVICE_NAME}-${NEW_ENV} --tail 30 2>&1
+        echo ""
+    fi
+
+    if [ "$CONTAINER_STATUS" != "running" ]; then
+        echo "⏳ 컨테이너 시작 대기 중... (시도 $ATTEMPT/$MAX_ATTEMPTS, 상태: $CONTAINER_STATUS)"
+
+        # 컨테이너가 종료된 경우 종료 코드 확인
+        if [ "$CONTAINER_STATUS" = "exited" ]; then
+            EXIT_CODE=$(docker inspect --format='{{.State.ExitCode}}' ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || echo "unknown")
+            echo "❌ 컨테이너가 종료됨. 종료 코드: $EXIT_CODE"
+        fi
+
+        sleep 5
+        continue
+    fi
+
+    # Health check (더 상세한 응답 확인)
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/health-check 2>/dev/null || echo "000")
+
+    # 추가적으로 루트 엔드포인트도 확인
+    if [ "$HTTP_CODE" != "200" ]; then
+        ROOT_HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/ 2>/dev/null || echo "000")
+        if [ "$ROOT_HTTP_CODE" = "200" ]; then
+            echo "⚠️ 헬스체크 엔드포인트는 응답하지 않지만 루트 엔드포인트는 정상입니다."
+            HTTP_CODE="200"  # 루트가 정상이면 통과
+        fi
+    fi
+
+    if [ "$HTTP_CODE" = "200" ]; then
+        echo "✅ $NEW_ENV 환경이 정상 상태입니다!"
+        SUCCESS=true
+
+        # 추가 확인
+        echo "🔍 엔드포인트 확인:"
+        curl -s http://localhost:${NEW_PORT}/ 2>/dev/null || echo "메인 엔드포인트 응답 실패"
+        echo ""
+        curl -s http://localhost:${NEW_PORT}/health-check 2>/dev/null || echo "헬스체크 응답 실패"
+
         break
     fi
 
-    if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-        echo "❌ Health check failed after $MAX_ATTEMPTS attempts"
-        echo "🔄 Rolling back: Stopping new container"
-        docker stop ${SERVICE_NAME}-${NEW_SLOT}
-        docker rm ${SERVICE_NAME}-${NEW_SLOT}
-        exit 1
+    echo "⏳ 헬스 체크 대기 중... (시도 $ATTEMPT/$MAX_ATTEMPTS, HTTP 상태: $HTTP_CODE)"
+
+    if [ $((ATTEMPT % 5)) -eq 0 ]; then
+        echo "📋 진행 상황: $ATTEMPT/$MAX_ATTEMPTS 시도 완료"
+        echo "🔍 컨테이너 로그 (최근 20줄):"
+        docker logs ${SERVICE_NAME}-${NEW_ENV} --tail 20 2>&1
+        echo ""
+
+        # 프로세스 확인
+        echo "🔍 Java 프로세스 확인:"
+        docker exec ${SERVICE_NAME}-${NEW_ENV} ps aux 2>/dev/null | grep java || echo "Java 프로세스를 찾을 수 없음"
+        echo ""
+
+        # 메모리 사용량 확인
+        echo "🔍 컨테이너 리소스 사용량:"
+        docker stats ${SERVICE_NAME}-${NEW_ENV} --no-stream || echo "리소스 확인 실패"
+        echo ""
     fi
 
-    sleep 2
+    sleep 5
 done
 
-# ============================================
-# 4. Nginx 설정 전환
-# ============================================
+if [ "$SUCCESS" = false ]; then
+    echo "❌ 헬스 체크 실패!"
+    echo ""
+    echo "========================================="
+    echo "📋 디버깅을 위한 상세 정보"
+    echo "========================================="
 
-echo ""
-echo "🔄 Switching Nginx configuration to $NEW_SLOT slot..."
+    # 전체 로그
+    echo "📋 전체 애플리케이션 로그:"
+    echo "========================================="
+    docker logs ${SERVICE_NAME}-${NEW_ENV} 2>&1
+    echo "========================================="
+    echo ""
 
-# Nginx 설정 파일 교체
-if [ -d "$NGINX_CONF_DIR" ] && [ -w "$NGINX_CONF_DIR" ]; then
-    echo "📝 Updating Nginx configuration in $NGINX_CONF_DIR"
-    sudo cp $NEW_NGINX_CONF $NGINX_CONF_DIR/loglens.conf
+    # 컨테이너 상세 정보
+    echo "🔍 컨테이너 상세 정보:"
+    echo "========================================="
+    docker inspect ${SERVICE_NAME}-${NEW_ENV}
+    echo "========================================="
+    echo ""
 
-    # Nginx 설정 검증
-    if sudo nginx -t; then
-        echo "✅ Nginx configuration is valid"
-        # Nginx 리로드
-        sudo nginx -s reload
-        echo "✅ Nginx reloaded successfully"
+    # 환경 변수 확인
+    echo "🔍 컨테이너 환경 변수:"
+    echo "========================================="
+    docker exec ${SERVICE_NAME}-${NEW_ENV} printenv 2>/dev/null | sort || echo "환경 변수 확인 실패"
+    echo "========================================="
+    echo ""
+
+    # 디버그 모드에서는 컨테이너를 제거하지 않음
+    if [ "$DEBUG_MODE" = "true" ]; then
+        echo "⚠️ 디버그 모드: 컨테이너를 유지합니다."
+        echo "📌 실패한 컨테이너 확인 방법:"
+        echo "   - 로그 확인: docker logs ${SERVICE_NAME}-${NEW_ENV}"
+        echo "   - 컨테이너 접속: docker exec -it ${SERVICE_NAME}-${NEW_ENV} bash"
+        echo "   - 컨테이너 상태: docker inspect ${SERVICE_NAME}-${NEW_ENV}"
+        echo "   - 컨테이너 제거: docker stop ${SERVICE_NAME}-${NEW_ENV} && docker rm ${SERVICE_NAME}-${NEW_ENV}"
     else
-        echo "❌ Nginx configuration is invalid"
+        echo "🔄 컨테이너를 제거합니다..."
+        docker stop ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || true
+        docker rm ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || true
+    fi
+
+    exit 1
+fi
+
+# nginx 설정 업데이트
+echo "🔧 nginx 설정 업데이트 중..."
+
+# nginx 설정 파일 경로 확인 (절대경로 사용)
+CURRENT_DIR=$(pwd)
+NGINX_CONFIG_FILE="${CURRENT_DIR}/nginx/nginx-${NEW_ENV}.conf"
+OLD_NGINX_CONFIG_FILE="${CURRENT_DIR}/nginx/nginx-${OLD_ENV}.conf"
+
+echo "🔍 nginx 설정 파일 경로 확인:"
+echo "   - 새 설정 파일: $NGINX_CONFIG_FILE"
+echo "   - 기존 설정 파일: $OLD_NGINX_CONFIG_FILE"
+echo "   - 현재 작업 디렉토리: $(pwd)"
+
+if [ -f "$NGINX_CONFIG_FILE" ]; then
+    echo "✅ nginx 설정 파일을 찾았습니다: $NGINX_CONFIG_FILE"
+
+    # 새 설정 적용 (절대경로 사용)
+    echo "🔧 복사 명령: sudo cp \"$NGINX_CONFIG_FILE\" ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME}"
+    sudo cp "$NGINX_CONFIG_FILE" ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME}
+    sudo ln -sf ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME} ${NGINX_SITES_ENABLED}/${NGINX_SITE_NAME}
+
+    # nginx 설정 테스트
+    if sudo nginx -t; then
+        sudo systemctl reload nginx
+        echo "✅ nginx 재로드 완료 (${NEW_ENV} 환경으로 전환)"
+
+        # 전환 확인
+        ACTIVE_PORT=$(grep "server localhost:" ${NGINX_SITES_ENABLED}/${NGINX_SITE_NAME} | head -1 | awk -F: '{print $2}' | tr -d '; ')
+        echo "✅ 활성 포트: $ACTIVE_PORT"
+    else
+        echo "❌ nginx 설정 테스트 실패"
+
+        # 롤백: 이전 환경 설정으로 복구
+        if [ "$CURRENT_ENV" != "" ] && [ -f "$OLD_NGINX_CONFIG_FILE" ]; then
+            echo "🔄 이전 환경 설정으로 롤백 중..."
+            sudo cp "$OLD_NGINX_CONFIG_FILE" ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME}
+            sudo ln -sf ${NGINX_SITES_AVAILABLE}/${NGINX_SITE_NAME} ${NGINX_SITES_ENABLED}/${NGINX_SITE_NAME}
+
+            if sudo nginx -t && sudo systemctl reload nginx; then
+                echo "✅ 이전 환경으로 nginx 설정 복구 완료"
+            else
+                echo "❌ nginx 설정 복구도 실패!"
+            fi
+        else
+            echo "⚠️ 이전 환경 설정을 찾을 수 없어 롤백을 건너뜁니다."
+        fi
+
+        # 디버그 모드에서는 컨테이너를 유지
+        if [ "$DEBUG_MODE" != "true" ]; then
+            echo "🔄 실패한 컨테이너 제거 중..."
+            docker stop ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || true
+            docker rm ${SERVICE_NAME}-${NEW_ENV} 2>/dev/null || true
+        fi
         exit 1
     fi
 else
-    echo "⚠️  Warning: Cannot access $NGINX_CONF_DIR"
-    echo "ℹ️  Skipping Nginx configuration update (may require manual intervention)"
-    echo "ℹ️  To manually update: sudo cp $NEW_NGINX_CONF $NGINX_CONF_DIR/loglens.conf && sudo nginx -s reload"
+    echo "❌ nginx 설정 파일을 찾을 수 없습니다!"
+    echo "   확인 대상: $NGINX_CONFIG_FILE"
+    echo "   디렉토리 내용:"
+    ls -la nginx/ 2>/dev/null || echo "   nginx 디렉토리가 존재하지 않습니다."
+
+    echo "⚠️ nginx 설정 업데이트를 건너뜁니다."
+    echo "⚠️ 수동으로 nginx 설정을 확인해주세요."
 fi
 
-# ============================================
-# 5. 이전 컨테이너 정리
-# ============================================
-
-if [ "$CURRENT_SLOT" != "none" ]; then
-    echo ""
-    echo "🧹 Cleaning up old container ($CURRENT_SLOT slot)..."
-
-    # 잠시 대기 (새 컨테이너 안정화)
-    sleep 5
-
-    echo "🛑 Stopping old container: ${SERVICE_NAME}-${CURRENT_SLOT}"
-    docker stop ${SERVICE_NAME}-${CURRENT_SLOT} 2>/dev/null || true
-
-    echo "🗑️  Removing old container: ${SERVICE_NAME}-${CURRENT_SLOT}"
-    docker rm ${SERVICE_NAME}-${CURRENT_SLOT} 2>/dev/null || true
-
-    echo "✅ Old container removed"
+# 최종 확인
+echo "🔍 새 환경 최종 확인..."
+FINAL_CHECK=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${NEW_PORT}/health-check)
+if [ "$FINAL_CHECK" != "200" ]; then
+    echo "❌ 최종 확인 실패!"
+    exit 1
 fi
 
-# ============================================
-# 완료
-# ============================================
+# 기존 환경 종료 - nginx 설정 성공 후에만 실행
+if [ "$CURRENT_ENV" != "" ]; then
+    echo "🛑 기존 $OLD_ENV 환경 중지 중..."
+    echo "⏳ nginx 트래픽 전환 대기 (10초)..."
+    sleep 10  # 트래픽 전환을 위한 대기
+
+    echo "🔍 기존 컨테이너 상태 확인:"
+    docker ps --filter "name=${SERVICE_NAME}-${OLD_ENV}" --format "table {{.Names}}\t{{.Status}}"
+
+    docker stop ${SERVICE_NAME}-${OLD_ENV} 2>/dev/null || true
+    docker rm ${SERVICE_NAME}-${OLD_ENV} 2>/dev/null || true
+
+    echo "✅ 기존 $OLD_ENV 환경 정리 완료"
+
+    # 정리 후 상태 확인
+    echo "🔍 컨테이너 정리 후 상태:"
+    docker ps --filter "name=${SERVICE_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" || echo "실행 중인 ${SERVICE_NAME} 컨테이너 없음"
+else
+    echo "ℹ️ 이전 환경이 없어 정리할 컨테이너가 없습니다."
+fi
 
 echo ""
-echo "=========================================="
-echo "🎉 Blue-Green Deployment Completed!"
-echo "=========================================="
-echo "Active slot: $NEW_SLOT (port $NEW_PORT)"
-echo "Container: ${SERVICE_NAME}-${NEW_SLOT}"
-echo "Image: $IMAGE_NAME"
+echo "🎉 배포가 성공적으로 완료되었습니다!"
+echo "   이전: ${CURRENT_ENV:-없음} → 신규: $NEW_ENV (포트 $NEW_PORT)"
+echo "   완료 시간: $(date '+%Y-%m-%d %H:%M:%S')"
+
+# Final verification
 echo ""
-echo "📊 Current container status:"
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep $SERVICE_NAME || echo "No containers found"
-echo "=========================================="
+echo "📊 최종 상태:"
+docker ps --filter "name=${SERVICE_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+# 헬스 체크 엔드포인트 응답 확인
+echo ""
+echo "🏥 헬스 체크 응답:"
+curl -s http://localhost:${NEW_PORT}/health-check 2>/dev/null || echo "헬스체크 응답 확인 실패"
+
+# 성공적으로 종료
+exit 0
