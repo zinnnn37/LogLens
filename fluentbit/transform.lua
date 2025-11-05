@@ -194,9 +194,25 @@ function transform_log(tag, timestamp, record)
     end
 
     ----------------------------------------------------
-    -- 7️⃣ 기타 필드
+    -- 7️⃣ requester_ip 추출 (여러 소스에서 시도)
     ----------------------------------------------------
-    new_record["requester_ip"] = record["requester_ip"] or nil
+    local requester_ip = record["requester_ip"]
+            or record["client_ip"]
+            or record["remote_addr"]
+            or record["x_forwarded_for"]
+
+    -- request 객체 내부에서도 시도
+    if not requester_ip and record["request"] and type(record["request"]) == "table" then
+        local req = record["request"]
+        requester_ip = req["ip"] or req["client_ip"] or req["remote_addr"]
+
+        -- http 하위 객체도 체크
+        if not requester_ip and req["http"] and type(req["http"]) == "table" then
+            requester_ip = req["http"]["ip"] or req["http"]["client_ip"]
+        end
+    end
+
+    new_record["requester_ip"] = requester_ip or nil
     new_record["stack_trace"] = record["stack_trace"] or nil
 
     return 1, timestamp, new_record
