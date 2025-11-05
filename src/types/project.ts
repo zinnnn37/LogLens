@@ -6,13 +6,10 @@ export interface CreateProjectPayload {
 
 // 프로젝트 생성 응답
 export interface ProjectDTO {
-  projectId: number;
   projectName: string;
+    description: string;
   projectUuid: string;
-  description: string;
-  apiKey: string;
   createdAt: string;
-  updatedAt: string;
 }
 
 /**
@@ -28,14 +25,12 @@ export interface GetProjectsParams {
 }
 
 export interface ProjectInfoDTO {
-  projectId: number;
+  projectUuid: string;
   projectName: string;
   description: string;
-  apiKey: string;
   memberCount: number;
-  logCount: number;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 /**
@@ -73,7 +68,7 @@ export interface InviteMemberPayload {
  */
 export interface InvitedMemberInfo {
   userId: number;
-  username: string;
+  userName: string;
   email: string;
   joinedAt: string;
 }
@@ -100,14 +95,13 @@ export interface ProjectMember {
 }
 
 /**
- * 프로젝트 상세 조회 API (GET /api/projects/{projectId})의
+ * 프로젝트 상세 조회 API (GET /api/projects/{projectUuid})의
  * `data` 필드 전체 응답 타입
  */
 export interface ProjectDetailDTO {
-  projectId: number;
   projectName: string;
   description: string;
-  apiKey: string;
+  projectUuid: string;
   members: ProjectMember[];
   createdAt: string;
   updatedAt: string;
@@ -115,11 +109,11 @@ export interface ProjectDetailDTO {
 
 // 프로젝트 삭제 API 요청 파라미터
 export interface DeleteProjectParams {
-  projectId: number;
+  projectUuid: string;
 }
 
 // 프로젝트 내 멤버 삭제 요청 파라미터
 export interface DeleteMemberParams {
-  projectId: number;
+  projectUuid: string;
   memberId: number;
 }

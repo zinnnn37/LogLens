@@ -36,7 +36,7 @@ import { ApiError } from '@/types/api';
 interface MemberInviteModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  projectId: number;
+  projectUuid: string;
 }
 
 const motionProps = {
@@ -50,7 +50,7 @@ const motionProps = {
 const MemberInviteModal = ({
   open,
   onOpenChange,
-  projectId,
+  projectUuid,
 }: MemberInviteModalProps) => {
   const currentProject = useProjectStore(state => state.currentProject);
   const projectName = currentProject?.projectName;
@@ -78,17 +78,17 @@ const MemberInviteModal = ({
 
   // 현재 프로젝트 내 멤버
   const loadCurrentMembers = useCallback(async () => {
-    if (currentProject?.projectId !== projectId) {
+    if (currentProject?.projectUuid !== projectUuid) {
       setIsLoadingMembers(true);
       try {
-        await getProjectDetail(projectId);
+        await getProjectDetail(projectUuid);
       } catch (error) {
         console.error('멤버 목록 로드 실패', error);
       } finally {
         setIsLoadingMembers(false);
       }
     }
-  }, [projectId, currentProject?.projectId]);
+  }, [projectUuid, currentProject?.projectUuid]);
 
   useEffect(() => {
     if (open) {
@@ -154,7 +154,7 @@ const MemberInviteModal = ({
 
     setInvitingId(userToConfirmInvite.userId);
     try {
-      await inviteMember(projectId, { userId: userToConfirmInvite.userId });
+      await inviteMember(projectUuid, { userId: userToConfirmInvite.userId });
       await loadCurrentMembers();
       toast.success(`'${userToConfirmInvite.name}' 님을 초대했습니다.`);
     } catch (err) {
@@ -184,7 +184,7 @@ const MemberInviteModal = ({
     setRemovingId(memberToConfirmDelete.userId);
     try {
       await deleteMember({
-        projectId: projectId,
+        projectUuid: projectUuid,
         memberId: memberToConfirmDelete.userId,
       });
 

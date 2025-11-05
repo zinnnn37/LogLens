@@ -23,11 +23,11 @@ interface ProjectState {
 
   setCurrentProject: (project: ProjectDetailDTO | null) => void;
 
-  incrementMemberCount: (projectId: number) => void;
+  incrementMemberCount: (projectUuid: string) => void;
 
-  removeProject: (projectId: number) => void;
+  removeProject: (projectUuid: string) => void;
 
-  removeMember: (projectId: number, memberId: number) => void;
+  removeMember: (projectUuid: string, memberId: number) => void;
 }
 
 export const useProjectStore = create<ProjectState>(set => ({
@@ -63,7 +63,6 @@ export const useProjectStore = create<ProjectState>(set => ({
       const newProjectInfo: ProjectInfoDTO = {
         ...newProject,
         memberCount: 1, // 초기 기본값
-        logCount: 0, // 초기 기본값
       };
 
       return {
@@ -80,21 +79,21 @@ export const useProjectStore = create<ProjectState>(set => ({
   setCurrentProject: project => set({ currentProject: project }),
 
   /**
-   * (POST /api/projects/{projectId}/members)
+   * (POST /api/projects/{projectUuid}/members)
    * 멤버 초대가 성공했을 때, 해당 프로젝트의 memberCount를 1 증가시킵니다.
    */
-  incrementMemberCount: projectId =>
+  incrementMemberCount: projectUuid =>
     set(state => ({
       // 멤버 증가
       projects: state.projects.map(project =>
-        project.projectId === projectId
+        project.projectUuid === projectUuid
           ? { ...project, memberCount: project.memberCount + 1 }
           : project,
       ),
 
       // 멤버 추가 후 다시 조회
       currentProject:
-        state.currentProject?.projectId === projectId
+        state.currentProject?.projectUuid === projectUuid
           ? null
           : state.currentProject,
     })),
@@ -104,10 +103,10 @@ export const useProjectStore = create<ProjectState>(set => ({
    * 'deleteProject' 서비스가 호출하는 액션.
    * 목록(projects)에서 해당 프로젝트를 제거합니다.
    */
-  removeProject: projectId =>
+  removeProject: projectUuid =>
     set(state => ({
       projects: state.projects.filter(
-        project => project.projectId !== projectId,
+        project => project.projectUuid !== projectUuid,
       ),
       totalElements: state.totalElements - 1,
     })),
@@ -116,17 +115,17 @@ export const useProjectStore = create<ProjectState>(set => ({
    * (DELETE /api/projects/{id}/members/{memberId})
    * 'deleteMember' 서비스가 호출하는 액션.
    */
-  removeMember: (projectId, _memberId) =>
+  removeMember: (projectUuid, _memberId) =>
     set(state => ({
       projects: state.projects.map(project =>
         // 프로젝트 멤버카운트 -1
-        project.projectId === projectId
+        project.projectUuid === projectUuid
           ? { ...project, memberCount: Math.max(0, project.memberCount - 1) }
           : project,
       ),
 
       currentProject:
-        state.currentProject?.projectId === projectId
+        state.currentProject?.projectUuid === projectUuid
           ? null
           : state.currentProject,
     })),
