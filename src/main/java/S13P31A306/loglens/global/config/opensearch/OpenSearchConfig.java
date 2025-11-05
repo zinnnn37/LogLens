@@ -18,6 +18,7 @@ import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBu
 import org.apache.hc.client5.http.ssl.ClientTlsStrategyBuilder;
 import org.apache.hc.core5.http.HttpHost;
 import org.apache.hc.core5.http.nio.ssl.TlsStrategy;
+import org.apache.hc.core5.util.Timeout;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestClientBuilder;
 import org.opensearch.client.json.jackson.JacksonJsonpMapper;
@@ -45,6 +46,18 @@ public class OpenSearchConfig {
     @Value("${opensearch.password:}")
     private String password;
 
+    // 연결 풀 설정
+    @Value("${opensearch.max-connections:50}")
+    private int maxConnections;
+    @Value("${opensearch.max-connections-per-route:25}")
+    private int maxConnectionsPerRoute;
+
+    // 타임아웃 설정 (밀리초)
+    @Value("${opensearch.connection-timeout:5000}")
+    private int connectionTimeout;
+    @Value("${opensearch.socket-timeout:30000}")
+    private int socketTimeout;
+
     @Bean
     public OpenSearchClient openSearchClient() {
         HttpHost httpHost = new HttpHost(scheme, host, port);
@@ -53,12 +66,18 @@ public class OpenSearchConfig {
 
         RestClient restClient = RestClient.builder(httpHost)
                 .setHttpClientConfigCallback(configCallback)
+                .setRequestConfigCallback(requestConfigBuilder ->
+                        requestConfigBuilder
+                                .setConnectTimeout(Timeout.ofMilliseconds(connectionTimeout))
+                                .setResponseTimeout(Timeout.ofMilliseconds(socketTimeout))
+                )
                 .build();
 
         // Jackson ObjectMapper 커스터마이징
         ObjectMapper objectMapper = createObjectMapper();
 
-        log.info("{} OpenSearch 클라이언트 생성 완료 ({}://{}:{})", LOG_PREFIX, scheme, host, port);
+        log.info("{} OpenSearch 클라이언트 생성 완료 ({}://{}:{}, maxConn={}, timeout={}ms)",
+                LOG_PREFIX, scheme, host, port, maxConnections, socketTimeout);
 
         return new OpenSearchClient(new RestClientTransport(restClient, new JacksonJsonpMapper(objectMapper)));
     }
@@ -86,9 +105,14 @@ public class OpenSearchConfig {
     private RestClientBuilder.HttpClientConfigCallback createHttpClientConfigCallback() {
         return httpClientBuilder -> {
             TlsStrategy tlsStrategy = createSslStrategy();
+
+            // 연결 풀 최적화
             PoolingAsyncClientConnectionManager connectionManager = PoolingAsyncClientConnectionManagerBuilder.create()
                     .setTlsStrategy(tlsStrategy)
+                    .setMaxConnTotal(maxConnections)
+                    .setMaxConnPerRoute(maxConnectionsPerRoute)
                     .build();
+
             httpClientBuilder.setConnectionManager(connectionManager);
 
             createCredentialsProvider().ifPresent(httpClientBuilder::setDefaultCredentialsProvider);
