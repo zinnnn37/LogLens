@@ -34,6 +34,22 @@ public class DashboardServiceImpl implements DashboardService {
     private final DashboardMapper mapper;
 
     @Override
+    public DashboardOverviewResponse getStatisticsOverview(int projectId, String startTime, String endTime) {
+        return null;
+    }
+
+    @Override
+    public ProjectComponentsResponse getProjectComponents(
+            final String projectUuid,
+            final UserDetails userDetails
+    ) {
+        Integer projectId = validator.validateProjectAccess(projectUuid, userDetails);
+        List<Component> components = componentService.getProjectComponents(projectId);
+
+        return mapper.toProjectComponentsResponse(projectId, components);
+    }
+
+    @Override
     @Cacheable(value = "componentDependencies", key = "#projectUuid + '::' + #componentId")
     public ComponentDependencyResponse getComponentDependencies(
             final String projectUuid,
@@ -43,13 +59,10 @@ public class DashboardServiceImpl implements DashboardService {
         log.debug("{} 컴포넌트 의존성 조회 시작: projectUuid={}, componentId={}",
                 LOG_PREFIX, projectUuid, componentId);
 
-        // 1. 권한 검증
         Integer projectId = validator.validateProjectAccess(projectUuid, userDetails);
         validator.validateComponentAccess(componentId, projectId);
 
-        // 2. 의존성 그래프 조회
-        List<DependencyGraph> allDependencies = dependencyGraphService
-                .findAllDependenciesByComponentId(componentId);
+        List<DependencyGraph> allDependencies = dependencyGraphService.findAllDependenciesByComponentId(componentId);
 
         // 3. 관련된 모든 컴포넌트 ID 수집
         Set<Integer> allComponentIds = new HashSet<>();
@@ -59,15 +72,15 @@ public class DashboardServiceImpl implements DashboardService {
             allComponentIds.add(edge.getTo());
         });
 
-        // 4. 컴포넌트 정보 일괄 조회
+        // 4. 컴포넌트 정보 조회
         Map<Integer, Component> componentMap = componentService
                 .getComponentMapByIds(allComponentIds);
 
-        // 5. 메트릭 정보 일괄 조회 ✅
+        // 5. 메트릭 정보 조회
         Map<Integer, ComponentMetrics> metricsMap = componentMetricsService
                 .getMetricsByComponentIds(new ArrayList<>(allComponentIds));
 
-        // 6. ComponentInfo 리스트 생성 (메트릭 포함)
+        // 6. ComponentInfo 리스트 생성
         List<ComponentInfo> componentInfos = ComponentInfo.fromMaps(
                 allComponentIds,
                 componentMap,
@@ -79,7 +92,7 @@ public class DashboardServiceImpl implements DashboardService {
 
         // 8. 전체 메트릭 요약 생성 ✅
         ComponentDependencyResponse.GraphMetricsSummary summary =
-                calculateGraphMetricsSummary(componentInfos, componentMap);
+                calculateGraphMetricsSummary(componentInfos);
 
         log.debug("{} 컴포넌트 의존성 조회 완료: componentId={}, totalComponents={}, edges={}",
                 LOG_PREFIX, componentId, componentInfos.size(), graph.edges().size());
@@ -91,15 +104,15 @@ public class DashboardServiceImpl implements DashboardService {
      * 그래프 전체 메트릭 요약 계산
      */
     private ComponentDependencyResponse.GraphMetricsSummary calculateGraphMetricsSummary(
-            List<ComponentInfo> componentInfos,
-            Map<Integer, Component> componentMap) {
+            List<ComponentInfo> componentInfos) {
 
         // 메트릭이 있는 컴포넌트만 필터링
         List<ComponentInfo> componentsWithMetrics = componentInfos.stream()
-                .filter(c -> c.metrics() != null && c.metrics().callCount() != null)
+                .filter(c -> c.metrics() != null && c.metrics().callCount() != null && c.metrics().callCount() > 0)
                 .toList();
 
         if (componentsWithMetrics.isEmpty()) {
+            log.debug("{} 메트릭이 있는 컴포넌트가 없음", LOG_PREFIX);
             return new ComponentDependencyResponse.GraphMetricsSummary(
                     componentInfos.size(),
                     0, 0, 0, 0.0,
@@ -151,6 +164,9 @@ public class DashboardServiceImpl implements DashboardService {
                         ))
                         .orElse(null);
 
+        log.debug("{} 메트릭 요약 계산 완료: totalCalls={}, totalErrors={}, averageErrorRate={}",
+                LOG_PREFIX, totalCalls, totalErrors, averageErrorRate);
+
         return new ComponentDependencyResponse.GraphMetricsSummary(
                 componentInfos.size(),
                 totalCalls,
@@ -160,21 +176,5 @@ public class DashboardServiceImpl implements DashboardService {
                 highestErrorComponent,
                 highestCallComponent
         );
-    }
-
-    @Override
-    public DashboardOverviewResponse getStatisticsOverview(int projectId, String startTime, String endTime) {
-        return null;
-    }
-
-    @Override
-    public ProjectComponentsResponse getProjectComponents(
-            final String projectUuid,
-            final UserDetails userDetails
-    ) {
-        Integer projectId = validator.validateProjectAccess(projectUuid, userDetails);
-        List<Component> components = componentService.getProjectComponents(projectId);
-
-        return mapper.toProjectComponentsResponse(projectId, components);
     }
 }
