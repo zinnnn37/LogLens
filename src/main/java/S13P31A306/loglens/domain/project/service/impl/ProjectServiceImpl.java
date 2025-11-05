@@ -1,7 +1,6 @@
 package S13P31A306.loglens.domain.project.service.impl;
 
 import S13P31A306.loglens.domain.auth.entity.User;
-import S13P31A306.loglens.domain.auth.respository.UserRepository;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.domain.project.constants.ProjectOrderParam;
 import S13P31A306.loglens.domain.project.constants.ProjectSortParam;
@@ -19,6 +18,7 @@ import S13P31A306.loglens.domain.project.mapper.ProjectMemberMapper;
 import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import S13P31A306.loglens.domain.project.service.ProjectService;
+import S13P31A306.loglens.domain.project.validator.ProjectValidator;
 import S13P31A306.loglens.global.exception.BusinessException;
 import java.util.Comparator;
 import java.util.List;
@@ -42,12 +42,12 @@ public class ProjectServiceImpl implements ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
-    private final UserRepository userRepository;
     private final ProjectMapper projectMapper;
     private final ProjectMemberMapper projectMemberMapper;
     private final JiraConnectionRepository jiraConnectionRepository;
 
     private final AuthenticationHelper authHelper;
+    private final ProjectValidator projectValidator;
 
     @Override
     @Transactional
@@ -57,7 +57,6 @@ public class ProjectServiceImpl implements ProjectService {
         User user = authHelper.getCurrentUser();
 
         try {
-            // 프로젝트 생성
             Project project = Project.builder()
                     .projectName(request.projectName())
                     .description(request.description())
@@ -76,7 +75,6 @@ public class ProjectServiceImpl implements ProjectService {
 
             return projectMapper.toCreateResponse(savedProject);
         } catch (DataIntegrityViolationException e) {
-            // TODO: 추후 projectUuid 추가 됐을 때 UNIQUE면 분기 필요
             log.info("{} 중복된 프로젝트 이름입니다: {}", LOG_PREFIX, request.projectName());
             throw new BusinessException(PROJECT_NAME_DUPLICATED);
         }
@@ -87,27 +85,20 @@ public class ProjectServiceImpl implements ProjectService {
     public ProjectMemberInviteResponse inviteMember(String projectUuid, ProjectMemberInviteRequest request) {
         log.info("{} 프로젝트에 사용자 초대 시도", LOG_PREFIX);
 
-        Integer inviterId = authHelper.getCurrentUserId();
         Integer inviteeId = request.userId();
 
-        Project project = findProjectByUuid(projectUuid);
+        // 프로젝트 존재 여부 확인
+        Project project = projectValidator.validateProjectExists(projectUuid);
         int projectId = project.getId();
 
-        // 프로젝트 초대 권한 확인
-        validateProjectAccess(projectId, inviterId);
+        // 현재 사용자의 프로젝트 접근 권한 확인
+        projectValidator.validateProjectAccess(projectId);
 
-        // 사용자 존재 여부 확인
-        User targetUser = userRepository.findById(inviteeId)
-                .orElseThrow(() -> {
-                    log.warn("{} 사용자가 존재하지 않습니다.", LOG_PREFIX);
-                    return new BusinessException(USER_NOT_FOUND);
-                });
+        // 초대하는 사용자 존재 여부 확인
+        User targetUser = projectValidator.validateUserExists(inviteeId);
 
-        // 이미 초되된 경우
-        if (projectMemberRepository.findByProjectIdAndUserId(projectId, inviteeId).isPresent()) {
-            log.warn("{} 이미 초대된 사용자입니다.", LOG_PREFIX);
-            throw new BusinessException(MEMBER_EXISTS);
-        }
+        // 이미 초대된 경우
+        projectValidator.validateMemberNotExists(projectId, inviteeId);
 
         ProjectMember member = ProjectMember.builder()
                 .project(project)
@@ -140,10 +131,8 @@ public class ProjectServiceImpl implements ProjectService {
 
         // 범위를 벗어난 페이지 요청 처리
         if (start >= totalElements) {
-            log.warn("{} 페이지 범위 초과 - start={}, total={}",
-                    LOG_PREFIX, start, totalElements);
-
-            throw new BusinessException(PAGE_SIZE_EXCCEED);
+            log.warn("{} 유효하지 않은 페이지 - start={}, total={}",  LOG_PREFIX, start, totalElements);
+            throw new BusinessException(INVALID_PAGE_NUMBER);
         }
 
         int end = Math.min(start + size, allProjects.size());
@@ -181,13 +170,11 @@ public class ProjectServiceImpl implements ProjectService {
     public ProjectDetailResponse getProjectDetail(String projectUuid) {
         log.info("{} 프로젝트 조회 시도", LOG_PREFIX);
 
-        Integer userId = authHelper.getCurrentUserId();
-
         // 프로젝트 존재 여부
-        Project project = findProjectByUuid(projectUuid);
+        Project project = projectValidator.validateProjectExists(projectUuid);
 
-        // 프로젝트 권한 확인
-        validateProjectAccess(project.getId(), userId);
+        // 현재 사용자의 프로젝트 권한 확인
+        projectValidator.validateProjectAccess(project.getId());
 
         log.info("{} 프로젝트 조회 성공: project={}", LOG_PREFIX, project.getProjectName());
 
@@ -211,16 +198,11 @@ public class ProjectServiceImpl implements ProjectService {
     public void deleteProject(String projectUuid) {
         log.info("{} 프로젝트 삭제 시도", LOG_PREFIX);
 
-        Integer userId = authHelper.getCurrentUserId();
-
         // 프로젝트 존재 여부
-        Project project = findProjectByUuid(projectUuid);
+        Project project = projectValidator.validateProjectExists(projectUuid);
 
-        // 프로젝트 권한 확인
-        if (!projectMemberRepository.existsByProjectIdAndUserId(project.getId(), userId)) {
-            log.warn("{} 프로젝트 삭제 권한이 없습니다: projectId={}", LOG_PREFIX, project.getProjectName());
-            throw new BusinessException(PROJECT_DELETE_FORBIDDEN);
-        }
+        // 현재 사용자의 프로젝트 권한 확인
+        projectValidator.validateProjectAccess(project.getId());
 
         projectRepository.delete(project);
 
@@ -232,29 +214,18 @@ public class ProjectServiceImpl implements ProjectService {
     public void deleteMember(String projectUuid, int memberId) {
         log.info("{} 프로젝트 멤버 삭제 시도", LOG_PREFIX);
 
-        Integer userId = authHelper.getCurrentUserId();
-
-        // 자기 자신 삭제 방지
-        if (userId.equals(memberId)) {
-            log.info("{} 자기 자신은 삭제할 수 없습니다.", LOG_PREFIX);
-            throw new BusinessException(CANNOT_DELETE_SELF);
-        }
+        // 현재 사용자가 자기 자신 삭제 방지
+        projectValidator.validateCurrentUserNotSelfDeletion(memberId);
 
         // 프로젝트 존재 여부
-        Project project = findProjectByUuid(projectUuid);
+        Project project = projectValidator.validateProjectExists(projectUuid);
         int projectId = project.getId();
 
-        // 프로젝트 권한 확인
-        if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
-            log.warn("{} 멤버 삭제 권한이 없습니다.", LOG_PREFIX);
-            throw new BusinessException(MEMBER_DELETE_FORBIDDEN);
-        }
+        // 현재 사용자의 프로젝트 권한 확인
+        projectValidator.validateProjectAccess(projectId);
 
         // 삭제하고자 하는 멤버가 프로젝트에 존재하는지 여부 확인
-        if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, memberId)) {
-            log.warn("{} 해당 멤버가 존재하지 않습니다.", LOG_PREFIX);
-            throw new BusinessException(MEMBER_NOT_FOUND);
-        }
+        projectValidator.validateMemberExists(projectId, memberId);
 
         projectMemberRepository.deleteByProjectIdAndUserId(projectId, memberId);
 
@@ -270,18 +241,4 @@ public class ProjectServiceImpl implements ProjectService {
         return order == ProjectOrderParam.ASC ? comparator : comparator.reversed();
     }
 
-    private Project findProjectByUuid(String projectUuid) {
-        return projectRepository.findByProjectUuid(projectUuid)
-                .orElseThrow(() -> {
-                    log.warn("{} 프로젝트를 찾을 수 없습니다.", LOG_PREFIX);
-                    return new BusinessException(PROJECT_NOT_FOUND);
-                });
-    }
-
-    private void validateProjectAccess(int projectId, int userId) {
-        if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
-            log.warn("{} 프로젝트 접근 권한이 없습니다: projectId={}", LOG_PREFIX, projectId);
-            throw new BusinessException(ACCESS_FORBIDDEN);
-        }
-    }
 }
