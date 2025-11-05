@@ -14,7 +14,8 @@ export const API_PATH = {
   SEARCH_USERS: '/api/auth/users/search',
 
   // 멤버 초대
-  INVITE_MEMBERS: (projectUuid: string) => `/api/projects/${projectUuid}/members`,
+  INVITE_MEMBERS: (projectUuid: string) =>
+    `/api/projects/${projectUuid}/members`,
 
   // 아키텍처 흐름 조회
   ARCHITECTURE: (projectId: string) =>

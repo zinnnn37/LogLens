@@ -84,7 +84,7 @@ const WithProject = ({
                             </p>
                             {p.jiraConnectionExist && (
                               <Link
-                                className="h-4 w-4 text-blue-600 shrink-0"
+                                className="h-4 w-4 shrink-0 text-blue-600"
                                 aria-label="Jira 연결됨"
                               />
                             )}
