@@ -93,3 +93,15 @@ export interface JiraIssueCreateResponse {
   timestamp: string;
   data: JiraIssueCreateData;
 }
+
+// Jira 연동 상태 조회
+export interface JiraConnectionParams {
+  projectUuid: string;
+}
+
+export interface JiraConnectionResponse {
+  exists: boolean;
+  projectUuid: string;
+  connectionId: number;
+  jiraProjectKey: string;
+}

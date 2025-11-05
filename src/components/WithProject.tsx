@@ -1,6 +1,6 @@
 // src/components/WithProject.tsx
 import { Button } from '@/components/ui/button';
-import { UserPlus2, Trash2, Link2 } from 'lucide-react';
+import { UserPlus2, Trash2, Link2, Link } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import MemberInviteModal from './modal/MemberInviteModal';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -84,9 +84,17 @@ const WithProject = ({
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div className="min-w-0">
-                          <p className="text-foreground truncate font-semibold">
-                            {p.projectName}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-foreground truncate font-semibold">
+                              {p.projectName}
+                            </p>
+                            {p.jiraConnectionExist && (
+                              <Link
+                                className="h-4 w-4 shrink-0 text-blue-600"
+                                aria-label="Jira 연결됨"
+                              />
+                            )}
+                          </div>
                           <p className="text-muted-foreground text-sm">
                             멤버 {p.memberCount}명
                           </p>
