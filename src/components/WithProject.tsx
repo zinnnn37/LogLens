@@ -1,6 +1,6 @@
 // src/components/WithProject.tsx
 import { Button } from '@/components/ui/button';
-import { UserPlus2, Trash2, Link2 } from 'lucide-react';
+import { UserPlus2, Trash2, Link2, Link } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import MemberInviteModal from './modal/MemberInviteModal';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -38,11 +38,12 @@ const WithProject = ({
   }, [list.length]);
 
   return (
-    <div className="flex h-full w-full">
+    <div className="flex h-full w-full flex-col">
       <section className="min-w-0 flex-1">
-        <div className="px-6 py-8">
-          <div className="h-[60vh] max-h-[640px] min-h-[360px]">
-            <div className="h-full overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable]">
+        <div className="space-y-6 px-6 py-1">
+          <h1 className="font-godoM text-lg">프로젝트 목록</h1>
+          <div className="">
+            <div className="">
               <motion.div layout className="flex flex-col gap-4">
                 <AnimatePresence
                   initial={false}
@@ -56,14 +57,19 @@ const WithProject = ({
                   {list.map(p => (
                     <motion.div
                       key={p.projectUuid}
-                      layout="position"
-                      initial={{ opacity: 0, y: 8, scale: 0.99 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                      layout
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{
+                        opacity: 0,
+                        x: 50,
+                        transition: { duration: 0.25, ease: 'easeIn' },
+                      }}
                       transition={{
-                        duration: 0.18,
-                        ease: 'easeOut',
-                        layout: { duration: 0.18, ease: 'easeOut' },
+                        layout: {
+                          duration: 0.25,
+                          ease: [0.4, 0, 0.2, 1],
+                        },
                       }}
                       role="button"
                       tabIndex={0}
@@ -78,9 +84,17 @@ const WithProject = ({
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div className="min-w-0">
-                          <p className="text-foreground truncate font-semibold">
-                            {p.projectName}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-foreground truncate font-semibold">
+                              {p.projectName}
+                            </p>
+                            {p.jiraConnectionExist && (
+                              <Link
+                                className="h-4 w-4 shrink-0 text-blue-600"
+                                aria-label="Jira 연결됨"
+                              />
+                            )}
+                          </div>
                           <p className="text-muted-foreground text-sm">
                             멤버 {p.memberCount}명
                           </p>

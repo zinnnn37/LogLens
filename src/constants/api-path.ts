@@ -37,6 +37,9 @@ export const API_PATH = {
   // Jira 이슈 생성
   JIRA_CREATE_ISSUE: '/api/integrations/jira/issues',
 
+  // Jira 연동 상태 조회
+  JIRA_CONNECTION_STATUS: '/api/integrations/jira/connection/status',
+
   // 로그 검색
   LOGS_SEARCH: '/api/logs',
 } as const;
