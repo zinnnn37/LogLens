@@ -228,8 +228,8 @@ public interface ProjectApi {
     ResponseEntity<? extends BaseResponse> getProjects(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "CREATED_AT") ProjectSortParam sort,
-            @RequestParam(defaultValue = "DESC") ProjectOrderParam order
+            @RequestParam(defaultValue = "CREATED_AT") String sort,
+            @RequestParam(defaultValue = "DESC") String order
     );
 
     @Operation(
