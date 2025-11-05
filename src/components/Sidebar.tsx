@@ -131,7 +131,7 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
 
               {/* 프로젝트 목록, TODO : 클릭 시 라우팅 */}
               {projects.map(p => (
-                <li key={p.projectId}>
+                <li key={p.projectUuid}>
                   <div className={itemBase}>
                     {/* 프로젝트 이름*/}
                     <span className="truncate">{p.projectName}</span>
