@@ -19,9 +19,9 @@ spring:
       ddl-auto: create
     show-sql: true
 
-# 서버 포트 8081로 설정
+# 서버 포트 8080로 설정
 server:
-  port: 8081
+  port: 8080
 
 logging:
   level:
