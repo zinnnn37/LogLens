@@ -1,10 +1,12 @@
 package S13P31A306.loglens.domain.dashboard.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
 
+@Builder
 public record DashboardOverviewResponse(
-        @Schema(description = "프로젝트 ID", example = "42")
-        int projectId,
+        @Schema(description = "프로젝트 UUID", example = "pk_1a2b3c4d5e6f")
+        String projectUuid,
 
         @Schema(description = "필터링 시간대")
         Period period,
