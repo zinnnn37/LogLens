@@ -114,8 +114,8 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
       </div>
 
       {/* 네비게이션 */}
-      <div className="font-godoM flex min-h-0 flex-1 flex-col">
-        <nav className="flex min-h-0 flex-1 flex-col gap-4">
+      <div className="font-godoM flex min-h-0 flex-1 flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <nav className="flex flex-col gap-4">
           {/* Projects */}
           <section className="flex-shrink-0">
             <NavHeading>
@@ -138,7 +138,7 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
                   </AccordionTrigger>
                   <AccordionContent className="pb-0">
                     {/* 프로젝트 목록 - 스크롤 영역 */}
-                    <ul className="flex max-h-80 flex-col gap-1 overflow-y-auto pl-6 text-[#6A6A6A] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <ul className="flex flex-col gap-1 pl-6 text-[#6A6A6A]">
                       {projects.map(p => (
                         <li key={p.projectUuid}>
                           <div className={`${itemBase} text-sm`}>
@@ -155,11 +155,11 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
           </section>
 
           {/* Support - 목차만 스크롤 */}
-          <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <section className="flex-shrink-0">
             <NavHeading>
               <p className="font-pretendard">Support</p>
             </NavHeading>
-            <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
+            <div className="flex flex-col gap-1">
               <Accordion type="single" collapsible defaultValue="user-guide">
                 <AccordionItem value="user-guide" className="border-none">
                   <AccordionTrigger
@@ -172,9 +172,7 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
                   </AccordionTrigger>
                   <AccordionContent className="pb-0">
                     {/* Docs 목차 - 스크롤 영역 */}
-                    <div className="min-h-0 overflow-y-auto pl-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                      <DocsTOC />
-                    </div>
+                    <DocsTOC />
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
