@@ -33,6 +33,7 @@ export type CollectorConfig = {
     interval: number;
     endpoint: string;
   };
+  isProduction?: boolean;
 };
 
 export type MaskConfig = {

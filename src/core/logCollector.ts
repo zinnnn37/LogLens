@@ -16,6 +16,7 @@ class LogCollector {
       interval: 30000,
       endpoint: '',
     },
+    isProduction: false,
   };
   private static flushTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -25,6 +26,8 @@ class LogCollector {
    * 설정 초기화
    */
   static async init(config: Partial<CollectorConfig> | null): Promise<void> {
+    this.masker = await DataMasker.initialize();
+
     if (config === null) {
       this.config = {
         maxLogs: 1000,
@@ -38,8 +41,6 @@ class LogCollector {
       this.config = { ...this.config, ...config };
     }
 
-    this.masker = await DataMasker.initialize();
-
     if (this.config.autoFlush?.enabled) {
       this.startAutoFlush();
     }
@@ -50,10 +51,20 @@ class LogCollector {
    */
   static addLog(log: LogEntry): void {
     this.logs.push(log);
-    console.log('[LogCollector] New log added:');
 
-    const formatted = LogFormatter.toConsole(log);
-    console.log(formatted);
+    // 개발 환경
+    if (!this.config.isProduction) {
+      console.log('[LogCollector] New log added:');
+      const formatted = LogFormatter.toConsole(log);
+      console.log(formatted);
+    }
+    // 에러 로그는 프로덕션이라도 콘솔에 출력
+    else if (log.level === 'ERROR' && log.logger !== 'ErrorCapture') {
+      console.error('[LogLens Error]', log.message);
+      if (log.response) {
+        console.error('Context:', log.response);
+      }
+    }
 
     if (this.logs.length > (this.config.maxLogs || 1000)) {
       this.logs.shift();
@@ -116,12 +127,14 @@ class LogCollector {
   }
 
   /**
-   * 실제 전송 로직 (공통)
+   * 로그 전송 로직
    */
   private static async sendLogs(endpoint: string): Promise<void> {
     // 전송 중이면 대기
     if (this.isSending) {
-      console.warn('[LogCollector] Already sending logs');
+      if (!this.config.isProduction) {
+        console.warn('[LogCollector] Already sending logs');
+      }
       return;
     }
 
@@ -129,7 +142,6 @@ class LogCollector {
     const logsToSend = [...this.logs];
     this.logs = [];
     const maskedLogs = logsToSend.map((log) => this.masker.mask(log));
-
     const ipAddress = await getClientIp();
 
     try {
@@ -146,7 +158,11 @@ class LogCollector {
         throw new Error(`Failed to send logs: ${response.status}`);
       }
 
-      console.log(`[LogCollector] Successfully sent ${logsToSend.length} logs`);
+      if (!this.config.isProduction) {
+        console.log(
+          `[LogCollector] Successfully sent ${logsToSend.length} logs`,
+        );
+      }
     } catch (error) {
       console.error('[LogCollector] Failed to send logs:', error);
       // 실패 시 앞에 다시 추가
@@ -176,7 +192,11 @@ class LogCollector {
       this.flush();
     }, interval);
 
-    console.log(`[LogCollector] Auto flush started (interval: ${interval}ms)`);
+    if (!this.config.isProduction) {
+      console.log(
+        `[LogCollector] Auto flush started (interval: ${interval}ms)`,
+      );
+    }
   }
 
   /**
@@ -186,7 +206,9 @@ class LogCollector {
     if (this.flushTimer) {
       clearInterval(this.flushTimer);
       this.flushTimer = null;
-      console.log('[LogCollector] Auto flush stopped');
+      if (!this.config.isProduction) {
+        console.log('[LogCollector] Auto flush stopped');
+      }
     }
   }
 

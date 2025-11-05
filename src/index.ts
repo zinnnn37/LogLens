@@ -8,14 +8,7 @@ import { LogCollector } from './core/logCollector';
 
 export { useLogger } from './react/useLogger';
 export { useLogLens } from './react/useLogLens';
-export {
-  initLogLens,
-  withLogLens,
-  // LightZone,
-  // ErrorCapture,
-  loglens,
-  // LogCollector,
-};
+export { initLogLens, withLogLens, loglens };
 
 type InitLogLensConfig = {
   domain: string;
@@ -23,6 +16,7 @@ type InitLogLensConfig = {
   autoFlushInterval?: number;
   autoFlushEnabled?: boolean; // 수집 여부
   captureErrors?: boolean;
+  isProduction?: boolean;
 };
 
 const DEFAULT_CONFIG = {
@@ -30,6 +24,7 @@ const DEFAULT_CONFIG = {
   autoFlushInterval: 60000,
   autoFlushEnabled: true,
   captureErrors: false,
+  isProduction: false,
 };
 
 const initLogLens = (config: InitLogLensConfig): void => {
@@ -38,7 +33,7 @@ const initLogLens = (config: InitLogLensConfig): void => {
     ...config,
   };
 
-  LightZone.init();
+  LightZone.init(finalConfig.isProduction);
 
   const trimmedDomain = finalConfig.domain.trim();
   const domain = trimmedDomain.endsWith('/')
@@ -47,7 +42,9 @@ const initLogLens = (config: InitLogLensConfig): void => {
 
   const endpoint = `${domain}/api/logs/frontend`;
 
-  console.log('[LogLens] Log collection enabled. Endpoint:', endpoint);
+  if (!finalConfig.isProduction) {
+    console.log('[LogLens] Log collection enabled. Endpoint:', endpoint);
+  }
 
   LogCollector.init({
     maxLogs: finalConfig.maxLogs,
@@ -56,9 +53,10 @@ const initLogLens = (config: InitLogLensConfig): void => {
       interval: finalConfig.autoFlushInterval,
       endpoint: endpoint,
     },
+    isProduction: finalConfig.isProduction,
   });
 
   if (finalConfig.captureErrors) {
-    ErrorCapture.init();
+    ErrorCapture.init(finalConfig.isProduction);
   }
 };

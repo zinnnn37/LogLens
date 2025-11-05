@@ -72,10 +72,15 @@ class LightZone {
 
   private static originalSetTimeout: typeof globalThis.setTimeout;
   private static originalSetInterval: typeof globalThis.setInterval;
+  private static isProduction = false;
 
-  static init(): void {
+  static init(isProduction: boolean = false): void {
+    this.isProduction = isProduction;
+
     if (this.isPatched) {
-      console.warn('[LogLens] Already initialized');
+      if (!this.isProduction) {
+        console.warn('[LogLens] Already initialized');
+      }
       return;
     }
 
@@ -83,7 +88,10 @@ class LightZone {
     this.patchPromise();
     this.patchTimer();
     this.isPatched = true;
-    console.log('[LogLens] Initialized - Auto trace propagation enabled');
+
+    if (!this.isProduction) {
+      console.log('[LogLens] Initialized - Auto trace propagation enabled');
+    }
   }
 
   static isEnabled(): boolean {
@@ -244,7 +252,9 @@ class LightZone {
         });
       };
     }
-    console.log('[LogLens] Promise patched - TraceId propagation enabled');
+    if (!this.isProduction) {
+      console.log('[LogLens] Promise patched - TraceId propagation enabled');
+    }
   }
 
   private static patchTimer(): void {
@@ -308,7 +318,9 @@ class LightZone {
       return zone.originalSetInterval(wrappedCallback, delay, ...args);
     };
 
-    console.log('[LogLens] Timers patched - TraceId propagation enabled');
+    if (!this.isProduction) {
+      console.log('[LogLens] Timers patched - TraceId propagation enabled');
+    }
   }
 
   static getStatus() {

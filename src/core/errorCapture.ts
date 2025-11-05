@@ -9,10 +9,15 @@ class ErrorCapture {
   private static rejectionHandler:
     | ((event: PromiseRejectionEvent) => void)
     | null = null;
+  private static isProduction = false;
 
-  static init(): void {
+  static init(isProduction: boolean = false): void {
+    this.isProduction = isProduction;
+
     if (this.isInitialized) {
-      console.warn('[LogLens] ErrorCapture already initialized');
+      if (!this.isProduction) {
+        console.warn('[LogLens] ErrorCapture already initialized');
+      }
       return;
     }
 
@@ -69,7 +74,9 @@ class ErrorCapture {
     window.addEventListener('unhandledrejection', this.rejectionHandler);
 
     this.isInitialized = true;
-    console.log('[LogLens] ErrorCapture initialized');
+    if (!this.isProduction) {
+      console.log('[LogLens] ErrorCapture initialized');
+    }
   }
 
   static isEnabled(): boolean {
