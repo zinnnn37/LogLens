@@ -13,28 +13,24 @@ pipeline {
         stage('Blue-Green Deploy') {
             steps {
                 dir('infra') {
-                    withCredentials([
-                        string(credentialsId: 'spring-profiles-active', variable: 'SPRING_PROFILES_ACTIVE'),
-                        string(credentialsId: 'spring-datasource-url', variable: 'SPRING_DATASOURCE_URL'),
-                        string(credentialsId: 'spring-datasource-username', variable: 'SPRING_DATASOURCE_USERNAME'),
-                        string(credentialsId: 'spring-datasource-password', variable: 'SPRING_DATASOURCE_PASSWORD'),
-                        string(credentialsId: 'spring-redis-host', variable: 'SPRING_REDIS_HOST'),
-                        string(credentialsId: 'spring-redis-port', variable: 'SPRING_REDIS_PORT'),
-                        string(credentialsId: 'spring-redis-password', variable: 'SPRING_REDIS_PASSWORD')
-                    ]) {
+                    withCredentials([file(credentialsId: 'dev-env', variable: 'ENV_FILE')]) {
                         sh '''
-                            chmod +x scripts/deploy.sh
+                            # .env 파일 줄바꿈 변환 (CRLF → LF)
+                            # dos2unix가 없을 경우 sed 사용
+                            if command -v dos2unix >/dev/null 2>&1; then
+                                dos2unix "$ENV_FILE" 2>/dev/null || sed -i 's/\r$//' "$ENV_FILE"
+                            else
+                                sed -i 's/\r$//' "$ENV_FILE"
+                            fi
 
-                            # 환경 변수 export (스크립트에서 사용 가능하도록)
-                            export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE}"
-                            export SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL}"
-                            export SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME}"
-                            export SPRING_DATASOURCE_PASSWORD="${SPRING_DATASOURCE_PASSWORD}"
-                            export SPRING_REDIS_HOST="${SPRING_REDIS_HOST}"
-                            export SPRING_REDIS_PORT="${SPRING_REDIS_PORT}"
-                            export SPRING_REDIS_PASSWORD="${SPRING_REDIS_PASSWORD}"
+                            # .env 파일에서 환경변수 export
+                            echo "📄 Loading environment variables from .env file"
+                            set -a
+                            source "$ENV_FILE"
+                            set +a
 
                             # 배포 스크립트 실행
+                            chmod +x scripts/deploy.sh
                             scripts/deploy.sh
                         '''
                     }
