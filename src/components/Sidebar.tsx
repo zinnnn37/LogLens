@@ -2,7 +2,13 @@
 import { useEffect, useState } from 'react';
 import type { ComponentProps } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { PlusSquare, MessageSquare, LogOut, BookOpen } from 'lucide-react';
+import {
+  PlusSquare,
+  MessageSquare,
+  LogOut,
+  BookOpen,
+  Folder,
+} from 'lucide-react';
 
 import ProjectCreateModal from '@/components/modal/ProjectCreateModal';
 import DocsTOC from '@/components/DocsTOC';
@@ -131,10 +137,11 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
 
               {/* 프로젝트 목록, TODO : 클릭 시 라우팅 */}
               {projects.map(p => (
-                <li key={p.projectId}>
+                <li key={p.projectUuid}>
                   <div className={itemBase}>
+                    <Folder className="text-primary h-4 w-4 flex-shrink-0" />
                     {/* 프로젝트 이름*/}
-                    <span className="truncate">{p.projectName}</span>
+                    <span className="truncate text-sm">{p.projectName}</span>
                   </div>
                 </li>
               ))}
