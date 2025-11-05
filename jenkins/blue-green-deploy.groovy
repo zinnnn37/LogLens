@@ -23,11 +23,26 @@ pipeline {
                                 sed -i 's/\r$//' "$ENV_FILE"
                             fi
 
-                            # .env 파일에서 환경변수 export
+                            # .env 파일에서 환경변수 export (안전한 파싱)
                             echo "📄 Loading environment variables from .env file"
-                            set -a
-                            . "$ENV_FILE"
-                            set +a
+
+                            while IFS='=' read -r key value || [ -n "$key" ]; do
+                                # 빈 줄이나 주석 무시
+                                case "$key" in
+                                    ''|'#'*) continue ;;
+                                esac
+
+                                # 앞뒤 공백 제거
+                                key=$(echo "$key" | xargs)
+                                value=$(echo "$value" | xargs)
+
+                                # 값이 따옴표로 감싸져 있으면 제거
+                                value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+
+                                # export
+                                export "$key=$value"
+                                echo "✅ Loaded: $key"
+                            done < "$ENV_FILE"
 
                             # 배포 스크립트 실행
                             chmod +x scripts/deploy.sh
