@@ -1,6 +1,7 @@
 package S13P31A306.loglens.domain.dependency.mapper;
 
 import S13P31A306.loglens.domain.dependency.dto.response.DependencyGraphResponse;
+import S13P31A306.loglens.domain.dependency.dto.response.Edge;
 import S13P31A306.loglens.domain.dependency.entity.DependencyGraph;
 import org.mapstruct.Mapper;
 
@@ -12,12 +13,16 @@ import static org.mapstruct.ReportingPolicy.*;
 public interface DependencyGraphMapper {
 
     /**
-     * Entity → Response DTO 변환
+     * Entity List → DependencyGraphResponse 변환
      */
-    DependencyGraphResponse toResponse(DependencyGraph entity);
+    default DependencyGraphResponse toGraphResponse(List<DependencyGraph> entities) {
+        return DependencyGraphResponse.from(entities);
+    }
 
     /**
-     * Entity List → Response DTO List 변환
+     * 단일 Entity → Edge 변환
      */
-    List<DependencyGraphResponse> toResponseList(List<DependencyGraph> entities);
+    default Edge toEdge(DependencyGraph entity) {
+        return new Edge(entity.getFrom(), entity.getTo());
+    }
 }
