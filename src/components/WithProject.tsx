@@ -9,20 +9,12 @@ import type { ProjectInfoDTO } from '@/types/project';
 
 export interface WithProjectProps {
   projects?: ProjectInfoDTO[];
-  onSelect?: (id: number) => void;
-  onDelete?: (id: number) => void;
+  onSelect?: (projectUuid: string) => void;
+  onDelete?: (projectUuid: string) => void;
   onEmptyAfterExit?: () => void;
 }
 
-const formatK = (n: number) => {
-  if (n < 1000) {
-    return `${n}`;
-  }
-  const k = n / 1000;
-  return `${Number.isInteger(k) ? k.toFixed(0) : k.toFixed(1)}K`;
-};
 
-const DOT = ' • ';
 
 const WithProject = ({
   projects,
@@ -32,10 +24,10 @@ const WithProject = ({
 }: WithProjectProps) => {
   const list = projects ?? [];
 
-  const [invitingProjectId, setInvitingProjectId] = useState<number | null>(
+  const [invitingProjectId, setInvitingProjectId] = useState<string | null>( 
     null,
   );
-  const [jiraProjectId, setJiraProjectId] = useState<number | null>(null);
+  const [jiraProjectId, setJiraProjectId] = useState<string | null>(null); 
 
   const becameEmptyRef = useRef(false);
   const prevLenRef = useRef(list.length);
@@ -65,7 +57,7 @@ const WithProject = ({
                 >
                   {list.map(p => (
                     <motion.div
-                      key={p.projectId}
+                      key={p.projectUuid} 
                       layout="position"
                       initial={{ opacity: 0, y: 8, scale: 0.99 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -77,11 +69,11 @@ const WithProject = ({
                       }}
                       role="button"
                       tabIndex={0}
-                      onClick={() => onSelect?.(p.projectId)}
+                      onClick={() => onSelect?.(p.projectUuid)} 
                       onKeyDown={e => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          onSelect?.(p.projectId);
+                          onSelect?.(p.projectUuid); 
                         }
                       }}
                       className="focus:ring-ring/40 cursor-pointer rounded-xl bg-white px-5 py-4 shadow-sm transition [will-change:transform,opacity] hover:shadow-md focus:ring-2 focus:outline-none"
@@ -92,9 +84,7 @@ const WithProject = ({
                             {p.projectName}
                           </p>
                           <p className="text-muted-foreground text-sm">
-                            멤버 {p.memberCount}명{DOT}로그{' '}
-                            {formatK(p.logCount)}건 멤버 {p.memberCount}명{DOT}
-                            로그 {formatK(p.logCount)}건
+                            멤버 {p.memberCount}명
                           </p>
                         </div>
 
@@ -106,7 +96,7 @@ const WithProject = ({
                             className="gap-2"
                             onClick={e => {
                               e.stopPropagation();
-                              setJiraProjectId(p.projectId);
+                              setJiraProjectId(p.projectUuid); 
                             }}
                           >
                             <Link2 className="h-4 w-4" />
@@ -119,7 +109,7 @@ const WithProject = ({
                             className="gap-2"
                             onClick={e => {
                               e.stopPropagation();
-                              setInvitingProjectId(p.projectId);
+                              setInvitingProjectId(p.projectUuid); 
                             }}
                           >
                             <UserPlus2 className="h-4 w-4" />
@@ -136,7 +126,7 @@ const WithProject = ({
                               aria-label={`${p.projectName} 프로젝트 삭제`}
                               onClick={e => {
                                 e.stopPropagation();
-                                onDelete?.(p.projectId); // 부모가 AlertDialog로 확인/삭제 처리
+                                onDelete?.(p.projectUuid); 
                               }}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -155,12 +145,11 @@ const WithProject = ({
       </section>
 
       {/* 멤버 초대 모달 */}
-
       {invitingProjectId !== null && (
         <MemberInviteModal
           open={true}
           onOpenChange={() => setInvitingProjectId(null)}
-          projectId={invitingProjectId}
+          projectUuid={invitingProjectId} 
         />
       )}
 
@@ -169,16 +158,7 @@ const WithProject = ({
         <JiraIntegrationModal
           open={true}
           onOpenChange={() => setJiraProjectId(null)}
-          projectId={jiraProjectId}
-        />
-      )}
-
-      {/* Jira 연동 모달 */}
-      {jiraProjectId !== null && (
-        <JiraIntegrationModal
-          open={true}
-          onOpenChange={() => setJiraProjectId(null)}
-          projectId={jiraProjectId}
+          projectUuid={jiraProjectId} 
         />
       )}
     </div>
