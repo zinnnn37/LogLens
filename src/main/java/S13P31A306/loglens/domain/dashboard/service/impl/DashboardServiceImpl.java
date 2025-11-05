@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -62,19 +63,25 @@ public class DashboardServiceImpl implements DashboardService {
         Integer projectId = validator.validateProjectAccess(projectUuid, userDetails);
         validator.validateComponentAccess(componentId, projectId);
 
-        List<DependencyGraph> allDependencies = dependencyGraphService.findAllDependenciesByComponentId(componentId);
+        List<Component> allProjectComponents = componentService.getProjectComponents(projectId);
 
-        // 3. 관련된 모든 컴포넌트 ID 수집
-        Set<Integer> allComponentIds = new HashSet<>();
-        allComponentIds.add(componentId);
-        allDependencies.forEach(edge -> {
-            allComponentIds.add(edge.getFrom());
-            allComponentIds.add(edge.getTo());
-        });
+        Set<Integer> allComponentIds = allProjectComponents.stream()
+                .map(Component::getId)
+                .collect(Collectors.toSet());
 
-        // 4. 컴포넌트 정보 조회
-        Map<Integer, Component> componentMap = componentService
-                .getComponentMapByIds(allComponentIds);
+        List<DependencyGraph> allDependencies = allProjectComponents.stream()
+                .flatMap(component -> dependencyGraphService
+                        .findAllDependenciesByComponentId(component.getId())
+                        .stream())
+                .distinct()  // 중복 제거
+                .toList();
+
+        log.debug("{} 전체 그래프 조회: components={}, edges={}",
+                LOG_PREFIX, allComponentIds.size(), allDependencies.size());
+
+        // 4. 컴포넌트 정보 Map 생성
+        Map<Integer, Component> componentMap = allProjectComponents.stream()
+                .collect(Collectors.toMap(Component::getId, component -> component));
 
         // 5. 메트릭 정보 조회
         Map<Integer, ComponentMetrics> metricsMap = componentMetricsService
@@ -90,7 +97,7 @@ public class DashboardServiceImpl implements DashboardService {
         // 7. 그래프 생성
         DependencyGraphResponse graph = DependencyGraphResponse.from(allDependencies);
 
-        // 8. 전체 메트릭 요약 생성 ✅
+        // 8. 전체 메트릭 요약 생성
         ComponentDependencyResponse.GraphMetricsSummary summary =
                 calculateGraphMetricsSummary(componentInfos);
 
