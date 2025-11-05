@@ -11,6 +11,8 @@ echo "📂 작업 디렉토리: $CURRENT_DIR"
 
 # Docker Compose 명령어 감지 (v2: docker compose, v1: docker-compose)
 DOCKER_COMPOSE_CMD=""
+USE_DOCKER_RUN=false
+
 if docker compose version >/dev/null 2>&1; then
     DOCKER_COMPOSE_CMD="docker compose"
     echo "✅ Docker Compose v2 감지"
@@ -18,8 +20,8 @@ elif command -v docker-compose >/dev/null 2>&1; then
     DOCKER_COMPOSE_CMD="docker-compose"
     echo "✅ Docker Compose v1 감지"
 else
-    echo "❌ Docker Compose를 찾을 수 없습니다!"
-    exit 1
+    echo "⚠️ Docker Compose를 찾을 수 없습니다. docker run 명령어를 사용합니다."
+    USE_DOCKER_RUN=true
 fi
 
 # 서비스 설정
@@ -34,6 +36,74 @@ NGINX_SITE_NAME="loglens"
 
 # 디버그 모드 설정 (실패 시 컨테이너 유지)
 DEBUG_MODE="${DEBUG_MODE:-false}"
+
+# Docker run 헬퍼 함수
+function docker_compose_up() {
+    local env=$1
+    local port=$2
+
+    if [ "$USE_DOCKER_RUN" = true ]; then
+        echo "🐳 docker run으로 컨테이너 실행 중..."
+        docker run -d \
+            --name ${SERVICE_NAME}-${env} \
+            --network $NETWORK_NAME \
+            -p ${port}:8080 \
+            -e MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-}" \
+            -e MYSQL_DATABASE="${MYSQL_DATABASE:-}" \
+            -e MYSQL_USER="${MYSQL_USER:-}" \
+            -e MYSQL_PASSWORD="${MYSQL_PASSWORD:-}" \
+            -e REDIS_PASSWORD="${REDIS_PASSWORD:-}" \
+            -e DB_HOST="${DB_HOST:-}" \
+            -e DB_PORT="${DB_PORT:-}" \
+            -e DB_NAME="${DB_NAME:-}" \
+            -e DB_USERNAME="${DB_USERNAME:-}" \
+            -e DB_PASSWORD="${DB_PASSWORD:-}" \
+            -e SPRING_REDIS_HOST="${SPRING_REDIS_HOST:-}" \
+            -e SPRING_REDIS_PORT="${SPRING_REDIS_PORT:-}" \
+            -e SPRING_REDIS_PASSWORD="${SPRING_REDIS_PASSWORD:-}" \
+            -e SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-prod}" \
+            -e JWT_SECRET="${JWT_SECRET:-}" \
+            -e OAUTH2_KAKAO_REDIRECT_URI_PROD="${OAUTH2_KAKAO_REDIRECT_URI_PROD:-}" \
+            -e OAUTH2_KAKAO_ERROR_REDIRECT_URI_PROD="${OAUTH2_KAKAO_ERROR_REDIRECT_URI_PROD:-}" \
+            -e LLM_API_KEY="${LLM_API_KEY:-}" \
+            -e AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}" \
+            -e AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}" \
+            -e AWS_REGION="${AWS_REGION:-}" \
+            -e ALB_LISTENER_ARN="${ALB_LISTENER_ARN:-}" \
+            -e ALB_RULE_ARN="${ALB_RULE_ARN:-}" \
+            -e BLUE_TG="${BLUE_TG:-}" \
+            -e GREEN_TG="${GREEN_TG:-}" \
+            -e ENCRYPTION_SECRET_KEY="${ENCRYPTION_SECRET_KEY:-}" \
+            --log-driver fluentd \
+            --log-opt fluentd-address=localhost:24224 \
+            --log-opt tag="loglens.${env}" \
+            --log-opt fluentd-async=true \
+            --log-opt fluentd-max-retries=5 \
+            --log-opt fluentd-retry-wait=1s \
+            --restart unless-stopped \
+            --health-cmd="curl -f http://localhost:8080/health-check || exit 1" \
+            --health-interval=10s \
+            --health-timeout=5s \
+            --health-retries=3 \
+            --health-start-period=40s \
+            $IMAGE_NAME
+    else
+        cd "${CURRENT_DIR:-$(pwd)}"
+        $DOCKER_COMPOSE_CMD -f "docker-compose-${env}.yml" up -d
+    fi
+}
+
+function docker_compose_down() {
+    local env=$1
+
+    if [ "$USE_DOCKER_RUN" = true ]; then
+        docker stop ${SERVICE_NAME}-${env} 2>/dev/null || true
+        docker rm ${SERVICE_NAME}-${env} 2>/dev/null || true
+    else
+        cd "${CURRENT_DIR:-$(pwd)}"
+        $DOCKER_COMPOSE_CMD -f "docker-compose-${env}.yml" down 2>/dev/null || true
+    fi
+}
 
 # 현재 활성 환경 확인
 CURRENT_ENV=""
@@ -51,8 +121,7 @@ fi
 # 환경 상태에 따른 처리
 if [ "$BLUE_RUNNING" = true ] && [ "$GREEN_RUNNING" = true ]; then
     echo "⚠️ 두 환경 모두 실행 중입니다. green 환경을 중지합니다..."
-    cd "${CURRENT_DIR}"
-    $DOCKER_COMPOSE_CMD -f "docker-compose-green.yml" down 2>/dev/null || true
+    docker_compose_down "green"
     CURRENT_ENV="blue"
 elif [ "$BLUE_RUNNING" = true ]; then
     CURRENT_ENV="blue"
@@ -94,32 +163,12 @@ echo "🎯 $NEW_ENV 환경 시작 중..."
 # 기존 컨테이너 정리 (비활성 슬롯)
 if docker ps -a -q -f name=${SERVICE_NAME}-${NEW_ENV} | grep -q .; then
     echo "🧹 기존 컨테이너 제거: ${SERVICE_NAME}-${NEW_ENV}"
-    cd "${CURRENT_DIR:-$(pwd)}"
-    $DOCKER_COMPOSE_CMD -f "docker-compose-${NEW_ENV}.yml" down 2>/dev/null || true
+    docker_compose_down "${NEW_ENV}"
 fi
 
-# Docker Compose 파일 경로 확인
-COMPOSE_FILE="${CURRENT_DIR:-$(pwd)}/docker-compose-${NEW_ENV}.yml"
-
-if [ ! -f "$COMPOSE_FILE" ]; then
-    echo "❌ Docker Compose 파일을 찾을 수 없습니다: $COMPOSE_FILE"
-    exit 1
-fi
-
-# .env 파일 확인
-ENV_FILE="${CURRENT_DIR:-$(pwd)}/.env"
-if [ ! -f "$ENV_FILE" ]; then
-    echo "⚠️ .env 파일을 찾을 수 없습니다: $ENV_FILE"
-    echo "⚠️ Jenkins 환경 변수로 실행됩니다."
-fi
-
-# Docker Compose로 새 컨테이너 실행
+# 새 컨테이너 실행
 echo "🐳 컨테이너 실행: ${SERVICE_NAME}-${NEW_ENV}"
-echo "📄 사용할 Compose 파일: $COMPOSE_FILE"
-
-# Working directory를 infra로 변경하여 docker compose 실행
-cd "${CURRENT_DIR:-$(pwd)}"
-$DOCKER_COMPOSE_CMD -f "docker-compose-${NEW_ENV}.yml" up -d
+docker_compose_up "${NEW_ENV}" "${NEW_PORT}"
 
 # 컨테이너 시작 대기
 echo "⏳ 컨테이너 시작 대기중..."
@@ -248,11 +297,10 @@ if [ "$SUCCESS" = false ]; then
         echo "   - 로그 확인: docker logs ${SERVICE_NAME}-${NEW_ENV}"
         echo "   - 컨테이너 접속: docker exec -it ${SERVICE_NAME}-${NEW_ENV} bash"
         echo "   - 컨테이너 상태: docker inspect ${SERVICE_NAME}-${NEW_ENV}"
-        echo "   - 컨테이너 제거: cd ${CURRENT_DIR:-$(pwd)} && $DOCKER_COMPOSE_CMD -f docker-compose-${NEW_ENV}.yml down"
+        echo "   - 컨테이너 제거: docker stop ${SERVICE_NAME}-${NEW_ENV} && docker rm ${SERVICE_NAME}-${NEW_ENV}"
     else
         echo "🔄 컨테이너를 제거합니다..."
-        cd "${CURRENT_DIR:-$(pwd)}"
-        $DOCKER_COMPOSE_CMD -f "docker-compose-${NEW_ENV}.yml" down 2>/dev/null || true
+        docker_compose_down "${NEW_ENV}"
     fi
 
     exit 1
@@ -282,8 +330,7 @@ if [ "$HAS_SUDO" = false ] || [ "$HAS_NGINX" = false ]; then
     # 이전 환경 정리
     if [ "$CURRENT_ENV" != "" ]; then
         echo "🧹 이전 환경 정리 중: ${SERVICE_NAME}-${CURRENT_ENV}"
-        cd "${CURRENT_DIR:-$(pwd)}"
-        $DOCKER_COMPOSE_CMD -f "docker-compose-${CURRENT_ENV}.yml" down 2>/dev/null || true
+        docker_compose_down "${CURRENT_ENV}"
         echo "✅ 이전 환경 제거 완료"
     fi
 
@@ -338,8 +385,7 @@ if [ -f "$NGINX_CONFIG_FILE" ]; then
         # 디버그 모드에서는 컨테이너를 유지
         if [ "$DEBUG_MODE" != "true" ]; then
             echo "🔄 실패한 컨테이너 제거 중..."
-            cd "${CURRENT_DIR:-$(pwd)}"
-            $DOCKER_COMPOSE_CMD -f "docker-compose-${NEW_ENV}.yml" down 2>/dev/null || true
+            docker_compose_down "${NEW_ENV}"
         fi
         exit 1
     fi
@@ -370,8 +416,7 @@ if [ "$CURRENT_ENV" != "" ]; then
     echo "🔍 기존 컨테이너 상태 확인:"
     docker ps --filter "name=${SERVICE_NAME}-${OLD_ENV}" --format "table {{.Names}}\t{{.Status}}"
 
-    cd "${CURRENT_DIR:-$(pwd)}"
-    $DOCKER_COMPOSE_CMD -f "docker-compose-${OLD_ENV}.yml" down 2>/dev/null || true
+    docker_compose_down "${OLD_ENV}"
 
     echo "✅ 기존 $OLD_ENV 환경 정리 완료"
 
