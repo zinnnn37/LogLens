@@ -203,9 +203,6 @@ public class MethodLoggingAspect {
         return remoteAddr;
     }
 
-    /**
-     * REQUEST 로그 출력
-     */
     private void logRequest(String packageName, String layer, String methodName,
                             Map<String, Object> parameters, HttpInfo httpInfo) {
         try {
@@ -214,6 +211,7 @@ public class MethodLoggingAspect {
             String traceId = MDC.get("traceId");
             logEntry.put("trace_id", traceId);
             logEntry.put("level", "INFO");
+            logEntry.put("name", extractClassName(packageName));
             logEntry.put("package", packageName);
             logEntry.put("layer", layer);
             logEntry.put("message", "Request received: " + methodName);
@@ -228,9 +226,6 @@ public class MethodLoggingAspect {
                 if (httpInfo.queryString != null) {
                     http.put("queryString", httpInfo.queryString);
                 }
-                if (httpInfo.clientIp != null) {
-                    http.put("clientIp", httpInfo.clientIp);
-                }
                 request.put("http", http);
             }
 
@@ -243,13 +238,10 @@ public class MethodLoggingAspect {
             log.info("{}", objectMapper.writeValueAsString(logEntry));
 
         } catch (Exception e) {
-            log.error("REQUEST 로그 출력 실패", e);
+            log.error("REQUEST ERROR", e);
         }
     }
 
-    /**
-     * RESPONSE 로그 출력
-     */
     private void logResponse(String packageName, String layer, String methodName,
                              Object responseData, Long executionTime, Throwable exception,
                              HttpInfo httpInfo) {
@@ -258,13 +250,13 @@ public class MethodLoggingAspect {
             logEntry.put("@timestamp", LocalDateTime.now().atZone(ZoneOffset.UTC).format(ISO_FORMATTER));
             String traceId = MDC.get("traceId");
             logEntry.put("trace_id", traceId);
+            logEntry.put("name", extractClassName(packageName));
             logEntry.put("package", packageName);
             logEntry.put("layer", layer);
             logEntry.put("execution_time_ms", executionTime);
             logEntry.put("request", null);
 
             if (exception != null) {
-                // 예외 발생 시
                 logEntry.put("level", "ERROR");
                 logEntry.put("message", "Failed to execute " + methodName + ": " + exception.getMessage());
 
@@ -290,9 +282,6 @@ public class MethodLoggingAspect {
                     if (httpInfo.statusCode != null) {
                         http.put("statusCode", httpInfo.statusCode);
                     }
-                    if (httpInfo.clientIp != null) {
-                        http.put("clientIp", httpInfo.clientIp);
-                    }
                     response.put("http", http);
                 }
 
@@ -305,8 +294,19 @@ public class MethodLoggingAspect {
             }
 
         } catch (Exception e) {
-            log.error("RESPONSE 로그 출력 실패", e);
+            log.error("RESPONSE ERROR", e);
         }
+    }
+
+    private String extractClassName(String packageName) {
+        if (packageName == null || packageName.isEmpty()) {
+            return null;
+        }
+        int lastDotIndex = packageName.lastIndexOf('.');
+        if (lastDotIndex >= 0 && lastDotIndex < packageName.length() - 1) {
+            return packageName.substring(lastDotIndex + 1);
+        }
+        return packageName;
     }
 
     /**
