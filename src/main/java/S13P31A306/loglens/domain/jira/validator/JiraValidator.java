@@ -2,6 +2,8 @@ package S13P31A306.loglens.domain.jira.validator;
 
 import S13P31A306.loglens.domain.jira.constants.JiraErrorCode;
 import S13P31A306.loglens.domain.jira.repository.JiraConnectionRepository;
+import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
+import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import S13P31A306.loglens.global.constants.GlobalErrorCode;
 import S13P31A306.loglens.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +22,8 @@ public class JiraValidator {
     private static final String LOG_PREFIX = "[JiraValidator]";
 
     private final JiraConnectionRepository jiraConnectionRepository;
-    // TODO: ProjectRepository, ProjectMemberRepository 추가 필요
+    private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository projectMemberRepository;
 
     /**
      * 프로젝트 존재 여부 및 사용자 접근 권한 검증
@@ -32,17 +35,17 @@ public class JiraValidator {
     public void validateProjectAccess(Integer projectId, Integer userId) {
         log.debug("{} 프로젝트 접근 권한 검증: projectId={}, userId={}", LOG_PREFIX, projectId, userId);
 
-        // TODO: 실제 구현 시 ProjectRepository로 프로젝트 존재 확인
-        // if (!projectRepository.existsById(projectId)) {
-        //     log.warn("{} ⚠️ 프로젝트를 찾을 수 없음: projectId={}", LOG_PREFIX, projectId);
-        //     throw new BusinessException(JiraErrorCode.PROJECT_NOT_FOUND);
-        // }
+        // 프로젝트 존재 확인
+        if (!projectRepository.existsById(projectId)) {
+            log.warn("{} ⚠️ 프로젝트를 찾을 수 없음: projectId={}", LOG_PREFIX, projectId);
+            throw new BusinessException(JiraErrorCode.PROJECT_NOT_FOUND);
+        }
 
-        // TODO: 실제 구현 시 ProjectMemberRepository로 사용자 권한 확인
-        // if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
-        //     log.warn("{} ⚠️ 프로젝트 접근 권한 없음: projectId={}, userId={}", LOG_PREFIX, projectId, userId);
-        //     throw new BusinessException(GlobalErrorCode.FORBIDDEN);
-        // }
+        // 사용자 권한 확인
+        if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
+            log.warn("{} ⚠️ 프로젝트 접근 권한 없음: projectId={}, userId={}", LOG_PREFIX, projectId, userId);
+            throw new BusinessException(GlobalErrorCode.FORBIDDEN);
+        }
 
         log.debug("{} ✅ 프로젝트 접근 권한 확인 완료", LOG_PREFIX);
     }

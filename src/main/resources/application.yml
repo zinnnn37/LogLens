@@ -5,78 +5,84 @@ spring:
   application:
     name: loglens
   profiles:
-    # 활성 프로필 지정. 환경 변수 SPRING_PROFILES_ACTIVE가 없으면 'dev' 사용
     active: ${SPRING_PROFILES_ACTIVE:dev}
   data:
-    redis: # Redis 설정
+    redis:
       host: ${SPRING_REDIS_HOST:localhost}
       port: ${SPRING_REDIS_PORT:6379}
       password: ${SPRING_REDIS_PASSWORD:}
+      # Redis 연결 풀 설정 추가
+      lettuce:
+        pool:
+          max-active: 20      # 최대 활성 연결 수
+          max-idle: 10        # 최대 유휴 연결 수
+          min-idle: 5         # 최소 유휴 연결 수
+          max-wait: 3000ms    # 연결 대기 최대 시간
+        shutdown-timeout: 200ms
 
 server:
-  # 내장 WAS 포트. 환경 변수 SERVER_PORT가 없으면 8080 사용
   port: ${SERVER_PORT:8080}
-  # 우아한 종료(Graceful Shutdown) 활성화
   shutdown: graceful
+  # Tomcat 스레드 풀 설정 추가
+  tomcat:
+    threads:
+      max: 200              # 최대 워커 스레드 수
+      min-spare: 10         # 최소 유휴 스레드 수
+    max-connections: 10000  # 최대 동시 연결 수
+    accept-count: 100       # 대기 큐 크기
+    connection-timeout: 20000 # 연결 타임아웃 (밀리초)
 
 # ===================================================================
 # 로깅 설정 (Logging Configuration)
 # ===================================================================
 logging:
   level:
-    # 전역 로깅 레벨 설정
     root: WARN
-    # 특정 라이브러리 로깅 레벨 설정
     org.springframework.jdbc: INFO
-    # --- Hibernate SQL 로깅 비활성화 (성능 및 로그 가독성) ---
-    # JPA(show-sql=true)와 별개로 Hibernate가 출력하는 SQL 로그 제어
-    org.hibernate.SQL: OFF                # 실행되는 SQL 쿼리 로그
-    org.hibernate.orm.jdbc.bind: OFF      # SQL 바인딩 파라미터 로그
-    org.hibernate.orm.jdbc.extract: OFF   # SQL 결과 추출 로그
-    org.hibernate.type.descriptor.sql: OFF # SQL 타입 디스크립터 로그
-    org.hibernate.engine.jdbc.spi.SqlExceptionHelper: OFF # SQL 예외 로그
-    org.hibernate.stat: OFF               # Hibernate 통계 로그
-    # SSE 알림 서비스 디버그 로그
+    org.hibernate.SQL: OFF
+    org.hibernate.orm.jdbc.bind: OFF
+    org.hibernate.orm.jdbc.extract: OFF
+    org.hibernate.type.descriptor.sql: OFF
+    org.hibernate.engine.jdbc.spi.SqlExceptionHelper: OFF
+    org.hibernate.stat: OFF
     com.a306.osm.domain.notification.service.impl.SseNotificationServiceImpl: WARN
 
 jwt:
   secret: ${JWT_SECRET:c3es6QmdhS7Bffn7u3ljFyWnj50RxsLqNzpgomVwJjZvbsdiIKkXunqexhnL7+ROLg+5Kxzf2ljrakWSPTsV6g==}
-  access-token-validity-in-seconds: 1800   # 30분
-  refresh-token-validity-in-seconds: 604800 # 7일
+  access-token-validity-in-seconds: 1800
+  refresh-token-validity-in-seconds: 604800
 
-management: # Spring-Actuator 설정
+management:
   endpoint:
     prometheus:
-      enabled: true  # prometheus 엔드포인트 활성화
+      enabled: true
   endpoints:
     web:
       exposure:
-        include: health, prometheus, metrics, info # Spring-Actuator에서 외부로 노출할 엔드포인트
+        include: health, prometheus, metrics, info
   prometheus:
-    metrics: # 시스템이나 애플리케이션의 동작 상태를 수치로 표현한 정보
+    metrics:
       export:
-        enabled: true   # prometheus 메트릭 export 활성화
+        enabled: true
 
-# ===================================================================
-# AI 서비스 연동 설정 (AI Service Integration)
-# ===================================================================
-#ai:
-#  fastapi:
-#    base-url: http://localhost:8000  # FastAPI 서버 주소
-#    timeout: 30000                   # 타임아웃 (밀리초)
-
-# ===================================================================
-# LLM 설정 (LLM Configuration)
-# ===================================================================
 llm:
   api:
     key: ${LLM_API_KEY:}
 
-# ===================================================================
-# 암호화 설정 (Encryption Configuration)
-# ===================================================================
 encryption:
-  # API 토큰 등 민감 정보 암호화에 사용되는 시크릿 키
-  # 환경 변수 ENCRYPTION_SECRET_KEY 설정이 필수입니다 (최소 16자 이상 권장)
-  # 예: export ENCRYPTION_SECRET_KEY="your-secure-secret-key-here"
   secret-key: ${ENCRYPTION_SECRET_KEY}
+
+# ===================================================================
+# OpenSearch 설정 (OpenSearch Configuration)
+# ===================================================================
+opensearch:
+  scheme: https
+  host: opensearch.loglens.store
+  port: 443
+  username: ${OPENSEARCH_USERNAME:admin}
+  password: ${OPENSEARCH_PASSWORD:admin}
+  # 성능 최적화 설정 추가
+  max-connections: 50              # 최대 연결 수
+  max-connections-per-route: 25    # 라우트당 최대 연결 수
+  connection-timeout: 5000         # 연결 타임아웃 (5초)
+  socket-timeout: 30000            # 소켓 타임아웃 (30초)

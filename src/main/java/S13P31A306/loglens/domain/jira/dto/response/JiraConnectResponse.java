@@ -10,8 +10,8 @@ public record JiraConnectResponse(
         @Schema(description = "연동 ID", example = "1")
         Integer id,
 
-        @Schema(description = "프로젝트 ID", example = "1")
-        Integer projectId,
+        @Schema(description = "프로젝트 UUID", example = "550e8400-e29b-41d4-a716-446655440000")
+        String projectUuid,
 
         @Schema(description = "Jira URL", example = "https://your-domain.atlassian.net")
         @Sensitive

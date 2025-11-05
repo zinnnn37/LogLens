@@ -8,9 +8,9 @@ import jakarta.validation.constraints.*;
  * Jira 연동 설정 요청 DTO
  */
 public record JiraConnectRequest(
-        @NotNull(message = "PROJECT_ID_REQUIRED")
-        @Schema(description = "LogLens 프로젝트 ID", example = "1")
-        Integer projectId,
+        @NotBlank(message = "PROJECT_UUID_REQUIRED")
+        @Schema(description = "LogLens 프로젝트 UUID", example = "550e8400-e29b-41d4-a716-446655440000")
+        String projectUuid,
 
         @NotBlank(message = "JIRA_URL_REQUIRED")
         @Size(max = 255, message = "JIRA_URL_TOO_LONG")

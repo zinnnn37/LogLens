@@ -1,5 +1,15 @@
 package S13P31A306.loglens.domain.project.service.impl;
 
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.ACCESS_FORBIDDEN;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.CANNOT_DELETE_SELF;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.MEMBER_DELETE_FORBIDDEN;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.MEMBER_EXISTS;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.MEMBER_NOT_FOUND;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PROJECT_DELETE_FORBIDDEN;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PROJECT_NAME_DUPLICATED;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PROJECT_NOT_FOUND;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.USER_NOT_FOUND;
+
 import S13P31A306.loglens.domain.auth.entity.User;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.domain.project.constants.ProjectOrderParam;
@@ -164,7 +174,6 @@ public class ProjectServiceImpl implements ProjectService {
                 page == 0,
                 page >= totalPages - 1
         );
-
     }
 
     @Override

@@ -5,6 +5,7 @@ import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.domain.jira.client.JiraApiClient;
 import S13P31A306.loglens.domain.jira.client.dto.JiraIssueRequest;
 import S13P31A306.loglens.domain.jira.client.dto.JiraIssueResponse;
+import S13P31A306.loglens.domain.jira.constants.JiraErrorCode;
 import S13P31A306.loglens.domain.jira.dto.request.JiraIssueCreateRequest;
 import S13P31A306.loglens.domain.jira.dto.response.CreatedByResponse;
 import S13P31A306.loglens.domain.jira.dto.response.JiraIssueCreateResponse;
@@ -13,6 +14,8 @@ import S13P31A306.loglens.domain.jira.mapper.JiraMapper;
 import S13P31A306.loglens.domain.jira.repository.JiraConnectionRepository;
 import S13P31A306.loglens.domain.jira.service.JiraIssueService;
 import S13P31A306.loglens.domain.jira.validator.JiraValidator;
+import S13P31A306.loglens.domain.project.entity.Project;
+import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import S13P31A306.loglens.global.constants.GlobalErrorCode;
 import S13P31A306.loglens.global.exception.BusinessException;
 import S13P31A306.loglens.global.utils.EncryptionUtils;
@@ -34,6 +37,7 @@ public class JiraIssueServiceImpl implements JiraIssueService {
 
     private final AuthenticationHelper authenticationHelper;
     private final JiraConnectionRepository jiraConnectionRepository;
+    private final ProjectRepository projectRepository;
     private final JiraApiClient jiraApiClient;
     private final JiraValidator jiraValidator;
     private final JiraMapper jiraMapper;
@@ -50,21 +54,26 @@ public class JiraIssueServiceImpl implements JiraIssueService {
     public JiraIssueCreateResponse createIssue(JiraIssueCreateRequest request) {
         // 현재 인증된 사용자 ID 조회
         Integer userId = authenticationHelper.getCurrentUserId();
-        log.info("{} 🎫 Jira 이슈 생성 시작: projectId={}, logId={}, userId={}",
-                LOG_PREFIX, request.projectId(), request.logId(), userId);
+        log.info("{} 🎫 Jira 이슈 생성 시작: projectUuid={}, logId={}, userId={}",
+                LOG_PREFIX, request.projectUuid(), request.logId(), userId);
 
-        // 1. 프로젝트 접근 권한 확인
-        jiraValidator.validateProjectAccess(request.projectId(), userId);
+        // 1. projectUuid로 Project 조회
+        Project project = projectRepository.findByProjectUuid(request.projectUuid())
+                .orElseThrow(() -> new BusinessException(JiraErrorCode.PROJECT_NOT_FOUND));
+        log.debug("{} ✅ 프로젝트 조회 완료: projectId={}", LOG_PREFIX, project.getId());
+
+        // 2. 프로젝트 접근 권한 확인
+        jiraValidator.validateProjectAccess(project.getId(), userId);
         log.debug("{} ✅ 프로젝트 접근 권한 확인 완료", LOG_PREFIX);
 
-        // 2. 로그 존재 여부 확인
+        // 3. 로그 존재 여부 확인
         jiraValidator.validateLogExists(request.logId());
         log.debug("{} ✅ 로그 존재 확인 완료", LOG_PREFIX);
 
-        // 3. Jira 연동 정보 조회
-        JiraConnection connection = jiraConnectionRepository.findByProjectId(request.projectId())
+        // 4. Jira 연동 정보 조회
+        JiraConnection connection = jiraConnectionRepository.findByProjectId(project.getId())
                 .orElseThrow(() -> {
-                    log.warn("{} ⚠️ Jira 연동 정보 없음: projectId={}", LOG_PREFIX, request.projectId());
+                    log.warn("{} ⚠️ Jira 연동 정보 없음: projectUuid={}", LOG_PREFIX, request.projectUuid());
                     return new BusinessException(GlobalErrorCode.NOT_FOUND);
                 });
         log.debug("{} ✅ Jira 연동 정보 조회 완료", LOG_PREFIX);
@@ -105,8 +114,8 @@ public class JiraIssueServiceImpl implements JiraIssueService {
                 createdBy
         );
 
-        log.info("{} 🎉 Jira 이슈 생성 프로세스 완료: issueKey={}, projectId={}",
-                LOG_PREFIX, jiraResponse.key(), request.projectId());
+        log.info("{} 🎉 Jira 이슈 생성 프로세스 완료: issueKey={}, projectUuid={}",
+                LOG_PREFIX, jiraResponse.key(), request.projectUuid());
 
         return response;
     }

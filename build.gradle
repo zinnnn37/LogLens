@@ -49,6 +49,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis:3.5.3' // Redis 캐시 및 데이터 저장소 연동
 	implementation 'com.h2database:h2'                                              // 개발용 인메모리 데이터베이스
 	runtimeOnly 'com.mysql:mysql-connector-j'                                    // MySQL 데이터베이스 드라이버
+	implementation 'org.opensearch.client:opensearch-java:3.2.0'                // OpenSearch Java 클라이언트
+	implementation 'org.opensearch.client:opensearch-rest-client:3.3.0'          // OpenSearch REST 클라이언트
 
 	// 개발 도구 및 유틸리티
 	compileOnly 'org.projectlombok:lombok'                                       // 보일러플레이트 코드 감소
@@ -72,6 +74,9 @@ dependencies {
 	testImplementation 'org.springframework.security:spring-security-test'       // 스프링 시큐리티 테스트
 	testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'    // API 문서화
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	// Apache HttpClient 5 (HTTP/1.1, HTTP/2 클라이언트)
+	implementation 'org.apache.httpcomponents.client5:httpclient5:5.5.1'
 }
 
 tasks.named('test') {

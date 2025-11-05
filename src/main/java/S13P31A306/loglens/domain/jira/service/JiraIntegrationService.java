@@ -2,6 +2,7 @@ package S13P31A306.loglens.domain.jira.service;
 
 import S13P31A306.loglens.domain.jira.dto.request.JiraConnectRequest;
 import S13P31A306.loglens.domain.jira.dto.response.JiraConnectResponse;
+import S13P31A306.loglens.domain.jira.dto.response.JiraConnectionStatusResponse;
 
 /**
  * Jira 연동 서비스
@@ -18,4 +19,14 @@ public interface JiraIntegrationService {
      * @return JiraConnectResponse 연동 응답 DTO
      */
     JiraConnectResponse connect(JiraConnectRequest request);
+
+    /**
+     * Jira 연동 상태 조회
+     * 특정 프로젝트의 Jira 연동 상태를 조회합니다.
+     * 현재 인증된 사용자가 해당 프로젝트의 멤버인지 확인합니다.
+     *
+     * @param projectUuid 프로젝트 UUID
+     * @return JiraConnectionStatusResponse 연동 상태 응답 DTO
+     */
+    JiraConnectionStatusResponse getConnectionStatus(String projectUuid);
 }
