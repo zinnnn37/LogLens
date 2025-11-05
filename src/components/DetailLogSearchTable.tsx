@@ -46,7 +46,7 @@ const DetailLogSearchTable = ({ onRowClick }: DetailLogSearchTableProps) => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // 프로젝트 UUID (하드코딩)
-  const PROJECT_UUID = 'c812622d-9881-3edc-8514-f4362c1fa037';
+  const PROJECT_UUID = '48d96cd7-bf8d-38f5-891c-9c2f6430d871';
 
   // 로그 데이터 불러오기
   const fetchLogs = useCallback(
