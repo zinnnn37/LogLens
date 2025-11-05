@@ -95,11 +95,11 @@ export interface JiraIssueCreateResponse {
 }
 
 // Jira 연동 상태 조회
-export interface JiraConnectionParams{
+export interface JiraConnectionParams {
   projectUuid: string;
 }
 
-export interface JiraConnectionResponse{
+export interface JiraConnectionResponse {
   exists: boolean;
   projectUuid: string;
   connectionId: number;

@@ -219,7 +219,9 @@ export const JiraIntegrationModal = ({
 
             {/* 프로젝트 키 */}
             <div className="grid gap-3">
-              <Label htmlFor="jira-project-key">프로젝트 키 <span className="text-destructive">*</span></Label>
+              <Label htmlFor="jira-project-key">
+                프로젝트 키 <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="jira-project-key"
                 value={formData.jiraProjectKey}

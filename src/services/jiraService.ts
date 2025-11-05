@@ -14,10 +14,7 @@ import { API_PATH } from '@/constants/api-path';
 export const connectJiraIntegration = async (
   payload: JiraConnectRequest,
 ): Promise<JiraConnectData> => {
-  return apiClient.post<JiraConnectData>(
-    API_PATH.JIRA_INTEGRATION,
-    payload,
-  );
+  return apiClient.post<JiraConnectData>(API_PATH.JIRA_INTEGRATION, payload);
 };
 
 // Jira 이슈 생성 (수동)
@@ -32,12 +29,10 @@ export const createJiraIssue = async (
 
 // Jira 연결 상태 조회 (GET)
 export const getJiraConnectionStatus = async (
-  params: JiraConnectionParams
+  params: JiraConnectionParams,
 ): Promise<JiraConnectionResponse> => {
   return apiClient.get<JiraConnectionResponse>(
     API_PATH.JIRA_CONNECTION_STATUS,
-    params
+    params,
   );
 };
-
-

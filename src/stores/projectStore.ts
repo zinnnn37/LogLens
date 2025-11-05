@@ -63,6 +63,7 @@ export const useProjectStore = create<ProjectState>(set => ({
       const newProjectInfo: ProjectInfoDTO = {
         ...newProject,
         memberCount: 1, // 초기 기본값
+        jiraConnectionExist: false, // 초기 기본값
       };
 
       return {

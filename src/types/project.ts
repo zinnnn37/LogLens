@@ -7,7 +7,7 @@ export interface CreateProjectPayload {
 // 프로젝트 생성 응답
 export interface ProjectDTO {
   projectName: string;
-    description: string;
+  description: string;
   projectUuid: string;
   createdAt: string;
 }
