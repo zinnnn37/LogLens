@@ -25,14 +25,12 @@ export interface GetProjectsParams {
 }
 
 export interface ProjectInfoDTO {
-  projectId: number;
+  projectUuid: string;
   projectName: string;
   description: string;
-  apiKey: string;
   memberCount: number;
-  logCount: number;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 /**
