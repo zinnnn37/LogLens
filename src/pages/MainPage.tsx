@@ -4,17 +4,15 @@ import NoProjectIllust from '@/assets/images/NoProjectIllust.png';
 import WithProject from '@/components/WithProject';
 import ProjectCreateModal from '@/components/modal/ProjectCreateModal';
 import FloatingChecklist from '@/components/FloatingChecklist';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { useProjectStore } from '@/stores/projectStore';
 import {
@@ -131,7 +129,7 @@ const MainPage = () => {
           {/* 플로팅 버튼 */}
           <Button
             onClick={() => setOpenCreate(true)}
-            className="fixed bottom-[72px] right-6 flex h-14 w-14 items-center justify-center rounded-full p-0 text-2xl shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
+            className="fixed right-6 bottom-[72px] flex h-14 w-14 items-center justify-center rounded-full p-0 text-2xl shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
           >
             +
           </Button>
@@ -147,36 +145,61 @@ const MainPage = () => {
         }}
       />
 
-      <AlertDialog
+      <Dialog
         open={projectToConfirmDelete !== null}
-        onOpenChange={open => {
-          if (!open) {
-            setProjectToConfirmDelete(null);
-          }
-        }}
+        onOpenChange={() => setProjectToConfirmDelete(null)}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              "{projectToConfirmDelete?.projectName}" 프로젝트를
-              삭제하시겠습니까?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              이 작업은 되돌릴 수 없습니다. 프로젝트와 관련된 모든 데이터가
-              영구적으로 삭제됩니다.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction
+        <DialogContent className="gap-6 p-10 pb-7 sm:max-w-[440px]">
+          {/* 경고 아이콘 */}
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-red-100 ring-8 ring-red-50">
+            <AlertTriangle className="h-10 w-10 text-red-600" />
+          </div>
+
+          <DialogHeader className="space-y-3 text-center">
+            <DialogTitle className="text-center text-2xl font-bold">
+              프로젝트 삭제
+            </DialogTitle>
+            <DialogDescription className="space-y-2 text-center text-base leading-relaxed">
+              <div>
+                <span className="text-foreground text-xl font-semibold">
+                  {projectToConfirmDelete?.projectName}
+                </span>
+              </div>
+              <div className="text-muted-foreground">
+                프로젝트를 정말 삭제하시겠습니까?
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* 경고 메시지 */}
+          <div className="rounded-xl border-2 border-red-200 bg-red-50 p-4 text-center">
+            <div className="space-y-1 text-sm text-red-900">
+              <p className="font-semibold">
+                ⚠️ 이 작업은 되돌릴 수 없습니다 ⚠️
+              </p>
+              <p className="text-red-700">
+                프로젝트와 관련된 모든 데이터가 영구적으로 삭제됩니다.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col items-center gap-2 sm:flex-row sm:justify-center sm:gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setProjectToConfirmDelete(null)}
+              className="m-0 w-full text-center sm:w-32"
+            >
+              취소
+            </Button>
+            <Button
               onClick={executeDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="m-0 w-full bg-red-600 text-center text-white hover:bg-red-700 sm:w-32"
             >
               삭제
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <FloatingChecklist />
     </div>
   );
