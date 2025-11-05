@@ -26,7 +26,7 @@ pipeline {
                             # .env 파일에서 환경변수 export
                             echo "📄 Loading environment variables from .env file"
                             set -a
-                            source "$ENV_FILE"
+                            . "$ENV_FILE"
                             set +a
 
                             # 배포 스크립트 실행
