@@ -63,4 +63,5 @@ public interface ProjectService {
      */
     void deleteMember(int projectId, int memberId);
 
+    Integer getProjectIdByUuid(String projectUuid);
 }
