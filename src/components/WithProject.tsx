@@ -38,11 +38,12 @@ const WithProject = ({
   }, [list.length]);
 
   return (
-    <div className="flex h-full w-full">
+    <div className="flex h-full w-full flex-col">
       <section className="min-w-0 flex-1">
-        <div className="px-6 py-8">
-          <div className="h-[60vh] max-h-[640px] min-h-[360px]">
-            <div className="h-full overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable]">
+        <div className="space-y-6 px-6 py-1">
+          <h1 className="font-godoM text-lg">프로젝트 목록</h1>
+          <div className="">
+            <div className="">
               <motion.div layout className="flex flex-col gap-4">
                 <AnimatePresence
                   initial={false}
