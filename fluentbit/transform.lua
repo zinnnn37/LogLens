@@ -50,7 +50,11 @@ function transform_log(tag, timestamp, record)
     -- 2️⃣ 필드 매핑 및 기본값 설정
     ----------------------------------------------------
     new_record["project_uuid"] = record["project_uuid"] or "default-project"
-    new_record["timestamp"] = record["@timestamp"] or record["timestamp"] or now
+
+    -- timestamp: @timestamp를 그대로 유지 (ISO 8601 형식)
+    -- Logstash에서 최종 처리하도록 원본 값 보존
+    new_record["@timestamp"] = record["@timestamp"] or record["timestamp"] or now
+
     new_record["indexed_at"] = now
     new_record["service_name"] = record["service_name"] or record["app_name"] or "unknown-service"
     new_record["logger"] = record["package"] or record["logger"] or "unknown"
