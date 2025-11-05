@@ -6,7 +6,6 @@ import DetailLogSearchBox, {
 import LogTrendCard from '@/components/LogTrendCard';
 import TrafficGraphCard from '@/components/TrafficGraphCard';
 import FloatingChecklist from '@/components/FloatingChecklist';
-import { DUMMY_LOG_SEARCH_RESULTS } from '@/mocks/dummyLogSearch';
 import type { LogRow } from '@/components/LogResultsTable';
 import DetailLogSearchTable from '@/components/DetailLogSearchTable';
 
@@ -18,43 +17,17 @@ import LogDetailModal2, {
 } from '@/components/modal/LogDetailModal2';
 
 const LogsPage = () => {
-  // --- 기존 검색 상태 ---
-  const [filteredLogs, setFilteredLogs] = useState<LogRow[]>(
-    DUMMY_LOG_SEARCH_RESULTS,
-  );
-
   // --- 모달 관리 상태 ---
   const [selectedLog, setSelectedLog] = useState<LogRow | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalPage, setModalPage] = useState<'page1' | 'page2'>('page1');
 
   /**
-   * '검색' 버튼 클릭 핸들러 (기존 동기식 필터링)
+   * '검색' 버튼 클릭 핸들러 (API 연동 필요)
    */
-  const handleSearch = (criteria: SearchCriteria) => {
-    const newFilteredLogs = DUMMY_LOG_SEARCH_RESULTS.filter(log => {
-      // TraceID 필터
-      if (
-        criteria.traceId &&
-        !log.id.toLowerCase().includes(criteria.traceId.toLowerCase())
-      ) {
-        return false;
-      }
-
-      // 시스템 필터
-      if (criteria.system !== 'all' && log.layer !== criteria.system) {
-        return false;
-      }
-
-      // 레벨 필터
-      if (criteria.level !== 'all' && log.level !== criteria.level) {
-        return false;
-      }
-
-      return true;
-    });
-
-    setFilteredLogs(newFilteredLogs);
+  const handleSearch = (_criteria: SearchCriteria) => {
+    // DetailLogSearchTable에 검색 조건 전달하여 API 재호출 필요
+    console.log('검색 기능은 추후 구현 예정');
   };
 
   // --- 모달 이벤트 핸들러 ---
@@ -132,7 +105,7 @@ const LogsPage = () => {
       {/* 검색 결과 표 */}
       <div>
         {/* onRowClick 핸들러를 전달합니다. */}
-        <DetailLogSearchTable logs={filteredLogs} onRowClick={handleRowClick} />
+        <DetailLogSearchTable onRowClick={handleRowClick} />
       </div>
 
       {/* --- 모달 렌더링 --- */}
