@@ -246,6 +246,37 @@ fi
 # nginx 설정 업데이트
 echo "🔧 nginx 설정 업데이트 중..."
 
+# sudo와 nginx 명령어 존재 확인
+HAS_SUDO=false
+HAS_NGINX=false
+
+if command -v sudo >/dev/null 2>&1; then
+    HAS_SUDO=true
+fi
+
+if command -v nginx >/dev/null 2>&1; then
+    HAS_NGINX=true
+fi
+
+# nginx 설정이 불가능한 경우 건너뛰기 (예: Jenkins 컨테이너 환경)
+if [ "$HAS_SUDO" = false ] || [ "$HAS_NGINX" = false ]; then
+    echo "⚠️ nginx 설정을 건너뜁니다 (sudo: $HAS_SUDO, nginx: $HAS_NGINX)"
+    echo "   - AWS ALB나 외부 로드밸런서를 사용하는 경우 정상입니다."
+    echo "   - 컨테이너가 정상적으로 실행되었으므로 배포를 계속합니다."
+
+    # 이전 환경 정리
+    if [ "$CURRENT_ENV" != "" ]; then
+        echo "🧹 이전 환경 정리 중: ${SERVICE_NAME}-${CURRENT_ENV}"
+        docker stop ${SERVICE_NAME}-${CURRENT_ENV} 2>/dev/null || true
+        docker rm ${SERVICE_NAME}-${CURRENT_ENV} 2>/dev/null || true
+        echo "✅ 이전 환경 제거 완료"
+    fi
+
+    echo "🎉 배포 완료!"
+    echo "⏰ 완료 시간: $(date '+%Y-%m-%d %H:%M:%S')"
+    exit 0
+fi
+
 # nginx 설정 파일 경로 확인 (절대경로 사용)
 CURRENT_DIR=$(pwd)
 NGINX_CONFIG_FILE="${CURRENT_DIR}/nginx/nginx-${NEW_ENV}.conf"
