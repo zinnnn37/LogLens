@@ -20,7 +20,7 @@ import type {
 export const JiraIntegrationModal = ({
   open,
   onOpenChange,
-  projectUuid, 
+  projectUuid,
 }: JiraIntegrationModalProps) => {
   const [formData, setFormData] = useState<JiraFormData>({
     jiraUrl: '',
@@ -68,7 +68,7 @@ export const JiraIntegrationModal = ({
     setIsConnecting(true);
     try {
       const requestBody: JiraConnectRequest = {
-        projectUuid, 
+        projectUuid,
         jiraUrl: formData.jiraUrl,
         jiraEmail: formData.jiraEmail,
         jiraApiToken: formData.jiraApiToken,

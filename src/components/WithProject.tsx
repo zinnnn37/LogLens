@@ -14,8 +14,6 @@ export interface WithProjectProps {
   onEmptyAfterExit?: () => void;
 }
 
-
-
 const WithProject = ({
   projects,
   onSelect,
@@ -24,10 +22,10 @@ const WithProject = ({
 }: WithProjectProps) => {
   const list = projects ?? [];
 
-  const [invitingProjectId, setInvitingProjectId] = useState<string | null>( 
+  const [invitingProjectId, setInvitingProjectId] = useState<string | null>(
     null,
   );
-  const [jiraProjectId, setJiraProjectId] = useState<string | null>(null); 
+  const [jiraProjectId, setJiraProjectId] = useState<string | null>(null);
 
   const becameEmptyRef = useRef(false);
   const prevLenRef = useRef(list.length);
@@ -57,7 +55,7 @@ const WithProject = ({
                 >
                   {list.map(p => (
                     <motion.div
-                      key={p.projectUuid} 
+                      key={p.projectUuid}
                       layout="position"
                       initial={{ opacity: 0, y: 8, scale: 0.99 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -69,11 +67,11 @@ const WithProject = ({
                       }}
                       role="button"
                       tabIndex={0}
-                      onClick={() => onSelect?.(p.projectUuid)} 
+                      onClick={() => onSelect?.(p.projectUuid)}
                       onKeyDown={e => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          onSelect?.(p.projectUuid); 
+                          onSelect?.(p.projectUuid);
                         }
                       }}
                       className="focus:ring-ring/40 cursor-pointer rounded-xl bg-white px-5 py-4 shadow-sm transition [will-change:transform,opacity] hover:shadow-md focus:ring-2 focus:outline-none"
@@ -96,7 +94,7 @@ const WithProject = ({
                             className="gap-2"
                             onClick={e => {
                               e.stopPropagation();
-                              setJiraProjectId(p.projectUuid); 
+                              setJiraProjectId(p.projectUuid);
                             }}
                           >
                             <Link2 className="h-4 w-4" />
@@ -109,7 +107,7 @@ const WithProject = ({
                             className="gap-2"
                             onClick={e => {
                               e.stopPropagation();
-                              setInvitingProjectId(p.projectUuid); 
+                              setInvitingProjectId(p.projectUuid);
                             }}
                           >
                             <UserPlus2 className="h-4 w-4" />
@@ -126,7 +124,7 @@ const WithProject = ({
                               aria-label={`${p.projectName} 프로젝트 삭제`}
                               onClick={e => {
                                 e.stopPropagation();
-                                onDelete?.(p.projectUuid); 
+                                onDelete?.(p.projectUuid);
                               }}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -149,7 +147,7 @@ const WithProject = ({
         <MemberInviteModal
           open={true}
           onOpenChange={() => setInvitingProjectId(null)}
-          projectUuid={invitingProjectId} 
+          projectUuid={invitingProjectId}
         />
       )}
 
@@ -158,7 +156,7 @@ const WithProject = ({
         <JiraIntegrationModal
           open={true}
           onOpenChange={() => setJiraProjectId(null)}
-          projectUuid={jiraProjectId} 
+          projectUuid={jiraProjectId}
         />
       )}
     </div>

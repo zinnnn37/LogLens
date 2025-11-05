@@ -14,7 +14,8 @@ export const API_PATH = {
   SEARCH_USERS: '/api/auth/users/search',
 
   // 멤버 초대
-  INVITE_MEMBERS: (projectUuid: string) => `/api/projects/${projectUuid}/members`,
+  INVITE_MEMBERS: (projectUuid: string) =>
+    `/api/projects/${projectUuid}/members`,
 
   // 아키텍처 흐름 조회
   ARCHITECTURE: (projectId: string) =>
@@ -35,4 +36,7 @@ export const API_PATH = {
 
   // Jira 이슈 생성
   JIRA_CREATE_ISSUE: '/api/integrations/jira/issues',
+
+  // 로그 검색
+  LOGS_SEARCH: '/api/logs',
 } as const;
