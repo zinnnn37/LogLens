@@ -3,7 +3,7 @@ FROM openjdk:21-jdk-slim
 # 타임존 설정
 ENV TZ=Asia/Seoul
 RUN apt-get update && \
-    apt-get install -y tzdata curl procps openjdk-21-jdk-headless && \
+    apt-get install -y tzdata curl procps && \
     ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
     echo $TZ > /etc/timezone && \
     apt-get clean && \
