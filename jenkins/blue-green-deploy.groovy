@@ -13,7 +13,7 @@ pipeline {
         stage('Prepare Environment') {
             steps {
                 dir('infra') {
-                    withCredentials([file(credentialsId: 'dev-env-file', variable: 'ENV_FILE')]) {
+                    withCredentials([file(credentialsId: 'dev-env', variable: 'ENV_FILE')]) {
                         sh '''
                             cp "${ENV_FILE}" .env
                             chmod 600 .env
