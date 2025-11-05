@@ -22,11 +22,14 @@ function transform_log(tag, timestamp, record)
     ----------------------------------------------------
     -- 1️⃣ message가 JSON 문자열이라면 내부 필드 병합
     ----------------------------------------------------
+    local original_message = nil
     if record["message"] and type(record["message"]) == "string" then
         local msg = record["message"]
         if string.sub(msg, 1, 1) == "{" then
             local parsed = simple_json_parse(msg)
             if parsed then
+                -- JSON 내부의 message 필드를 따로 저장
+                original_message = parsed["message"]
                 -- message 안의 필드들을 record로 병합
                 for k, v in pairs(parsed) do
                     record[k] = record[k] or v
@@ -74,12 +77,8 @@ function transform_log(tag, timestamp, record)
     end
     new_record["trace_id"] = trace_id or "unknown"
 
-    -- message 내용만 단순 텍스트로 남기기
-    if record["message"] and string.sub(record["message"], 1, 1) == "{" then
-        new_record["message"] = record["message_text"] or (record["message_inner"] or record["msg"] or "parsed JSON log")
-    else
-        new_record["message"] = record["message"] or ""
-    end
+    -- message: JSON 내부의 message 필드 사용
+    new_record["message"] = original_message or record["message"] or "parsed JSON log"
 
     ----------------------------------------------------
     -- 5️⃣ 추가 메타정보
