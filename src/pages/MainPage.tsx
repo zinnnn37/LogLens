@@ -56,8 +56,8 @@ const MainPage = () => {
   }, [isLoading, projects.length]);
 
   // 삭제버튼 눌렀을 때 alert-dialog
-  const handleDeleteRequest = (id: number) => {
-    const projectToConfirm = projects.find(p => p.projectId === id);
+  const handleDeleteRequest = (projectUuid: string) => {
+    const projectToConfirm = projects.find(p => p.projectUuid === projectUuid);
     if (projectToConfirm) {
       setProjectToConfirmDelete(projectToConfirm);
     } else {
@@ -74,7 +74,7 @@ const MainPage = () => {
 
     try {
       // 프로젝트 삭제 API 호출
-      await deleteProject({ projectId: projectToConfirmDelete.projectId });
+      await deleteProject({ projectUuid: projectToConfirmDelete.projectUuid });
 
       toast.success(
         `"${projectToConfirmDelete.projectName}" 프로젝트가 삭제되었습니다.`,

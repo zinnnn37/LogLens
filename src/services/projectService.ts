@@ -62,16 +62,16 @@ export const fetchProjects = async (
  * @param payload - { userId }
  */
 export const inviteMember = async (
-  projectId: number,
+  projectUuid: string,
   payload: InviteMemberPayload,
 ): Promise<InviteMemberResponse> => {
   try {
     const response = await apiClient.post<InviteMemberResponse>(
-      API_PATH.INVITE_MEMBERS(projectId),
+      API_PATH.INVITE_MEMBERS(projectUuid),
       payload,
     );
 
-    useProjectStore.getState().incrementMemberCount(projectId);
+    useProjectStore.getState().incrementMemberCount(projectUuid);
 
     return response;
   } catch (error) {
@@ -86,11 +86,11 @@ export const inviteMember = async (
  * @param projectId - 조회할 프로젝트 ID
  */
 export const getProjectDetail = async (
-  projectId: number,
+  projectUuid: string,
 ): Promise<ProjectDetailDTO> => {
   try {
     const projectDetail = await apiClient.get<ProjectDetailDTO>(
-      API_PATH.PROJECT_DETAIL(projectId),
+      API_PATH.PROJECT_DETAIL(projectUuid),
     );
 
     useProjectStore.getState().setCurrentProject(projectDetail);
@@ -107,12 +107,12 @@ export const getProjectDetail = async (
  * @param projectId - 삭제할 프로젝트 ID
  */
 export const deleteProject = async ({
-  projectId,
+  projectUuid,
 }: DeleteProjectParams): Promise<void> => {
   try {
-    await apiClient.delete<void>(API_PATH.DELETE_PROJECT(projectId));
+    await apiClient.delete<void>(API_PATH.DELETE_PROJECT(projectUuid));
 
-    useProjectStore.getState().removeProject(projectId);
+    useProjectStore.getState().removeProject(projectUuid);
   } catch (error) {
     console.error('프로젝트 삭제 실패', error);
     throw error;
@@ -121,13 +121,13 @@ export const deleteProject = async ({
 
 // 프로젝트 내 멤버 삭제(DELETE /api/projects/{projectId}/members/{memberId})
 export const deleteMember = async ({
-  projectId,
+  projectUuid,
   memberId,
 }: DeleteMemberParams): Promise<void> => {
   try {
-    await apiClient.delete<void>(API_PATH.DELETE_MEMBER(projectId, memberId));
+    await apiClient.delete<void>(API_PATH.DELETE_MEMBER(projectUuid, memberId));
 
-    useProjectStore.getState().removeMember(projectId, memberId);
+    useProjectStore.getState().removeMember(projectUuid, memberId);
   } catch (error) {
     console.log('멤버 삭제 실패', error);
     throw error;

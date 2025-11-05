@@ -3,7 +3,7 @@
 export interface JiraIntegrationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  projectId: number;
+  projectUuid: string;
 }
 
 export interface JiraFormData {
@@ -22,7 +22,7 @@ export interface JiraFormErrors {
 
 // API 요청 타입
 export interface JiraConnectRequest {
-  projectId: number;
+  projectUuid: string;
   jiraUrl: string;
   jiraEmail: string;
   jiraApiToken: string;
@@ -38,7 +38,7 @@ export interface JiraConnectionTest {
 
 export interface JiraConnectData {
   id: number;
-  projectId: number;
+  projectUuid: string;
   jiraUrl: string;
   jiraEmail: string;
   jiraProjectKey: string;
@@ -65,7 +65,7 @@ export type JiraIssuePriority =
 
 // 요청
 export interface JiraIssueCreateRequest {
-  projectId: number;
+  projectUuid: string;
   logId: number;
   summary: string;
   description?: string;
