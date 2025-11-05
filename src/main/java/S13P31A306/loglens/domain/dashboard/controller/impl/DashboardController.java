@@ -1,14 +1,21 @@
 package S13P31A306.loglens.domain.dashboard.controller.impl;
 
+import S13P31A306.loglens.domain.dashboard.constants.DashboardSuccessCode;
 import S13P31A306.loglens.domain.dashboard.controller.DashboardApi;
-import S13P31A306.loglens.domain.dashboard.dto.response.DashboardOverviewResponse;
+import S13P31A306.loglens.domain.dashboard.dto.response.ComponentDependencyResponse;
+import S13P31A306.loglens.domain.dashboard.dto.response.ProjectComponentsResponse;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
+import S13P31A306.loglens.global.annotation.ValidUuid;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -25,8 +32,7 @@ public class DashboardController implements DashboardApi {
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
-        DashboardOverviewResponse response = dashboardService.getStatisticsOverview(projectId, startTime, endTime);
-        return ApiResponseFactory.success(/* SuccessCode */, response);
+        return null;
     }
 
     /**
@@ -39,8 +45,7 @@ public class DashboardController implements DashboardApi {
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
-        // TopErrorResponse response = dashboardService.getTopFrequentErrors(projectId, limit, startTime, endTime);
-        return ApiResponseFactory.success(/* SuccessCode */, response);
+        return null;
     }
 
     /**
@@ -52,8 +57,7 @@ public class DashboardController implements DashboardApi {
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
-        // ApiCallStatisticsResponse response = dashboardService.getApiCallStatistics(projectId, startTime, endTime);
-        return ApiResponseFactory.success(/* SuccessCode */, response);
+        return null;
     }
 
     /**
@@ -65,8 +69,7 @@ public class DashboardController implements DashboardApi {
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
-        // LogHeatmapResponse response = dashboardService.getLogHeatmap(projectId, startTime, endTime);
-        return ApiResponseFactory.success(/* SuccessCode */, response);
+        return null;
     }
 
     /**
@@ -76,8 +79,7 @@ public class DashboardController implements DashboardApi {
     public ResponseEntity<? extends BaseResponse> getDependencyArchitecture(
             @RequestParam Integer projectId
     ) {
-        // ArchitectureResponse response = dashboardService.getDependencyArchitecture(projectId);
-        return ApiResponseFactory.success(/* SuccessCode */, response);
+        return null;
     }
 
     /**
@@ -89,31 +91,42 @@ public class DashboardController implements DashboardApi {
             @RequestParam(required = false) String layer,
             @RequestParam(required = false) String componentType
     ) {
-        // List<ComponentResponse> response = dashboardService.getDependencyComponents(projectId, layer, componentType);
-        return ApiResponseFactory.success(/* SuccessCode */, response);
-    }
-
-    /**
-     * 특정 컴포넌트 상세 정보 조회
-     */
-    @GetMapping("/dashboards/dependencies/components/{componentId}/details")
-    public ResponseEntity<? extends BaseResponse> getComponentDetails(
-            @PathVariable Integer componentId
-    ) {
-        // ComponentDetailResponse response = dashboardService.getComponentDetails(componentId);
-        return ApiResponseFactory.success(/* SuccessCode */, response);
+        return null;
     }
 
     /**
      * 컴포넌트의 의존성 관계 조회
      */
-    @GetMapping("/components/{componentId}/dependencies")
+    @GetMapping("/dashboards/components")
+    public ResponseEntity<? extends BaseResponse> getComponentDependencies(
+            @ValidUuid @RequestParam String projectUuid,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        ProjectComponentsResponse response = dashboardService.getProjectComponents(
+                projectUuid,
+                userDetails
+        );
+        return ApiResponseFactory.success(DashboardSuccessCode.COMPONENTS_RETRIEVED, response);
+    }
+
+    /**
+     * 특정 컴포넌트 상세 정보 조회
+     */
+    @GetMapping("/dashboards/components/{componentId}/dependencies")
     public ResponseEntity<? extends BaseResponse> getComponentDependencies(
             @PathVariable Integer componentId,
-            @RequestParam(required = false, defaultValue = "both") String direction // "from", "to", "both"
+            @ValidUuid @RequestParam String projectUuid,
+            @AuthenticationPrincipal UserDetails userDetails
     ) {
-        // ComponentDependenciesResponse response = dashboardService.getComponentDependencies(componentId, direction);
-        return ApiResponseFactory.success(/* SuccessCode */, response);
+        ComponentDependencyResponse response = dashboardService.getComponentDependencies(
+                projectUuid,
+                componentId,
+                userDetails
+        );
+        return ApiResponseFactory.success(
+                DashboardSuccessCode.COMPONENT_DEPENDENCY_RETRIEVED,
+                response
+        );
     }
 
     /**
@@ -123,8 +136,7 @@ public class DashboardController implements DashboardApi {
     public ResponseEntity<? extends BaseResponse> getTraceFlow(
             @PathVariable String traceId
     ) {
-        // TraceFlowResponse response = dashboardService.getTraceFlow(traceId);
-        return ApiResponseFactory.success(/* SuccessCode */, response);
+        return null;
     }
 
     /**
@@ -139,6 +151,6 @@ public class DashboardController implements DashboardApi {
             @RequestParam(defaultValue = "20") Integer size
     ) {
         // PageResponse<AlertResponse> response = dashboardService.getAlertFeed(projectId, severity, isRead, page, size);
-        return ApiResponseFactory.success(/* SuccessCode */, response);
+        return null;
     }
 }
