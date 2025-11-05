@@ -38,11 +38,12 @@ const WithProject = ({
   }, [list.length]);
 
   return (
-    <div className="flex h-full w-full">
+    <div className="flex h-full w-full flex-col">
       <section className="min-w-0 flex-1">
-        <div className="px-6 py-8">
-          <div className="h-[60vh] max-h-[640px] min-h-[360px]">
-            <div className="h-full overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable]">
+        <div className="space-y-6 px-6 py-1">
+          <h1 className="font-godoM text-lg">프로젝트 목록</h1>
+          <div className="">
+            <div className="">
               <motion.div layout className="flex flex-col gap-4">
                 <AnimatePresence
                   initial={false}
@@ -56,14 +57,19 @@ const WithProject = ({
                   {list.map(p => (
                     <motion.div
                       key={p.projectUuid}
-                      layout="position"
-                      initial={{ opacity: 0, y: 8, scale: 0.99 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                      layout
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{
+                        opacity: 0,
+                        x: 50,
+                        transition: { duration: 0.25, ease: 'easeIn' },
+                      }}
                       transition={{
-                        duration: 0.18,
-                        ease: 'easeOut',
-                        layout: { duration: 0.18, ease: 'easeOut' },
+                        layout: {
+                          duration: 0.25,
+                          ease: [0.4, 0, 0.2, 1],
+                        },
                       }}
                       role="button"
                       tabIndex={0}
@@ -95,19 +101,19 @@ const WithProject = ({
                         </div>
 
                         <div className="flex items-center gap-2">
-                          {!p.jiraConnectionExist && (
-                            <Button
-                              variant="outline"
-                              className="gap-2"
-                              onClick={e => {
-                                e.stopPropagation();
-                                setJiraProjectId(p.projectUuid);
-                              }}
-                            >
-                              <Link2 className="h-4 w-4" />
-                              Jira 연결
-                            </Button>
-                          )}
+                          {/* TODO : 연결상태 확인할 수 있는지 체크 후 조건부 렌더링 추가 */}
+                          {/* Jira 연결 버튼 */}
+                          <Button
+                            variant="outline"
+                            className="gap-2"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setJiraProjectId(p.projectUuid);
+                            }}
+                          >
+                            <Link2 className="h-4 w-4" />
+                            Jira 연결
+                          </Button>
 
                           {/* 멤버 초대 */}
                           <Button

@@ -2,7 +2,13 @@
 import { useEffect, useState } from 'react';
 import type { ComponentProps } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { PlusSquare, MessageSquare, LogOut, BookOpen } from 'lucide-react';
+import {
+  PlusSquare,
+  MessageSquare,
+  LogOut,
+  BookOpen,
+  Folder,
+} from 'lucide-react';
 
 import ProjectCreateModal from '@/components/modal/ProjectCreateModal';
 import DocsTOC from '@/components/DocsTOC';
@@ -60,8 +66,6 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
   const location = useLocation();
   const { clearAuth } = useAuthStore();
 
-  const isDocsPage = location.pathname === ROUTE_PATH.DOCS;
-
   // 프로젝트 생성 모달 Open 상태 관리
   const [openCreate, setOpenCreate] = useState(false);
 
@@ -102,78 +106,73 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
       className={`border-sidebar-border flex h-[100dvh] w-56 flex-col border-r p-2 ${className || ''}`}
       {...props}
     >
-      {/* 상단 그룹 */}
-      <div className="font-godoM flex min-h-0 flex-1 flex-col">
-        {/* 로고 */}
-        <div className="mb-3 flex h-14 flex-shrink-0 items-center px-2">
-          <a href="/" className="font-pretendard text-4xl font-bold">
-            <span className="text-[#1C1C1C]">Log</span>
-            <span className="text-[#6A91BE]">Lens</span>
-          </a>
-        </div>
+      {/* 로고 - 고정 */}
+      <div className="mb-3 flex h-14 flex-shrink-0 items-center px-2">
+        <a href="/" className="font-pretendard text-4xl font-bold">
+          <span className="text-[#1C1C1C]">Log</span>
+          <span className="text-[#6A91BE]">Lens</span>
+        </a>
+      </div>
 
-        {/* 네비게이션 */}
-        <nav className="flex min-h-0 flex-1 flex-col gap-4">
+      {/* 네비게이션 */}
+      <div className="font-godoM flex min-h-0 flex-1 flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <nav className="flex flex-col gap-4">
           {/* Projects */}
           <section className="flex-shrink-0">
             <NavHeading>
               <p className="font-pretendard">projects</p>
             </NavHeading>
-            <ul className="flex flex-col gap-1 text-[#6A6A6A]">
-              <li>
-                <NavButton
-                  icon={PlusSquare}
-                  onClick={() => setOpenCreate(true)}
-                >
-                  새 프로젝트 생성
-                </NavButton>
-              </li>
+            <div className="flex flex-col gap-1">
+              <NavButton icon={PlusSquare} onClick={() => setOpenCreate(true)}>
+                새 프로젝트 생성
+              </NavButton>
 
-              {/* 프로젝트 목록, TODO : 클릭 시 라우팅 */}
-              {projects.map(p => (
-                <li key={p.projectUuid}>
-                  <div className={itemBase}>
-                    {/* 프로젝트 이름*/}
-                    <span className="truncate">{p.projectName}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
+              <Accordion type="single" collapsible defaultValue="project-list">
+                <AccordionItem value="project-list" className="border-none">
+                  <AccordionTrigger
+                    className={`${itemBase} py-2 text-base font-normal hover:no-underline`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Folder className="text-primary h-4 w-4" />
+                      <span>프로젝트 목록</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-0">
+                    {/* 프로젝트 목록 - 스크롤 영역 */}
+                    <ul className="flex flex-col gap-1 pl-6 text-[#6A6A6A]">
+                      {projects.map(p => (
+                        <li key={p.projectUuid}>
+                          <div className={`${itemBase} text-sm`}>
+                            {/* 프로젝트 이름*/}
+                            <span className="truncate">{p.projectName}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </div>
           </section>
 
-          {/* Support */}
-          <section className="flex min-h-0 flex-1 flex-col">
+          {/* Support - 목차만 스크롤 */}
+          <section className="flex-shrink-0">
             <NavHeading>
               <p className="font-pretendard">Support</p>
             </NavHeading>
-            <div className="flex min-h-0 flex-1 flex-col gap-1">
-              <Accordion
-                type="single"
-                collapsible
-                className="min-h-0 flex-1"
-                defaultValue={isDocsPage ? 'docs' : undefined}
-              >
-                <AccordionItem
-                  value="docs"
-                  className="flex min-h-0 flex-1 flex-col border-none"
-                >
+            <div className="flex flex-col gap-1">
+              <Accordion type="single" collapsible defaultValue="user-guide">
+                <AccordionItem value="user-guide" className="border-none">
                   <AccordionTrigger
-                    className={`${itemBase} flex-shrink-0 py-2 text-base font-normal hover:no-underline`}
+                    className={`${itemBase} py-2 text-base font-normal hover:no-underline`}
                   >
                     <div className="flex items-center gap-3">
                       <BookOpen className="text-primary h-4 w-4" />
-                      <span
-                        onClick={e => {
-                          e.stopPropagation();
-                          navigate(ROUTE_PATH.DOCS);
-                        }}
-                        className="cursor-pointer"
-                      >
-                        사용자 가이드
-                      </span>
+                      <span>사용자 가이드</span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="flex min-h-0 flex-1 flex-col pb-0">
+                  <AccordionContent className="pb-0">
+                    {/* Docs 목차 - 스크롤 영역 */}
                     <DocsTOC />
                   </AccordionContent>
                 </AccordionItem>
@@ -206,6 +205,10 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
         onCreate={createProject}
         onComplete={() => {
           setOpenCreate(false);
+          // 현재 페이지가 메인이 아니면 메인으로 리다이렉트
+          if (location.pathname !== ROUTE_PATH.MAIN) {
+            navigate(ROUTE_PATH.MAIN);
+          }
         }}
       />
     </aside>

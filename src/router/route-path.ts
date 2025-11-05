@@ -1,6 +1,6 @@
 export const ROUTE_PATH = {
   INDEX: '/',
-  HOME: '/',
+  MAIN: '/',
   LOGIN: '/login',
   SIGNUP: '/signup',
   LOGS: '/logs',
@@ -10,5 +10,4 @@ export const ROUTE_PATH = {
   REQUEST_FLOW: '/request-flow',
   DOCS: '/docs',
   NOT_FOUND: '*',
-  MAIN: '/main',
 } as const;
