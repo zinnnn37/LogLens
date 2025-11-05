@@ -1,6 +1,6 @@
 package S13P31A306.loglens.domain.project.repository;
 
-import S13P31A306.loglens.domain.dashboard.entity.LogMetrics;
+import S13P31A306.loglens.domain.project.entity.LogMetrics;
 import S13P31A306.loglens.domain.project.entity.Project;
 import org.springframework.data.jpa.repository.JpaRepository;
 
