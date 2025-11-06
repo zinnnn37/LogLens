@@ -110,19 +110,20 @@ const WithProject = ({
                         </div>
 
                         <div className="flex items-center gap-2">
-                          {/* TODO : 연결상태 확인할 수 있는지 체크 후 조건부 렌더링 추가 */}
-                          {/* Jira 연결 버튼 */}
-                          <Button
-                            variant="outline"
-                            className="gap-2"
-                            onClick={e => {
-                              e.stopPropagation();
-                              setJiraProjectId(p.projectUuid);
-                            }}
-                          >
-                            <Link2 className="h-4 w-4" />
-                            Jira 연결
-                          </Button>
+                          {!p.jiraConnectionExist && (
+                            <Button
+                              variant="outline"
+                              className="gap-2"
+                              onClick={e => {
+                                e.stopPropagation();
+                                setJiraProjectId(p.projectUuid);
+                              }}
+                            >
+                              <Link2 className="h-4 w-4" />
+                              Jira 연결
+                            </Button>
+
+                          )}
 
                           {/* 멤버 초대 */}
                           <Button
