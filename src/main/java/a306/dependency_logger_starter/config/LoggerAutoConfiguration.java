@@ -94,6 +94,12 @@ public class LoggerAutoConfiguration {
 
     /**
      * 메서드 로깅 Aspect
+     *
+     * 스택트레이스 설정:
+     * - dependency.logger.stacktrace.max-lines: -1 (기본값: 전체 출력)
+     *   * -1: 전체 스택트레이스 (개발 환경 권장)
+     *   * 0: 스택트레이스 출력 안함
+     *   * N: 상위 N줄만 출력 (운영 환경)
      */
     @Bean
     @ConditionalOnProperty(
@@ -109,6 +115,12 @@ public class LoggerAutoConfiguration {
     /**
      * Exception Handler 로깅 Aspect
      * 사용자의 @ExceptionHandler 메서드 실행 시 예외를 자동으로 로깅
+     *
+     * 스택트레이스 설정:
+     * - dependency.logger.stacktrace.max-lines: -1 (기본값: 전체 출력)
+     *   * -1: 전체 스택트레이스 (개발 환경 권장)
+     *   * 0: 스택트레이스 출력 안함
+     *   * N: 상위 N줄만 출력 (운영 환경)
      */
     @Bean
     @ConditionalOnProperty(
@@ -125,8 +137,8 @@ public class LoggerAutoConfiguration {
      * 프론트엔드 로그 수집 필터
      * POST /api/logs/frontend 요청을 처리하여 yml 설정 경로에 로그 저장
      *
-     * 로그 경로: ${logging.file.path}/fe/${logging.file.name}
-     * 예: ./logs/fe/app.log
+     * 로그 경로: ${dependency.logger.frontend.log-path}
+     * 기본값: ./logs/fe/app.log
      */
     @Bean
     @ConditionalOnProperty(
