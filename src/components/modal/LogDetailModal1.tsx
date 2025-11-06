@@ -1,4 +1,4 @@
-// src/components/LogDetailModal.tsx
+// src/components/modal/LogDetailModal1.tsx
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import type { LogRow } from '@/components/LogResultsTable';
+import type { LogData } from '@/types/log';
 
 const InfoSection = ({
   title,
@@ -37,11 +37,10 @@ const InfoRow = ({
   </div>
 );
 
-// --- 모달 Props 정의 ---
 export interface LogDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  log: LogRow | null;
+  log: LogData | null;
   onGoToNextPage: () => void;
 }
 
@@ -58,28 +57,32 @@ const LogDetailModal1 = ({
     return null;
   }
 
-  const isErrorLevel = log.level === 'ERROR';
+  const isErrorLevel = log.logLevel === 'ERROR';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>로그 상세정보 - {log.id}</DialogTitle>
+          <DialogTitle>로그 상세정보 - {log.traceId}</DialogTitle>
         </DialogHeader>
 
         <div className="max-h-[60vh] overflow-y-auto p-1 pr-4">
-          {/* 로그 정보 */}
           <InfoSection title="로그 정보">
-            <InfoRow label="Level" value={log.level} />
-            <InfoRow label="System" value={log.layer} />
-            <InfoRow label="Date" value={new Date(log.date).toLocaleString()} />
+            <InfoRow label="Level" value={log.logLevel} />
+            <InfoRow label="System" value={log.sourceType} />
+            <InfoRow
+              label="Date"
+              value={new Date(log.timestamp).toLocaleString()}
+            />
             <InfoRow
               label="Message"
               value={<pre className="whitespace-pre-wrap">{log.message}</pre>}
             />
+            <InfoRow label="Logger" value={log.logger} />
+            <InfoRow label="Layer" value={log.layer} />
           </InfoSection>
 
-          {/* 에러원인, 레벨이 ERROR 인 경우에만 */}
+          {/* 로그 레벨 ERROR 인 경우에 */}
           {isErrorLevel && (
             <InfoSection title="에러 원인 (Sample)">
               <p className="text-sm text-gray-700">

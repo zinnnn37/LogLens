@@ -1,5 +1,9 @@
-// src/pages/LogsPage.tsx
-import { useState, useCallback } from 'react'; // useCallback 추가
+// src/pages/LogsPage.tsx (useRef 버그 수정)
+
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { searchLogs } from '@/services/logService';
+import type { LogData, LogSearchParams } from '@/types/log';
+
 import { useParams } from 'react-router-dom';
 import DetailLogSearchBox, {
   type SearchCriteria,
@@ -7,11 +11,9 @@ import DetailLogSearchBox, {
 import LogTrendCard from '@/components/LogTrendCard';
 import TrafficGraphCard from '@/components/TrafficGraphCard';
 import FloatingChecklist from '@/components/FloatingChecklist';
-import { DUMMY_LOG_SEARCH_RESULTS } from '@/mocks/dummyLogSearch';
-import type { LogRow } from '@/components/LogResultsTable';
+
 import DetailLogSearchTable from '@/components/DetailLogSearchTable';
 
-// --- 모달 컴포넌트 임포트 ---
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import LogDetailModal1 from '@/components/modal/LogDetailModal1';
 import LogDetailModal2, {
@@ -19,59 +21,111 @@ import LogDetailModal2, {
 } from '@/components/modal/LogDetailModal2';
 
 const LogsPage = () => {
-  const { projectUuid } = useParams<{ projectUuid: string }>();
+  const { projectUuid: uuidFromParams } = useParams<{ projectUuid: string }>();
+  const projectUuid = uuidFromParams;
 
-  // TODO: projectUuid를 사용해서 실제 프로젝트 로그 데이터 가져오기
-  console.log('Current project UUID:', projectUuid);
+  const [logs, setLogs] = useState<LogData[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
 
-  // --- 기존 검색 상태 ---
-  const [filteredLogs, setFilteredLogs] = useState<LogRow[]>(
-    DUMMY_LOG_SEARCH_RESULTS,
+  const [criteria, setCriteria] = useState<SearchCriteria | null>(null);
+
+  const fetchLogs = useCallback(
+    async (isInitial: boolean, searchCriteria: SearchCriteria | null) => {
+      if (!projectUuid) {
+        return;
+      }
+      if (loading || (!isInitial && !hasMore)) {
+        return;
+      }
+
+      setLoading(true);
+
+      const params: LogSearchParams = {
+        projectUuid,
+        cursor: isInitial ? undefined : cursor,
+        size: 50,
+        logLevel: searchCriteria?.logLevel?.length
+          ? searchCriteria.logLevel
+          : undefined,
+        sourceType: searchCriteria?.sourceType?.length
+          ? searchCriteria.sourceType
+          : undefined,
+        traceId: searchCriteria?.traceId || undefined,
+        keyword: searchCriteria?.keyword || undefined,
+        startTime: searchCriteria?.startTime || undefined,
+        endTime: searchCriteria?.endTime || undefined,
+        sort: searchCriteria?.sort || 'TIMESTAMP,DESC',
+      };
+
+      try {
+        const response = await searchLogs(params);
+
+        if ('pagination' in response) {
+          const newLogs = response.logs;
+          setLogs(prev => (isInitial ? newLogs : [...prev, ...newLogs]));
+          setCursor(response.pagination.nextCursor || undefined);
+          setHasMore(response.pagination.hasNext);
+        } else if ('summary' in response) {
+          const newLogs = response.logs;
+          setLogs(prev => (isInitial ? newLogs : [...prev, ...newLogs]));
+          setCursor(undefined);
+          setHasMore(false);
+        }
+      } catch (error) {
+        console.error('로그 조회 실패:', error);
+        setHasMore(false);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [projectUuid, cursor, hasMore, loading],
   );
 
-  // --- 모달 관리 상태 ---
-  const [selectedLog, setSelectedLog] = useState<LogRow | null>(null);
+  // 초기 로드
+  useEffect(() => {
+    if (projectUuid) {
+      fetchLogs(true, null);
+    }
+  }, [projectUuid]);
+
+  const savedCallback = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    savedCallback.current = () => fetchLogs(true, criteria);
+  }, [fetchLogs, criteria]);
+
+  useEffect(() => {
+    const tick = () => {
+      savedCallback.current?.();
+    };
+
+    const intervalId = setInterval(tick, 5000);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // 검색핸들러
+  const handleSearch = (newCriteria: SearchCriteria) => {
+    setCriteria(newCriteria);
+    fetchLogs(true, newCriteria);
+  };
+
+  // 무한스크롤
+  const handleLoadMore = () => {
+    fetchLogs(false, criteria);
+  };
+
+  const [selectedLog, setSelectedLog] = useState<LogData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalPage, setModalPage] = useState<'page1' | 'page2'>('page1');
 
-  /**
-   * '검색' 버튼 클릭 핸들러 (기존 동기식 필터링)
-   */
-  const handleSearch = (criteria: SearchCriteria) => {
-    const newFilteredLogs = DUMMY_LOG_SEARCH_RESULTS.filter(log => {
-      // TraceID 필터
-      if (
-        criteria.traceId &&
-        !log.id.toLowerCase().includes(criteria.traceId.toLowerCase())
-      ) {
-        return false;
-      }
+  // 디테일 모달
 
-      // 시스템 필터
-      if (criteria.system !== 'all' && log.layer !== criteria.system) {
-        return false;
-      }
-
-      // 레벨 필터
-      if (criteria.level !== 'all' && log.level !== criteria.level) {
-        return false;
-      }
-
-      return true;
-    });
-
-    setFilteredLogs(newFilteredLogs);
-  };
-
-  // --- 모달 이벤트 핸들러 ---
-
-  /**
-   * 테이블 행 클릭 시
-   */
-  const handleRowClick = useCallback((log: LogRow) => {
+  const handleRowClick = useCallback((log: LogData) => {
     setSelectedLog(log);
     setIsModalOpen(true);
-    setModalPage('page1'); // 항상 1페이지부터 시작
+    setModalPage('page1');
   }, []);
 
   /**
@@ -80,38 +134,37 @@ const LogsPage = () => {
   const handleModalOpenChange = (open: boolean) => {
     setIsModalOpen(open);
     if (!open) {
-      // 모달이 닫히면 항상 1페이지로 리셋
       setModalPage('page1');
     }
   };
 
   /**
-   * (1페이지 -> 2페이지) 'Jira 티켓 발행' 버튼 클릭 시
+   * 모달 1->2페이지
    */
   const handleGoToNextPage = () => {
     setModalPage('page2');
   };
 
   /**
-   * (2페이지 -> 1페이지) '이전' 버튼 클릭 시
+   * 모달 2->1 페이지
    */
   const handleGoBack = () => {
     setModalPage('page1');
   };
 
   /**
-   * (2페이지) '발행하기' 버튼 클릭 시
+   * 발행하기 버튼
    */
   const handleSubmitJira = (formData: JiraTicketFormData) => {
     console.log(
       'Jira Ticket Submitted:',
       formData,
       'for log:',
-      selectedLog?.id,
+      selectedLog?.logId,
     );
     // TODO: 실제 Jira 티켓 발행 API 호출
     alert('이쁜 alert 로 수정 예정입니다.');
-    setIsModalOpen(false); // 성공 시 모달 닫기
+    setIsModalOpen(false);
   };
 
   return (
@@ -135,14 +188,18 @@ const LogsPage = () => {
         <DetailLogSearchBox onSearch={handleSearch} />
       </div>
 
-      {/* 검색 결과 표 */}
+      {/* 검색 결과 */}
       <div>
-        {/* onRowClick 핸들러를 전달합니다. */}
-        <DetailLogSearchTable logs={filteredLogs} onRowClick={handleRowClick} />
+        <DetailLogSearchTable
+          logs={logs}
+          loading={loading}
+          hasMore={hasMore}
+          onLoadMore={handleLoadMore}
+          onRowClick={handleRowClick}
+        />
       </div>
 
-      {/* --- 모달 렌더링 --- */}
-
+      {/* 로그 상세 정보 모달 */}
       {/* 1페이지 모달 렌더링 */}
       {modalPage === 'page1' && (
         <LogDetailModal1

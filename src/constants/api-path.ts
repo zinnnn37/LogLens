@@ -43,4 +43,7 @@ export const API_PATH = {
   // 프로젝트 연결 상태 조회
   PROJECT_CONNECTION: (projectUuid: string) =>
     `/api/projects/${projectUuid}/connection`,
+
+  // 로그 검색
+  LOGS_SEARCH: '/api/logs',
 } as const;
