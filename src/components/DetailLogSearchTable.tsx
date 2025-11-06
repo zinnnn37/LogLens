@@ -76,7 +76,7 @@ const DetailLogSearchTable = ({
                 Level
               </th>
               <th className="text-md w-28 px-5 py-3 text-left font-semibold">
-                Layer
+                System
               </th>
               <th className="text-md px-5 py-3 text-left font-semibold">
                 Message
