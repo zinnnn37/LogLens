@@ -1,22 +1,17 @@
 package S13P31A306.loglens.domain.project.service.impl;
 
-import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.ACCESS_FORBIDDEN;
-import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.CANNOT_DELETE_SELF;
-import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.MEMBER_DELETE_FORBIDDEN;
-import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.MEMBER_EXISTS;
-import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.MEMBER_NOT_FOUND;
-import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PROJECT_DELETE_FORBIDDEN;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PAGE_SIZE_EXCCEED;
 import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PROJECT_NAME_DUPLICATED;
 import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PROJECT_NOT_FOUND;
-import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.USER_NOT_FOUND;
 
 import S13P31A306.loglens.domain.auth.entity.User;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
+import S13P31A306.loglens.domain.jira.repository.JiraConnectionRepository;
 import S13P31A306.loglens.domain.project.constants.ProjectOrderParam;
 import S13P31A306.loglens.domain.project.constants.ProjectSortParam;
-import S13P31A306.loglens.domain.jira.repository.JiraConnectionRepository;
 import S13P31A306.loglens.domain.project.dto.request.ProjectCreateRequest;
 import S13P31A306.loglens.domain.project.dto.request.ProjectMemberInviteRequest;
+import S13P31A306.loglens.domain.project.dto.response.ProjectConnectionResponse;
 import S13P31A306.loglens.domain.project.dto.response.ProjectCreateResponse;
 import S13P31A306.loglens.domain.project.dto.response.ProjectDetailResponse;
 import S13P31A306.loglens.domain.project.dto.response.ProjectListResponse;
@@ -39,8 +34,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.*;
 
 @Slf4j
 @Service
@@ -241,6 +234,24 @@ public class ProjectServiceImpl implements ProjectService {
         log.info("{} 멤버 삭제 완료: project={}", LOG_PREFIX, project.getProjectName());
     }
 
+    @Override
+    public ProjectConnectionResponse checkProjectConnection(String projectUuid) {
+        log.info("{} 프로젝트 연결 상태 확인 시작: projectUuid={}", LOG_PREFIX, projectUuid);
+
+        // 프로젝트 존재 여부 확인
+        Project project = projectValidator.validateProjectExists(projectUuid);
+
+        // 현재 사용자의 프로젝트 접근 권한 확인
+        projectValidator.validateProjectAccess(project.getId());
+
+        // OpenSearch에서 해당 projectUuid로 검색
+        boolean isConnected = projectValidator.checkOpenSearchConnection(projectUuid);
+
+        log.info("{} 프로젝트 연결 상태 확인 완료: projectUuid={}, isConnected={}", LOG_PREFIX, projectUuid, isConnected);
+
+        return projectMapper.toConnectionResponse(projectUuid, isConnected);
+    }
+
     private Comparator<Project> getComparator(ProjectSortParam sort, ProjectOrderParam order) {
         Comparator<Project> comparator = switch (sort) {
             case PROJECT_NAME -> Comparator.comparing(Project::getProjectName);
@@ -249,5 +260,4 @@ public class ProjectServiceImpl implements ProjectService {
         };
         return order == ProjectOrderParam.ASC ? comparator : comparator.reversed();
     }
-
 }
