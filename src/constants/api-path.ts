@@ -40,6 +40,10 @@ export const API_PATH = {
   // Jira 연동 상태 조회
   JIRA_CONNECTION_STATUS: '/api/integrations/jira/connection/status',
 
+  // 프로젝트 연결 상태 조회
+  PROJECT_CONNECTION: (projectUuid: string) =>
+    `/api/projects/${projectUuid}/connection`,
+
   // 로그 검색
   LOGS_SEARCH: '/api/logs',
 } as const;
