@@ -1,9 +1,14 @@
 // src/pages/LogsPage.tsx
+<<<<<<< HEAD
 import { useState, useCallback, useEffect } from 'react'; 
 import { useParams } from 'react-router-dom'; // url 에서 projectUuid 가져오기위해
 import { searchLogs } from '@/services/logService'; 
 import type { LogData, LogSearchParams } from '@/types/log'; 
 
+=======
+import { useState, useCallback } from 'react'; // useCallback 추가
+import { useParams } from 'react-router-dom';
+>>>>>>> fe/develop
 import DetailLogSearchBox, {
   type SearchCriteria,
 } from '@/components/DetailLogSearchBox';

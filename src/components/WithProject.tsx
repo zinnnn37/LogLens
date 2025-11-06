@@ -2,9 +2,11 @@
 import { Button } from '@/components/ui/button';
 import { UserPlus2, Trash2, Link2, Link } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import MemberInviteModal from './modal/MemberInviteModal';
 import { AnimatePresence, motion } from 'framer-motion';
 import { JiraIntegrationModal } from '@/components/modal/JiraIntegrationModal';
+import { createProjectPath } from '@/router/route-path';
 import type { ProjectInfoDTO } from '@/types/project';
 
 export interface WithProjectProps {
@@ -21,6 +23,7 @@ const WithProject = ({
   onEmptyAfterExit,
 }: WithProjectProps) => {
   const list = projects ?? [];
+  const navigate = useNavigate();
 
   const [invitingProjectId, setInvitingProjectId] = useState<string | null>(
     null,
@@ -29,6 +32,12 @@ const WithProject = ({
 
   const becameEmptyRef = useRef(false);
   const prevLenRef = useRef(list.length);
+
+  const handleProjectSelect = (projectUuid: string) => {
+    // 기본적으로 대시보드 페이지로 이동
+    navigate(createProjectPath(projectUuid, 'dashboard'));
+    onSelect?.(projectUuid);
+  };
 
   useEffect(() => {
     const prev = prevLenRef.current;
@@ -73,11 +82,11 @@ const WithProject = ({
                       }}
                       role="button"
                       tabIndex={0}
-                      onClick={() => onSelect?.(p.projectUuid)}
+                      onClick={() => handleProjectSelect(p.projectUuid)}
                       onKeyDown={e => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          onSelect?.(p.projectUuid);
+                          handleProjectSelect(p.projectUuid);
                         }
                       }}
                       className="focus:ring-ring/40 cursor-pointer rounded-xl bg-white px-5 py-4 shadow-sm transition [will-change:transform,opacity] hover:shadow-md focus:ring-2 focus:outline-none"

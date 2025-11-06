@@ -1,9 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import ChatMessage, { type Message } from '@/components/ChatMessage';
 import InitialMessages from '@/components/InitialMessages';
 import ChatInput from '@/components/ChatInput';
 
 const ChatbotPage = () => {
+  const { projectUuid } = useParams<{ projectUuid: string }>();
+
+  // TODO: projectUuid를 사용해서 프로젝트별 채팅 기록 관리
+  console.log('Current project UUID:', projectUuid);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);

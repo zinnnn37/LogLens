@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import Architecture from '@/components/Architecture';
 import DependencyComponents from '@/components/DependencyComponents';
 import ComponentDependencyGraph from '@/components/ComponentDependencyGraph';
@@ -8,6 +9,11 @@ import { DUMMY_COMPONENTS_DATA } from '@/mocks/dummyComponents';
 import { DUMMY_COMPONENT_DEPENDENCY } from '@/mocks/dummyComponentDependency';
 
 const DependencyGraphPage = () => {
+  const { projectUuid } = useParams<{ projectUuid: string }>();
+
+  // TODO: projectUuid를 사용해서 실제 프로젝트 의존성 데이터 가져오기
+  console.log('Current project UUID:', projectUuid);
+
   // 선택된 노드 상태 (backend-api를 클릭하면 컴포넌트 목록 표시)
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   // 선택된 컴포넌트 상태 (컴포넌트를 클릭하면 상세 의존성 그래프 표시)
