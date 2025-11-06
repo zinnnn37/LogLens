@@ -31,6 +31,9 @@ server:
     max-connections: 10000  # 최대 동시 연결 수
     accept-count: 100       # 대기 큐 크기
     connection-timeout: 20000 # 연결 타임아웃 (밀리초)
+    # ALB와의 연결 안정성을 위한 Keep-Alive 설정
+    keep-alive-timeout: 75000  # 75초 (ALB idle timeout 60초보다 길게 설정)
+    max-keep-alive-requests: -1  # 무제한 (L7 로드밸런서 사용 시 권장)
 
 # ===================================================================
 # 로깅 설정 (Logging Configuration)
