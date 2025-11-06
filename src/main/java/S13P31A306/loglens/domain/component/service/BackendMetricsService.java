@@ -5,7 +5,7 @@ import S13P31A306.loglens.domain.component.entity.ComponentMetrics;
 import java.util.List;
 import java.util.Map;
 
-public interface ComponentMetricsService {
+public interface BackendMetricsService {
 
     /**
      * 여러 컴포넌트의 최신 메트릭 조회 (캐시 사용)

@@ -2,7 +2,7 @@ package S13P31A306.loglens.domain.dashboard.service.impl;
 
 import S13P31A306.loglens.domain.component.entity.Component;
 import S13P31A306.loglens.domain.component.entity.ComponentMetrics;
-import S13P31A306.loglens.domain.component.service.ComponentMetricsService;
+import S13P31A306.loglens.domain.component.service.BackendMetricsService;
 import S13P31A306.loglens.domain.component.service.ComponentService;
 import S13P31A306.loglens.domain.component.service.FrontendMetricsService;
 import S13P31A306.loglens.domain.dashboard.dto.FrontendMetricsSummary;
@@ -33,7 +33,7 @@ public class DashboardServiceImpl implements DashboardService {
     private static final String LOG_PREFIX = "[DashboardService]";
 
     private final ComponentService componentService;
-    private final ComponentMetricsService componentMetricsService;
+    private final BackendMetricsService backendMetricsService;
     private final FrontendMetricsService frontendMetricsService;
     private final DependencyGraphService dependencyGraphService;
     private final DashboardValidator validator;
@@ -91,7 +91,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .collect(Collectors.toMap(Component::getId, component -> component));
 
         // 4. Backend 메트릭 정보 조회 (DB에서)
-        Map<Integer, ComponentMetrics> metricsMap = componentMetricsService
+        Map<Integer, ComponentMetrics> metricsMap = backendMetricsService
                 .getMetricsByComponentIds(new ArrayList<>(allComponentIds));
 
         // 5. ComponentInfo 리스트 생성
