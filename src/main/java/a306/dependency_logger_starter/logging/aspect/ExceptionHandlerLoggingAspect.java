@@ -9,6 +9,7 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.ClassUtils;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -44,10 +45,12 @@ public class ExceptionHandlerLoggingAspect {
     @Around("@annotation(org.springframework.web.bind.annotation.ExceptionHandler)")
     public Object logExceptionHandler(ProceedingJoinPoint joinPoint) throws Throwable {
         long startTime = System.currentTimeMillis();
+        Class<?> targetClass = ClassUtils.getUserClass(joinPoint.getTarget().getClass());
+        String componentName = targetClass.getSimpleName();
         Exception exception = extractException(joinPoint.getArgs());
 
         if (exception != null) {
-            logException(exception, startTime);
+            logException(exception, startTime, componentName);
         }
 
         return joinPoint.proceed();
@@ -66,9 +69,9 @@ public class ExceptionHandlerLoggingAspect {
         return null;
     }
 
-    private void logException(Exception ex, long startTime) {
+    private void logException(Exception ex, long startTime, String componentName) {
         try {
-            Map<String, Object> logEntry = createBaseLogEntry(ex, startTime);
+            Map<String, Object> logEntry = createBaseLogEntry(ex, startTime, componentName);
             Map<String, Object> exceptionInfo = createExceptionInfo(ex);
 
             logEntry.put("exception", exceptionInfo);
@@ -79,12 +82,14 @@ public class ExceptionHandlerLoggingAspect {
         }
     }
 
-    private Map<String, Object> createBaseLogEntry(Exception ex, long startTime) {
+    private Map<String, Object> createBaseLogEntry(Exception ex, long startTime, String componentName) {
         Map<String, Object> logEntry = new LinkedHashMap<>();
         logEntry.put("@timestamp", LocalDateTime.now().atZone(ZoneOffset.UTC).format(ISO_FORMATTER));
         logEntry.put("trace_id", MDC.get("traceId"));
+        logEntry.put("client_ip", MDC.get("client_ip"));
         logEntry.put("level", "ERROR");
         logEntry.put("package", ex.getClass().getName());
+        logEntry.put("component_name", componentName);
         logEntry.put("layer", "CONTROLLER");
         logEntry.put("message", buildMessage(ex));
         logEntry.put("execution_time_ms", System.currentTimeMillis() - startTime);
