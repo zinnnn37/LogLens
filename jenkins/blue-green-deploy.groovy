@@ -64,9 +64,9 @@ pipeline {
                         export SERVICE_TYPE=ai-service
                         export BASE_PORT=8000
                         export SERVICE_DOMAIN=ai.loglens.store
-                        
+
                         # 배포 스크립트 실행
-                        scripts/deploy.sh
+                        ./scripts/deploy.sh
                     '''
                 }
             }
