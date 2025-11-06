@@ -124,6 +124,28 @@ public class LogRepositoryImpl implements LogRepository {
         }
     }
 
+    @Override
+    public boolean existsByProjectUuid(String projectUuid) {
+        log.debug("{} 프로젝트 UUID로 로그 존재 확인: projectUuid={}", LOG_PREFIX, projectUuid);
+        try {
+            SearchRequest searchRequest = new SearchRequest.Builder()
+                    .index(LOG_INDEX_PATTERN)
+                    .query(q -> q.term(t -> t.field("project_uuid").value(FieldValue.of(projectUuid))))
+                    .size(1)
+                    .build();
+
+            SearchResponse<Log> response = openSearchClient.search(searchRequest, Log.class);
+
+            long totalHits = Objects.requireNonNull(response.hits().total()).value();
+            log.debug("{} OpenSearch 검색 결과: projectUuid={}, totalHits={}", LOG_PREFIX, projectUuid, totalHits);
+
+            return totalHits > 0;
+        } catch (IOException e) {
+            log.error("{} OpenSearch 검색 중 오류 발생: projectUuid={}", LOG_PREFIX, projectUuid, e);
+            return false;
+        }
+    }
+
     // ============================================================
     // Query Building Methods
     // ============================================================
