@@ -116,8 +116,9 @@ const DetailLogSearchTable = ({
             {logs.map(log => (
               <tr
                 key={log.logId}
-                className={`border-t border-slate-100 ${onRowClick ? 'cursor-pointer hover:bg-slate-50' : ''
-                  }`}
+                className={`border-t border-slate-100 ${
+                  onRowClick ? 'cursor-pointer hover:bg-slate-50' : ''
+                }`}
                 onClick={onRowClick ? () => onRowClick(log) : undefined}
               >
                 <td className="px-5 py-3 align-top">

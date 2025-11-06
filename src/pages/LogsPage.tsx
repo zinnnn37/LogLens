@@ -1,11 +1,8 @@
 // src/pages/LogsPage.tsx (useRef 버그 수정)
 
-import { useState, useCallback, useEffect, useRef } from 'react'; 
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { searchLogs } from '@/services/logService';
-import type {
-  LogData,
-  LogSearchParams,
-} from '@/types/log';
+import type { LogData, LogSearchParams } from '@/types/log';
 
 import { useParams } from 'react-router-dom';
 import DetailLogSearchBox, {
@@ -35,10 +32,7 @@ const LogsPage = () => {
   const [criteria, setCriteria] = useState<SearchCriteria | null>(null);
 
   const fetchLogs = useCallback(
-    async (
-      isInitial: boolean,
-      searchCriteria: SearchCriteria | null,
-    ) => {
+    async (isInitial: boolean, searchCriteria: SearchCriteria | null) => {
       if (!projectUuid) {
         return;
       }
@@ -96,7 +90,6 @@ const LogsPage = () => {
     }
   }, [projectUuid]);
 
-
   const savedCallback = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -108,7 +101,7 @@ const LogsPage = () => {
       savedCallback.current?.();
     };
 
-    const intervalId = setInterval(tick, 5000); 
+    const intervalId = setInterval(tick, 5000);
     return () => clearInterval(intervalId);
   }, []);
 

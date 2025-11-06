@@ -91,8 +91,8 @@ const LogDetailModal1 = ({
                 <code>ResourceNotFoundException</code>이(가) BE 레이어의{' '}
                 <code>/api/vendor/phpunit/...</code> 경로에서 발생했습니다.
                 <br />
-                해당 엔드포인트가 존재하지 않거나, 서버 라우팅 설정에 문제가 있을
-                수 있습니다.
+                해당 엔드포인트가 존재하지 않거나, 서버 라우팅 설정에 문제가
+                있을 수 있습니다.
               </p>
             </InfoSection>
           )}

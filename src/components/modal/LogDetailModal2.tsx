@@ -40,7 +40,6 @@ const JIRA_PRIORITIES = [
   { value: 'lowest', label: 'Lowest' },
 ];
 
-
 /**
  * 폼 섹션 래퍼
  */
@@ -66,7 +65,7 @@ const FormSection = ({
  */
 const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
   const handleSubmit = () => {
-  //  TODO : 수정예정
+    //  TODO : 수정예정
     const formData: JiraTicketFormData = {
       issueType: 'bug',
       priority: 'medium',
@@ -79,9 +78,7 @@ const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
       {/* 헤더 */}
       <div className="border-b pb-4">
         <h2 className="text-lg font-semibold">{log.traceId} Jira 티켓 발행</h2>
-        <p className="text-sm text-gray-500">
-          {new Date().toLocaleString()} 
-        </p>
+        <p className="text-sm text-gray-500">{new Date().toLocaleString()}</p>
       </div>
 
       {/* 입력 폼 */}
@@ -103,11 +100,13 @@ const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
             placeholder="자동으로 생성됨"
             rows={4}
             className="font-mono"
-            defaultValue={`[로그 상세 정보]\n- TraceID: ${log.traceId
-              }\n- Level: ${log.logLevel}\n- System: ${log.sourceType
-              }\n- Date: ${new Date(
-                log.timestamp,
-              ).toLocaleString()}\n\n[Message]\n${log.message}`}
+            defaultValue={`[로그 상세 정보]\n- TraceID: ${
+              log.traceId
+            }\n- Level: ${log.logLevel}\n- System: ${
+              log.sourceType
+            }\n- Date: ${new Date(
+              log.timestamp,
+            ).toLocaleString()}\n\n[Message]\n${log.message}`}
           />
         </FormSection>
 
@@ -142,7 +141,6 @@ const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
             </SelectContent>
           </Select>
         </FormSection>
-
       </div>
 
       {/* 푸터 */}

@@ -56,7 +56,9 @@ const LOG_LEVEL_OPTIONS = [
 
 const DetailLogSearchBox = ({ onSearch }: DetailLogSearchBoxProps) => {
   // 검색어/타입
-  const [searchType, setSearchType] = useState<'traceId' | 'keyword'>('traceId');
+  const [searchType, setSearchType] = useState<'traceId' | 'keyword'>(
+    'traceId',
+  );
   const [searchValue, setSearchValue] = useState('');
 
   // 필터
@@ -120,15 +122,15 @@ const DetailLogSearchBox = ({ onSearch }: DetailLogSearchBoxProps) => {
     <div className="flex w-full flex-nowrap items-center gap-2 rounded-lg border bg-white p-4 shadow-sm">
       {/* 검색 타입 */}
       <div className="relative min-w-[350px] flex-1">
-        <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <SearchIcon className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <Input
           type="text"
           placeholder={placeholder}
-          className="pl-10 pr-[120px]" 
+          className="pr-[120px] pl-10"
           value={searchValue}
           onChange={e => setSearchValue(e.target.value)}
         />
-        <div className="absolute top-0 right-2 h-full flex items-center">
+        <div className="absolute top-0 right-2 flex h-full items-center">
           <Select
             value={searchType}
             onValueChange={(v: 'traceId' | 'keyword') => setSearchType(v)}
@@ -223,13 +225,13 @@ const DetailLogSearchBox = ({ onSearch }: DetailLogSearchBoxProps) => {
         </DropdownMenuTrigger>
 
         <DropdownMenuContent
-          className="w-auto p-4 relative"
+          className="relative w-auto p-4"
           onSelect={e => e.preventDefault()}
         >
           <Button
             variant="ghost"
             size="sm"
-            className="absolute right-2 top-2 h-auto px-2 py-1 text-xs text-muted-foreground"
+            className="text-muted-foreground absolute top-2 right-2 h-auto px-2 py-1 text-xs"
             onClick={() => {
               setStartDate('');
               setStartClock('');
@@ -241,7 +243,7 @@ const DetailLogSearchBox = ({ onSearch }: DetailLogSearchBoxProps) => {
             초기화
           </Button>
 
-          <div className="grid gap-4 mt-6">
+          <div className="mt-6 grid gap-4">
             {/* 시작 */}
             <div className="grid w-full max-w-sm gap-1.5">
               <Label htmlFor="startDate" className="text-sm font-medium">
@@ -266,13 +268,13 @@ const DetailLogSearchBox = ({ onSearch }: DetailLogSearchBoxProps) => {
                     id="startClock"
                     placeholder="HH:mm:ss"
                     className={cn(
-                      'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                      'border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
                       'pl-8',
                     )}
                     value={startClock}
                     onAccept={value => setStartClock(value as string)}
                   />
-                  <Clock className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Clock className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 </div>
               </div>
             </div>
@@ -301,13 +303,13 @@ const DetailLogSearchBox = ({ onSearch }: DetailLogSearchBoxProps) => {
                     id="endClock"
                     placeholder="HH:mm:ss"
                     className={cn(
-                      'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                      'border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
                       'pl-8',
                     )}
                     value={endClock}
                     onAccept={value => setEndClock(value as string)}
                   />
-                  <Clock className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Clock className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 </div>
               </div>
             </div>
