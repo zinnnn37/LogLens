@@ -2,6 +2,7 @@ package S13P31A306.loglens.domain.dependency.service;
 
 import S13P31A306.loglens.domain.dependency.dto.request.DependencyGraphBatchRequest;
 import S13P31A306.loglens.domain.dependency.dto.response.DependencyGraphResponse;
+import S13P31A306.loglens.domain.dependency.entity.DependencyGraph;
 
 import java.util.List;
 
@@ -18,6 +19,7 @@ public interface DependencyGraphService {
      */
     void saveAll(DependencyGraphBatchRequest request, Integer projectId);
 
+    List<DependencyGraph> findAllDependenciesByComponentId(Integer componentId);
     /**
      * 프로젝트별 모든 의존성 조회
      *

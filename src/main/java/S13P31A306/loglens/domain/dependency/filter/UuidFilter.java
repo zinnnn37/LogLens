@@ -34,10 +34,10 @@ public class UuidFilter extends OncePerRequestFilter {
             String uuid = request.getHeader(UUID_HEADER);
 
             if (Objects.isNull(uuid) || uuid.trim().isEmpty()) {
-                log.warn("API Key가 없는 요청: {}", requestURI);
+                log.warn("UUID가 없는 요청: {}", requestURI);
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
-                response.getWriter().write("{\"error\": \"API Key is required\", \"header\": \"X-API-Key\"}");
+                response.getWriter().write("{\"error\": \"UUID가 is required\", \"header\": \"X-UUID가\"}");
                 return;
             }
 
@@ -45,16 +45,15 @@ public class UuidFilter extends OncePerRequestFilter {
                 // API Key로 project_id 조회 (캐시 적용됨)
                 Integer projectId = projectService.getProjectIdByUuid(uuid);
 
-                // request attribute에 저장 (Controller에서 사용)
                 request.setAttribute(PROJECT_ID_ATTRIBUTE, projectId);
 
-                log.debug("✅ API Key 인증 성공: projectId={}, uri={}", projectId, requestURI);
+                log.debug("✅ UUID 인증 성공: projectId={}, uri={}", projectId, requestURI);
 
             } catch (IllegalArgumentException e) {
-                log.warn("❌ 유효하지 않은 API Key: {}", uuid.substring(0, Math.min(8, uuid.length())));
+                log.warn("❌ 유효하지 않은 UUID: {}", uuid.substring(0, Math.min(8, uuid.length())));
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
-                response.getWriter().write("{\"error\": \"Invalid API Key\"}");
+                response.getWriter().write("{\"error\": \"Invalid UUID\"}");
                 return;
             }
         }

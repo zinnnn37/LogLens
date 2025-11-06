@@ -3,6 +3,7 @@ package S13P31A306.loglens.domain.project.validator;
 import S13P31A306.loglens.domain.auth.entity.User;
 import S13P31A306.loglens.domain.auth.respository.UserRepository;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
+import S13P31A306.loglens.domain.project.constants.ProjectErrorCode;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
@@ -132,6 +133,26 @@ public class ProjectValidator {
      */
     public boolean isProjectMember(Integer projectId, Integer userId) {
         return projectMemberRepository.existsByProjectIdAndUserId(projectId, userId);
+    }
+
+    public void validateProjectAccess(final Project project, final String email) {
+        log.debug("{} 프로젝트 접근 권한 검증: projectId={}, projectName={}, user={}",
+                LOG_PREFIX, project.getId(), project.getProjectName(), email);
+
+        if (!hasProjectAccess(project, email)) {
+            log.warn("{} 프로젝트 접근 권한 없음: projectId={}, projectName={}, user={}",
+                    LOG_PREFIX, project.getId(), project.getProjectName(), email);
+            throw new BusinessException(
+                    ProjectErrorCode.ACCESS_FORBIDDEN
+            );
+        }
+    }
+
+    private boolean hasProjectAccess(final Project project, final String email) {
+        return project.getMembers().stream()
+                .anyMatch(member ->
+                        member.getUser().getEmail().equals(email)
+                );
     }
 
 }

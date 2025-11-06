@@ -16,10 +16,6 @@ import lombok.*;
 @Builder
 public class Component extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
-
     @NotNull
     @Column(name = "project_id", nullable = false)
     private Integer projectId;

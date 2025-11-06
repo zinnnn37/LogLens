@@ -12,6 +12,7 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -120,5 +121,21 @@ public class AuthValidator {
             log.warn("{} 인증되지 않은 요청", LOG_PREFIX);
             throw new BusinessException(GlobalErrorCode.UNAUTHORIZED);
         }
+    }
+
+    public void validateUserDetails(final UserDetails userDetails) {
+        if (Objects.isNull(userDetails)) {
+            log.warn("{} 인증되지 않은 사용자의 접근 시도", LOG_PREFIX);
+            throw new BusinessException(GlobalErrorCode.UNAUTHORIZED);
+        }
+
+        log.debug("{} 사용자 인증 확인: user={}", LOG_PREFIX, userDetails.getUsername());
+    }
+
+    public String validateAndGetEmail(final UserDetails userDetails) {
+        validateUserDetails(userDetails);
+        String email = userDetails.getUsername();
+        log.debug("{} 사용자 email 추출: {}", LOG_PREFIX, email);
+        return email;
     }
 }

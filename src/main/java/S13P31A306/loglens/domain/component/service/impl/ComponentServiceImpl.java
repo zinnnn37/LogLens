@@ -4,8 +4,6 @@ import S13P31A306.loglens.domain.component.dto.request.ComponentBatchRequest;
 import S13P31A306.loglens.domain.component.mapper.ComponentMapper;
 import S13P31A306.loglens.domain.component.repository.ComponentRepository;
 import S13P31A306.loglens.domain.component.service.ComponentService;
-import S13P31A306.loglens.global.constants.GlobalErrorCode;
-import S13P31A306.loglens.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import S13P31A306.loglens.domain.component.entity.Component;
@@ -13,6 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -25,7 +26,7 @@ public class ComponentServiceImpl implements ComponentService {
 
     @Override
     @Transactional
-    public void saveAll(ComponentBatchRequest request, Integer projectId) {
+    public void saveAll(final ComponentBatchRequest request, final Integer projectId) {
         Integer existingCount = componentRepository.countByProjectId(projectId);
         if (existingCount > 0) {
             log.info("🗑️ 기존 컴포넌트 삭제 시작: projectId={}, 개수={}", projectId, existingCount);
@@ -37,6 +38,21 @@ public class ComponentServiceImpl implements ComponentService {
         componentRepository.saveAll(components);
 
         log.info("✅ 배치 저장 완료: {} 개 저장됨", components.size());
+    }
+
+    @Override
+    public List<Component> getProjectComponents(final Integer projectId) {
+        return componentRepository.findAllByProjectId(projectId);
+    }
+
+    @Override
+    public Map<Integer, Component> getComponentMapByIds(final Set<Integer> componentIds) {
+        log.debug("컴포넌트 일괄 조회: count={}", componentIds.size());
+
+        return componentRepository
+                .findAllById(componentIds)
+                .stream()
+                .collect(Collectors.toMap(Component::getId, component -> component));
     }
 
 //    @Override
