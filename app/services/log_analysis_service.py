@@ -188,11 +188,18 @@ class LogAnalysisService:
     async def _get_log(self, log_id: int, project_uuid: str) -> Optional[dict]:
         """Get log from OpenSearch filtered by project_uuid"""
         try:
-            # Generate index name using new format
-            index_name = format_index_name(project_uuid)
+            # Use wildcard pattern to search across all months
+            # Format: {uuid_with_underscores}_* (e.g., 48d96cd7_bf8d_38f5_891c_9c2f6430d871_*)
+            uuid_formatted = project_uuid.replace('-', '_')
+            index_pattern = f"{uuid_formatted}_*"
+
+            # Debug logging
+            print(f"🔍 Searching for log_id: {log_id}")
+            print(f"🔍 Project UUID: {project_uuid}")
+            print(f"🔍 Index pattern: {index_pattern}")
 
             response = self.client.search(
-                index=index_name,
+                index=index_pattern,
                 body={
                     "query": {
                         "bool": {
@@ -205,7 +212,10 @@ class LogAnalysisService:
                 },
             )
             if response["hits"]["total"]["value"] > 0:
-                return response["hits"]["hits"][0]["_source"]
+                log_data = response["hits"]["hits"][0]["_source"]
+                print(f"✅ Found log in index: {response['hits']['hits'][0]['_index']}")
+                return log_data
+            print(f"❌ Log not found in any index matching pattern: {index_pattern}")
             return None
         except Exception as e:
             print(f"Error fetching log {log_id} for project {project_uuid}: {e}")
@@ -385,11 +395,13 @@ class LogAnalysisService:
     async def _save_analysis(self, log_id: int, analysis: dict, project_uuid: str):
         """Save analysis result to log filtered by project_uuid"""
         try:
-            # Generate index name using new format
-            index_name = format_index_name(project_uuid)
+            # Use wildcard pattern to update across all months
+            # update_by_query with query filters ensures only matching docs are updated
+            uuid_formatted = project_uuid.replace('-', '_')
+            index_pattern = f"{uuid_formatted}_*"
 
             self.client.update_by_query(
-                index=index_name,
+                index=index_pattern,
                 body={
                     "script": {
                         "source": "ctx._source.ai_analysis = params.analysis",

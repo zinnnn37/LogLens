@@ -76,14 +76,15 @@ class SimilarityService:
         if filter_clauses:
             query["query"]["bool"]["filter"] = filter_clauses
 
-        # Generate index name using new format
+        # Use wildcard pattern to search across all months
         if not project_uuid:
             raise ValueError("project_uuid is required for log search")
 
-        index_name = format_index_name(project_uuid)
+        uuid_formatted = project_uuid.replace('-', '_')
+        index_pattern = f"{uuid_formatted}_*"
 
         # Execute search
-        response = self.client.search(index=index_name, body=query)
+        response = self.client.search(index=index_pattern, body=query)
 
         # Format results
         results = []
@@ -215,11 +216,12 @@ class SimilarityService:
             "_source": {"excludes": ["log_vector"]},  # Exclude vector for efficiency
         }
 
-        # Generate index name using new format
-        index_name = format_index_name(project_uuid)
+        # Use wildcard pattern to search across all months
+        uuid_formatted = project_uuid.replace('-', '_')
+        index_pattern = f"{uuid_formatted}_*"
 
         # Execute search
-        response = self.client.search(index=index_name, body=query)
+        response = self.client.search(index=index_pattern, body=query)
 
         # Format results
         results = []

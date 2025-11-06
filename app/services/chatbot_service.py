@@ -194,12 +194,13 @@ class ChatbotService:
             return []
 
         try:
-            # Generate index name using new format
-            index_name = format_index_name(project_uuid)
+            # Use wildcard pattern to search across all months
+            uuid_formatted = project_uuid.replace('-', '_')
+            index_pattern = f"{uuid_formatted}_*"
 
             response = await asyncio.to_thread(
                 self.client.search,
-                index=index_name,
+                index=index_pattern,
                 body={
                     "query": {
                         "bool": {
