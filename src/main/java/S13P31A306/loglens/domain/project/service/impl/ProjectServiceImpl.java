@@ -7,6 +7,7 @@ import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PROJE
 import S13P31A306.loglens.domain.auth.entity.User;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.domain.jira.repository.JiraConnectionRepository;
+import S13P31A306.loglens.domain.log.repository.LogRepository;
 import S13P31A306.loglens.domain.project.constants.ProjectOrderParam;
 import S13P31A306.loglens.domain.project.constants.ProjectSortParam;
 import S13P31A306.loglens.domain.project.dto.request.ProjectCreateRequest;
@@ -48,6 +49,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectMapper projectMapper;
     private final ProjectMemberMapper projectMemberMapper;
     private final JiraConnectionRepository jiraConnectionRepository;
+    private final LogRepository logRepository;
 
     private final AuthenticationHelper authHelper;
     private final ProjectValidator projectValidator;
@@ -244,8 +246,8 @@ public class ProjectServiceImpl implements ProjectService {
         // 현재 사용자의 프로젝트 접근 권한 확인
         projectValidator.validateProjectAccess(project.getId());
 
-        // OpenSearch에서 해당 projectUuid로 검색
-        boolean isConnected = projectValidator.checkOpenSearchConnection(projectUuid);
+        // LogRepository를 통해 프로젝트 연결 상태 확인
+        boolean isConnected = logRepository.existsByProjectUuid(projectUuid);
 
         log.info("{} 프로젝트 연결 상태 확인 완료: projectUuid={}, isConnected={}", LOG_PREFIX, projectUuid, isConnected);
 
