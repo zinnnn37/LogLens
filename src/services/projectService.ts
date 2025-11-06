@@ -12,6 +12,7 @@ import type {
   ProjectDetailDTO,
   DeleteMemberParams,
   DeleteProjectParams,
+  ProjectConnectionStatus,
 } from '@/types/project';
 import type { ArchitectureData } from '@/types/architecture';
 import type { ComponentListData } from '@/types/component';
@@ -174,6 +175,25 @@ export const getComponents = async (
     return components;
   } catch (error) {
     console.error('컴포넌트 목록 조회 실패', error);
+    throw error;
+  }
+};
+
+/**
+ * 프로젝트 연결 상태 확인 (GET /api/projects/{projectUuid}/connection)
+ * @param projectUuid - 확인할 프로젝트 UUID
+ */
+export const checkProjectConnection = async (
+  projectUuid: string,
+): Promise<ProjectConnectionStatus> => {
+  try {
+    const status = await apiClient.get<ProjectConnectionStatus>(
+      API_PATH.PROJECT_CONNECTION(projectUuid),
+    );
+
+    return status;
+  } catch (error) {
+    console.error('프로젝트 연결 상태 확인 실패', error);
     throw error;
   }
 };
