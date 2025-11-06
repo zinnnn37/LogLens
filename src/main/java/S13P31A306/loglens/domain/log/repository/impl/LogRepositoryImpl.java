@@ -47,10 +47,21 @@ public class LogRepositoryImpl implements LogRepository {
 
     private final OpenSearchClient openSearchClient;
     private final ObjectMapper objectMapper;
-    private static final String LOG_INDEX_PATTERN = "logs-*";
     private static final String TIMESTAMP_FIELD = "timestamp";
     private static final String ID_FIELD = "_id";
     private static final int MAX_TRACE_LOGS = 1000;
+
+    /**
+     * 프로젝트별 인덱스 패턴을 반환
+     *
+     * @param projectUuid 프로젝트 UUID (하이픈 포함)
+     * @return "{projectUuid_with_underscores}-*" 형식의 인덱스 패턴
+     */
+    private String getProjectIndexPattern(String projectUuid) {
+        // Logstash에서 하이픈을 언더스코어로 변환하므로 동일하게 변환
+        String sanitizedUuid = projectUuid.replace("-", "_");
+        return sanitizedUuid + "_*";
+    }
 
     @Override
     public LogSearchResult findWithCursor(String projectUuid, LogSearchRequest request) {
@@ -65,13 +76,14 @@ public class LogRepositoryImpl implements LogRepository {
         List<SortOptions> sortOptions = buildSortOptions(request);
 
         // 3. SearchRequest 빌드
-        SearchRequest searchRequest = buildSearchRequestWithCursor(query, sortOptions, querySize, request.getCursor());
+        SearchRequest searchRequest = buildSearchRequestWithCursor(projectUuid, query, sortOptions, querySize,
+                request.getCursor());
 
         // 4. OpenSearch 쿼리 실행
         try {
             // 쿼리 디버깅을 위한 상세 로그
             log.debug("{} 실제 projectUuid 값: [{}]", LOG_PREFIX, projectUuid);
-            log.debug("{} 검색 인덱스: {}", LOG_PREFIX, LOG_INDEX_PATTERN);
+            log.debug("{} 검색 인덱스: {}", LOG_PREFIX, getProjectIndexPattern(projectUuid));
             log.debug("{} 쿼리 크기: {}", LOG_PREFIX, querySize);
 
             // OpenSearch 쿼리를 JSON으로 직렬화하여 출력
@@ -103,7 +115,7 @@ public class LogRepositoryImpl implements LogRepository {
         Query query = buildSearchQuery(projectUuid, request);
 
         // 2. SearchRequest 빌드 (Aggregation 포함)
-        SearchRequest searchRequest = buildTraceSearchRequest(query);
+        SearchRequest searchRequest = buildTraceSearchRequest(projectUuid, query);
 
         // 3. OpenSearch 쿼리 실행
         try {
@@ -129,7 +141,7 @@ public class LogRepositoryImpl implements LogRepository {
         log.debug("{} 프로젝트 UUID로 로그 존재 확인: projectUuid={}", LOG_PREFIX, projectUuid);
         try {
             SearchRequest searchRequest = new SearchRequest.Builder()
-                    .index(LOG_INDEX_PATTERN)
+                    .index(getProjectIndexPattern(projectUuid))
                     .query(q -> q.term(t -> t.field("project_uuid").value(FieldValue.of(projectUuid))))
                     .size(1)
                     .build();
@@ -176,10 +188,10 @@ public class LogRepositoryImpl implements LogRepository {
     /**
      * 커서 기반 페이지네이션 SearchRequest 생성
      */
-    private SearchRequest buildSearchRequestWithCursor(Query query, List<SortOptions> sortOptions,
+    private SearchRequest buildSearchRequestWithCursor(String projectUuid, Query query, List<SortOptions> sortOptions,
                                                        int size, String cursor) {
         SearchRequest.Builder builder = new SearchRequest.Builder()
-                .index(LOG_INDEX_PATTERN)
+                .index(getProjectIndexPattern(projectUuid))
                 .query(query)
                 .size(size)
                 .sort(sortOptions);
@@ -195,9 +207,9 @@ public class LogRepositoryImpl implements LogRepository {
     /**
      * TraceId 조회용 SearchRequest 생성 (Aggregation 포함)
      */
-    private SearchRequest buildTraceSearchRequest(Query query) {
+    private SearchRequest buildTraceSearchRequest(String projectUuid, Query query) {
         return new SearchRequest.Builder()
-                .index(LOG_INDEX_PATTERN)
+                .index(getProjectIndexPattern(projectUuid))
                 .query(query)
                 .size(MAX_TRACE_LOGS)
                 .sort(s -> s.field(f -> f.field(TIMESTAMP_FIELD).order(SortOrder.Asc)))
@@ -415,7 +427,7 @@ public class LogRepositoryImpl implements LogRepository {
      * 프로젝트 UUID 필터 추가
      */
     private void addProjectFilter(BoolQuery.Builder builder, String projectUuid) {
-        builder.filter(q -> q.term(t -> t.field("project_uuid").value(FieldValue.of(projectUuid))));
+        builder.filter(q -> q.term(t -> t.field("project_uuid.keyword").value(FieldValue.of(projectUuid))));
     }
 
     /**
