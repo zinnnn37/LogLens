@@ -1,3 +1,4 @@
+import { useParams } from 'react-router-dom';
 import DashboardStatsCards from '@/components/DashboardStatsCards';
 import RecentAlertsCard from '@/components/RecentAlertsCard';
 import LogHeatmapCard from '@/components/LogHeatmapCard';
@@ -9,6 +10,11 @@ import { DUMMY_HEATMAP_DATA } from '@/mocks/dummyHeatmap';
 import { DUMMY_FREQUENT_ERRORS } from '@/mocks/dummyFrequentErrors';
 
 const DashboardPage = () => {
+  const { projectUuid } = useParams<{ projectUuid: string }>();
+
+  // TODO: projectUuid를 사용해서 실제 프로젝트 데이터 가져오기
+  console.log('Current project UUID:', projectUuid);
+
   return (
     <div className="font-pretendard space-y-6 p-6 py-1">
       <h1 className="font-godoM text-lg">통계 요약</h1>

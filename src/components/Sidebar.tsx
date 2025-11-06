@@ -1,7 +1,7 @@
 // src/components/Sidebar.tsx
 import { useEffect, useState } from 'react';
 import type { ComponentProps } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import {
   PlusSquare,
   MessageSquare,
@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/accordion';
 import { logout } from '@/services/authApi';
 import { useAuthStore } from '@/stores/authStore';
-import { ROUTE_PATH } from '@/router/route-path';
+import { ROUTE_PATH, createProjectPath } from '@/router/route-path';
 
 import { useProjectStore } from '@/stores/projectStore';
 import { fetchProjects, createProject } from '@/services/projectService';
@@ -64,6 +64,7 @@ const NavHeading = ({ children }: { children: React.ReactNode }) => {
 const Sidebar = ({ className, ...props }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { projectUuid } = useParams<{ projectUuid: string }>();
   const { clearAuth } = useAuthStore();
 
   // 프로젝트 생성 모달 Open 상태 관리
@@ -86,6 +87,25 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
     };
     loadProjects();
   }, [setProjectsInStore]);
+
+  // 프로젝트 선택 핸들러
+  const handleProjectSelect = (selectedProjectUuid: string) => {
+    navigate(createProjectPath(selectedProjectUuid, 'dashboard'));
+  };
+
+  // AI Chat 버튼 핸들러
+  const handleAIChatClick = () => {
+    if (projectUuid) {
+      // 현재 프로젝트가 선택되어 있으면 해당 프로젝트의 챗봇으로 이동
+      navigate(createProjectPath(projectUuid, 'chatbot'));
+    } else if (projects.length > 0) {
+      // 프로젝트가 선택되지 않았지만 프로젝트 목록이 있으면 첫 번째 프로젝트의 챗봇으로 이동
+      navigate(createProjectPath(projects[0].projectUuid, 'chatbot'));
+    } else {
+      // 프로젝트가 없으면 메인 페이지로 이동
+      navigate(ROUTE_PATH.MAIN);
+    }
+  };
 
   // 로그아웃 핸들러
   const handleLogout = async () => {
@@ -142,10 +162,18 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
                     <ul className="flex flex-col gap-1 pl-6 text-[#6A6A6A]">
                       {projects.map(p => (
                         <li key={p.projectUuid}>
-                          <div className={`${itemBase} text-sm`}>
+                          <button
+                            type="button"
+                            onClick={() => handleProjectSelect(p.projectUuid)}
+                            className={`${itemBase} text-sm ${
+                              projectUuid === p.projectUuid
+                                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+                                : ''
+                            }`}
+                          >
                             {/* 프로젝트 이름*/}
                             <span className="truncate">{p.projectName}</span>
-                          </div>
+                          </button>
                         </li>
                       ))}
                     </ul>
@@ -186,10 +214,7 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
       <div className="flex-shrink-0">
         <hr className="border-sidebar-border my-4" />
         <nav className="font-godoM flex flex-col gap-1">
-          <NavButton
-            icon={MessageSquare}
-            onClick={() => navigate(ROUTE_PATH.AI_CHAT)}
-          >
+          <NavButton icon={MessageSquare} onClick={handleAIChatClick}>
             AI Chat
           </NavButton>
           <NavButton icon={LogOut} onClick={handleLogout}>
