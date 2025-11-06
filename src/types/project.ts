@@ -118,3 +118,9 @@ export interface DeleteMemberParams {
   projectUuid: string;
   memberId: number;
 }
+
+// 프로젝트 연결 상태 응답
+export interface ProjectConnectionStatus {
+  projectUuid: string;
+  isConnected: boolean;
+}

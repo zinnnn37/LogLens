@@ -160,22 +160,25 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
                   <AccordionContent className="pb-0">
                     {/* 프로젝트 목록 - 스크롤 영역 */}
                     <ul className="flex flex-col gap-1 pl-6 text-[#6A6A6A]">
-                      {projects.map(p => (
-                        <li key={p.projectUuid}>
-                          <button
-                            type="button"
-                            onClick={() => handleProjectSelect(p.projectUuid)}
-                            className={`${itemBase} text-sm ${
-                              projectUuid === p.projectUuid
-                                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
-                                : ''
-                            }`}
-                          >
-                            {/* 프로젝트 이름*/}
-                            <span className="truncate">{p.projectName}</span>
-                          </button>
-                        </li>
-                      ))}
+                      {projects.map(p => {
+                        const isActive = projectUuid === p.projectUuid;
+                        return (
+                          <li key={p.projectUuid}>
+                            <button
+                              type="button"
+                              onClick={() => handleProjectSelect(p.projectUuid)}
+                              className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition-all ${
+                                isActive
+                                  ? 'text-primary bg-primary/10 font-medium'
+                                  : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-[#6A6A6A]'
+                              }`}
+                            >
+                              {/* 프로젝트 이름*/}
+                              <span className="truncate">{p.projectName}</span>
+                            </button>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </AccordionContent>
                 </AccordionItem>
