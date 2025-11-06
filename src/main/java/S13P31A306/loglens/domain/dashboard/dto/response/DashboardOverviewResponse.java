@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
 @Builder
+@Schema(description = "대시보드 통계 데이터 응답")
 public record DashboardOverviewResponse(
         @Schema(description = "프로젝트 UUID", example = "pk_1a2b3c4d5e6f")
         String projectUuid,
