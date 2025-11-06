@@ -146,6 +146,68 @@ pipeline {
                     echo "Failed to collect Docker status: ${e.message}"
                 }
             }
+
+            // Docker 이미지 자동 정리
+            script {
+                try {
+                    sh '''
+                        echo ""
+                        echo "🧹 Docker 이미지 정리 시작..."
+                        echo "========================================="
+
+                        # 정리 전 상태
+                        echo "📋 정리 전 디스크 사용량:"
+                        docker system df
+                        echo ""
+
+                        # 1. ai-service-test 이미지 중 오래된 것 삭제 (최근 5개만 유지)
+                        echo "📋 현재 테스트 이미지 목록:"
+                        docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | grep "ai-service-test" || echo "테스트 이미지 없음"
+                        echo ""
+
+                        # 빌드 번호 기준으로 정렬하여 오래된 이미지 찾기
+                        OLD_TEST_IMAGES=$(docker images --format "{{.Repository}}:{{.Tag}}" | \
+                            grep "^ai-service-test:" | \
+                            sort -t: -k2 -n | \
+                            head -n -5)
+
+                        if [ ! -z "$OLD_TEST_IMAGES" ]; then
+                            echo "🗑️ 오래된 테스트 이미지 삭제 중..."
+                            echo "$OLD_TEST_IMAGES" | while read img; do
+                                echo "  - 삭제: $img"
+                                docker rmi "$img" 2>/dev/null || echo "  ⚠️ 삭제 실패 (사용 중일 수 있음)"
+                            done
+                        else
+                            echo "ℹ️ 삭제할 오래된 테스트 이미지가 없습니다 (5개 이하 유지 중)"
+                        fi
+                        echo ""
+
+                        # 2. Dangling 이미지 삭제 (태그 없는 이미지)
+                        echo "🗑️ Dangling 이미지 삭제 중..."
+                        DANGLING_COUNT=$(docker images -f "dangling=true" -q | wc -l)
+                        if [ "$DANGLING_COUNT" -gt 0 ]; then
+                            echo "  찾은 dangling 이미지: ${DANGLING_COUNT}개"
+                            docker image prune -f
+                        else
+                            echo "  Dangling 이미지 없음"
+                        fi
+                        echo ""
+
+                        # 3. 정리 후 상태
+                        echo "✅ 정리 완료!"
+                        echo "📋 정리 후 디스크 사용량:"
+                        docker system df
+                        echo ""
+
+                        echo "📋 현재 ai-service 이미지 목록:"
+                        docker images | grep "ai-service" || echo "ai-service 이미지 없음"
+                        echo "========================================="
+                    '''
+                } catch (Exception e) {
+                    echo "⚠️ Docker 이미지 정리 중 오류 발생: ${e.message}"
+                    echo "ℹ️ 정리 실패는 배포에 영향을 주지 않습니다"
+                }
+            }
         }
     }
 }
