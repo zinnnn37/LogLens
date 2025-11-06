@@ -2,6 +2,7 @@ package S13P31A306.loglens.domain.project.controller;
 
 import S13P31A306.loglens.domain.project.dto.request.ProjectCreateRequest;
 import S13P31A306.loglens.domain.project.dto.request.ProjectMemberInviteRequest;
+import S13P31A306.loglens.domain.project.dto.response.ProjectConnectionResponse;
 import S13P31A306.loglens.domain.project.dto.response.ProjectCreateResponse;
 import S13P31A306.loglens.domain.project.dto.response.ProjectDetailResponse;
 import S13P31A306.loglens.domain.project.dto.response.ProjectListResponse;
@@ -600,5 +601,97 @@ public interface ProjectApi {
     ResponseEntity<? extends BaseResponse> deleteMember(
             @PathVariable String projectUuid,
             @PathVariable int memberId
+    );
+
+    @Operation(
+            summary = "프로젝트 연결 상태 확인",
+            description = "OpenSearch에서 해당 프로젝트의 로그 데이터를 검색하여 프로젝트가 연결되었는지 확인합니다.",
+            security = @SecurityRequirement(name = SwaggerMessages.BEARER_AUTH),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "프로젝트 연결 상태 조회 성공",
+                            content = @Content(
+                                    schema = @Schema(implementation = ProjectConnectionResponse.class),
+                                    examples = {
+                                            @ExampleObject(
+                                                    name = "ProjectConnected",
+                                                    summary = "프로젝트 연결됨",
+                                                    value = """
+                                                            {
+                                                                "code": "PJ200-5",
+                                                                "message": "프로젝트가 정상적으로 연결되었습니다.",
+                                                                "status": 200,
+                                                                "data": {
+                                                                    "projectUuid": "48d96cd7-bf8d-38f5-891c-9c2f6430d871",
+                                                                    "isConnected": true
+                                                                },
+                                                                "timestamp": "2025-11-06T00:00:00Z"
+                                                            }
+                                                            """
+                                            ),
+                                            @ExampleObject(
+                                                    name = "ProjectNotConnected",
+                                                    summary = "프로젝트 연결 안됨",
+                                                    value = """
+                                                            {
+                                                                "code": "PJ200-6",
+                                                                "message": "프로젝트가 아직 연결되지 않았습니다.",
+                                                                "status": 200,
+                                                                "data": {
+                                                                    "projectUuid": "48d96cd7-bf8d-38f5-891c-9c2f6430d871",
+                                                                    "isConnected": false
+                                                                },
+                                                                "timestamp": "2025-11-06T00:00:00Z"
+                                                            }
+                                                            """
+                                            )
+                                    }
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "프로젝트 접근 권한 없음",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "ProjectAccessForbidden",
+                                            summary = "프로젝트 접근 권한 없음",
+                                            value = """
+                                                    {
+                                                        "code": "PJ403-1",
+                                                        "message": "해당 프로젝트에 대한 접근 권한이 없습니다.",
+                                                        "status": 403,
+                                                        "timestamp": "2025-11-06T00:00:00Z"
+                                                    }
+                                                    """
+                                    )
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "프로젝트를 찾을 수 없음",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "ProjectNotFound",
+                                            summary = "존재하지 않는 프로젝트",
+                                            value = """
+                                                    {
+                                                        "code": "PJ404-1",
+                                                        "message": "해당 프로젝트를 찾을 수 없습니다.",
+                                                        "status": 404,
+                                                        "timestamp": "2025-11-06T00:00:00Z"
+                                                    }
+                                                    """
+                                    )
+                            )
+                    )
+            }
+    )
+    ResponseEntity<? extends BaseResponse> checkProjectConnection(
+            @PathVariable String projectUuid
     );
 }

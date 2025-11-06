@@ -19,6 +19,7 @@ public enum ProjectErrorCode implements ErrorCode {
     INVALID_PAGE_ORDER("PJ400-8", "유효하지 않은 정렬 방향입니다.", HttpStatus.BAD_REQUEST.value()),
     INVALID_PROJECT_ID("PJ400-9", "유효하지 않은 프로젝트 ID입니다.", HttpStatus.BAD_REQUEST.value()),
     USER_ID_REQUIRED("PJ400-10", "사용자 ID는 필수입니다.", HttpStatus.BAD_REQUEST.value()),
+    PAGE_SIZE_EXCCEED("PJ400-11", "출력 가능한 페이지 범위를 넘어섭니다.", HttpStatus.BAD_REQUEST.value()),
 
     // 403 Forbidden
     ACCESS_FORBIDDEN("PJ403-1", "해당 프로젝트에 대한 접근 권한이 없습니다.", HttpStatus.FORBIDDEN.value()),

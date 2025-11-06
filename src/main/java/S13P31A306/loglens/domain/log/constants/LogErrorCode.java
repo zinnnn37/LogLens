@@ -17,6 +17,7 @@ public enum LogErrorCode implements ErrorCode {
     INVALID_LOG_LEVEL("LG400-15", "로그 레벨은 ERROR, WARN, INFO 중 하나여야 합니다.", 400),
     INVALID_SOURCE_TYPE("LG400-16", "로그 출처는 FE, BE, INFRA 중 하나여야 합니다.", 400),
     INVALID_SORT("LG400-17", "정렬 기준이 유효하지 않습니다.", 400),
+    CURSOR_ENCODING_FAILED("LG400-18", "커서 인코딩에 실패했습니다.", 400),
 
     // 403 Forbidden
     PROJECT_FORBIDDEN("LG403-01", "해당 프로젝트에 대한 접근 권한이 없습니다.", 403);

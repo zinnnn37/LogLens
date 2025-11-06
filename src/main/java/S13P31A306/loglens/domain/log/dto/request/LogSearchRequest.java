@@ -11,33 +11,33 @@ import org.springframework.format.annotation.DateTimeFormat;
 public class LogSearchRequest {
 
     @Sensitive
-    @Schema(description = "프로젝트 UUID", example = "550e8400-e29b-41d4-a716-446655440000")
+    @Schema(description = "프로젝트 UUID", example = "48d96cd7-bf8d-38f5-891c-9c2f6430d871")
     private String projectUuid;
 
     @Schema(description = "페이지네이션 커서", example = "eyJzb3J0IjpbMTcwNTMxMjgwMDAwMCwiYWJjMTIzIl19")
     private String cursor;
 
-    @Schema(description = "페이지 크기", example = "50", defaultValue = "50")
-    private Integer size = 50;
+    @Schema(description = "페이지 크기", example = "50", defaultValue = "100")
+    private Integer size = 100;
 
-    @Schema(description = "검색 시작 시간", example = "2024-01-15T00:00:00")
+    @Schema(description = "검색 시작 시간", example = "2025-11-01T00:00:00")
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
     private LocalDateTime startTime;
 
-    @Schema(description = "검색 종료 시간", example = "2024-01-15T23:59:59")
+    @Schema(description = "검색 종료 시간", example = "2025-12-31T23:59:59")
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
     private LocalDateTime endTime;
 
-    @Schema(description = "로그 레벨 필터", example = "[\"ERROR\", \"WARN\"]")
+    @Schema(description = "로그 레벨 필터", example = "[\"INFO\"]")
     private List<String> logLevel;
 
-    @Schema(description = "소스 타입 필터", example = "[\"BE\", \"FE\"]")
+    @Schema(description = "소스 타입 필터", example = "[\"BE\"]")
     private List<String> sourceType;
 
     @Schema(description = "검색 키워드", example = "NullPointerException")
     private String keyword;
 
-    @Schema(description = "Trace ID", example = "trace-abc-123")
+    @Schema(description = "Trace ID", example = "bed95fd3-67b2-4d1d-8d97-b71a4c4d06b9")
     private String traceId;
 
     @Schema(description = "정렬 옵션 (필드,방향)", example = "TIMESTAMP,DESC", defaultValue = "TIMESTAMP,DESC")

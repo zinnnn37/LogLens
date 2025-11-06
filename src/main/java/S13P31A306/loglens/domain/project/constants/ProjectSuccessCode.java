@@ -13,6 +13,8 @@ public enum ProjectSuccessCode implements SuccessCode {
     PROJECT_RETRIEVED("PJ200-2", "프로젝트 상세 정보를 성공적으로 조회했습니다.", HttpStatus.OK.value()),
     PROJECT_DELETED("PJ200-3", "프로젝트를 성공적으로 삭제했습니다.", HttpStatus.OK.value()),
     MEMBER_DELETED("PJ200-4", "멤버를 성공적으로 삭제했습니다.", HttpStatus.OK.value()),
+    PROJECT_CONNECTED("PJ200-5", "프로젝트가 정상적으로 연결되었습니다.", HttpStatus.OK.value()),
+    PROJECT_NOT_CONNECTED("PJ200-6", "프로젝트가 아직 연결되지 않았습니다.", HttpStatus.OK.value()),
 
     // 201 CREATED
     PROJECT_CREATED("PJ201-1", "프로젝트가 성공적으로 생성되었습니다.", HttpStatus.CREATED.value()),

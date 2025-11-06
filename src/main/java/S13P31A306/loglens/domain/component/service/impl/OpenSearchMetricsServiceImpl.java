@@ -1,20 +1,19 @@
 package S13P31A306.loglens.domain.component.service.impl;
 
+import S13P31A306.loglens.domain.component.constants.LogLevel;
+import S13P31A306.loglens.domain.component.constants.OpenSearchAggregation;
+import S13P31A306.loglens.domain.component.constants.OpenSearchField;
+import S13P31A306.loglens.domain.component.constants.SourceType;
 import S13P31A306.loglens.domain.component.dto.MetricsData;
 import S13P31A306.loglens.domain.component.service.OpenSearchMetricsService;
+import S13P31A306.loglens.domain.dashboard.dto.FrontendMetricsSummary;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.opensearch.action.search.SearchRequest;
-import org.opensearch.action.search.SearchResponse;
-import org.opensearch.client.RequestOptions;
-import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.index.query.BoolQueryBuilder;
-import org.opensearch.index.query.QueryBuilders;
-import org.opensearch.search.aggregations.AggregationBuilders;
-import org.opensearch.search.aggregations.bucket.filter.Filter;
-import org.opensearch.search.aggregations.bucket.terms.Terms;
-import org.opensearch.search.aggregations.metrics.Cardinality;
-import org.opensearch.search.builder.SearchSourceBuilder;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.aggregations.*;
+import org.opensearch.client.opensearch._types.query_dsl.Query;
+import org.opensearch.client.opensearch.core.SearchRequest;
+import org.opensearch.client.opensearch.core.SearchResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -22,20 +21,16 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.*;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
 
     private static final String LOG_PREFIX = "[OpenSearchMetricsService]";
-    private static final String TRACE_ID_FIELD = "trace_id.keyword";
-    private static final String COMPONENT_NAME_FIELD = "name.keyword";
-    private static final String PROJECT_UUID_FIELD = "project_uuid.keyword";
-    private static final String LOG_LEVEL_FIELD = "level.keyword";
-    private static final String ERROR_LEVEL = "ERROR";
-    private static final String WARN_LEVEL = "WARN";
 
-    private final RestHighLevelClient openSearchClient;
+    private final OpenSearchClient openSearchClient;
 
     @Value("${opensearch.index.logs:logs-*}")
     private String logsIndexPattern;
@@ -46,7 +41,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
 
         try {
             SearchRequest searchRequest = buildProjectMetricsRequest(projectUuid);
-            SearchResponse response = openSearchClient.search(searchRequest, RequestOptions.DEFAULT);
+            SearchResponse<Void> response = openSearchClient.search(searchRequest, Void.class);
 
             Map<String, MetricsData> metricsMap = parseProjectMetricsResponse(response);
 
@@ -58,6 +53,9 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
         } catch (IOException e) {
             log.error("{} OpenSearch 조회 실패: projectUuid={}", LOG_PREFIX, projectUuid, e);
             return new HashMap<>();
+        } catch (Exception e) {
+            log.error("{} 예상치 못한 오류 발생: projectUuid={}", LOG_PREFIX, projectUuid, e);
+            return new HashMap<>();
         }
     }
 
@@ -68,7 +66,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
 
         try {
             SearchRequest searchRequest = buildComponentMetricsRequest(projectUuid, componentName);
-            SearchResponse response = openSearchClient.search(searchRequest, RequestOptions.DEFAULT);
+            SearchResponse<Void> response = openSearchClient.search(searchRequest, Void.class);
 
             MetricsData metricsData = parseComponentMetricsResponse(response);
 
@@ -81,123 +79,226 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
             log.error("{} OpenSearch 조회 실패: projectUuid={}, component={}",
                     LOG_PREFIX, projectUuid, componentName, e);
             return MetricsData.empty();
+        } catch (Exception e) {
+            log.error("{} 예상치 못한 오류 발생: projectUuid={}, component={}",
+                    LOG_PREFIX, projectUuid, componentName, e);
+            return MetricsData.empty();
+        }
+    }
+
+    @Override
+    public FrontendMetricsSummary getFrontendMetrics(String projectUuid) {
+        log.debug("{} Frontend 메트릭 조회 시작: projectUuid={}", LOG_PREFIX, projectUuid);
+
+        try {
+            SearchRequest searchRequest = buildFrontendMetricsRequest(projectUuid);
+            SearchResponse<Void> response = openSearchClient.search(searchRequest, Void.class);
+
+            FrontendMetricsSummary summary = parseFrontendMetricsResponse(response);
+
+            log.debug("{} Frontend 메트릭 조회 완료: projectUuid={}, traces={}, errors={}",
+                    LOG_PREFIX, projectUuid, summary.totalTraces(), summary.totalErrorLogs());
+
+            return summary;
+
+        } catch (IOException e) {
+            log.error("{} Frontend 메트릭 조회 실패: projectUuid={}", LOG_PREFIX, projectUuid, e);
+            return FrontendMetricsSummary.empty();
+        } catch (Exception e) {
+            log.error("{} Frontend 메트릭 예상치 못한 오류: projectUuid={}", LOG_PREFIX, projectUuid, e);
+            return FrontendMetricsSummary.empty();
         }
     }
 
     /**
-     * 프로젝트 전체 메트릭 조회 쿼리 생성
+     * 프로젝트 전체 메트릭 조회 쿼리 생성 (Backend만)
      */
     private SearchRequest buildProjectMetricsRequest(String projectUuid) {
-        BoolQueryBuilder baseQuery = QueryBuilders.boolQuery()
-                .filter(QueryBuilders.termQuery(PROJECT_UUID_FIELD, projectUuid));
+        Query boolQuery = Query.of(q -> q
+                .bool(b -> b
+                        .filter(f -> f.term(t -> t
+                                .field(OpenSearchField.PROJECT_UUID.getFieldName())
+                                .value(v -> v.stringValue(projectUuid))
+                        ))
+                        .filter(f -> f.term(t -> t
+                                .field(OpenSearchField.SOURCE_TYPE.getFieldName())
+                                .value(v -> v.stringValue(SourceType.BACKEND.getType()))
+                        ))
+                )
+        );
 
-        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder()
-                .query(baseQuery)
-                .size(0)  // 집계만 필요
-                // 컴포넌트별로 그룹화
-                .aggregation(
-                        AggregationBuilders.terms("by_component")
-                                .field(COMPONENT_NAME_FIELD)
-                                .size(10000)  // 충분히 큰 값
-                                // 각 컴포넌트의 총 호출 수 (고유 trace_id)
-                                .subAggregation(
-                                        AggregationBuilders.cardinality("total_calls")
-                                                .field(TRACE_ID_FIELD)
-                                )
-                                // ERROR를 포함한 trace_id 개수
-                                .subAggregation(
-                                        AggregationBuilders.filter("error_traces",
-                                                        QueryBuilders.termQuery(LOG_LEVEL_FIELD, ERROR_LEVEL))
-                                                .subAggregation(
-                                                        AggregationBuilders.cardinality("error_count")
-                                                                .field(TRACE_ID_FIELD)
-                                                )
-                                )
-                                // WARN을 포함한 trace_id 개수
-                                .subAggregation(
-                                        AggregationBuilders.filter("warn_traces",
-                                                        QueryBuilders.termQuery(LOG_LEVEL_FIELD, WARN_LEVEL))
-                                                .subAggregation(
-                                                        AggregationBuilders.cardinality("warn_count")
-                                                                .field(TRACE_ID_FIELD)
-                                                )
-                                )
-                );
+        Query errorFilter = Query.of(q -> q.term(t -> t
+                .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                .value(v -> v.stringValue(LogLevel.ERROR.getLevel()))
+        ));
 
-        SearchRequest searchRequest = new SearchRequest(logsIndexPattern);
-        searchRequest.source(sourceBuilder);
+        Query warnFilter = Query.of(q -> q.term(t -> t
+                .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                .value(v -> v.stringValue(LogLevel.WARN.getLevel()))
+        ));
 
-        return searchRequest;
+        return SearchRequest.of(s -> s
+                .index(logsIndexPattern)
+                .size(0)
+                .query(boolQuery)
+                .aggregations(BY_COMPONENT, a -> a
+                        .terms(t -> t
+                                .field(OpenSearchField.COMPONENT_NAME.getFieldName())
+                                .size(OpenSearchAggregation.MAX_SIZE)
+                        )
+                        .aggregations(TOTAL_CALLS, sub -> sub
+                                .cardinality(c -> c.field(OpenSearchField.TRACE_ID.getFieldName()))
+                        )
+                        .aggregations(ERROR_TRACES, sub -> sub
+                                .filter(errorFilter)
+                                .aggregations(ERROR_COUNT, subsub -> subsub
+                                        .cardinality(c -> c.field(OpenSearchField.TRACE_ID.getFieldName()))
+                                )
+                        )
+                        .aggregations(WARN_TRACES, sub -> sub
+                                .filter(warnFilter)
+                                .aggregations(WARN_COUNT, subsub -> subsub
+                                        .cardinality(c -> c.field(OpenSearchField.TRACE_ID.getFieldName()))
+                                )
+                        )
+                )
+        );
     }
 
     /**
-     * 단일 컴포넌트 메트릭 조회 쿼리 생성
+     * 단일 컴포넌트 메트릭 조회 쿼리 생성 (Backend)
      */
     private SearchRequest buildComponentMetricsRequest(String projectUuid, String componentName) {
-        BoolQueryBuilder baseQuery = QueryBuilders.boolQuery()
-                .filter(QueryBuilders.termQuery(PROJECT_UUID_FIELD, projectUuid))
-                .filter(QueryBuilders.termQuery(COMPONENT_NAME_FIELD, componentName));
+        Query boolQuery = Query.of(q -> q
+                .bool(b -> b
+                        .filter(f -> f.term(t -> t
+                                .field(OpenSearchField.PROJECT_UUID.getFieldName())
+                                .value(v -> v.stringValue(projectUuid))
+                        ))
+                        .filter(f -> f.term(t -> t
+                                .field(OpenSearchField.SOURCE_TYPE.getFieldName())
+                                .value(v -> v.stringValue(SourceType.BACKEND.getType()))
+                        ))
+                        .filter(f -> f.term(t -> t
+                                .field(OpenSearchField.COMPONENT_NAME.getFieldName())
+                                .value(v -> v.stringValue(componentName))
+                        ))
+                )
+        );
 
-        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder()
-                .query(baseQuery)
+        Query errorFilter = Query.of(q -> q.term(t -> t
+                .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                .value(v -> v.stringValue(LogLevel.ERROR.getLevel()))
+        ));
+
+        Query warnFilter = Query.of(q -> q.term(t -> t
+                .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                .value(v -> v.stringValue(LogLevel.WARN.getLevel()))
+        ));
+
+        return SearchRequest.of(s -> s
+                .index(logsIndexPattern)
                 .size(0)
-                // 총 호출 수
-                .aggregation(
-                        AggregationBuilders.cardinality("total_calls")
-                                .field(TRACE_ID_FIELD)
+                .query(boolQuery)
+                .aggregations(TOTAL_CALLS, a -> a
+                        .cardinality(c -> c.field(OpenSearchField.TRACE_ID.getFieldName()))
                 )
-                // ERROR 포함 trace
-                .aggregation(
-                        AggregationBuilders.filter("error_traces",
-                                        QueryBuilders.termQuery(LOG_LEVEL_FIELD, ERROR_LEVEL))
-                                .subAggregation(
-                                        AggregationBuilders.cardinality("error_count")
-                                                .field(TRACE_ID_FIELD)
-                                )
+                .aggregations(ERROR_TRACES, a -> a
+                        .filter(errorFilter)
+                        .aggregations(ERROR_COUNT, sub -> sub
+                                .cardinality(c -> c.field(OpenSearchField.TRACE_ID.getFieldName()))
+                        )
                 )
-                // WARN 포함 trace
-                .aggregation(
-                        AggregationBuilders.filter("warn_traces",
-                                        QueryBuilders.termQuery(LOG_LEVEL_FIELD, WARN_LEVEL))
-                                .subAggregation(
-                                        AggregationBuilders.cardinality("warn_count")
-                                                .field(TRACE_ID_FIELD)
-                                )
-                );
+                .aggregations(WARN_TRACES, a -> a
+                        .filter(warnFilter)
+                        .aggregations(WARN_COUNT, sub -> sub
+                                .cardinality(c -> c.field(OpenSearchField.TRACE_ID.getFieldName()))
+                        )
+                )
+        );
+    }
 
-        SearchRequest searchRequest = new SearchRequest(logsIndexPattern);
-        searchRequest.source(sourceBuilder);
+    /**
+     * Frontend 메트릭 조회 쿼리 생성
+     */
+    private SearchRequest buildFrontendMetricsRequest(String projectUuid) {
+        Query boolQuery = Query.of(q -> q
+                .bool(b -> b
+                        .filter(f -> f.term(t -> t
+                                .field(OpenSearchField.PROJECT_UUID.getFieldName())
+                                .value(v -> v.stringValue(projectUuid))
+                        ))
+                        .filter(f -> f.term(t -> t
+                                .field(OpenSearchField.SOURCE_TYPE.getFieldName())
+                                .value(v -> v.stringValue(SourceType.FRONTEND.getType()))
+                        ))
+                )
+        );
 
-        return searchRequest;
+        Query infoFilter = Query.of(q -> q.term(t -> t
+                .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                .value(v -> v.stringValue(LogLevel.INFO.getLevel()))
+        ));
+
+        Query warnFilter = Query.of(q -> q.term(t -> t
+                .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                .value(v -> v.stringValue(LogLevel.WARN.getLevel()))
+        ));
+
+        Query errorFilter = Query.of(q -> q.term(t -> t
+                .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                .value(v -> v.stringValue(LogLevel.ERROR.getLevel()))
+        ));
+
+        return SearchRequest.of(s -> s
+                .index(logsIndexPattern)
+                .size(0)
+                .query(boolQuery)
+                .aggregations(TOTAL_TRACES, a -> a
+                        .cardinality(c -> c.field(OpenSearchField.TRACE_ID.getFieldName()))
+                )
+                .aggregations(INFO_LOGS, a -> a
+                        .filter(infoFilter)
+                )
+                .aggregations(WARN_LOGS, a -> a
+                        .filter(warnFilter)
+                )
+                .aggregations(ERROR_LOGS, a -> a
+                        .filter(errorFilter)
+                )
+        );
     }
 
     /**
      * 프로젝트 메트릭 응답 파싱
      */
-    private Map<String, MetricsData> parseProjectMetricsResponse(SearchResponse response) {
+    private Map<String, MetricsData> parseProjectMetricsResponse(SearchResponse<Void> response) {
         Map<String, MetricsData> metricsMap = new HashMap<>();
 
-        Terms byComponent = response.getAggregations().get("by_component");
+        Aggregate byComponentAgg = response.aggregations().get(BY_COMPONENT);
+        if (byComponentAgg == null || !byComponentAgg.isSterms()) {
+            log.warn("{} by_component aggregation이 없거나 타입이 맞지 않습니다", LOG_PREFIX);
+            return metricsMap;
+        }
 
-        for (Terms.Bucket bucket : byComponent.getBuckets()) {
-            String componentName = bucket.getKeyAsString();
+        StringTermsAggregate termsAgg = byComponentAgg.sterms();
 
-            // 총 호출 수
-            Cardinality totalCallsAgg = bucket.getAggregations().get("total_calls");
-            int totalCalls = (int) totalCallsAgg.getValue();
+        for (StringTermsBucket bucket : termsAgg.buckets().array()) {
+            String componentName = bucket.key();
 
-            // ERROR 개수
-            Filter errorTracesAgg = bucket.getAggregations().get("error_traces");
-            Cardinality errorCountAgg = errorTracesAgg.getAggregations().get("error_count");
-            int errorCount = (int) errorCountAgg.getValue();
-
-            // WARN 개수
-            Filter warnTracesAgg = bucket.getAggregations().get("warn_traces");
-            Cardinality warnCountAgg = warnTracesAgg.getAggregations().get("warn_count");
-            int warnCount = (int) warnCountAgg.getValue();
+            int totalCalls = extractCardinalityValue(bucket.aggregations(), TOTAL_CALLS);
+            int errorCount = extractNestedCardinalityValue(
+                    bucket.aggregations(), ERROR_TRACES, ERROR_COUNT
+            );
+            int warnCount = extractNestedCardinalityValue(
+                    bucket.aggregations(), WARN_TRACES, WARN_COUNT
+            );
 
             MetricsData metricsData = MetricsData.of(totalCalls, errorCount, warnCount);
             metricsMap.put(componentName, metricsData);
+
+            log.trace("{} 컴포넌트 메트릭 파싱: {} - calls={}, errors={}, warns={}",
+                    LOG_PREFIX, componentName, totalCalls, errorCount, warnCount);
         }
 
         return metricsMap;
@@ -206,21 +307,69 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
     /**
      * 단일 컴포넌트 메트릭 응답 파싱
      */
-    private MetricsData parseComponentMetricsResponse(SearchResponse response) {
-        // 총 호출 수
-        Cardinality totalCallsAgg = response.getAggregations().get("total_calls");
-        int totalCalls = (int) totalCallsAgg.getValue();
+    private MetricsData parseComponentMetricsResponse(SearchResponse<Void> response) {
+        Map<String, Aggregate> aggregations = response.aggregations();
 
-        // ERROR 개수
-        Filter errorTracesAgg = response.getAggregations().get("error_traces");
-        Cardinality errorCountAgg = errorTracesAgg.getAggregations().get("error_count");
-        int errorCount = (int) errorCountAgg.getValue();
-
-        // WARN 개수
-        Filter warnTracesAgg = response.getAggregations().get("warn_traces");
-        Cardinality warnCountAgg = warnTracesAgg.getAggregations().get("warn_count");
-        int warnCount = (int) warnCountAgg.getValue();
+        int totalCalls = extractCardinalityValue(aggregations, TOTAL_CALLS);
+        int errorCount = extractNestedCardinalityValue(aggregations, ERROR_TRACES, ERROR_COUNT);
+        int warnCount = extractNestedCardinalityValue(aggregations, WARN_TRACES, WARN_COUNT);
 
         return MetricsData.of(totalCalls, errorCount, warnCount);
+    }
+
+    /**
+     * Frontend 메트릭 응답 파싱
+     */
+    private FrontendMetricsSummary parseFrontendMetricsResponse(SearchResponse<Void> response) {
+        Map<String, Aggregate> aggregations = response.aggregations();
+
+        int totalTraces = extractCardinalityValue(aggregations, TOTAL_TRACES);
+        int infoLogs = extractFilterDocCount(aggregations, INFO_LOGS);
+        int warnLogs = extractFilterDocCount(aggregations, WARN_LOGS);
+        int errorLogs = extractFilterDocCount(aggregations, ERROR_LOGS);
+
+        return FrontendMetricsSummary.of(totalTraces, infoLogs, warnLogs, errorLogs);
+    }
+
+    /**
+     * Cardinality aggregation 값 추출
+     */
+    private int extractCardinalityValue(Map<String, Aggregate> aggregations, String aggName) {
+        Aggregate agg = aggregations.get(aggName);
+        if (agg != null && agg.isCardinality()) {
+            return (int) agg.cardinality().value();
+        }
+        log.warn("{} {} aggregation을 찾을 수 없거나 타입이 맞지 않습니다", LOG_PREFIX, aggName);
+        return 0;
+    }
+
+    /**
+     * Nested cardinality aggregation 값 추출 (filter > cardinality)
+     */
+    private int extractNestedCardinalityValue(
+            Map<String, Aggregate> aggregations,
+            String filterAggName,
+            String cardinalityAggName) {
+
+        Aggregate filterAgg = aggregations.get(filterAggName);
+        if (filterAgg == null || !filterAgg.isFilter()) {
+            log.warn("{} {} filter aggregation을 찾을 수 없습니다", LOG_PREFIX, filterAggName);
+            return 0;
+        }
+
+        Map<String, Aggregate> subAggregations = filterAgg.filter().aggregations();
+        return extractCardinalityValue(subAggregations, cardinalityAggName);
+    }
+
+    /**
+     * Filter aggregation의 docCount 추출
+     */
+    private int extractFilterDocCount(Map<String, Aggregate> aggregations, String filterAggName) {
+        Aggregate filterAgg = aggregations.get(filterAggName);
+        if (filterAgg != null && filterAgg.isFilter()) {
+            return (int) filterAgg.filter().docCount();
+        }
+        log.warn("{} {} filter aggregation을 찾을 수 없습니다", LOG_PREFIX, filterAggName);
+        return 0;
     }
 }

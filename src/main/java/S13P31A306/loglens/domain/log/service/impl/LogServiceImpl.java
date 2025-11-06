@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.log.service.impl;
 
+import S13P31A306.loglens.domain.log.constants.LogErrorCode;
 import S13P31A306.loglens.domain.log.dto.internal.LogSearchResult;
 import S13P31A306.loglens.domain.log.dto.internal.TraceLogSearchResult;
 import S13P31A306.loglens.domain.log.dto.request.LogSearchRequest;
@@ -10,8 +11,10 @@ import S13P31A306.loglens.domain.log.dto.response.TraceLogResponse;
 import S13P31A306.loglens.domain.log.mapper.LogMapper;
 import S13P31A306.loglens.domain.log.repository.LogRepository;
 import S13P31A306.loglens.domain.log.service.LogService;
+import S13P31A306.loglens.global.exception.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -72,6 +75,9 @@ public class LogServiceImpl implements LogService {
     private LogSearchResult searchLogs(String projectUuid, LogSearchRequest request) {
         log.debug("{} OpenSearch에서 로그 조회: projectUuid={}", LOG_PREFIX, projectUuid);
         LogSearchResult result = logRepository.findWithCursor(projectUuid, request);
+        if (Objects.isNull(result)) {
+            return new LogSearchResult(Collections.emptyList(), false, null);
+        }
         log.debug("{} OpenSearch 조회 완료: 로그 개수={}", LOG_PREFIX, result.logs().size());
         return result;
     }
@@ -105,7 +111,6 @@ public class LogServiceImpl implements LogService {
                 .build();
     }
 
-
     /**
      * 커서 인코딩 (페이지네이션용)
      *
@@ -121,8 +126,8 @@ public class LogServiceImpl implements LogService {
             log.debug("{} 커서 인코딩 완료", LOG_PREFIX);
             return encoded;
         } catch (Exception e) {
-            log.error("{} 커서 인코딩 실패", LOG_PREFIX, e);
-            throw new RuntimeException("Failed to encode cursor", e);
+            log.error("{} 커서 인코딩 실패: sortValues={}", LOG_PREFIX, sortValues, e);
+            throw new BusinessException(LogErrorCode.CURSOR_ENCODING_FAILED, null, e);
         }
     }
 }

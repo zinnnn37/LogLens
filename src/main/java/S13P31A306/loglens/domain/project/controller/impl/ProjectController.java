@@ -1,9 +1,16 @@
 package S13P31A306.loglens.domain.project.controller.impl;
 
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.INVALID_PAGE_NUMBER;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.INVALID_PAGE_SIZE;
+
+import S13P31A306.loglens.domain.project.constants.ProjectOrderParam;
+import S13P31A306.loglens.domain.project.constants.ProjectPageNumber;
+import S13P31A306.loglens.domain.project.constants.ProjectSortParam;
 import S13P31A306.loglens.domain.project.constants.ProjectSuccessCode;
 import S13P31A306.loglens.domain.project.controller.ProjectApi;
 import S13P31A306.loglens.domain.project.dto.request.ProjectCreateRequest;
 import S13P31A306.loglens.domain.project.dto.request.ProjectMemberInviteRequest;
+import S13P31A306.loglens.domain.project.dto.response.ProjectConnectionResponse;
 import S13P31A306.loglens.domain.project.dto.response.ProjectCreateResponse;
 import S13P31A306.loglens.domain.project.dto.response.ProjectDetailResponse;
 import S13P31A306.loglens.domain.project.dto.response.ProjectListResponse;
@@ -11,6 +18,7 @@ import S13P31A306.loglens.domain.project.dto.response.ProjectMemberInviteRespons
 import S13P31A306.loglens.domain.project.service.ProjectService;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
+import S13P31A306.loglens.global.exception.BusinessException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -48,12 +56,16 @@ public class ProjectController implements ProjectApi {
             @RequestParam(defaultValue = "CREATED_AT") String sort,
             @RequestParam(defaultValue = "DESC") String order
     ) {
-        ProjectListResponse response = projectService.getProjects(page, size, sort, order);
+        validatePageRequest(page, size);
+
+        ProjectSortParam sortParam = ProjectSortParam.from(sort);
+        ProjectOrderParam orderParam = ProjectOrderParam.from(order);
+
+        ProjectListResponse response = projectService.getProjects(page, size, sortParam, orderParam);
         return ApiResponseFactory.success(
                 ProjectSuccessCode.PROJECT_LIST_RETRIEVED,
                 response);
     }
-
 
     @GetMapping("/{projectUuid}")
     @Override
@@ -94,4 +106,29 @@ public class ProjectController implements ProjectApi {
         projectService.deleteMember(projectUuid, memberId);
         return ApiResponseFactory.success(ProjectSuccessCode.MEMBER_DELETED);
     }
+
+    @GetMapping("/{projectUuid}/connection")
+    @Override
+    public ResponseEntity<? extends BaseResponse> checkProjectConnection(
+            @PathVariable String projectUuid
+    ) {
+        ProjectConnectionResponse response = projectService.checkProjectConnection(projectUuid);
+
+        // 연결 상태에 따라 다른 Success Code 반환
+        ProjectSuccessCode successCode = response.isConnected()
+                ? ProjectSuccessCode.PROJECT_CONNECTED
+                : ProjectSuccessCode.PROJECT_NOT_CONNECTED;
+
+        return ApiResponseFactory.success(successCode, response);
+    }
+
+    private void validatePageRequest(int page, int size) {
+        if (page < ProjectPageNumber.MIN_PAGE_NUMBER) {
+            throw new BusinessException(INVALID_PAGE_NUMBER);
+        }
+        if (size < ProjectPageNumber.MIN_PAGE_SIZE || size > ProjectPageNumber.MAX_PAGE_SIZE) {
+            throw new BusinessException(INVALID_PAGE_SIZE);
+        }
+    }
+
 }

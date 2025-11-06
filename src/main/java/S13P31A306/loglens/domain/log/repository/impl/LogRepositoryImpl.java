@@ -124,6 +124,28 @@ public class LogRepositoryImpl implements LogRepository {
         }
     }
 
+    @Override
+    public boolean existsByProjectUuid(String projectUuid) {
+        log.debug("{} 프로젝트 UUID로 로그 존재 확인: projectUuid={}", LOG_PREFIX, projectUuid);
+        try {
+            SearchRequest searchRequest = new SearchRequest.Builder()
+                    .index(LOG_INDEX_PATTERN)
+                    .query(q -> q.term(t -> t.field("project_uuid").value(FieldValue.of(projectUuid))))
+                    .size(1)
+                    .build();
+
+            SearchResponse<Log> response = openSearchClient.search(searchRequest, Log.class);
+
+            long totalHits = Objects.requireNonNull(response.hits().total()).value();
+            log.debug("{} OpenSearch 검색 결과: projectUuid={}, totalHits={}", LOG_PREFIX, projectUuid, totalHits);
+
+            return totalHits > 0;
+        } catch (IOException e) {
+            log.error("{} OpenSearch 검색 중 오류 발생: projectUuid={}", LOG_PREFIX, projectUuid, e);
+            return false;
+        }
+    }
+
     // ============================================================
     // Query Building Methods
     // ============================================================
@@ -216,10 +238,10 @@ public class LogRepositoryImpl implements LogRepository {
     private List<Log> extractLogsFromHits(List<Hit<Log>> hits) {
         List<Log> logs = new ArrayList<>();
         for (Hit<Log> hit : hits) {
-            Log log = hit.source();
-            if (log != null) {
-                log.setId(hit.id());
-                logs.add(log);
+            Log logEntity = hit.source();
+            if (Objects.nonNull(logEntity)) {
+                logEntity.setId(hit.id());
+                logs.add(logEntity);
             }
         }
         return logs;
@@ -280,9 +302,9 @@ public class LogRepositoryImpl implements LogRepository {
         Aggregate agg = aggs.get(aggName);
         Double millis = null;
 
-        if (agg.isMin() && agg.min() != null) {
+        if (agg.isMin() && Objects.nonNull(agg.min())) {
             millis = agg.min().value();
-        } else if (agg.isMax() && agg.max() != null) {
+        } else if (agg.isMax() && Objects.nonNull(agg.max())) {
             millis = agg.max().value();
         }
 
@@ -296,7 +318,7 @@ public class LogRepositoryImpl implements LogRepository {
      * 시간 차이 계산 (밀리초)
      */
     private long calculateDuration(LocalDateTime startTime, LocalDateTime endTime) {
-        if (!Objects.isNull(startTime) && !Objects.isNull(endTime)) {
+        if (Objects.nonNull(startTime) && Objects.nonNull(endTime)) {
             return java.time.Duration.between(startTime, endTime).toMillis();
         }
         return 0;
