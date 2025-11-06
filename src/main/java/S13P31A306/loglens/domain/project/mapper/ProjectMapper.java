@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.project.mapper;
 
+import S13P31A306.loglens.domain.project.dto.response.ProjectConnectionResponse;
 import S13P31A306.loglens.domain.project.dto.response.ProjectCreateResponse;
 import S13P31A306.loglens.domain.project.dto.response.ProjectDetailResponse;
 import S13P31A306.loglens.domain.project.dto.response.ProjectListResponse;
@@ -51,11 +52,12 @@ public interface ProjectMapper {
     /**
      * 프로젝트 리스트 조회
      *
-     * @param projects 프로젝트 리스트
+     * @param projects          프로젝트 리스트
      * @param jiraConnectionMap Jira 연결 정보 Map (projectId -> 연결 여부)
      * @return List<ProjectListResponse.ProjectInfo>
      */
-    List<ProjectListResponse.ProjectInfo> toProjectInfoList(List<Project> projects, @Context Map<Integer, Boolean> jiraConnectionMap);
+    List<ProjectListResponse.ProjectInfo> toProjectInfoList(List<Project> projects,
+                                                            @Context Map<Integer, Boolean> jiraConnectionMap);
 
     /**
      * ProjectMember를 Member DTO로 변환
@@ -84,5 +86,16 @@ public interface ProjectMapper {
     @Named("getJiraConnectionExist")
     default boolean getJiraConnectionExist(Project project, @Context Map<Integer, Boolean> jiraConnectionMap) {
         return jiraConnectionMap.getOrDefault(project.getId(), false);
+    }
+
+    /**
+     * 프로젝트 연결 상태 응답으로 변환
+     *
+     * @param projectUuid 프로젝트 UUID
+     * @param isConnected 연결 상태
+     * @return ProjectConnectionResponse
+     */
+    default ProjectConnectionResponse toConnectionResponse(String projectUuid, boolean isConnected) {
+        return new ProjectConnectionResponse(projectUuid, isConnected);
     }
 }

@@ -1,5 +1,8 @@
 package S13P31A306.loglens.domain.project.controller.impl;
 
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.INVALID_PAGE_NUMBER;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.INVALID_PAGE_SIZE;
+
 import S13P31A306.loglens.domain.project.constants.ProjectOrderParam;
 import S13P31A306.loglens.domain.project.constants.ProjectPageNumber;
 import S13P31A306.loglens.domain.project.constants.ProjectSortParam;
@@ -7,6 +10,7 @@ import S13P31A306.loglens.domain.project.constants.ProjectSuccessCode;
 import S13P31A306.loglens.domain.project.controller.ProjectApi;
 import S13P31A306.loglens.domain.project.dto.request.ProjectCreateRequest;
 import S13P31A306.loglens.domain.project.dto.request.ProjectMemberInviteRequest;
+import S13P31A306.loglens.domain.project.dto.response.ProjectConnectionResponse;
 import S13P31A306.loglens.domain.project.dto.response.ProjectCreateResponse;
 import S13P31A306.loglens.domain.project.dto.response.ProjectDetailResponse;
 import S13P31A306.loglens.domain.project.dto.response.ProjectListResponse;
@@ -26,9 +30,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.INVALID_PAGE_NUMBER;
-import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.INVALID_PAGE_SIZE;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -104,6 +105,21 @@ public class ProjectController implements ProjectApi {
     ) {
         projectService.deleteMember(projectUuid, memberId);
         return ApiResponseFactory.success(ProjectSuccessCode.MEMBER_DELETED);
+    }
+
+    @GetMapping("/{projectUuid}/connection")
+    @Override
+    public ResponseEntity<? extends BaseResponse> checkProjectConnection(
+            @PathVariable String projectUuid
+    ) {
+        ProjectConnectionResponse response = projectService.checkProjectConnection(projectUuid);
+
+        // 연결 상태에 따라 다른 Success Code 반환
+        ProjectSuccessCode successCode = response.isConnected()
+                ? ProjectSuccessCode.PROJECT_CONNECTED
+                : ProjectSuccessCode.PROJECT_NOT_CONNECTED;
+
+        return ApiResponseFactory.success(successCode, response);
     }
 
     private void validatePageRequest(int page, int size) {

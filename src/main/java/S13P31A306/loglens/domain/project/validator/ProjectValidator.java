@@ -1,9 +1,15 @@
 package S13P31A306.loglens.domain.project.validator;
 
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.ACCESS_FORBIDDEN;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.CANNOT_DELETE_SELF;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.MEMBER_EXISTS;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.MEMBER_NOT_FOUND;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PROJECT_NOT_FOUND;
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.USER_NOT_FOUND;
+
 import S13P31A306.loglens.domain.auth.entity.User;
 import S13P31A306.loglens.domain.auth.respository.UserRepository;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
-import S13P31A306.loglens.domain.project.constants.ProjectErrorCode;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
@@ -12,12 +18,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.*;
-
+//@formatter:off
 /**
  * 프로젝트 관련 검증 로직을 담당하는 Validator 클래스
  * 프로젝트, 사용자, 멤버십 등의 존재 여부 및 권한을 검증
  */
+//@formatter:on
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -142,9 +148,7 @@ public class ProjectValidator {
         if (!hasProjectAccess(project, email)) {
             log.warn("{} 프로젝트 접근 권한 없음: projectId={}, projectName={}, user={}",
                     LOG_PREFIX, project.getId(), project.getProjectName(), email);
-            throw new BusinessException(
-                    ProjectErrorCode.ACCESS_FORBIDDEN
-            );
+            throw new BusinessException(ACCESS_FORBIDDEN);
         }
     }
 
