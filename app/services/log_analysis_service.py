@@ -12,6 +12,7 @@ from app.services.embedding_service import embedding_service
 from app.services.similarity_service import similarity_service
 from app.models.analysis import LogAnalysisResponse, LogAnalysisResult
 from app.validators.validation_pipeline import ValidationPipeline
+from app.utils.index_naming import format_index_name
 
 
 class LogAnalysisService:
@@ -187,8 +188,11 @@ class LogAnalysisService:
     async def _get_log(self, log_id: int, project_uuid: str) -> Optional[dict]:
         """Get log from OpenSearch filtered by project_uuid"""
         try:
+            # Generate index name using new format
+            index_name = format_index_name(project_uuid)
+
             response = self.client.search(
-                index="logs-*",
+                index=index_name,
                 body={
                     "query": {
                         "bool": {
@@ -381,8 +385,11 @@ class LogAnalysisService:
     async def _save_analysis(self, log_id: int, analysis: dict, project_uuid: str):
         """Save analysis result to log filtered by project_uuid"""
         try:
+            # Generate index name using new format
+            index_name = format_index_name(project_uuid)
+
             self.client.update_by_query(
-                index="logs-*",
+                index=index_name,
                 body={
                     "script": {
                         "source": "ctx._source.ai_analysis = params.analysis",

@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from app.core.opensearch import opensearch_client
 from app.core.config import settings
+from app.utils.index_naming import format_index_name
 
 
 class SimilarityService:
@@ -13,7 +14,6 @@ class SimilarityService:
 
     def __init__(self):
         self.client = opensearch_client
-        self.index_pattern = "logs-*"
 
     async def find_similar_logs(
         self,
@@ -76,8 +76,14 @@ class SimilarityService:
         if filter_clauses:
             query["query"]["bool"]["filter"] = filter_clauses
 
+        # Generate index name using new format
+        if not project_uuid:
+            raise ValueError("project_uuid is required for log search")
+
+        index_name = format_index_name(project_uuid)
+
         # Execute search
-        response = self.client.search(index=self.index_pattern, body=query)
+        response = self.client.search(index=index_name, body=query)
 
         # Format results
         results = []
@@ -209,8 +215,11 @@ class SimilarityService:
             "_source": {"excludes": ["log_vector"]},  # Exclude vector for efficiency
         }
 
+        # Generate index name using new format
+        index_name = format_index_name(project_uuid)
+
         # Execute search
-        response = self.client.search(index=self.index_pattern, body=query)
+        response = self.client.search(index=index_name, body=query)
 
         # Format results
         results = []

@@ -23,17 +23,22 @@ async def lifespan(app: FastAPI):
     # Initialize OpenSearch indices
     try:
         print("🔧 Checking OpenSearch indices...")
-        from scripts.create_indices import create_logs_index_template, create_qa_cache_index
+        from scripts.create_indices import create_qa_cache_index
 
-        # Create indices if they don't exist
-        logs_success = create_logs_index_template()
+        # NOTE: Log indices are now managed externally in the new format:
+        # {project_uuid_with_underscores}_{YYYY}_{MM}
+        # Example: 3a73c7d4_8176_3929_b72f_d5b921daae67_2025_11
+        # No need to create log indices here - they are pre-created
+        print("📋 Log indices are managed externally (new format: {uuid}_{YYYY}_{MM})")
+
+        # Create QA cache index only
         qa_success = create_qa_cache_index()
 
-        if logs_success and qa_success:
+        if qa_success:
             print("✅ OpenSearch indices ready")
         else:
-            print("⚠️ Some indices may already exist or failed to create")
-            print("   (This is normal if indices were created previously)")
+            print("⚠️ QA cache index may already exist or failed to create")
+            print("   (This is normal if index was created previously)")
     except Exception as e:
         print(f"⚠️ OpenSearch indices check failed: {e}")
         print("   Application will continue, but some features may not work")

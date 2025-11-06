@@ -14,6 +14,7 @@ from app.chains.chatbot_chain import chatbot_chain
 from app.services.embedding_service import embedding_service
 from app.services.similarity_service import similarity_service
 from app.models.chat import ChatResponse, RelatedLog, ChatMessage
+from app.utils.index_naming import format_index_name
 
 
 class ChatbotService:
@@ -193,9 +194,12 @@ class ChatbotService:
             return []
 
         try:
+            # Generate index name using new format
+            index_name = format_index_name(project_uuid)
+
             response = await asyncio.to_thread(
                 self.client.search,
-                index="logs-*",
+                index=index_name,
                 body={
                     "query": {
                         "bool": {
