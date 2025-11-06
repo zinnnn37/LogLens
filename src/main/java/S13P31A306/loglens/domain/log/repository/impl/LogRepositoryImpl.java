@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.log.repository.impl;
 
+import S13P31A306.loglens.domain.component.constants.OpenSearchField;
 import S13P31A306.loglens.domain.log.constants.LogErrorCode;
 import S13P31A306.loglens.domain.log.dto.internal.LogSearchResult;
 import S13P31A306.loglens.domain.log.dto.internal.TraceLogSearchResult;
@@ -142,7 +143,8 @@ public class LogRepositoryImpl implements LogRepository {
         try {
             SearchRequest searchRequest = new SearchRequest.Builder()
                     .index(getProjectIndexPattern(projectUuid))
-                    .query(q -> q.term(t -> t.field("project_uuid").value(FieldValue.of(projectUuid))))
+                    .query(q -> q.term(t -> t.field(OpenSearchField.PROJECT_UUID.getFieldName())
+                            .value(FieldValue.of(projectUuid))))
                     .size(1)
                     .build();
 
@@ -427,7 +429,8 @@ public class LogRepositoryImpl implements LogRepository {
      * 프로젝트 UUID 필터 추가
      */
     private void addProjectFilter(BoolQuery.Builder builder, String projectUuid) {
-        builder.filter(q -> q.term(t -> t.field("project_uuid.keyword").value(FieldValue.of(projectUuid))));
+        builder.filter(q -> q.term(
+                t -> t.field(OpenSearchField.PROJECT_UUID.getFieldName()).value(FieldValue.of(projectUuid))));
     }
 
     /**
