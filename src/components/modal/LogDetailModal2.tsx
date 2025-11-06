@@ -1,4 +1,4 @@
-// src/components/LogDetailModal2.tsx
+// src/components/modal/LogDetailModal2.tsx
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,11 +10,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import type { LogRow } from '@/components/LogResultsTable';
+import type { LogData } from '@/types/log';
 
-// --- Props 정의 ---
 export interface LogDetailModal2Props {
-  log: LogRow;
+  log: LogData;
   onGoBack: () => void;
   onSubmit: (formData: JiraTicketFormData) => void;
 }
@@ -22,8 +21,6 @@ export interface LogDetailModal2Props {
 export interface JiraTicketFormData {
   issueType: string;
   priority: string;
-  assignee: string;
-  reporter: string;
 }
 
 // 이슈 타입
@@ -42,15 +39,7 @@ const JIRA_PRIORITIES = [
   { value: 'low', label: 'Low' },
   { value: 'lowest', label: 'Lowest' },
 ];
-// 더미 멤버
-const DUMMY_MEMBERS = [
-  '김건학',
-  '김민진',
-  '이석규',
-  '이종현',
-  '한종욱',
-  '홍혜린',
-];
+
 
 /**
  * 폼 섹션 래퍼
@@ -77,12 +66,10 @@ const FormSection = ({
  */
 const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
   const handleSubmit = () => {
-    // 더미
+  //  TODO : 수정예정
     const formData: JiraTicketFormData = {
       issueType: 'bug',
       priority: 'medium',
-      assignee: '김건학',
-      reporter: '김민진',
     };
     onSubmit(formData);
   };
@@ -91,9 +78,9 @@ const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
     <div className="flex flex-col space-y-6">
       {/* 헤더 */}
       <div className="border-b pb-4">
-        <h2 className="text-lg font-semibold">{log.id} Jira 티켓 발행</h2>
+        <h2 className="text-lg font-semibold">{log.traceId} Jira 티켓 발행</h2>
         <p className="text-sm text-gray-500">
-          {new Date().toLocaleString()} {/* 현재 시간 (예시) */}
+          {new Date().toLocaleString()} 
         </p>
       </div>
 
@@ -104,10 +91,8 @@ const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
           <Input
             id="jira-title"
             placeholder="자동으로 생성됨"
-            disabled
             className="font-mono"
-            // 자동으로 생성 된다고 적혀있어서 일단 이렇게 해놓음
-            defaultValue={`[${log.level}] ${log.message.substring(0, 50)}...`}
+            defaultValue={`[${log.logLevel}] ${log.message.substring(0, 50)}...`}
           />
         </FormSection>
 
@@ -116,11 +101,13 @@ const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
           <Textarea
             id="jira-desc"
             placeholder="자동으로 생성됨"
-            disabled
             rows={4}
             className="font-mono"
-            // 자동으로 생성 된다고 적혀있어서 일단 이렇게 해놓음
-            defaultValue={`[로그 상세 정보]\n- TraceID: ${log.id}\n- Level: ${log.level}\n- System: ${log.layer}\n- Date: ${log.date}\n\n[Message]\n${log.message}`}
+            defaultValue={`[로그 상세 정보]\n- TraceID: ${log.traceId
+              }\n- Level: ${log.logLevel}\n- System: ${log.sourceType
+              }\n- Date: ${new Date(
+                log.timestamp,
+              ).toLocaleString()}\n\n[Message]\n${log.message}`}
           />
         </FormSection>
 
@@ -140,7 +127,7 @@ const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
           </Select>
         </FormSection>
 
-        {/* 우선순위 */}
+        {/* 우선순위 (원본과 동일) */}
         <FormSection label="우선순위" htmlFor="jira-priority">
           <Select defaultValue="medium">
             <SelectTrigger id="jira-priority">
@@ -156,37 +143,6 @@ const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
           </Select>
         </FormSection>
 
-        {/* 담당자 */}
-        <FormSection label="담당자" htmlFor="jira-assignee">
-          <Select>
-            <SelectTrigger id="jira-assignee">
-              <SelectValue placeholder="선택..." />
-            </SelectTrigger>
-            <SelectContent>
-              {DUMMY_MEMBERS.map(name => (
-                <SelectItem key={name} value={name}>
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FormSection>
-
-        {/* 보고자 */}
-        <FormSection label="보고자" htmlFor="jira-reporter">
-          <Select>
-            <SelectTrigger id="jira-reporter">
-              <SelectValue placeholder="선택..." />
-            </SelectTrigger>
-            <SelectContent>
-              {DUMMY_MEMBERS.map(name => (
-                <SelectItem key={name} value={name}>
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FormSection>
       </div>
 
       {/* 푸터 */}
