@@ -83,12 +83,13 @@ public class MethodLoggingAspect {
 
         String methodName = signature.getMethod().getName();
         String packageName = targetClass.getName();
+        String componentName = targetClass.getSimpleName();
         String layer = detectLayer(targetClass);
 
         HttpInfo httpInfo = extractHttpInfo();
         Map<String, Object> parameters = collectParameters(signature, joinPoint.getArgs());
 
-        logRequest(packageName, layer, methodName, parameters, httpInfo);
+        logRequest(packageName, componentName, layer, methodName, parameters, httpInfo);
 
         Object result = null;
         Throwable exception = null;
@@ -106,7 +107,7 @@ public class MethodLoggingAspect {
                 httpInfo.updateStatusCode();
             }
 
-            logResponse(packageName, layer, methodName, responseData, executionTime, exception, httpInfo);
+            logResponse(packageName, componentName, layer, methodName, responseData, executionTime, exception, httpInfo);
         }
 
         return result;
@@ -152,10 +153,10 @@ public class MethodLoggingAspect {
         return null;
     }
 
-    private void logRequest(String packageName, String layer, String methodName,
+    private void logRequest(String packageName, String componentName, String layer, String methodName,
                             Map<String, Object> parameters, HttpInfo httpInfo) {
         try {
-            Map<String, Object> logEntry = createBaseLogEntry(packageName, layer);
+            Map<String, Object> logEntry = createBaseLogEntry(packageName, componentName, layer);
             logEntry.put("message", "Request received: " + methodName);
             logEntry.put("execution_time_ms", null);
 
@@ -177,11 +178,11 @@ public class MethodLoggingAspect {
         }
     }
 
-    private void logResponse(String packageName, String layer, String methodName,
+    private void logResponse(String packageName, String componentName, String layer, String methodName,
                              Object responseData, Long executionTime, Throwable exception,
                              HttpInfo httpInfo) {
         try {
-            Map<String, Object> logEntry = createBaseLogEntry(packageName, layer);
+            Map<String, Object> logEntry = createBaseLogEntry(packageName, componentName, layer);
             logEntry.put("execution_time_ms", executionTime);
             logEntry.put("request", null);
 
@@ -215,12 +216,14 @@ public class MethodLoggingAspect {
         }
     }
 
-    private Map<String, Object> createBaseLogEntry(String packageName, String layer) {
+    private Map<String, Object> createBaseLogEntry(String packageName, String componentName, String layer) {
         Map<String, Object> logEntry = new LinkedHashMap<>();
         logEntry.put("@timestamp", LocalDateTime.now().atZone(ZoneOffset.UTC).format(ISO_FORMATTER));
         logEntry.put("trace_id", MDC.get("traceId"));
+        logEntry.put("client_ip", MDC.get("client_ip"));
         logEntry.put("level", "INFO");
         logEntry.put("package", packageName);
+        logEntry.put("component_name", componentName);
         logEntry.put("layer", layer);
         return logEntry;
     }
