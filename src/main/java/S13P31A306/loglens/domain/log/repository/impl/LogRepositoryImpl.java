@@ -217,7 +217,7 @@ public class LogRepositoryImpl implements LogRepository {
                 .sort(s -> s.field(f -> f.field(TIMESTAMP_FIELD).order(SortOrder.Asc)))
                 .aggregations("min_timestamp", a -> a.min(m -> m.field(TIMESTAMP_FIELD)))
                 .aggregations("max_timestamp", a -> a.max(m -> m.field(TIMESTAMP_FIELD)))
-                .aggregations("level_counts", a -> a.terms(t -> t.field("log_level")))
+                .aggregations("level_counts", a -> a.terms(t -> t.field(OpenSearchField.LOG_LEVEL.getFieldName())))
                 .build();
     }
 
@@ -438,7 +438,8 @@ public class LogRepositoryImpl implements LogRepository {
      */
     private void addTraceIdFilter(BoolQuery.Builder builder, String traceId) {
         if (Objects.nonNull(traceId) && !traceId.isEmpty()) {
-            builder.filter(q -> q.term(t -> t.field("trace_id").value(FieldValue.of(traceId))));
+            builder.filter(
+                    q -> q.term(t -> t.field(OpenSearchField.TRACE_ID.getFieldName()).value(FieldValue.of(traceId))));
         }
     }
 
@@ -456,7 +457,7 @@ public class LogRepositoryImpl implements LogRepository {
                 .collect(Collectors.toList());
 
         builder.filter(q -> q.terms(t -> t
-                .field("log_level")
+                .field(OpenSearchField.LOG_LEVEL.getFieldName())
                 .terms(new TermsQueryField.Builder().value(levels).build())));
     }
 
@@ -474,7 +475,7 @@ public class LogRepositoryImpl implements LogRepository {
                 .toList();
 
         builder.filter(q -> q.terms(t -> t
-                .field("source_type")
+                .field(OpenSearchField.SOURCE_TYPE.getFieldName())
                 .terms(new TermsQueryField.Builder().value(sources).build())));
     }
 
