@@ -197,7 +197,7 @@ public class ProjectServiceImpl implements ProjectService {
         return projectRepository.findByProjectUuid(uuid)
                 .map(Project::getId)
                 .orElseThrow(() -> {
-                    log.warn("{} 유효하지 않은 API Key입니다.", LOG_PREFIX);
+                    log.warn("{} 유효하지 않은 Project UUID입니다.", LOG_PREFIX);
                     return new BusinessException(PROJECT_NOT_FOUND);
                 });
     }
