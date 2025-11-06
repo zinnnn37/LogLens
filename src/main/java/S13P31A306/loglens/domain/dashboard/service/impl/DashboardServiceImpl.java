@@ -15,6 +15,8 @@ import S13P31A306.loglens.domain.dashboard.validator.DashboardValidator;
 import S13P31A306.loglens.domain.dependency.dto.response.DependencyGraphResponse;
 import S13P31A306.loglens.domain.dependency.entity.DependencyGraph;
 import S13P31A306.loglens.domain.dependency.service.DependencyGraphService;
+import S13P31A306.loglens.domain.project.entity.LogMetrics;
+import S13P31A306.loglens.domain.project.repository.LogMetricsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.json.JsonData;
@@ -29,6 +31,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -48,6 +52,7 @@ public class DashboardServiceImpl implements DashboardService {
     private final DependencyGraphService dependencyGraphService;
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final LogMetricsRepository logMetricsRepository;
     private final DashboardValidator validator;
     private final DashboardMapper mapper;
     private final OpenSearchClient openSearchClient;
@@ -57,7 +62,7 @@ public class DashboardServiceImpl implements DashboardService {
         log.info("{} 대시보드 통계 개요 조회 시도", LOG_PREFIX);
 
         // 권한 검증
-        validator.validateProjectAccess(projectUuid);
+        Integer projectId = validator.validateProjectAccess(projectUuid);
 
         // 2. 시간 범위 설정 (없으면 최근 7일)
         LocalDateTime end = endTime != null ?
@@ -68,10 +73,37 @@ public class DashboardServiceImpl implements DashboardService {
                 end.minusDays(7);
 
         // 로그 수 집계
+        List<LogMetrics> logMetrics = logMetricsRepository.findByProjectIdAndAggregatedAtBetween(
+                projectId,
+                start,
+                end
+        );
 
-        double avgResponseTime = getAvgResponseTimeFromOpenSearch(projectUuid, start, end);
+        int totalLogs = logMetrics.stream()
+                .mapToInt(LogMetrics::getTotalLogs)
+                .sum();
 
-        log.info("{} 대시보드 통계 개요 조회 완료: avgResponseTime={}",  LOG_PREFIX, avgResponseTime);
+        int infoLogs = logMetrics.stream()
+                .mapToInt(LogMetrics::getInfoLogs)
+                .sum();
+
+        int warnLogs = logMetrics.stream()
+                .mapToInt(LogMetrics::getWarnLogs)
+                .sum();
+
+        int errorLogs = logMetrics.stream()
+                .mapToInt(LogMetrics::getErrorLogs)
+                .sum();
+
+        // 평균 응답 시간
+        int avgResponseTime = (int) logMetrics.stream()
+                .mapToInt(LogMetrics::getAvgResponseTime)
+                .filter(time -> time > 0)
+                .average()
+                .orElse(0.0);
+
+        log.info("{} 대시보드 통계 개요 조회 완료: totalLogs={}, errorLogs={}, avgResponseTime={}",
+                LOG_PREFIX, totalLogs, errorLogs, avgResponseTime);
 
         return DashboardOverviewResponse.builder()
                 .projectUuid(projectUuid)
@@ -80,7 +112,11 @@ public class DashboardServiceImpl implements DashboardService {
                                 end.format(DateTimeFormatter.ISO_DATE_TIME)
                         ))
                 .summary(new DashboardOverviewResponse.Summary(
-
+                        totalLogs,
+                        errorLogs,
+                        warnLogs,
+                        infoLogs,
+                        avgResponseTime
                 ))
                 .build();
     }
@@ -241,66 +277,6 @@ public class DashboardServiceImpl implements DashboardService {
                 highestErrorComponent,
                 highestCallComponent
         );
-    }
-
-    private double getAvgResponseTimeFromOpenSearch(String projectUuid, LocalDateTime start, LocalDateTime end) {
-        try {
-            SearchRequest searchRequest = SearchRequest.of(s -> s
-                    .index("logs")
-                    .size(0)
-                    .query(q -> q
-                            .bool(b -> b
-                                    .must(m -> m.term(t -> t
-                                            .field("project_uuid.keyword")
-                                            .value(v -> v.stringValue(projectUuid))
-                                    ))
-                                    .must(m -> m.range(r -> r
-                                            .field("timestamp")
-                                            .gte(JsonData.of(start.toString()))
-                                            .lte(JsonData.of(end.toString()))
-                                    ))
-                            )
-                    )
-                    .aggregations("avg_duration", a -> a
-                            .avg(avg -> avg.field("duration"))
-                    )
-            );
-
-            log.info("{} OpenSearch 쿼리 실행: projectUuid={}, start={}, end={}",
-                    LOG_PREFIX, projectUuid, start, end);
-
-            SearchResponse<Void> response = openSearchClient.search(
-                    searchRequest,
-                    Void.class
-            );
-
-            // null 체크
-            if (Objects.isNull(response.aggregations()) ||
-                    !response.aggregations().containsKey("avg_duration") ||
-                    Objects.isNull(response.aggregations().get("avg_duration").avg())) {
-                log.warn("{} OpenSearch 집계 결과 없음", LOG_PREFIX);
-                return 0.0;
-            }
-
-            Double avgValue = response.aggregations()
-                    .get("avg_duration")
-                    .avg()
-                    .value();
-
-            // NaN 체크
-            if (Objects.isNull(avgValue) || avgValue.isNaN() || avgValue.isInfinite()) {
-                log.warn("{} 비정상 avg_duration: {}", LOG_PREFIX, avgValue);
-                return 0.0;
-            }
-
-            log.info("{} 평균 응답 시간: {}ms", LOG_PREFIX, avgValue);
-
-            return avgValue;
-
-        } catch (IOException e) {
-            log.error("{} OpenSearch 응답 시간 조회 실패: {}", LOG_PREFIX, e.getMessage());
-            return 0.0;
-        }
     }
 
 }

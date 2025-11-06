@@ -16,7 +16,7 @@ public interface LogMetricsRepository extends JpaRepository<LogMetrics, Integer>
      * @param projectId 프로젝트 ID
      * @return Optional<LogMetrics> 최신 로그 메트릭
      */
-    Optional<LogMetrics> findFirstByProjectIdOrderByAggregatedAtDesc(String projectId);
+    Optional<LogMetrics> findFirstByProjectIdOrderByAggregatedAtDesc(Integer projectId);
 
     /**
      * 특정 프로젝트의 특정 시간대별 로그 조회

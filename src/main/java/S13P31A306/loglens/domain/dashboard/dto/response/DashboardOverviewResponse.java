@@ -3,6 +3,8 @@ package S13P31A306.loglens.domain.dashboard.dto.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
+import java.math.BigDecimal;
+
 @Builder
 @Schema(description = "대시보드 통계 데이터 응답")
 public record DashboardOverviewResponse(
@@ -27,19 +29,19 @@ public record DashboardOverviewResponse(
 
     public record Summary(
         @Schema(description = "전체 로그 갯수", example = "24500")
-        int totalLogs,
+        Integer totalLogs,
 
         @Schema(description = "에러 로그 갯수", example = "5000")
-        int errorCount,
+        Integer errorCount,
 
         @Schema(description = "경고 로그 갯수", example = "12300")
-        int warnCount,
+        Integer warnCount,
 
         @Schema(description = "정보 로그 갯수", example = "7200")
-        int infoCount,
+        Integer infoCount,
 
         @Schema(description = "평균 응답 시간", example = "245")
-        int avgResponseTime
+        Integer avgResponseTime
     ) {
     }
 
