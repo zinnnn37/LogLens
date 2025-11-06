@@ -18,7 +18,7 @@ public class LogSearchRequest {
     private String cursor;
 
     @Schema(description = "페이지 크기", example = "50", defaultValue = "100")
-    private Integer size;
+    private Integer size = 100;
 
     @Schema(description = "검색 시작 시간", example = "2025-11-01T00:00:00")
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
@@ -37,7 +37,7 @@ public class LogSearchRequest {
     @Schema(description = "검색 키워드", example = "NullPointerException")
     private String keyword;
 
-    @Schema(description = "Trace ID", example = "trace-abc-123")
+    @Schema(description = "Trace ID", example = "bed95fd3-67b2-4d1d-8d97-b71a4c4d06b9")
     private String traceId;
 
     @Schema(description = "정렬 옵션 (필드,방향)", example = "TIMESTAMP,DESC", defaultValue = "TIMESTAMP,DESC")
