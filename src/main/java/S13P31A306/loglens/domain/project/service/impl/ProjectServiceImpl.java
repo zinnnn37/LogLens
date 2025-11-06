@@ -142,7 +142,6 @@ public class ProjectServiceImpl implements ProjectService {
         // 범위를 벗어난 페이지 요청 처리
         if (start > 0 && start >= totalElements) {
             log.warn("{} 유효하지 않은 페이지 - start={}, total={}", LOG_PREFIX, start, totalElements);
-            log.info("엥");
             throw new BusinessException(PAGE_SIZE_EXCCEED);
         }
 
