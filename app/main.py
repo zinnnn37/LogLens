@@ -93,12 +93,16 @@ LangChain과 OpenSearch를 활용한 실시간 로그 분석 및 대화형 검�
     },
     servers=[
         {
+            "url": "https://ai.loglens.store",
+            "description": "프로덕션 환경 (EC2)",
+        },
+        {
             "url": "http://localhost:8000",
             "description": "로컬 개발 환경",
         },
         {
             "url": "http://localhost:8001",
-            "description": "로컬 테스트 환경",
+            "description": "로컬 테스트 환경 (Blue-Green)",
         },
     ],
 )
