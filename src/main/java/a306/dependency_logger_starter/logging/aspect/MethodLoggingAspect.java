@@ -13,6 +13,7 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -26,7 +27,12 @@ import java.util.*;
 
 /**
  * 메서드 실행 로깅 Aspect
- * @Sensitive, @ExcludeValue 어노테이션 기반 마스킹
+ *
+ * Controller, Service, Repository, Component 메서드 실행을 자동으로 로깅
+ * - 요청/응답 데이터 수집
+ * - @Sensitive, @ExcludeValue 마스킹 지원
+ * - 실행 시간 측정
+ * - HTTP 정보 수집 (Controller만)
  */
 @Aspect
 @Slf4j
@@ -35,42 +41,26 @@ public class MethodLoggingAspect {
 
     private final ObjectMapper objectMapper;
 
+    @Value("${dependency.logger.stacktrace.max-lines:-1}")
+    private int maxStackTraceLines;
+
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_INSTANT;
 
-    // IP 주소 관련 헤더 상수 (우선순위 순)
-    private static final String[] IP_HEADER_CANDIDATES = {
-            "X-Forwarded-For",  // 가장 표준적, 프록시/로드밸런서에서 사용
-            "X-Real-IP",        // Nginx 등에서 사용
-            "Proxy-Client-IP"   // 일부 프록시에서 사용
-    };
-
-    /**
-     * Controller 메서드
-     */
     @Around("within(@org.springframework.web.bind.annotation.RestController *) && execution(public * *(..))")
     public Object logControllerMethods(ProceedingJoinPoint joinPoint) throws Throwable {
         return logMethodExecution(joinPoint);
     }
 
-    /**
-     * Service 메서드
-     */
     @Around("within(@org.springframework.stereotype.Service *) && execution(public * *(..))")
     public Object logServiceMethods(ProceedingJoinPoint joinPoint) throws Throwable {
         return logMethodExecution(joinPoint);
     }
 
-    /**
-     * Repository 메서드
-     */
     @Around("within(@org.springframework.stereotype.Repository *) && execution(public * *(..))")
     public Object logRepositoryMethods(ProceedingJoinPoint joinPoint) throws Throwable {
         return logMethodExecution(joinPoint);
     }
 
-    /**
-     * JPA Repository 메서드
-     */
     @Around("target(org.springframework.data.repository.Repository)")
     public Object logJpaRepositoryMethods(ProceedingJoinPoint joinPoint) throws Throwable {
         return logMethodExecution(joinPoint);
@@ -81,17 +71,11 @@ public class MethodLoggingAspect {
         return logMethodExecution(joinPoint);
     }
 
-    /**
-     * @LogMethodExecution 어노테이션
-     */
     @Around("@annotation(a306.dependency_logger_starter.logging.annotation.LogMethodExecution)")
     public Object logAnnotatedMethod(ProceedingJoinPoint joinPoint) throws Throwable {
         return logMethodExecution(joinPoint);
     }
 
-    /**
-     * 메서드 실행 로깅
-     */
     private Object logMethodExecution(ProceedingJoinPoint joinPoint) throws Throwable {
         long startTime = System.currentTimeMillis();
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
@@ -128,9 +112,6 @@ public class MethodLoggingAspect {
         return result;
     }
 
-    /**
-     * Layer 감지
-     */
     private String detectLayer(Class<?> targetClass) {
         if (targetClass.isAnnotationPresent(org.springframework.web.bind.annotation.RestController.class)) {
             return "CONTROLLER";
@@ -142,7 +123,6 @@ public class MethodLoggingAspect {
             return "REPOSITORY";
         }
 
-        // JPA Repository 체크
         for (Class<?> interfaceClass : targetClass.getInterfaces()) {
             if (interfaceClass.getName().contains("Repository")) {
                 return "REPOSITORY";
@@ -152,9 +132,6 @@ public class MethodLoggingAspect {
         return "UNKNOWN";
     }
 
-    /**
-     * HTTP 정보 추출
-     */
     private HttpInfo extractHttpInfo() {
         try {
             ServletRequestAttributes attributes =
@@ -162,13 +139,10 @@ public class MethodLoggingAspect {
 
             if (attributes != null) {
                 HttpServletRequest request = attributes.getRequest();
-                String clientIp = extractClientIp(request);
-
                 return new HttpInfo(
                         request.getMethod(),
                         request.getRequestURI(),
                         request.getQueryString(),
-                        clientIp,
                         attributes
                 );
             }
@@ -178,59 +152,20 @@ public class MethodLoggingAspect {
         return null;
     }
 
-    /**
-     * 클라이언트 IP 주소 추출
-     * 프록시를 통과한 경우 헤더에서 원본 IP를 추출
-     */
-    private String extractClientIp(HttpServletRequest request) {
-        // 1. 헤더에서 IP 추출 시도
-        for (String header : IP_HEADER_CANDIDATES) {
-            String ip = request.getHeader(header);
-            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
-                // X-Forwarded-For는 여러 IP가 쉼표로 구분되어 있을 수 있음
-                // 가장 첫 번째 IP가 원본 클라이언트 IP
-                if (ip.contains(",")) {
-                    ip = ip.split(",")[0].trim();
-                }
-                log.debug("클라이언트 IP 추출 ({}): {}", header, ip);
-                return ip;
-            }
-        }
-
-        // 2. 헤더에 없으면 직접 연결 IP 사용
-        String remoteAddr = request.getRemoteAddr();
-        log.debug("클라이언트 IP 추출 (RemoteAddr): {}", remoteAddr);
-        return remoteAddr;
-    }
-
     private void logRequest(String packageName, String layer, String methodName,
                             Map<String, Object> parameters, HttpInfo httpInfo) {
         try {
-            Map<String, Object> logEntry = new LinkedHashMap<>();
-            logEntry.put("@timestamp", LocalDateTime.now().atZone(ZoneOffset.UTC).format(ISO_FORMATTER));
-            String traceId = MDC.get("traceId");
-            logEntry.put("trace_id", traceId);
-            logEntry.put("level", "INFO");
-            logEntry.put("name", extractClassName(packageName));
-            logEntry.put("package", packageName);
-            logEntry.put("layer", layer);
+            Map<String, Object> logEntry = createBaseLogEntry(packageName, layer);
             logEntry.put("message", "Request received: " + methodName);
             logEntry.put("execution_time_ms", null);
 
             Map<String, Object> request = new LinkedHashMap<>();
-
             if (httpInfo != null) {
-                Map<String, Object> http = new LinkedHashMap<>();
-                http.put("method", httpInfo.method);
-                http.put("endpoint", httpInfo.uri);
-                if (httpInfo.queryString != null) {
-                    http.put("queryString", httpInfo.queryString);
-                }
-                request.put("http", http);
+                request.put("http", createHttpInfoMap(httpInfo, false));
             }
-
             request.put("method", methodName);
             request.put("parameters", parameters);
+
             logEntry.put("request", request);
             logEntry.put("response", null);
             logEntry.put("exception", null);
@@ -238,7 +173,7 @@ public class MethodLoggingAspect {
             log.info("{}", objectMapper.writeValueAsString(logEntry));
 
         } catch (Exception e) {
-            log.error("REQUEST ERROR", e);
+            log.error("REQUEST 로그 출력 실패", e);
         }
     }
 
@@ -246,26 +181,15 @@ public class MethodLoggingAspect {
                              Object responseData, Long executionTime, Throwable exception,
                              HttpInfo httpInfo) {
         try {
-            Map<String, Object> logEntry = new LinkedHashMap<>();
-            logEntry.put("@timestamp", LocalDateTime.now().atZone(ZoneOffset.UTC).format(ISO_FORMATTER));
-            String traceId = MDC.get("traceId");
-            logEntry.put("trace_id", traceId);
-            logEntry.put("name", extractClassName(packageName));
-            logEntry.put("package", packageName);
-            logEntry.put("layer", layer);
+            Map<String, Object> logEntry = createBaseLogEntry(packageName, layer);
             logEntry.put("execution_time_ms", executionTime);
             logEntry.put("request", null);
 
             if (exception != null) {
                 logEntry.put("level", "ERROR");
                 logEntry.put("message", "Failed to execute " + methodName + ": " + exception.getMessage());
-
-                Map<String, Object> exceptionInfo = new LinkedHashMap<>();
-                exceptionInfo.put("type", exception.getClass().getName());
-                exceptionInfo.put("message", exception.getMessage());
-                exceptionInfo.put("stacktrace", getStackTrace(exception));
                 logEntry.put("response", null);
-                logEntry.put("exception", exceptionInfo);
+                logEntry.put("exception", createExceptionInfo(exception));
 
                 log.error("{}", objectMapper.writeValueAsString(logEntry));
 
@@ -274,19 +198,12 @@ public class MethodLoggingAspect {
                 logEntry.put("message", "Response completed: " + methodName);
 
                 Map<String, Object> response = new LinkedHashMap<>();
-
                 if (httpInfo != null) {
-                    Map<String, Object> http = new LinkedHashMap<>();
-                    http.put("method", httpInfo.method);
-                    http.put("endpoint", httpInfo.uri);
-                    if (httpInfo.statusCode != null) {
-                        http.put("statusCode", httpInfo.statusCode);
-                    }
-                    response.put("http", http);
+                    response.put("http", createHttpInfoMap(httpInfo, true));
                 }
-
                 response.put("method", methodName);
                 response.put("result", responseData);
+
                 logEntry.put("response", response);
                 logEntry.put("exception", null);
 
@@ -294,24 +211,43 @@ public class MethodLoggingAspect {
             }
 
         } catch (Exception e) {
-            log.error("RESPONSE ERROR", e);
+            log.error("RESPONSE 로그 출력 실패", e);
         }
     }
 
-    private String extractClassName(String packageName) {
-        if (packageName == null || packageName.isEmpty()) {
-            return null;
-        }
-        int lastDotIndex = packageName.lastIndexOf('.');
-        if (lastDotIndex >= 0 && lastDotIndex < packageName.length() - 1) {
-            return packageName.substring(lastDotIndex + 1);
-        }
-        return packageName;
+    private Map<String, Object> createBaseLogEntry(String packageName, String layer) {
+        Map<String, Object> logEntry = new LinkedHashMap<>();
+        logEntry.put("@timestamp", LocalDateTime.now().atZone(ZoneOffset.UTC).format(ISO_FORMATTER));
+        logEntry.put("trace_id", MDC.get("traceId"));
+        logEntry.put("level", "INFO");
+        logEntry.put("package", packageName);
+        logEntry.put("layer", layer);
+        return logEntry;
     }
 
-    /**
-     * 파라미터 수집 (어노테이션 기반)
-     */
+    private Map<String, Object> createHttpInfoMap(HttpInfo httpInfo, boolean includeStatusCode) {
+        Map<String, Object> http = new LinkedHashMap<>();
+        http.put("method", httpInfo.method);
+        http.put("endpoint", httpInfo.uri);
+
+        if (includeStatusCode && httpInfo.statusCode != null) {
+            http.put("statusCode", httpInfo.statusCode);
+        }
+        if (httpInfo.queryString != null) {
+            http.put("queryString", httpInfo.queryString);
+        }
+
+        return http;
+    }
+
+    private Map<String, Object> createExceptionInfo(Throwable exception) {
+        Map<String, Object> exceptionInfo = new LinkedHashMap<>();
+        exceptionInfo.put("type", exception.getClass().getName());
+        exceptionInfo.put("message", exception.getMessage());
+        exceptionInfo.put("stacktrace", getStackTrace(exception));
+        return exceptionInfo;
+    }
+
     private Map<String, Object> collectParameters(MethodSignature signature, Object[] args) {
         Map<String, Object> parameters = new LinkedHashMap<>();
 
@@ -328,12 +264,10 @@ public class MethodLoggingAspect {
                     ? parameterNames[i]
                     : "arg" + i;
 
-            // Framework 객체 제외
             if (TypeChecker.isFrameworkClass(parameterTypes[i])) {
                 continue;
             }
 
-            // 어노테이션 체크
             Annotation[] annotations = parameterAnnotations[i];
 
             if (hasAnnotation(annotations, ExcludeValue.class)) {
@@ -352,19 +286,10 @@ public class MethodLoggingAspect {
         return parameters;
     }
 
-    /**
-     * 응답 수집
-     */
     private Object collectResponse(Object result) {
-        if (result == null) {
-            return null;
-        }
+        if (result == null) return null;
+        if (result instanceof Void) return "void";
 
-        if (result instanceof Void) {
-            return "void";
-        }
-
-        // ResponseEntity 처리
         if (result.getClass().getName().contains("ResponseEntity")) {
             try {
                 Method getBodyMethod = result.getClass().getMethod("getBody");
@@ -375,7 +300,6 @@ public class MethodLoggingAspect {
             }
         }
 
-        // 큰 객체 처리
         String resultStr = result.toString();
         if (resultStr.length() > 1000) {
             return result.getClass().getSimpleName() + " [truncated]";
@@ -384,9 +308,6 @@ public class MethodLoggingAspect {
         return ValueProcessor.processValue(result);
     }
 
-    /**
-     * 어노테이션 존재 여부 체크
-     */
     private boolean hasAnnotation(Annotation[] annotations, Class<? extends Annotation> annotationClass) {
         for (Annotation annotation : annotations) {
             if (annotation.annotationType() == annotationClass) {
@@ -396,51 +317,46 @@ public class MethodLoggingAspect {
         return false;
     }
 
-    /**
-     * StackTrace 문자열 변환 (상위 3줄만)
-     */
     private String getStackTrace(Throwable e) {
-        if (e == null) {
-            return null;
-        }
+        if (e == null) return null;
 
         StackTraceElement[] stackTrace = e.getStackTrace();
-
         if (stackTrace == null || stackTrace.length == 0) {
             return e.toString();
         }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append(e.toString()).append("\n");
+        StringBuilder sb = new StringBuilder(e.toString()).append("\n");
 
-        int limit = Math.min(3, stackTrace.length);
-        for (int i = 0; i < limit; i++) {
-            sb.append("\tat ").append(stackTrace[i].toString()).append("\n");
+        if (maxStackTraceLines == 0) {
+            return sb.toString().trim();
         }
 
-        if (stackTrace.length > 3) {
-            sb.append("\t... ").append(stackTrace.length - 3).append(" more");
+        int limit = (maxStackTraceLines == -1)
+                ? stackTrace.length
+                : Math.min(maxStackTraceLines, stackTrace.length);
+
+        for (int i = 0; i < limit; i++) {
+            sb.append("\tat ").append(stackTrace[i]).append("\n");
+        }
+
+        if (maxStackTraceLines != -1 && stackTrace.length > maxStackTraceLines) {
+            sb.append("\t... ").append(stackTrace.length - maxStackTraceLines).append(" more");
         }
 
         return sb.toString();
     }
 
-    /**
-     * HTTP 정보를 담는 내부 클래스
-     */
     private static class HttpInfo {
         final String method;
         final String uri;
         final String queryString;
-        final String clientIp;
         Integer statusCode;
         final ServletRequestAttributes attributes;
 
-        HttpInfo(String method, String uri, String queryString, String clientIp, ServletRequestAttributes attributes) {
+        HttpInfo(String method, String uri, String queryString, ServletRequestAttributes attributes) {
             this.method = method;
             this.uri = uri;
             this.queryString = queryString;
-            this.clientIp = clientIp;
             this.attributes = attributes;
             this.statusCode = null;
         }
