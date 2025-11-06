@@ -1,7 +1,7 @@
 package S13P31A306.loglens.domain.project.dto.request;
 
 import S13P31A306.loglens.domain.project.constants.ProjectOrderParam;
-import S13P31A306.loglens.domain.project.constants.ProjectPageNumber;
+import S13P31A306.loglens.domain.project.constants.ProjectConstants;
 import S13P31A306.loglens.domain.project.constants.ProjectSortParam;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -22,8 +22,8 @@ public record ProjectListRequest(
 ) {
     // 기본값
     public ProjectListRequest {
-        page = Objects.isNull(page) ? ProjectPageNumber.MIN_PAGE_NUMBER : page;
-        size = Objects.isNull(size) ? ProjectPageNumber.DEFAULT_PAGE_SIZE : size;
+        page = Objects.isNull(page) ? ProjectConstants.MIN_PAGE_NUMBER : page;
+        size = Objects.isNull(size) ? ProjectConstants.DEFAULT_PAGE_SIZE : size;
         sort = (Objects.isNull(sort) || sort.isBlank()) ? "CREATED_AT" : sort;
         order = (Objects.isNull(order) || order.isBlank()) ? "DESC" : order;
     }

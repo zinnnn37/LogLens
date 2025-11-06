@@ -4,7 +4,7 @@ import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.INVAL
 import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.INVALID_PAGE_SIZE;
 
 import S13P31A306.loglens.domain.project.constants.ProjectOrderParam;
-import S13P31A306.loglens.domain.project.constants.ProjectPageNumber;
+import S13P31A306.loglens.domain.project.constants.ProjectConstants;
 import S13P31A306.loglens.domain.project.constants.ProjectSortParam;
 import S13P31A306.loglens.domain.project.constants.ProjectSuccessCode;
 import S13P31A306.loglens.domain.project.controller.ProjectApi;
@@ -123,10 +123,10 @@ public class ProjectController implements ProjectApi {
     }
 
     private void validatePageRequest(int page, int size) {
-        if (page < ProjectPageNumber.MIN_PAGE_NUMBER) {
+        if (page < ProjectConstants.MIN_PAGE_NUMBER) {
             throw new BusinessException(INVALID_PAGE_NUMBER);
         }
-        if (size < ProjectPageNumber.MIN_PAGE_SIZE || size > ProjectPageNumber.MAX_PAGE_SIZE) {
+        if (size < ProjectConstants.MIN_PAGE_SIZE || size > ProjectConstants.MAX_PAGE_SIZE) {
             throw new BusinessException(INVALID_PAGE_SIZE);
         }
     }
