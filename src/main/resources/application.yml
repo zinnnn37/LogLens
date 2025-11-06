@@ -37,6 +37,9 @@ dependency:
       url: https://api.loglens.store
     enabled: true
 
+    stacktrace:
+      max-lines: 3
+
     frontend:
       enabled: true
       log-path: ./logs/fe/app.log
