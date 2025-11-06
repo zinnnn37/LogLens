@@ -17,9 +17,13 @@ export interface LogData {
   logId: string;
   traceId: string;
   timestamp: string; // ISO 8601 date-time
-  logLevel: 'WARN' | 'ERROR';
-  sourceType: 'FE' | 'BE';
+  logLevel: 'WARN' | 'ERROR'|'INFO';
+  sourceType: 'FE' | 'BE' | 'INFRA';
   message: string;
+  layer: string;
+  logger: string;
+  comment: string | null;
+
 }
 
 export interface LogSearchResponse {
