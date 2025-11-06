@@ -56,17 +56,29 @@ pipeline {
             steps {
                 dir('infra/dev') {
                     sh '''
-                        chmod +x scripts/deploy.sh
-                        
+                        echo "🔍 현재 작업 디렉토리: $(pwd)"
+                        echo "📂 디렉토리 내용:"
+                        ls -la
+                        echo "📂 scripts 디렉토리 내용:"
+                        ls -la scripts/ || echo "scripts 디렉토리가 없습니다!"
+
+                        if [ -f scripts/deploy.sh ]; then
+                            echo "✅ deploy.sh 파일 존재 확인"
+                            chmod +x scripts/deploy.sh
+                        else
+                            echo "❌ deploy.sh 파일이 없습니다!"
+                            exit 1
+                        fi
+
                         echo "🚀 Starting AI service Blue-Green deployment"
-                        
+
                         # AI 서비스용 환경변수 설정
                         export SERVICE_TYPE=ai-service
                         export BASE_PORT=8000
                         export SERVICE_DOMAIN=ai.loglens.store
 
                         # 배포 스크립트 실행
-                        ./scripts/deploy.sh
+                        bash ./scripts/deploy.sh
                     '''
                 }
             }
