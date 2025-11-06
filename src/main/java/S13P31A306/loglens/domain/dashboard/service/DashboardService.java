@@ -3,6 +3,7 @@ package S13P31A306.loglens.domain.dashboard.service;
 import S13P31A306.loglens.domain.dashboard.dto.response.ComponentDependencyResponse;
 import S13P31A306.loglens.domain.dashboard.dto.response.DashboardOverviewResponse;
 import S13P31A306.loglens.domain.dashboard.dto.response.ProjectComponentsResponse;
+import S13P31A306.loglens.domain.dashboard.dto.response.TopFrequentErrorsResponse;
 import org.springframework.security.core.userdetails.UserDetails;
 
 public interface DashboardService {
@@ -15,6 +16,17 @@ public interface DashboardService {
      * @param endTime 출력 데이터 필터 종료 시간
      */
     DashboardOverviewResponse getStatisticsOverview(String projectUuid, String startTime, String endTime);
+
+    /**
+     * 프로젝트에서 가장 많이 발생하는 에러 top limit 조회
+     *
+     * @param projectUuid
+     * @param limit
+     * @param startTime
+     * @param endTime
+     * @return TopFrequentErrorResponse limit개의 에러
+     */
+    TopFrequentErrorsResponse getTopFrequentErrors(String projectUuid, Integer limit, String startTime, String endTime);
 
     ProjectComponentsResponse getProjectComponents(String projectUuid, UserDetails userDetails);
 
