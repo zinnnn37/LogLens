@@ -83,7 +83,7 @@ public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
 
         // 집계 결과 추출
         Map<String, Long> logLevelCounts = extractLogLevelCounts(response);
-        BigDecimal avgResponseTime = extractAvgResponseTime(response);
+        Integer avgResponseTime = extractAvgResponseTime(response);
 
         // LogMetrics 저장
         LogMetrics metrics = LogMetrics.builder()
@@ -188,19 +188,19 @@ public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
      * OpenSearch 응답에서 평균 응답시간 추출
      *
      * @param response OpenSearch 응답
-     * @return BigDecimal 평균 응답시간 (ms)
+     * @return Integer 평균 응답시간 (ms)
      */
-    private BigDecimal extractAvgResponseTime(SearchResponse<Void> response) {
+    private Integer extractAvgResponseTime(SearchResponse<Void> response) {
         Double avgDuration = response.aggregations()
                 .get("avg_duration")
                 .avg()
                 .value();
 
         if (Objects.isNull(avgDuration) || avgDuration.isNaN()) {
-            return BigDecimal.ZERO;
+            return 0;
         }
 
-        return BigDecimal.valueOf(avgDuration).setScale(3, RoundingMode.HALF_UP);
+        return (int) Math.round(avgDuration);
     }
 
     /**
