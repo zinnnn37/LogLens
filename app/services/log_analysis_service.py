@@ -11,6 +11,7 @@ from app.chains.log_summarization_chain import log_summarization_chain
 from app.services.embedding_service import embedding_service
 from app.services.similarity_service import similarity_service
 from app.models.analysis import LogAnalysisResponse, LogAnalysisResult
+from app.validators.validation_pipeline import ValidationPipeline
 
 
 class LogAnalysisService:
@@ -19,6 +20,13 @@ class LogAnalysisService:
     def __init__(self):
         self.client = opensearch_client
         self.threshold = settings.SIMILARITY_THRESHOLD
+
+        # ValidationPipeline 초기화
+        self.validation_pipeline = ValidationPipeline(
+            structural_threshold=settings.VALIDATION_STRUCTURAL_THRESHOLD,
+            content_threshold=settings.VALIDATION_CONTENT_THRESHOLD,
+            overall_threshold=settings.VALIDATION_OVERALL_THRESHOLD,
+        )
 
     def _contains_korean(self, text: str) -> bool:
         """Check if text contains Korean characters"""
@@ -201,11 +209,14 @@ class LogAnalysisService:
 
     async def _analyze_with_llm(self, log_data: dict) -> LogAnalysisResult:
         """
-        Analyze single log using LLM with Korean output validation
+        Analyze single log using LLM with Korean output validation and quality validation
 
-        Retries once if the output is not in Korean
+        Now includes:
+        1. Korean output validation (기존)
+        2. ValidationPipeline (구조적 + 내용 검증) (신규!)
+        3. Retry logic for failed validations (신규!)
         """
-        max_retries = 2
+        max_retries = settings.VALIDATION_MAX_RETRIES
 
         for attempt in range(max_retries):
             result = await log_analysis_chain.ainvoke(
@@ -222,15 +233,39 @@ class LogAnalysisService:
                 }
             )
 
-            # Validate Korean output
-            if self._validate_korean_output(result):
-                if attempt > 0:
-                    print(f"✅ Korean output validation passed on attempt {attempt + 1}")
-                return result
-            else:
+            # 1. Validate Korean output (기존 검증)
+            if not self._validate_korean_output(result):
                 print(f"⚠️ Korean output validation failed on attempt {attempt + 1}/{max_retries}")
                 if attempt < max_retries - 1:
                     print("🔄 Retrying with Korean output enforcement...")
+                    continue
+                else:
+                    print("⚠️ All Korean validation attempts failed. Proceeding with last result.")
+
+            # 2. ValidationPipeline 실행 (신규!)
+            validation_result = await self.validation_pipeline.validate(
+                analysis=result, log_data=log_data
+            )
+
+            # 검증 결과 출력
+            print(f"📊 Validation: {validation_result['summary']}")
+
+            # 3. 검증 통과 여부 확인
+            if validation_result["passed"]:
+                if attempt > 0:
+                    print(f"✅ Validation passed on attempt {attempt + 1}")
+                return result
+            else:
+                # 검증 실패
+                print(f"⚠️ Validation failed on attempt {attempt + 1}/{max_retries}")
+                print(f"   Suggestions: {validation_result['suggestions'][:3]}")  # 최대 3개만 출력
+
+                if attempt < max_retries - 1 and settings.VALIDATION_ENABLE_RETRY:
+                    print("🔄 Retrying with quality improvements...")
+                    continue
+                else:
+                    print("⚠️ Validation failed but returning result (service continuity)")
+                    return result
 
         # If all retries failed, return the last result anyway with a warning
         print("⚠️ All Korean validation attempts failed. Returning last result.")
@@ -240,16 +275,16 @@ class LogAnalysisService:
         self, related_logs: list, center_log: dict
     ) -> LogAnalysisResult:
         """
-        Analyze multiple logs (trace context) using LLM with Map-Reduce pattern and Korean validation
+        Analyze multiple logs (trace context) using LLM with Map-Reduce pattern and quality validation
 
         Strategy:
         - If logs > MAP_REDUCE_THRESHOLD and ENABLE_MAP_REDUCE:
           1. Map: Split logs into chunks, summarize each chunk
           2. Reduce: Analyze combined summaries
         - Otherwise: Use traditional single-pass analysis
-        - Validates Korean output and retries once if needed
+        - Validates Korean output + ValidationPipeline
         """
-        max_retries = 2
+        max_retries = settings.VALIDATION_MAX_RETRIES
 
         for attempt in range(max_retries):
             # Apply Map-Reduce for large log sets
@@ -283,18 +318,42 @@ class LogAnalysisService:
                     }
                 )
 
-            # Validate Korean output
-            if self._validate_korean_output(result):
-                if attempt > 0:
-                    print(f"✅ Trace analysis Korean validation passed on attempt {attempt + 1}")
-                return result
-            else:
+            # 1. Validate Korean output (기존 검증)
+            if not self._validate_korean_output(result):
                 print(f"⚠️ Trace analysis Korean validation failed on attempt {attempt + 1}/{max_retries}")
                 if attempt < max_retries - 1:
                     print("🔄 Retrying trace analysis with Korean output enforcement...")
+                    continue
+                else:
+                    print("⚠️ All trace Korean validation attempts failed. Proceeding with last result.")
+
+            # 2. ValidationPipeline 실행 (신규!)
+            validation_result = await self.validation_pipeline.validate(
+                analysis=result, log_data=center_log
+            )
+
+            # 검증 결과 출력
+            print(f"📊 Trace Validation: {validation_result['summary']}")
+
+            # 3. 검증 통과 여부 확인
+            if validation_result["passed"]:
+                if attempt > 0:
+                    print(f"✅ Trace validation passed on attempt {attempt + 1}")
+                return result
+            else:
+                # 검증 실패
+                print(f"⚠️ Trace validation failed on attempt {attempt + 1}/{max_retries}")
+                print(f"   Suggestions: {validation_result['suggestions'][:3]}")
+
+                if attempt < max_retries - 1 and settings.VALIDATION_ENABLE_RETRY:
+                    print("🔄 Retrying trace analysis with quality improvements...")
+                    continue
+                else:
+                    print("⚠️ Trace validation failed but returning result (service continuity)")
+                    return result
 
         # If all retries failed, return the last result anyway with a warning
-        print("⚠️ All trace analysis Korean validation attempts failed. Returning last result.")
+        print("⚠️ All trace validation attempts failed. Returning last result.")
         return result
 
     def _format_logs_for_analysis(self, logs: list) -> str:

@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     LOG_CHUNK_SIZE: int = 5  # Number of logs per chunk in Map phase
     MAP_REDUCE_THRESHOLD: int = 10  # Apply Map-Reduce only when logs > this threshold
 
+    # Validation Settings (답변 품질 검증)
+    VALIDATION_STRUCTURAL_THRESHOLD: float = 0.7  # 구조적 검증 임계값
+    VALIDATION_CONTENT_THRESHOLD: float = 0.6     # 내용 검증 임계값 (근거 일치성 포함)
+    VALIDATION_OVERALL_THRESHOLD: float = 0.65    # 종합 통과 기준
+    VALIDATION_MAX_RETRIES: int = 2               # 검증 실패 시 최대 재시도 횟수
+    VALIDATION_ENABLE_RETRY: bool = True          # 검증 실패 시 재시도 활성화
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS_ORIGINS string into list"""
