@@ -1,6 +1,7 @@
 package S13P31A306.loglens.domain.component.service;
 
 import S13P31A306.loglens.domain.component.dto.MetricsData;
+import S13P31A306.loglens.domain.dashboard.dto.FrontendMetricsSummary;
 
 import java.util.Map;
 
@@ -21,4 +22,5 @@ public interface OpenSearchMetricsService {
      * @return 메트릭 데이터
      */
     MetricsData getComponentMetrics(String projectUuid, String componentName);
+    FrontendMetricsSummary getFrontendMetrics(String projectUuid);
 }
