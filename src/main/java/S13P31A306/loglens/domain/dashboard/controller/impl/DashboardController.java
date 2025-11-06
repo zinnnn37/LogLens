@@ -50,7 +50,11 @@ public class DashboardController implements DashboardApi {
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
-        return null;
+        DashboardOverviewResponse response = dashboardService.getTopFrequentErrors(projectUuid, limit, startTime, endTime);
+        return ApiResponseFactory.success(
+                DashboardSuccessCode.FREQUENT_ERROR_RETRIEVED,
+                response
+        );
     }
 
     /**
