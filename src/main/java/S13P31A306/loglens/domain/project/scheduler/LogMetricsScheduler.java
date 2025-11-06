@@ -21,9 +21,9 @@ public class LogMetricsScheduler {
 
     /**
      * 로그 메트릭 집계 스케줄러
-     * 5분마다 실행(0, 5, 10, ...)
+     * 5분마다 실행(0'30", 10'30", 20'30", ...)
      */
-    @Scheduled(cron = "0 */5 * * * *")
+    @Scheduled(cron = "30 */10 * * * *")
     public void aggregateLogMetrics() {
         log.info("{} 로그 메트릭 집계 시작", LOG_PREFIX);
 
