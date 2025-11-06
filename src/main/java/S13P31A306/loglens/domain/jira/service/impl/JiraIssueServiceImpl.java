@@ -126,7 +126,7 @@ public class JiraIssueServiceImpl implements JiraIssueService {
      * @param logId 로그 ID
      * @return 이슈 설명
      */
-    private String createLogDescription(Integer logId) {
+    private String createLogDescription(Long logId) {
         // TODO: 실제 구현 시 Log 및 LogDetail 조회하여 상세 정보 포함
         return String.format(
                 "LogLens에서 자동 생성된 이슈입니다.\\n\\n" +
