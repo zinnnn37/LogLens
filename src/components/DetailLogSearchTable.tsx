@@ -21,9 +21,8 @@ const LevelBadge = ({ level }: { level: LogData['logLevel'] }) => {
   );
 };
 
-
 interface DetailLogSearchTableProps {
-  onRowClick?: (log: LogData) => void; 
+  onRowClick?: (log: LogData) => void;
   logs: LogData[];
   loading: boolean;
   hasMore: boolean;
@@ -114,9 +113,9 @@ const DetailLogSearchTable = ({
               </tr>
             )}
 
-            {logs.map(log => ( 
+            {logs.map(log => (
               <tr
-                key={log.logId} 
+                key={log.logId}
                 className={`border-t border-slate-100 ${onRowClick ? 'cursor-pointer hover:bg-slate-50' : ''
                   }`}
                 onClick={onRowClick ? () => onRowClick(log) : undefined}
@@ -134,7 +133,7 @@ const DetailLogSearchTable = ({
                   </div>
                 </td>
                 <td className="py-3 pr-5 text-left align-top whitespace-nowrap tabular-nums">
-                  {new Date(log.timestamp).toLocaleString()}
+                  {new Date(log.timestamp.replace('Z', '')).toLocaleString()}
                 </td>
               </tr>
             ))}
