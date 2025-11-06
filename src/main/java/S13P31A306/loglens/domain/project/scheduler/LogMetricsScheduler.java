@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.project.scheduler;
 
+import S13P31A306.loglens.domain.project.constants.LogMetricsConstants;
 import S13P31A306.loglens.domain.project.service.LogMetricsBatchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +24,7 @@ public class LogMetricsScheduler {
      * 로그 메트릭 집계 스케줄러
      * 5분마다 실행(0, 5, 10, ...)
      */
-    @Scheduled(cron = "0 */5 * * * *")
+    @Scheduled(cron = LogMetricsConstants.AGGREGATION_CRON)
     public void aggregateLogMetrics() {
         log.info("{} 로그 메트릭 집계 시작", LOG_PREFIX);
 

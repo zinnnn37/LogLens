@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.project.service.impl;
 
+import S13P31A306.loglens.domain.project.constants.LogMetricsConstants;
 import S13P31A306.loglens.domain.project.entity.LogMetrics;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.LogMetricsRepository;
@@ -24,6 +25,8 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import static S13P31A306.loglens.domain.project.constants.LogMetricsConstants.AGGREGATION_INTERVAL_MINUTES;
 
 @Slf4j
 @Service
@@ -75,8 +78,8 @@ public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
             return;
         }
 
-        // 최근 5분간 데이터 조회
-        LocalDateTime startTime = aggregatedAt.minusMinutes(5);
+        // 최근 10분간 데이터 조회
+        LocalDateTime startTime = aggregatedAt.minusMinutes(AGGREGATION_INTERVAL_MINUTES);
 
         // OpenSearch 쿼리 실행
         SearchResponse<Void> response = executeOpenSearchQuery(project.getProjectUuid(), startTime, aggregatedAt);
@@ -204,13 +207,13 @@ public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
     }
 
     /**
-     * 현재 집계 시간 계산 (5분 단위로 절사)
+     * 현재 집계 시간 계산 (10분 단위로 절사)
      *
      * @return LocalDateTime 집계 기준 시간
      */
     private LocalDateTime getCurrentAggregationTime() {
         LocalDateTime now = LocalDateTime.now();
-        int minute = (now.getMinute() / 5) * 5;
+        int minute = (now.getMinute() / AGGREGATION_INTERVAL_MINUTES) * AGGREGATION_INTERVAL_MINUTES;
         return now.withMinute(minute).withSecond(0).withNano(0);
     }
 }
