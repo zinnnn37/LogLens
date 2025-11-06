@@ -5,7 +5,6 @@ LangChain chain for log analysis
 from typing import Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnableLambda
 from app.core.config import settings
 from app.models.analysis import LogAnalysisResult
@@ -19,8 +18,9 @@ llm = ChatOpenAI(
     base_url=settings.OPENAI_BASE_URL,
 )
 
-# Output parser
-output_parser = PydanticOutputParser(pydantic_object=LogAnalysisResult)
+# Create structured output LLM using OpenAI's JSON mode / Function Calling
+# This ensures the LLM returns pure JSON without markdown code blocks
+structured_llm = llm.with_structured_output(LogAnalysisResult)
 
 
 def format_log_content(inputs: Dict[str, Any]) -> Dict[str, Any]:
@@ -393,9 +393,7 @@ Expected Output:
 }}
 ```
 
-위 예시들처럼 **반드시 한국어로** 분석 결과를 작성하세요.
-
-{format_instructions}""",
+위 예시들처럼 **반드시 한국어로** 분석 결과를 작성하세요.""",
         ),
         (
             "human",
@@ -410,10 +408,10 @@ Expected Output:
     ]
 )
 
-# Create the chain with RunnableLambda for dynamic log formatting
+# Create the chain with structured output
+# Uses OpenAI's JSON mode / Function Calling for guaranteed JSON format
 log_analysis_chain = (
     RunnableLambda(format_log_content)
-    | log_analysis_prompt.partial(format_instructions=output_parser.get_format_instructions())
-    | llm
-    | output_parser
+    | log_analysis_prompt
+    | structured_llm  # Returns LogAnalysisResult directly, no parsing needed
 )
