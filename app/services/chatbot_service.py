@@ -206,7 +206,7 @@ class ChatbotService:
                         "bool": {
                             "must": [
                                 {"terms": {"log_id": log_ids}},
-                                {"term": {"project_uuid": project_uuid}},  # Project isolation
+                                {"term": {"project_uuid.keyword": project_uuid}},  # Project isolation
                             ]
                         }
                     },

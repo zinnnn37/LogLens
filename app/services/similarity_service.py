@@ -71,7 +71,7 @@ class SimilarityService:
 
         # Always filter by project_uuid if provided
         if project_uuid:
-            filter_clauses.append({"term": {"project_uuid": project_uuid}})
+            filter_clauses.append({"term": {"project_uuid.keyword": project_uuid}})
 
         if filter_clauses:
             query["query"]["bool"]["filter"] = filter_clauses
@@ -136,7 +136,7 @@ class SimilarityService:
         # Add project_uuid filter if provided
         if project_uuid:
             query["query"]["bool"]["filter"] = [
-                {"term": {"metadata.project_uuid": project_uuid}}
+                {"term": {"metadata.project_uuid.keyword": project_uuid}}
             ]
 
         response = self.client.search(index="qa-cache", body=query)
@@ -198,7 +198,7 @@ class SimilarityService:
                 "bool": {
                     "must": [
                         {"term": {"trace_id": trace_id}},
-                        {"term": {"project_uuid": project_uuid}},
+                        {"term": {"project_uuid.keyword": project_uuid}},
                     ],
                     "filter": [
                         {

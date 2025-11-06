@@ -205,7 +205,7 @@ class LogAnalysisService:
                         "bool": {
                             "must": [
                                 {"term": {"log_id": log_id}},
-                                {"term": {"project_uuid": project_uuid}},
+                                {"term": {"project_uuid.keyword": project_uuid}},
                             ]
                         }
                     }
@@ -411,7 +411,7 @@ class LogAnalysisService:
                         "bool": {
                             "must": [
                                 {"term": {"log_id": log_id}},
-                                {"term": {"project_uuid": project_uuid}},
+                                {"term": {"project_uuid.keyword": project_uuid}},
                             ]
                         }
                     },
