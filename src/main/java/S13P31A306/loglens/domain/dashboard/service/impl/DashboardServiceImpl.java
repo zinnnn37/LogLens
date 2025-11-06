@@ -4,6 +4,9 @@ import S13P31A306.loglens.domain.component.entity.Component;
 import S13P31A306.loglens.domain.component.entity.ComponentMetrics;
 import S13P31A306.loglens.domain.component.service.ComponentMetricsService;
 import S13P31A306.loglens.domain.component.service.ComponentService;
+import S13P31A306.loglens.domain.component.service.FrontendMetricsService;
+import S13P31A306.loglens.domain.dashboard.dto.FrontendMetricsSummary;
+import S13P31A306.loglens.domain.dashboard.dto.GraphMetricsSummary;
 import S13P31A306.loglens.domain.dashboard.dto.response.*;
 import S13P31A306.loglens.domain.dashboard.mapper.DashboardMapper;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
@@ -28,8 +31,10 @@ import java.util.stream.Collectors;
 public class DashboardServiceImpl implements DashboardService {
 
     private static final String LOG_PREFIX = "[DashboardService]";
+
     private final ComponentService componentService;
     private final ComponentMetricsService componentMetricsService;
+    private final FrontendMetricsService frontendMetricsService;
     private final DependencyGraphService dependencyGraphService;
     private final DashboardValidator validator;
     private final DashboardMapper mapper;
@@ -60,9 +65,11 @@ public class DashboardServiceImpl implements DashboardService {
         log.debug("{} 컴포넌트 의존성 조회 시작: projectUuid={}, componentId={}",
                 LOG_PREFIX, projectUuid, componentId);
 
+        // 1. 권한 검증
         Integer projectId = validator.validateProjectAccess(projectUuid, userDetails);
         validator.validateComponentAccess(componentId, projectId);
 
+        // 2. 전체 컴포넌트 및 의존성 그래프 조회
         List<Component> allProjectComponents = componentService.getProjectComponents(projectId);
 
         Set<Integer> allComponentIds = allProjectComponents.stream()
@@ -73,44 +80,54 @@ public class DashboardServiceImpl implements DashboardService {
                 .flatMap(component -> dependencyGraphService
                         .findAllDependenciesByComponentId(component.getId())
                         .stream())
-                .distinct()  // 중복 제거
+                .distinct()
                 .toList();
 
         log.debug("{} 전체 그래프 조회: components={}, edges={}",
                 LOG_PREFIX, allComponentIds.size(), allDependencies.size());
 
-        // 4. 컴포넌트 정보 Map 생성
+        // 3. 컴포넌트 정보 Map 생성
         Map<Integer, Component> componentMap = allProjectComponents.stream()
                 .collect(Collectors.toMap(Component::getId, component -> component));
 
-        // 5. 메트릭 정보 조회
+        // 4. Backend 메트릭 정보 조회 (DB에서)
         Map<Integer, ComponentMetrics> metricsMap = componentMetricsService
                 .getMetricsByComponentIds(new ArrayList<>(allComponentIds));
 
-        // 6. ComponentInfo 리스트 생성
+        // 5. ComponentInfo 리스트 생성
         List<ComponentInfo> componentInfos = ComponentInfo.fromMaps(
                 allComponentIds,
                 componentMap,
                 metricsMap
         );
 
-        // 7. 그래프 생성
+        // 6. 그래프 생성
         DependencyGraphResponse graph = DependencyGraphResponse.from(allDependencies);
 
-        // 8. 전체 메트릭 요약 생성
-        ComponentDependencyResponse.GraphMetricsSummary summary =
+        // 7. Backend 메트릭 요약 생성
+        GraphMetricsSummary graphSummary =
                 calculateGraphMetricsSummary(componentInfos);
 
-        log.debug("{} 컴포넌트 의존성 조회 완료: componentId={}, totalComponents={}, edges={}",
-                LOG_PREFIX, componentId, componentInfos.size(), graph.edges().size());
+        // 8. Frontend 메트릭 조회 (DB에서)
+        FrontendMetricsSummary frontendMetrics =
+                frontendMetricsService.getFrontendMetricsByProjectId(projectId);
 
-        return new ComponentDependencyResponse(componentInfos, graph, summary);
+        log.debug("{} 컴포넌트 의존성 조회 완료: componentId={}, totalComponents={}, edges={}, frontendTraces={}",
+                LOG_PREFIX, componentId, componentInfos.size(), graph.edges().size(), frontendMetrics.totalTraces());
+
+        // 9. 응답 생성 (Frontend 메트릭 포함)
+        return new ComponentDependencyResponse(
+                componentInfos,
+                graph,
+                graphSummary,
+                frontendMetrics  // ✅ Frontend 메트릭 추가
+        );
     }
 
     /**
-     * 그래프 전체 메트릭 요약 계산
+     * 그래프 전체 메트릭 요약 계산 (Backend만)
      */
-    private ComponentDependencyResponse.GraphMetricsSummary calculateGraphMetricsSummary(
+    private GraphMetricsSummary calculateGraphMetricsSummary(
             List<ComponentInfo> componentInfos) {
 
         // 메트릭이 있는 컴포넌트만 필터링
@@ -120,7 +137,7 @@ public class DashboardServiceImpl implements DashboardService {
 
         if (componentsWithMetrics.isEmpty()) {
             log.debug("{} 메트릭이 있는 컴포넌트가 없음", LOG_PREFIX);
-            return new ComponentDependencyResponse.GraphMetricsSummary(
+            return new GraphMetricsSummary(
                     componentInfos.size(),
                     0, 0, 0, 0.0,
                     null, null
@@ -174,7 +191,7 @@ public class DashboardServiceImpl implements DashboardService {
         log.debug("{} 메트릭 요약 계산 완료: totalCalls={}, totalErrors={}, averageErrorRate={}",
                 LOG_PREFIX, totalCalls, totalErrors, averageErrorRate);
 
-        return new ComponentDependencyResponse.GraphMetricsSummary(
+        return new GraphMetricsSummary(
                 componentInfos.size(),
                 totalCalls,
                 totalErrors,
