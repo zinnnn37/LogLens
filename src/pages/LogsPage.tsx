@@ -1,4 +1,4 @@
-// src/pages/LogsPage.tsx (CSV 다운로드 추가)
+// src/pages/LogsPage.tsx
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { searchLogs } from '@/services/logService';
@@ -9,7 +9,7 @@ import type {
 
 import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { FileDown } from 'lucide-react';
+import { FileDown, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 import DetailLogSearchBox, {
@@ -26,6 +26,12 @@ import LogDetailModal1 from '@/components/modal/LogDetailModal1';
 import LogDetailModal2, {
   type JiraTicketFormData,
 } from '@/components/modal/LogDetailModal2';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 const LogsPage = () => {
   const { projectUuid: uuidFromParams } = useParams<{ projectUuid: string }>();
@@ -116,7 +122,7 @@ const LogsPage = () => {
       const currentCriteria = savedCriteria.current;
       const params: LogSearchParams = {
         projectUuid,
-        cursor: undefined, 
+        cursor: undefined,
         size: 50,
         logLevel: currentCriteria?.logLevel?.length
           ? currentCriteria.logLevel
@@ -145,7 +151,7 @@ const LogsPage = () => {
             if (actuallyNewLogs.length === 0) {
               return prevLogs;
             }
-            return [...actuallyNewLogs, ...prevLogs];
+            return [...actuallyNewLogs, ...prevLogs]; // '위에' 쌓기
           });
         }
       } catch (error) {
@@ -156,6 +162,7 @@ const LogsPage = () => {
     const intervalId = setInterval(tick, 5000);
     return () => clearInterval(intervalId);
   }, [loading, projectUuid]);
+
 
   // 검색핸들러
   const handleSearch = (newCriteria: SearchCriteria) => {
@@ -168,14 +175,17 @@ const LogsPage = () => {
     fetchLogs(false, criteria);
   };
 
-  // csv 다운로드
+  // CSV 다운로드
   const handleDownloadCSV = () => {
     if (logs.length === 0) {
-      toast.info('다운로드할 로그 데이터가 없습니다.');
+      toast.warning('다운로드할 로그 데이터가 없습니다.', {
+        description: '현재 화면에 조회된 로그가 0개입니다. 로그 검색 후 시도해주세요.',
+        icon: <Download className="h-4 w-4 text-orange-500" />,
+        duration: 3000,
+      });
       return;
     }
 
-    // CSV 문자열 이스케이프 (쉼표, 줄바꿈, 따옴표 처리)
     const escapeCSV = (val: string | null | undefined): string => {
       if (val === null || val === undefined) {
         return '';
@@ -229,6 +239,12 @@ const LogsPage = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    // 다운로드 성공 알림 추가
+    toast.success('로그 데이터 다운로드를 시작합니다.', {
+      description: `${logs.length}개의 로그를 CSV 파일로 저장합니다.`,
+      duration: 3000,
+    });
   };
 
   const [selectedLog, setSelectedLog] = useState<LogData | null>(null);
@@ -283,73 +299,83 @@ const LogsPage = () => {
   };
 
   return (
-    <div className="font-pretendard space-y-6 p-6 py-1">
-      <h1 className="font-godoM text-lg">로그 내역</h1>
+    <TooltipProvider>
+      <div className="font-pretendard space-y-6 p-6 py-1">
+        <h1 className="font-godoM text-lg">로그 내역</h1>
 
-      {/* 로그 발생 추이 */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className="xl:col-span-1">
-          <LogTrendCard />
+        {/* 로그 발생 추이 */}
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <div className="xl:col-span-1">
+            <LogTrendCard />
+          </div>
+
+          {/* 트래픽 그래프 */}
+          <div className="xl:col-span-1">
+            <TrafficGraphCard />
+          </div>
         </div>
 
-        {/* 트래픽 그래프 */}
-        <div className="xl:col-span-1">
-          <TrafficGraphCard />
+        {/* 검색창 */}
+        <div>
+          <DetailLogSearchBox onSearch={handleSearch} />
         </div>
+
+        {/* 검색 결과 */}
+        <div>
+          <DetailLogSearchTable
+            logs={logs}
+            loading={loading}
+            hasMore={hasMore}
+            onLoadMore={handleLoadMore}
+            onRowClick={handleRowClick}
+          />
+        </div>
+
+        {/* 로그 상세 정보 모달 */}
+        {/* 1페이지 모달 렌더링 */}
+        {modalPage === 'page1' && (
+          <LogDetailModal1
+            open={isModalOpen}
+            onOpenChange={handleModalOpenChange}
+            log={selectedLog}
+            onGoToNextPage={handleGoToNextPage}
+          />
+        )}
+
+        {/* 2페이지 모달 렌더링 */}
+        {modalPage === 'page2' && selectedLog && (
+          <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
+            <DialogContent className="sm:max-w-3xl">
+              {/* log 데이터가 null이 아닐 때만 렌더링 */}
+              <LogDetailModal2
+                log={selectedLog}
+                onGoBack={handleGoBack}
+                onSubmit={handleSubmitJira}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* CSV 다운버튼 */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={handleDownloadCSV}
+              className="fixed right-6 bottom-[72px] flex h-14 w-14 items-center justify-center rounded-full p-0 shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
+              aria-label="로그 데이터 CSV 파일 다운로드"
+            >
+              <FileDown className="h-6 w-6" />
+            </Button>
+          </TooltipTrigger>
+          {/* Tooltip 내용 */}
+          <TooltipContent className="bg-gray-800 text-white shadow-md">
+            로그 데이터 CSV 파일 다운로드
+          </TooltipContent>
+        </Tooltip>
+
+        <FloatingChecklist />
       </div>
-
-      {/* 검색창 */}
-      <div>
-        <DetailLogSearchBox onSearch={handleSearch} />
-      </div>
-
-      {/* 검색 결과 */}
-      <div>
-        <DetailLogSearchTable
-          logs={logs}
-          loading={loading}
-          hasMore={hasMore}
-          onLoadMore={handleLoadMore}
-          onRowClick={handleRowClick}
-        />
-      </div>
-
-      {/* 로그 상세 정보 모달 */}
-      {/* 1페이지 모달 렌더링 */}
-      {modalPage === 'page1' && (
-        <LogDetailModal1
-          open={isModalOpen}
-          onOpenChange={handleModalOpenChange}
-          log={selectedLog}
-          onGoToNextPage={handleGoToNextPage}
-        />
-      )}
-
-      {/* 2페이지 모달 렌더링 */}
-      {modalPage === 'page2' && selectedLog && (
-        <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
-          <DialogContent className="sm:max-w-3xl">
-            {/* log 데이터가 null이 아닐 때만 렌더링 */}
-            <LogDetailModal2
-              log={selectedLog}
-              onGoBack={handleGoBack}
-              onSubmit={handleSubmitJira}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* csv 다운 버튼 */}
-      <Button
-        onClick={handleDownloadCSV}
-        className="fixed right-6 bottom-[72px] flex h-14 w-14 items-center justify-center rounded-full p-0 shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
-        aria-label="CSV 다운로드"
-      >
-        <FileDown className="h-6 w-6" />
-      </Button>
-
-      <FloatingChecklist />
-    </div>
+    </TooltipProvider>
   );
 };
 
