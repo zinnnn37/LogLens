@@ -11,8 +11,9 @@ import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PROJE
 import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.USER_NOT_FOUND;
 
 import S13P31A306.loglens.domain.auth.entity.User;
-import S13P31A306.loglens.domain.auth.respository.UserRepository;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
+import S13P31A306.loglens.domain.project.constants.ProjectOrderParam;
+import S13P31A306.loglens.domain.project.constants.ProjectSortParam;
 import S13P31A306.loglens.domain.jira.repository.JiraConnectionRepository;
 import S13P31A306.loglens.domain.project.dto.request.ProjectCreateRequest;
 import S13P31A306.loglens.domain.project.dto.request.ProjectMemberInviteRequest;
@@ -27,6 +28,7 @@ import S13P31A306.loglens.domain.project.mapper.ProjectMemberMapper;
 import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import S13P31A306.loglens.domain.project.service.ProjectService;
+import S13P31A306.loglens.domain.project.validator.ProjectValidator;
 import S13P31A306.loglens.global.exception.BusinessException;
 import java.util.Comparator;
 import java.util.List;
@@ -38,6 +40,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.*;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -48,12 +52,12 @@ public class ProjectServiceImpl implements ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
-    private final UserRepository userRepository;
     private final ProjectMapper projectMapper;
     private final ProjectMemberMapper projectMemberMapper;
     private final JiraConnectionRepository jiraConnectionRepository;
 
     private final AuthenticationHelper authHelper;
+    private final ProjectValidator projectValidator;
 
     @Override
     @Transactional
@@ -63,7 +67,6 @@ public class ProjectServiceImpl implements ProjectService {
         User user = authHelper.getCurrentUser();
 
         try {
-            // 프로젝트 생성
             Project project = Project.builder()
                     .projectName(request.projectName())
                     .description(request.description())
@@ -82,7 +85,6 @@ public class ProjectServiceImpl implements ProjectService {
 
             return projectMapper.toCreateResponse(savedProject);
         } catch (DataIntegrityViolationException e) {
-            // TODO: 추후 projectUuid 추가 됐을 때 UNIQUE면 분기 필요
             log.info("{} 중복된 프로젝트 이름입니다: {}", LOG_PREFIX, request.projectName());
             throw new BusinessException(PROJECT_NAME_DUPLICATED);
         }
@@ -93,27 +95,20 @@ public class ProjectServiceImpl implements ProjectService {
     public ProjectMemberInviteResponse inviteMember(String projectUuid, ProjectMemberInviteRequest request) {
         log.info("{} 프로젝트에 사용자 초대 시도", LOG_PREFIX);
 
-        Integer inviterId = authHelper.getCurrentUserId();
         Integer inviteeId = request.userId();
 
-        Project project = findProjectByUuid(projectUuid);
+        // 프로젝트 존재 여부 확인
+        Project project = projectValidator.validateProjectExists(projectUuid);
         int projectId = project.getId();
 
-        // 프로젝트 초대 권한 확인
-        validateProjectAccess(projectId, inviterId);
+        // 현재 사용자의 프로젝트 접근 권한 확인
+        projectValidator.validateProjectAccess(projectId);
 
-        // 사용자 존재 여부 확인
-        User targetUser = userRepository.findById(inviteeId)
-                .orElseThrow(() -> {
-                    log.warn("{} 사용자가 존재하지 않습니다.", LOG_PREFIX);
-                    return new BusinessException(USER_NOT_FOUND);
-                });
+        // 초대하는 사용자 존재 여부 확인
+        User targetUser = projectValidator.validateUserExists(inviteeId);
 
-        // 이미 초되된 경우
-        if (projectMemberRepository.findByProjectIdAndUserId(projectId, inviteeId).isPresent()) {
-            log.warn("{} 이미 초대된 사용자입니다.", LOG_PREFIX);
-            throw new BusinessException(MEMBER_EXISTS);
-        }
+        // 이미 초대된 경우
+        projectValidator.validateMemberNotExists(projectId, inviteeId);
 
         ProjectMember member = ProjectMember.builder()
                 .project(project)
@@ -129,7 +124,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectListResponse getProjects(int page, int size, String sort, String order) {
+    public ProjectListResponse getProjects(int page, int size, ProjectSortParam sort, ProjectOrderParam order) {
         log.info("{} 프로젝트 목록 조회: page={}, size={}, sort={}, order={}", LOG_PREFIX, page, size, sort, order);
 
         Integer userId = authHelper.getCurrentUserId();
@@ -141,8 +136,17 @@ public class ProjectServiceImpl implements ProjectService {
         allProjects.sort(comparator);
 
         // 페이징: Fetch Join 사용하여 DB 페이징 불가
+        int totalElements = allProjects.size();
         int start = page * size;
+
+        // 범위를 벗어난 페이지 요청 처리
+        if (start > 0 && start >= totalElements) {
+            log.warn("{} 유효하지 않은 페이지 - start={}, total={}", LOG_PREFIX, start, totalElements);
+            throw new BusinessException(PAGE_SIZE_EXCCEED);
+        }
+
         int end = Math.min(start + size, allProjects.size());
+
         List<Project> pagedProjects = allProjects.subList(start, end);
 
         // Jira 연결 정보를 Map으로 생성
@@ -156,8 +160,6 @@ public class ProjectServiceImpl implements ProjectService {
         List<ProjectListResponse.ProjectInfo> projectInfos =
                 projectMapper.toProjectInfoList(pagedProjects, jiraConnectionMap);
 
-        // 페이지 정보
-        int totalElements = allProjects.size();
         int totalPages = (int) Math.ceil((double) totalElements / size);
 
         log.info("{} 프로젝트 목록 조회 완료: page={}, size={}, total={}",
@@ -165,7 +167,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         return new ProjectListResponse(
                 projectInfos,
-                new ProjectListResponse.Pagination(page, size, sort, order),
+                new ProjectListResponse.Pagination(page, size, sort.toString(), order.toString()),
                 totalElements,
                 totalPages,
                 page == 0,
@@ -177,13 +179,11 @@ public class ProjectServiceImpl implements ProjectService {
     public ProjectDetailResponse getProjectDetail(String projectUuid) {
         log.info("{} 프로젝트 조회 시도", LOG_PREFIX);
 
-        Integer userId = authHelper.getCurrentUserId();
-
         // 프로젝트 존재 여부
-        Project project = findProjectByUuid(projectUuid);
+        Project project = projectValidator.validateProjectExists(projectUuid);
 
-        // 프로젝트 권한 확인
-        validateProjectAccess(project.getId(), userId);
+        // 현재 사용자의 프로젝트 권한 확인
+        projectValidator.validateProjectAccess(project.getId());
 
         log.info("{} 프로젝트 조회 성공: project={}", LOG_PREFIX, project.getProjectName());
 
@@ -197,7 +197,7 @@ public class ProjectServiceImpl implements ProjectService {
         return projectRepository.findByProjectUuid(uuid)
                 .map(Project::getId)
                 .orElseThrow(() -> {
-                    log.warn("{} 유효하지 않은 API Key입니다.", LOG_PREFIX);
+                    log.warn("{} 유효하지 않은 Project UUID입니다.", LOG_PREFIX);
                     return new BusinessException(PROJECT_NOT_FOUND);
                 });
     }
@@ -207,15 +207,11 @@ public class ProjectServiceImpl implements ProjectService {
     public void deleteProject(String projectUuid) {
         log.info("{} 프로젝트 삭제 시도", LOG_PREFIX);
 
-        Integer userId = authHelper.getCurrentUserId();
         // 프로젝트 존재 여부
-        Project project = findProjectByUuid(projectUuid);
+        Project project = projectValidator.validateProjectExists(projectUuid);
 
-        // 프로젝트 권한 확인
-        if (!projectMemberRepository.existsByProjectIdAndUserId(project.getId(), userId)) {
-            log.warn("{} 프로젝트 삭제 권한이 없습니다: projectId={}", LOG_PREFIX, project.getProjectName());
-            throw new BusinessException(PROJECT_DELETE_FORBIDDEN);
-        }
+        // 현재 사용자의 프로젝트 권한 확인
+        projectValidator.validateProjectAccess(project.getId());
 
         projectRepository.delete(project);
 
@@ -227,56 +223,31 @@ public class ProjectServiceImpl implements ProjectService {
     public void deleteMember(String projectUuid, int memberId) {
         log.info("{} 프로젝트 멤버 삭제 시도", LOG_PREFIX);
 
-        Integer userId = authHelper.getCurrentUserId();
+        // 현재 사용자가 자기 자신 삭제 방지
+        projectValidator.validateCurrentUserNotSelfDeletion(memberId);
 
-        // 자기 자신 삭제 방지
-        if (userId.equals(memberId)) {
-            log.info("{} 자기 자신은 삭제할 수 없습니다.", LOG_PREFIX);
-            throw new BusinessException(CANNOT_DELETE_SELF);
-        }
         // 프로젝트 존재 여부
-        Project project = findProjectByUuid(projectUuid);
+        Project project = projectValidator.validateProjectExists(projectUuid);
         int projectId = project.getId();
 
-        // 프로젝트 권한 확인
-        if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
-            log.warn("{} 멤버 삭제 권한이 없습니다.", LOG_PREFIX);
-            throw new BusinessException(MEMBER_DELETE_FORBIDDEN);
-        }
+        // 현재 사용자의 프로젝트 권한 확인
+        projectValidator.validateProjectAccess(projectId);
 
         // 삭제하고자 하는 멤버가 프로젝트에 존재하는지 여부 확인
-        if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, memberId)) {
-            log.warn("{} 해당 멤버가 존재하지 않습니다.", LOG_PREFIX);
-            throw new BusinessException(MEMBER_NOT_FOUND);
-        }
+        projectValidator.validateMemberExists(projectId, memberId);
 
         projectMemberRepository.deleteByProjectIdAndUserId(projectId, memberId);
 
         log.info("{} 멤버 삭제 완료: project={}", LOG_PREFIX, project.getProjectName());
     }
 
-    private Comparator<Project> getComparator(String sort, String order) {
-        // TODO: 용어 통일 필요?
-        Comparator<Project> comparator = switch (sort.toLowerCase()) {
-            case "PROJECT_NAME" -> Comparator.comparing(Project::getProjectName);
-            case "UPDATED_AT" -> Comparator.comparing(Project::getUpdatedAt);
-            default -> Comparator.comparing(Project::getCreatedAt);
+    private Comparator<Project> getComparator(ProjectSortParam sort, ProjectOrderParam order) {
+        Comparator<Project> comparator = switch (sort) {
+            case PROJECT_NAME -> Comparator.comparing(Project::getProjectName);
+            case UPDATED_AT -> Comparator.comparing(Project::getUpdatedAt);
+            case CREATED_AT -> Comparator.comparing(Project::getCreatedAt);
         };
-        return order.equalsIgnoreCase("asc") ? comparator : comparator.reversed();
+        return order == ProjectOrderParam.ASC ? comparator : comparator.reversed();
     }
 
-    private Project findProjectByUuid(String projectUuid) {
-        return projectRepository.findByProjectUuid(projectUuid)
-                .orElseThrow(() -> {
-                    log.warn("{} 프로젝트를 찾을 수 없습니다.", LOG_PREFIX);
-                    return new BusinessException(PROJECT_NOT_FOUND);
-                });
-    }
-
-    private void validateProjectAccess(int projectId, int userId) {
-        if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
-            log.warn("{} 프로젝트 접근 권한이 없습니다: projectId={}", LOG_PREFIX, projectId);
-            throw new BusinessException(ACCESS_FORBIDDEN);
-        }
-    }
 }

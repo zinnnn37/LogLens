@@ -33,5 +33,5 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             "WHERE p.id IN (SELECT pm.project.id FROM ProjectMember pm WHERE pm.user.id = :userId)")
     List<Project> findProjectsWithMembersByUserId(@Param("userId") int userId);
 
-    Optional<Project> findByProjectUuid(String apiKey);
+    Optional<Project> findByProjectUuid(String projectUuid);
 }
