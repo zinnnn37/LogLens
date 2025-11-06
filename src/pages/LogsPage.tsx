@@ -1,14 +1,13 @@
-// src/pages/LogsPage.tsx
-<<<<<<< HEAD
-import { useState, useCallback, useEffect } from 'react'; 
-import { useParams } from 'react-router-dom'; // url 에서 projectUuid 가져오기위해
-import { searchLogs } from '@/services/logService'; 
-import type { LogData, LogSearchParams } from '@/types/log'; 
+// src/pages/LogsPage.tsx (any 완전 제거)
 
-=======
-import { useState, useCallback } from 'react'; // useCallback 추가
+import { useState, useCallback, useEffect } from 'react';
+import { searchLogs } from '@/services/logService';
+import type {
+  LogData,
+  LogSearchParams,
+} from '@/types/log';
+
 import { useParams } from 'react-router-dom';
->>>>>>> fe/develop
 import DetailLogSearchBox, {
   type SearchCriteria,
 } from '@/components/DetailLogSearchBox';
@@ -18,18 +17,15 @@ import FloatingChecklist from '@/components/FloatingChecklist';
 
 import DetailLogSearchTable from '@/components/DetailLogSearchTable';
 
-// --- 모달 컴포넌트 임포트 ---
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import LogDetailModal1 from '@/components/modal/LogDetailModal1';
 import LogDetailModal2, {
   type JiraTicketFormData,
 } from '@/components/modal/LogDetailModal2';
 
-const TEMP_PROJECT_UUID = '48d96cd7-bf8d-38f5-891c-9c2f6430d871';
-
 const LogsPage = () => {
   const { projectUuid: uuidFromParams } = useParams<{ projectUuid: string }>();
-  const projectUuid = uuidFromParams || TEMP_PROJECT_UUID;
+  const projectUuid = uuidFromParams;
 
   const [logs, setLogs] = useState<LogData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,8 +39,12 @@ const LogsPage = () => {
       isInitial: boolean,
       searchCriteria: SearchCriteria | null,
     ) => {
-      if (!projectUuid) {return;}
-      if (loading || (!isInitial && !hasMore)) {return;}
+      if (!projectUuid) {
+        return;
+      }
+      if (loading || (!isInitial && !hasMore)) {
+        return;
+      }
 
       setLoading(true);
 
@@ -67,13 +67,23 @@ const LogsPage = () => {
 
       try {
         const response = await searchLogs(params);
-        const newLogs = response.logs; // 💡 LogData 원본 사용
 
-        setLogs(prev => (isInitial ? newLogs : [...prev, ...newLogs]));
-        setCursor(response.pagination.nextCursor || undefined);
-        setHasMore(response.pagination.hasNext);
+        if ('pagination' in response) {
+          const newLogs = response.logs;
+
+          setLogs(prev => (isInitial ? newLogs : [...prev, ...newLogs]));
+          setCursor(response.pagination.nextCursor || undefined);
+          setHasMore(response.pagination.hasNext);
+        } else if ('summary' in response) {
+          const newLogs = response.logs;
+
+          setLogs(prev => (isInitial ? newLogs : [...prev, ...newLogs]));
+          setCursor(undefined);
+          setHasMore(false); 
+        }
       } catch (error) {
         console.error('로그 조회 실패:', error);
+        setHasMore(false); 
       } finally {
         setLoading(false);
       }
@@ -84,32 +94,31 @@ const LogsPage = () => {
   // --- 최초 로드 ---
   useEffect(() => {
     if (projectUuid) {
-      fetchLogs(true, null); 
+      fetchLogs(true, null);
     }
-  }, [projectUuid]); 
+  }, [projectUuid, fetchLogs]);
 
   // 검색핸들러
   const handleSearch = (newCriteria: SearchCriteria) => {
-    setCriteria(newCriteria); 
-    fetchLogs(true, newCriteria); 
+    setCriteria(newCriteria);
+    fetchLogs(true, newCriteria);
   };
 
   // 무한스크롤
   const handleLoadMore = () => {
-    fetchLogs(false, criteria); 
+    fetchLogs(false, criteria);
   };
 
-  const [selectedLog, setSelectedLog] = useState<LogData | null>(null); 
+  const [selectedLog, setSelectedLog] = useState<LogData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalPage, setModalPage] = useState<'page1' | 'page2'>('page1');
 
   // 디테일 모달
 
- 
-  const handleRowClick = useCallback((log: LogData) => { 
+  const handleRowClick = useCallback((log: LogData) => {
     setSelectedLog(log);
     setIsModalOpen(true);
-    setModalPage('page1'); 
+    setModalPage('page1');
   }, []);
 
   /**
@@ -144,11 +153,11 @@ const LogsPage = () => {
       'Jira Ticket Submitted:',
       formData,
       'for log:',
-      selectedLog?.logId, 
+      selectedLog?.logId,
     );
     // TODO: 실제 Jira 티켓 발행 API 호출
     alert('이쁜 alert 로 수정 예정입니다.');
-    setIsModalOpen(false); 
+    setIsModalOpen(false);
   };
 
   return (
@@ -178,8 +187,8 @@ const LogsPage = () => {
           logs={logs}
           loading={loading}
           hasMore={hasMore}
-          onLoadMore={handleLoadMore} 
-          onRowClick={handleRowClick} 
+          onLoadMore={handleLoadMore}
+          onRowClick={handleRowClick}
         />
       </div>
 
