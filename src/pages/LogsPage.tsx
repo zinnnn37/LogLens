@@ -1,5 +1,6 @@
 // src/pages/LogsPage.tsx
 import { useState, useCallback } from 'react'; // useCallback 추가
+import { useParams } from 'react-router-dom';
 import DetailLogSearchBox, {
   type SearchCriteria,
 } from '@/components/DetailLogSearchBox';
@@ -18,6 +19,11 @@ import LogDetailModal2, {
 } from '@/components/modal/LogDetailModal2';
 
 const LogsPage = () => {
+  const { projectUuid } = useParams<{ projectUuid: string }>();
+
+  // TODO: projectUuid를 사용해서 실제 프로젝트 로그 데이터 가져오기
+  console.log('Current project UUID:', projectUuid);
+
   // --- 기존 검색 상태 ---
   const [filteredLogs, setFilteredLogs] = useState<LogRow[]>(
     DUMMY_LOG_SEARCH_RESULTS,

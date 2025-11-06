@@ -1,38 +1,42 @@
 import type { ComponentProps } from 'react';
-import type { To } from 'react-router-dom';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useParams } from 'react-router-dom';
 import { History, Bot, Workflow, Blocks, ChartColumnBig } from 'lucide-react';
 import clsx from 'clsx';
-import { ROUTE_PATH } from '@/router/route-path';
+import { createProjectPath } from '@/router/route-path';
 
 type HeaderProps = ComponentProps<'header'>;
 
 interface NavItem {
   label: string;
   icon: React.ElementType;
-  to?: To;
+  page: 'logs' | 'dashboard' | 'dependency-graph' | 'request-flow' | 'chatbot';
 }
 
-const NAV_ITEMS = [
-  { label: '로그 내역', icon: History, to: ROUTE_PATH.LOGS },
-  { label: '대시보드', icon: Blocks, to: ROUTE_PATH.DASHBOARD },
+const NAV_ITEMS: NavItem[] = [
+  { label: '로그 내역', icon: History, page: 'logs' },
+  { label: '대시보드', icon: Blocks, page: 'dashboard' },
   {
     label: '의존성 그래프',
     icon: ChartColumnBig,
-    to: ROUTE_PATH.DEPENDENCY_GRAPH,
+    page: 'dependency-graph',
   },
-  { label: '요청 흐름', icon: Workflow, to: ROUTE_PATH.REQUEST_FLOW },
-  { label: 'AI Chat', icon: Bot, to: ROUTE_PATH.AI_CHAT },
-] satisfies NavItem[];
+  { label: '요청 흐름', icon: Workflow, page: 'request-flow' },
+  { label: 'AI Chat', icon: Bot, page: 'chatbot' },
+];
 
 /** 개별 네비게이션 링크 */
-const HeaderLink = ({ to, icon: Icon, label }: NavItem) => {
-  // to가 undefined/null이면 비활성 상태로 렌더
-  if (to == null) {
+const HeaderLink = ({
+  page,
+  icon: Icon,
+  label,
+  projectUuid,
+}: NavItem & { projectUuid?: string }) => {
+  // projectUuid가 없으면 비활성 상태로 렌더
+  if (!projectUuid) {
     return (
       <span
         className="flex cursor-not-allowed items-center gap-1.5 text-sm text-gray-400 opacity-60"
-        title="Not available yet"
+        title="프로젝트를 선택해주세요"
         aria-disabled="true"
       >
         <Icon className="h-4 w-4" />
@@ -40,6 +44,8 @@ const HeaderLink = ({ to, icon: Icon, label }: NavItem) => {
       </span>
     );
   }
+
+  const to = createProjectPath(projectUuid, page);
 
   return (
     <NavLink
@@ -61,6 +67,13 @@ const HeaderLink = ({ to, icon: Icon, label }: NavItem) => {
 };
 
 const Header = ({ className, ...props }: HeaderProps) => {
+  const { projectUuid } = useParams<{ projectUuid: string }>();
+
+  // 메인 페이지(프로젝트 선택 전)에서는 Header를 숨김
+  if (!projectUuid) {
+    return null;
+  }
+
   return (
     <header
       className={clsx(
@@ -73,7 +86,7 @@ const Header = ({ className, ...props }: HeaderProps) => {
         <ul className="font-godoM flex items-center gap-6">
           {NAV_ITEMS.map(item => (
             <li key={item.label}>
-              <HeaderLink {...item} />
+              <HeaderLink {...item} projectUuid={projectUuid} />
             </li>
           ))}
         </ul>
