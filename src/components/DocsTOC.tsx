@@ -29,6 +29,14 @@ const DocsTOC = () => {
   const [activeSection, setActiveSection] = useState<string>('');
   const [isScrolling, setIsScrolling] = useState(false);
 
+  // Docs 페이지를 벗어나면 activeSection 초기화
+  useEffect(() => {
+    if (!isDocsPage) {
+      setActiveSection('');
+      setIsScrolling(false);
+    }
+  }, [isDocsPage]);
+
   useEffect(() => {
     if (!isDocsPage) {
       return;
