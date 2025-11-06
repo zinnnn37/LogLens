@@ -2,6 +2,7 @@
 Log analysis service with similarity-based caching and Map-Reduce pattern
 """
 
+import re
 from typing import Optional, List
 from app.core.opensearch import opensearch_client
 from app.core.config import settings
@@ -18,6 +19,38 @@ class LogAnalysisService:
     def __init__(self):
         self.client = opensearch_client
         self.threshold = settings.SIMILARITY_THRESHOLD
+
+    def _contains_korean(self, text: str) -> bool:
+        """Check if text contains Korean characters"""
+        if not text:
+            return False
+        # Check for Hangul syllables (가-힣) or Hangul Jamo
+        korean_pattern = re.compile(r'[가-힣ㄱ-ㅎㅏ-ㅣ]')
+        return bool(korean_pattern.search(text))
+
+    def _validate_korean_output(self, result: LogAnalysisResult) -> bool:
+        """
+        Validate that critical fields contain Korean text
+
+        Returns:
+            True if output is valid (contains Korean), False otherwise
+        """
+        # Check if summary contains Korean
+        if not self._contains_korean(result.summary):
+            print(f"⚠️ Warning: summary does not contain Korean: {result.summary[:50]}...")
+            return False
+
+        # Check error_cause if present
+        if result.error_cause and not self._contains_korean(result.error_cause):
+            print(f"⚠️ Warning: error_cause does not contain Korean: {result.error_cause[:50]}...")
+            return False
+
+        # Check solution if present
+        if result.solution and not self._contains_korean(result.solution):
+            print(f"⚠️ Warning: solution does not contain Korean: {result.solution[:50]}...")
+            return False
+
+        return True
 
     async def analyze_log(self, log_id: int, project_uuid: str) -> LogAnalysisResponse:
         """
@@ -117,12 +150,12 @@ class LogAnalysisService:
                 similarity_score=similar_log["score"],
             )
 
-        # Step 6: Analyze with LLM
+        # Step 6: Analyze with LLM (with Korean validation)
         if related_logs:
             # Analyze with full trace context (multiple logs)
             analysis_result = await self._analyze_with_llm_trace(related_logs, log_data)
         else:
-            # Analyze single log (fallback)
+            # Analyze single log (fallback) - includes Korean validation
             analysis_result = await self._analyze_with_llm(log_data)
 
         # Step 7: Save analysis to all logs in the trace
@@ -167,65 +200,101 @@ class LogAnalysisService:
             return None
 
     async def _analyze_with_llm(self, log_data: dict) -> LogAnalysisResult:
-        """Analyze single log using LLM"""
-        result = await log_analysis_chain.ainvoke(
-            {
-                "service_name": log_data.get("service_name", "Unknown"),
-                "level": log_data.get("log_level") or log_data.get("level", "Unknown"),  # Logstash sends log_level
-                "message": log_data.get("message", ""),
-                "method_name": log_data.get("method_name", "N/A"),
-                "class_name": log_data.get("class_name", "N/A"),
-                "timestamp": log_data.get("timestamp", ""),
-                "duration": log_data.get("duration", "N/A"),
-                "stack_trace": log_data.get("stack_trace", "N/A"),
-                "additional_context": log_data.get("additional_context", {}),
-            }
-        )
+        """
+        Analyze single log using LLM with Korean output validation
+
+        Retries once if the output is not in Korean
+        """
+        max_retries = 2
+
+        for attempt in range(max_retries):
+            result = await log_analysis_chain.ainvoke(
+                {
+                    "service_name": log_data.get("service_name", "Unknown"),
+                    "level": log_data.get("log_level") or log_data.get("level", "Unknown"),
+                    "message": log_data.get("message", ""),
+                    "method_name": log_data.get("method_name", "N/A"),
+                    "class_name": log_data.get("class_name", "N/A"),
+                    "timestamp": log_data.get("timestamp", ""),
+                    "duration": log_data.get("duration", "N/A"),
+                    "stack_trace": log_data.get("stack_trace", "N/A"),
+                    "additional_context": log_data.get("additional_context", {}),
+                }
+            )
+
+            # Validate Korean output
+            if self._validate_korean_output(result):
+                if attempt > 0:
+                    print(f"✅ Korean output validation passed on attempt {attempt + 1}")
+                return result
+            else:
+                print(f"⚠️ Korean output validation failed on attempt {attempt + 1}/{max_retries}")
+                if attempt < max_retries - 1:
+                    print("🔄 Retrying with Korean output enforcement...")
+
+        # If all retries failed, return the last result anyway with a warning
+        print("⚠️ All Korean validation attempts failed. Returning last result.")
         return result
 
     async def _analyze_with_llm_trace(
         self, related_logs: list, center_log: dict
     ) -> LogAnalysisResult:
         """
-        Analyze multiple logs (trace context) using LLM with Map-Reduce pattern
+        Analyze multiple logs (trace context) using LLM with Map-Reduce pattern and Korean validation
 
         Strategy:
         - If logs > MAP_REDUCE_THRESHOLD and ENABLE_MAP_REDUCE:
           1. Map: Split logs into chunks, summarize each chunk
           2. Reduce: Analyze combined summaries
         - Otherwise: Use traditional single-pass analysis
+        - Validates Korean output and retries once if needed
         """
-        # Apply Map-Reduce for large log sets
-        if (
-            len(related_logs) > settings.MAP_REDUCE_THRESHOLD
-            and settings.ENABLE_MAP_REDUCE
-        ):
-            print(
-                f"🔄 Applying Map-Reduce: {len(related_logs)} logs → "
-                f"{(len(related_logs) + settings.LOG_CHUNK_SIZE - 1) // settings.LOG_CHUNK_SIZE} chunks"
-            )
+        max_retries = 2
 
-            # Map: Summarize chunks
-            summaries = await self._map_summarize_chunks(
-                related_logs, chunk_size=settings.LOG_CHUNK_SIZE
-            )
+        for attempt in range(max_retries):
+            # Apply Map-Reduce for large log sets
+            if (
+                len(related_logs) > settings.MAP_REDUCE_THRESHOLD
+                and settings.ENABLE_MAP_REDUCE
+            ):
+                print(
+                    f"🔄 Applying Map-Reduce: {len(related_logs)} logs → "
+                    f"{(len(related_logs) + settings.LOG_CHUNK_SIZE - 1) // settings.LOG_CHUNK_SIZE} chunks"
+                )
 
-            # Reduce: Analyze combined summaries
-            result = await self._reduce_analyze(summaries, center_log)
-        else:
-            # Traditional single-pass analysis for small log sets
-            formatted_logs = self._format_logs_for_analysis(related_logs)
-            result = await log_analysis_chain.ainvoke(
-                {
-                    "total_logs": len(related_logs),
-                    "trace_id": center_log.get("trace_id", "Unknown"),
-                    "center_log_id": center_log.get("log_id", ""),
-                    "center_timestamp": center_log.get("timestamp", ""),
-                    "logs_context": formatted_logs,
-                    "service_name": center_log.get("service_name", "Unknown"),
-                }
-            )
+                # Map: Summarize chunks
+                summaries = await self._map_summarize_chunks(
+                    related_logs, chunk_size=settings.LOG_CHUNK_SIZE
+                )
 
+                # Reduce: Analyze combined summaries
+                result = await self._reduce_analyze(summaries, center_log)
+            else:
+                # Traditional single-pass analysis for small log sets
+                formatted_logs = self._format_logs_for_analysis(related_logs)
+                result = await log_analysis_chain.ainvoke(
+                    {
+                        "total_logs": len(related_logs),
+                        "trace_id": center_log.get("trace_id", "Unknown"),
+                        "center_log_id": center_log.get("log_id", ""),
+                        "center_timestamp": center_log.get("timestamp", ""),
+                        "logs_context": formatted_logs,
+                        "service_name": center_log.get("service_name", "Unknown"),
+                    }
+                )
+
+            # Validate Korean output
+            if self._validate_korean_output(result):
+                if attempt > 0:
+                    print(f"✅ Trace analysis Korean validation passed on attempt {attempt + 1}")
+                return result
+            else:
+                print(f"⚠️ Trace analysis Korean validation failed on attempt {attempt + 1}/{max_retries}")
+                if attempt < max_retries - 1:
+                    print("🔄 Retrying trace analysis with Korean output enforcement...")
+
+        # If all retries failed, return the last result anyway with a warning
+        print("⚠️ All trace analysis Korean validation attempts failed. Returning last result.")
         return result
 
     def _format_logs_for_analysis(self, logs: list) -> str:

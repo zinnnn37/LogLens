@@ -1,24 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="ChangeListManager">
     <list default="true" id="4d65b5ab-fd37-4f25-a1c8-6b58c0cac6f2" name="변경" comment="">
-      <change afterPath="$PROJECT_DIR$/.env.test" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/LOCAL_TEST_GUIDE.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docker-compose.test.yml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_llm_log_analysis.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_local.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/QUICK_REFERENCE.md" beforeDir="false" afterPath="$PROJECT_DIR$/QUICK_REFERENCE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/v1/chatbot.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/v1/chatbot.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/v1/logs.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/v1/logs.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/chat.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/chat.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/log.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/log.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/chatbot_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/chatbot_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/log_analysis_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/log_analysis_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/similarity_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/similarity_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/infra/infrastructure/logstash.conf" beforeDir="false" afterPath="$PROJECT_DIR$/infra/infrastructure/logstash.conf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/create_indices.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/create_indices.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_llm_chains.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/test_llm_chains.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitlab-ci.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.gitlab-ci.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -28,25 +16,25 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitLabMergeRequestFiltersHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPENED",
-    "assignee": {
-      "type": "org.jetbrains.plugins.gitlab.mergerequest.ui.filters.GitLabMergeRequestsFiltersValue.MergeRequestsMemberFilterValue.MergeRequestsAssigneeFilterValue",
-      "username": "01040307z",
-      "fullname": "이석규"
+  <component name="GitLabMergeRequestFiltersHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPENED&quot;,
+    &quot;assignee&quot;: {
+      &quot;type&quot;: &quot;org.jetbrains.plugins.gitlab.mergerequest.ui.filters.GitLabMergeRequestsFiltersValue.MergeRequestsMemberFilterValue.MergeRequestsAssigneeFilterValue&quot;,
+      &quot;username&quot;: &quot;01040307z&quot;,
+      &quot;fullname&quot;: &quot;이석규&quot;
     }
   }
-}]]></component>
-  <component name="GitLabMergeRequestsSettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "first": "https://lab.ssafy.com/s13-final/S13P31A306.git",
-    "second": "0a6baf12-2cc0-42e6-9907-89ee284131f1"
+}</component>
+  <component name="GitLabMergeRequestsSettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;first&quot;: &quot;https://lab.ssafy.com/s13-final/S13P31A306.git&quot;,
+    &quot;second&quot;: &quot;0a6baf12-2cc0-42e6-9907-89ee284131f1&quot;
   }
-}]]></component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 3
-}]]></component>
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 3
+}</component>
   <component name="ProjectId" id="34xSE5pAwfTtjwX35ICWzyywXUm" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -57,8 +45,12 @@
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "ai/develop",
+    "git-widget-placeholder": "ai/develop 병합 중",
     "last_opened_file_path": "C:/SSAFY/third_project/AI/S13P31A306",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "vue.rearranger.settings.migration": "true"
   }
@@ -79,6 +71,7 @@
       <option name="presentableId" value="Default" />
       <updated>1762153614263</updated>
       <workItem from="1762153615374" duration="47000" />
+      <workItem from="1762233834130" duration="881000" />
     </task>
     <servers />
   </component>
