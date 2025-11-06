@@ -1,10 +1,17 @@
-// src/pages/LogsPage.tsx (useRef 버그 수정)
+// src/pages/LogsPage.tsx (CSV 다운로드 추가)
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { searchLogs } from '@/services/logService';
-import type { LogData, LogSearchParams } from '@/types/log';
+import type {
+  LogData,
+  LogSearchParams,
+} from '@/types/log';
 
 import { useParams } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { FileDown } from 'lucide-react';
+import { toast } from 'sonner';
+
 import DetailLogSearchBox, {
   type SearchCriteria,
 } from '@/components/DetailLogSearchBox';
@@ -32,7 +39,10 @@ const LogsPage = () => {
   const [criteria, setCriteria] = useState<SearchCriteria | null>(null);
 
   const fetchLogs = useCallback(
-    async (isInitial: boolean, searchCriteria: SearchCriteria | null) => {
+    async (
+      isInitial: boolean,
+      searchCriteria: SearchCriteria | null,
+    ) => {
       if (!projectUuid) {
         return;
       }
@@ -83,27 +93,69 @@ const LogsPage = () => {
     [projectUuid, cursor, hasMore, loading],
   );
 
-  // 초기 로드
+  // --- 최초 로드 ---
   useEffect(() => {
     if (projectUuid) {
       fetchLogs(true, null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectUuid]);
 
-  const savedCallback = useRef<(() => void) | null>(null);
+  // --- 5초 자동 갱신 (Polling) 로직 ---
+  const savedCriteria = useRef(criteria);
+  useEffect(() => {
+    savedCriteria.current = criteria;
+  }, [criteria]);
 
   useEffect(() => {
-    savedCallback.current = () => fetchLogs(true, criteria);
-  }, [fetchLogs, criteria]);
+    const tick = async () => {
+      if (loading || !projectUuid) {
+        return;
+      }
 
-  useEffect(() => {
-    const tick = () => {
-      savedCallback.current?.();
+      const currentCriteria = savedCriteria.current;
+      const params: LogSearchParams = {
+        projectUuid,
+        cursor: undefined, 
+        size: 50,
+        logLevel: currentCriteria?.logLevel?.length
+          ? currentCriteria.logLevel
+          : undefined,
+        sourceType: currentCriteria?.sourceType?.length
+          ? currentCriteria.sourceType
+          : undefined,
+        traceId: currentCriteria?.traceId || undefined,
+        keyword: currentCriteria?.keyword || undefined,
+        startTime: currentCriteria?.startTime || undefined,
+        endTime: currentCriteria?.endTime || undefined,
+        sort: currentCriteria?.sort || 'TIMESTAMP,DESC',
+      };
+
+      try {
+        const response = await searchLogs(params);
+        if ('pagination' in response) {
+          const newLogs = response.logs;
+
+          setLogs(prevLogs => {
+            const existingLogIds = new Set(prevLogs.map(log => log.logId));
+            const actuallyNewLogs = newLogs.filter(
+              log => !existingLogIds.has(log.logId),
+            );
+
+            if (actuallyNewLogs.length === 0) {
+              return prevLogs;
+            }
+            return [...actuallyNewLogs, ...prevLogs];
+          });
+        }
+      } catch (error) {
+        console.error('5초 갱신 실패 (무시함):', error);
+      }
     };
 
     const intervalId = setInterval(tick, 5000);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [loading, projectUuid]);
 
   // 검색핸들러
   const handleSearch = (newCriteria: SearchCriteria) => {
@@ -114,6 +166,69 @@ const LogsPage = () => {
   // 무한스크롤
   const handleLoadMore = () => {
     fetchLogs(false, criteria);
+  };
+
+  // csv 다운로드
+  const handleDownloadCSV = () => {
+    if (logs.length === 0) {
+      toast.info('다운로드할 로그 데이터가 없습니다.');
+      return;
+    }
+
+    // CSV 문자열 이스케이프 (쉼표, 줄바꿈, 따옴표 처리)
+    const escapeCSV = (val: string | null | undefined): string => {
+      if (val === null || val === undefined) {
+        return '';
+      }
+      let str = String(val);
+      if (str.match(/([",\n])/)) {
+        str = `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const headers = [
+      'timestamp',
+      'logLevel',
+      'sourceType',
+      'layer',
+      'logger',
+      'message',
+      'traceId',
+      'logId',
+      'comment',
+    ];
+
+    const csvRows = logs.map(log => {
+      return [
+        escapeCSV(log.timestamp),
+        escapeCSV(log.logLevel),
+        escapeCSV(log.sourceType),
+        escapeCSV(log.layer),
+        escapeCSV(log.logger),
+        escapeCSV(log.message),
+        escapeCSV(log.traceId),
+        escapeCSV(log.logId),
+        escapeCSV(log.comment),
+      ].join(',');
+    });
+
+    // 한글 깨짐 방지
+    const csvContent = [headers.join(','), ...csvRows].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], {
+      type: 'text/csv;charset=utf-8;',
+    });
+
+    // 생성 및 다운로드
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `loglens_logs_${dateStr}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const [selectedLog, setSelectedLog] = useState<LogData | null>(null);
@@ -223,6 +338,15 @@ const LogsPage = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* csv 다운 버튼 */}
+      <Button
+        onClick={handleDownloadCSV}
+        className="fixed right-6 bottom-[72px] flex h-14 w-14 items-center justify-center rounded-full p-0 shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
+        aria-label="CSV 다운로드"
+      >
+        <FileDown className="h-6 w-6" />
+      </Button>
 
       <FloatingChecklist />
     </div>
