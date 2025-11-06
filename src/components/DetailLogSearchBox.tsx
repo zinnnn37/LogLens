@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   Search,
-  KeyRound,
   ChevronDown,
   CalendarIcon,
   ArrowDownUp,
@@ -86,7 +85,7 @@ const DetailLogSearchBox = ({ onSearch }: DetailLogSearchBoxProps) => {
     if (searchType === 'traceId') {
       return { icon: Search, placeholder: 'TraceID로 검색...' };
     }
-    return { icon: KeyRound, placeholder: '키워드로 검색...' };
+    return { icon: Search, placeholder: '키워드로 검색...' };
   };
   const { icon: SearchIcon, placeholder } = getSearchProps();
 
