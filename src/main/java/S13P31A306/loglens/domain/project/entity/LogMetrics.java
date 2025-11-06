@@ -37,15 +37,15 @@ public class LogMetrics extends BaseTimeEntity {
     @Column(name = "info_logs", nullable = false, columnDefinition = "INT DEFAULT 0")
     private Integer infoLogs;
 
-    @Column(name = "avg_response_time", nullable = false, precision = 10, scale = 3, columnDefinition = "DECIMAL(10,3) DEFAULT 0")
-    private BigDecimal avgResponseTime;
+    @Column(name = "avg_response_time", nullable = false, columnDefinition = "INT DEFAULT 0")
+    private Integer avgResponseTime;
 
     @Column(name = "aggregated_at", nullable = false)
     private LocalDateTime aggregatedAt;
 
     @Builder
     public LogMetrics(Project project, Integer totalLogs, Integer errorLogs,
-                      Integer warnLogs, Integer infoLogs, BigDecimal avgResponseTime, LocalDateTime aggregatedAt) {
+                      Integer warnLogs, Integer infoLogs, Integer avgResponseTime, LocalDateTime aggregatedAt) {
         this.project = project;
         this.totalLogs = totalLogs;
         this.errorLogs = errorLogs;
