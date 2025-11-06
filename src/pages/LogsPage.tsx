@@ -1,6 +1,6 @@
-// src/pages/LogsPage.tsx (any 완전 제거)
+// src/pages/LogsPage.tsx (useRef 버그 수정)
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react'; 
 import { searchLogs } from '@/services/logService';
 import type {
   LogData,
@@ -70,20 +70,18 @@ const LogsPage = () => {
 
         if ('pagination' in response) {
           const newLogs = response.logs;
-
           setLogs(prev => (isInitial ? newLogs : [...prev, ...newLogs]));
           setCursor(response.pagination.nextCursor || undefined);
           setHasMore(response.pagination.hasNext);
         } else if ('summary' in response) {
           const newLogs = response.logs;
-
           setLogs(prev => (isInitial ? newLogs : [...prev, ...newLogs]));
           setCursor(undefined);
-          setHasMore(false); 
+          setHasMore(false);
         }
       } catch (error) {
         console.error('로그 조회 실패:', error);
-        setHasMore(false); 
+        setHasMore(false);
       } finally {
         setLoading(false);
       }
@@ -91,12 +89,28 @@ const LogsPage = () => {
     [projectUuid, cursor, hasMore, loading],
   );
 
-  // --- 최초 로드 ---
+  // 초기 로드
   useEffect(() => {
     if (projectUuid) {
       fetchLogs(true, null);
     }
-  }, [projectUuid, fetchLogs]);
+  }, [projectUuid]);
+
+
+  const savedCallback = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    savedCallback.current = () => fetchLogs(true, criteria);
+  }, [fetchLogs, criteria]);
+
+  useEffect(() => {
+    const tick = () => {
+      savedCallback.current?.();
+    };
+
+    const intervalId = setInterval(tick, 5000); 
+    return () => clearInterval(intervalId);
+  }, []);
 
   // 검색핸들러
   const handleSearch = (newCriteria: SearchCriteria) => {
