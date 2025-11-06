@@ -148,7 +148,7 @@ class LogCollector {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
-          ip: ipAddress || '',
+          'LogLens-IP': ipAddress || '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ logs: maskedLogs }),
