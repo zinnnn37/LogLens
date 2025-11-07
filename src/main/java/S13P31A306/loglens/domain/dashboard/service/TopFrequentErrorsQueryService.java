@@ -1,7 +1,7 @@
 package S13P31A306.loglens.domain.dashboard.service;
 
-import S13P31A306.loglens.domain.dashboard.dto.ErrorAggregation;
-import S13P31A306.loglens.domain.dashboard.dto.ErrorStatistics;
+import S13P31A306.loglens.domain.dashboard.dto.opensearch.ErrorAggregation;
+import S13P31A306.loglens.domain.dashboard.dto.opensearch.ErrorStatistics;
 
 import java.time.LocalDateTime;
 import java.util.List;
