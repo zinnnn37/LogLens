@@ -57,6 +57,7 @@ function transform_log(tag, timestamp, record)
 
     new_record["indexed_at"] = now
     new_record["service_name"] = record["service_name"] or record["app_name"] or "unknown-service"
+    new_record["component_name"] = record["component_name"] or record["logger"] or "unknown"
     new_record["logger"] = record["package"] or record["logger"] or "unknown"
     new_record["source_type"] = record["source_type"] or "BE"
 
@@ -271,12 +272,12 @@ function transform_log(tag, timestamp, record)
     new_record["requester_ip"] = requester_ip or nil
 
     -- stack_trace (최상위 필드)
-    local stack_trace = record["stack_trace"] or record["stackTrace"] or nil
-    new_record["stack_trace"] = stack_trace
+    local stacktrace = record["stack_trace"] or record["stackTrace"] or record["stacktrace"] or nil
+    new_record["stacktrace"] = stacktrace
 
-    -- stack_trace를 log_details에도 추가 (스키마 준수)
-    if stack_trace and new_record["log_details"] then
-        new_record["log_details"]["stack_trace"] = stack_trace
+    -- log_details에도 stacktrace 추가
+    if stacktrace and new_record["log_details"] then
+        new_record["log_details"]["stacktrace"] = stacktrace
     end
 
     return 1, timestamp, new_record
