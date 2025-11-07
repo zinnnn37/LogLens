@@ -59,12 +59,22 @@ public class DashboardServiceImpl implements DashboardService {
         Integer projectId = validator.validateProjectAccess(projectUuid);
 
         // 2. 시간 범위 설정 (없으면 최근 7일)
-        LocalDateTime end = endTime != null ?
-                LocalDateTime.parse(endTime, DateTimeFormatter.ISO_DATE_TIME) :
-                LocalDateTime.now();
-        LocalDateTime start = startTime != null ?
-                LocalDateTime.parse(startTime, DateTimeFormatter.ISO_DATE_TIME) :
-                end.minusDays(7);
+        LocalDateTime start;
+        LocalDateTime end;
+
+        if (startTime != null && endTime != null) {
+            start = LocalDateTime.parse(startTime, DateTimeFormatter.ISO_DATE_TIME);
+            end = LocalDateTime.parse(endTime, DateTimeFormatter.ISO_DATE_TIME);
+        } else if (startTime != null) {
+            start = LocalDateTime.parse(startTime, DateTimeFormatter.ISO_DATE_TIME);
+            end = start.plusDays(7);
+        } else if (endTime != null) {
+            end = LocalDateTime.parse(endTime, DateTimeFormatter.ISO_DATE_TIME);
+            start = end.minusDays(7);
+        } else {
+            end = LocalDateTime.now();
+            start = end.minusDays(7);
+        }
 
         // 로그 수 집계
         List<LogMetrics> logMetrics = logMetricsRepository.findByProjectIdAndAggregatedAtBetween(
