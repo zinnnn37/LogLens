@@ -9,8 +9,8 @@ import java.util.List;
 
 @Schema(description = "자주 발생하는 에러 top N 응답")
 public record TopFrequentErrorsResponse(
-        @Sensitive
         @Schema(description = "프로젝트 UUID", example = "48d96cd7-bf8d-38f5-891c-9c2f6430d871")
+        @Sensitive
         String projectUuid,
 
         @Schema(description = "조회 기간")
@@ -57,7 +57,7 @@ public record TopFrequentErrorsResponse(
             @Schema(description = "스택 트레이스 (첫 라인)", example = "at com.loglens.db.ConnectionPool.getConnection(ConnectionPool.java:145)")
             String stackTrace,
 
-            @Schema(description = "영향받은 컴포넌트 목록")
+            @Schema(description = "영향 받은 컴포넌트 목록")
             List<ComponentInfo> components
     ) {
 

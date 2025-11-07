@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.dashboard.dto.response;
 
+import S13P31A306.loglens.global.annotation.Sensitive;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
@@ -9,6 +10,7 @@ import java.math.BigDecimal;
 @Schema(description = "대시보드 통계 데이터 응답")
 public record DashboardOverviewResponse(
         @Schema(description = "프로젝트 UUID", example = "pk_1a2b3c4d5e6f")
+        @Sensitive
         String projectUuid,
 
         @Schema(description = "필터링 시간대")
