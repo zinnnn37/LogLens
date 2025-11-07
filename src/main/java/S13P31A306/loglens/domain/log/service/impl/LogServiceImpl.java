@@ -17,7 +17,6 @@ import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -93,13 +92,13 @@ public class LogServiceImpl implements LogService {
     private List<LogResponse> mapToLogResponses(LogSearchResult result) {
         return result.logs().stream()
                 .map(logMapper::toLogResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private List<LogResponse> mapToLogResponses(TraceLogSearchResult result) {
         return result.logs().stream()
                 .map(logMapper::toLogResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private PaginationResponse createPaginationResponse(LogSearchResult result) {
