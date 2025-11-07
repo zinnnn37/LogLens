@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalTime;
 
 @Getter
@@ -26,13 +27,13 @@ public class ApiEndpoint extends BaseTimeEntity {
     @Column(name = "total_requests", nullable = false)
     private Integer totalRequests;
 
-    @Column(name = "errorCount", nullable = false)
+    @Column(name = "error_count", nullable = false)
     private Integer errorCount;
 
-    @Column(name = "avgResponseTime", nullable = false)
-    private Integer avgResponseTime;
+    @Column(name = "avg_response_time", nullable = false, precision = 10, scale = 2)
+    private BigDecimal avgResponseTime;
 
-    @Column(name = "anomalyCount", nullable = false)
+    @Column(name = "anomaly_count", nullable = false)
     private Integer anomalyCount;
 
     @Column(name = "last_accessed")
