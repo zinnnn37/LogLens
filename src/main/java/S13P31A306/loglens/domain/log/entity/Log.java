@@ -62,6 +62,9 @@ public class Log {
     @JsonProperty("thread_name")
     private String threadName;
 
+    @JsonProperty("component_name")
+    private String componentName;
+
     // ========== 트레이싱 ==========
     @JsonProperty("trace_id")
     @JsonAlias({"trace_id", "traceId"})
@@ -73,9 +76,6 @@ public class Log {
     // ========== 에러 정보 ==========
     @JsonProperty("stacktrace")
     private String stackTrace;
-
-    @JsonProperty("component_name")
-    private String componentName;
 
     // ========== 로그 상세 ==========
     @JsonProperty("log_details")
