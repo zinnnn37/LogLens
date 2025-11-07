@@ -59,7 +59,6 @@ function transform_log(tag, timestamp, record)
     new_record["service_name"] = record["service_name"] or record["app_name"] or "unknown-service"
     new_record["component_name"] = record["component_name"] or record["logger"] or "unknown"
     new_record["logger"] = record["package"] or record["logger"] or "unknown"
-    new_record["source_type"] = record["source_type"] or "BE"
 
     ----------------------------------------------------
     -- 3️⃣ layer 추출 및 정규화
@@ -99,7 +98,46 @@ function transform_log(tag, timestamp, record)
     new_record["layer"] = layer or "Other"
 
     ----------------------------------------------------
-    -- 4️⃣ log level / trace_id / message
+    -- 4️⃣ source_type 자동 분류 로직 개선
+    ----------------------------------------------------
+    local src = record["source_type"]
+
+    if not src then
+        local raw_layer = layer or record["layer"]
+        local raw_tag = tag or ""
+
+        -- 우선 layer, tag, logger 등에서 후보 문자열을 추출
+        local hint = ""
+        if raw_layer then
+            hint = string.upper(tostring(raw_layer))
+        elseif raw_tag then
+            hint = string.upper(tostring(raw_tag))
+        elseif record["logger"] then
+            hint = string.upper(tostring(record["logger"]))
+        end
+
+        -- FE / FRONT / FRONTEND 매칭
+        if string.match(hint, "FRONT") or string.match(hint, "FRONTEND") or string.match(hint, "FE") then
+            src = "FE"
+
+            -- BE / BACK / BACKEND 매칭
+        elseif string.match(hint, "BACK") or string.match(hint, "BACKEND") or string.match(hint, "BE") then
+            src = "BE"
+
+            -- INFRA 매칭
+        elseif string.match(hint, "INFRA") then
+            src = "INFRA"
+
+            -- 나머지는 OTHERS
+        else
+            src = "OTHERS"
+        end
+    end
+
+    new_record["source_type"] = src
+
+    ----------------------------------------------------
+    -- 5️⃣ log level / trace_id / message
     ----------------------------------------------------
     local lvl = record["level"] or record["log_level"] or "INFO"
     lvl = string.upper(lvl)
@@ -119,7 +157,7 @@ function transform_log(tag, timestamp, record)
     new_record["message"] = original_message or record["message"] or "parsed JSON log"
 
     ----------------------------------------------------
-    -- 5️⃣ 추가 메타정보
+    -- 6️⃣ 추가 메타정보
     ----------------------------------------------------
     local comment_parts = {}
     if record["thread"] then
@@ -151,9 +189,9 @@ function transform_log(tag, timestamp, record)
     new_record["thread_name"] = record["thread_name"] or record["thread"] or nil
 
     ----------------------------------------------------
-    -- 6️⃣ log_details: 상세 정보 수집 (스키마 준수)
+    -- 7️⃣ log_details: 상세 정보 수집 (스키마 준수)
     ----------------------------------------------------
-    local exec_time = record["execution_time_ms"] or record["execution_time"] or nil
+    local exec_time = record["execution_time_ms"] or record["executionTimeMs"] or record["execution_time"] or nil
     if type(exec_time) == "string" then
         exec_time = tonumber(exec_time)
     end
@@ -183,9 +221,12 @@ function transform_log(tag, timestamp, record)
             log_details["request_headers"] = req["headers"]
         end
 
-        -- request_body (flattened) - parameters를 body로 매핑
-        if req["parameters"] and type(req["parameters"]) == "table" then
-            log_details["request_body"] = req["parameters"]
+        if req then
+            if req["parameters"] and type(req["parameters"]) == "table" then
+                log_details["request_body"] = req["parameters"]
+            else
+                log_details["request_body"] = req
+            end
         end
 
         has_details = true
@@ -199,8 +240,8 @@ function transform_log(tag, timestamp, record)
         log_details["response_status"] = tonumber(res["statusCode"] or (res["http"] and res["http"]["statusCode"]))
 
         -- response_body (flattened)
-        if res["result"] then
-            log_details["response_body"] = res["result"]
+        if res then
+            log_details["response_body"] = res
         end
 
         has_details = true
@@ -251,7 +292,7 @@ function transform_log(tag, timestamp, record)
     end
 
     ----------------------------------------------------
-    -- 7️⃣ requester_ip 및 stack_trace 추출
+    -- 8️⃣  requester_ip 및 stack_trace 추출
     ----------------------------------------------------
     local requester_ip = record["requester_ip"]
             or record["client_ip"]
