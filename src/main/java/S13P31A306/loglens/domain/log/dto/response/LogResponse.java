@@ -14,6 +14,9 @@ public class LogResponse {
     @Schema(description = "로그 ID (고유 식별자)", example = "1234567890")
     private Long logId;
 
+    @Schema(description = "프로젝트 UUID", example = "a1b2c3d4-e5f6-7890-1234-567890abcdef")
+    private String projectUuid;
+
     @Schema(description = "Trace ID", example = "trace-abc-123")
     private String traceId;
 
@@ -38,4 +41,28 @@ public class LogResponse {
 
     @Schema(description = "사용자 코멘트", example = "이 에러는 무시해도 됨")
     private String comment;
+
+    @Schema(description = "요청자 IP", example = "192.168.1.1")
+    private String requesterIp;
+
+    @Schema(description = "서비스 이름", example = "user-service")
+    private String serviceName;
+
+    @Schema(description = "클래스 이름", example = "UserService")
+    private String className;
+
+    @Schema(description = "메서드 이름", example = "getUser")
+    private String methodName;
+
+    @Schema(description = "스레드 이름", example = "http-nio-8080-exec-1")
+    private String threadName;
+
+    @Schema(description = "스택 트레이스", example = "java.lang.NullPointerException: ...")
+    private String stackTrace;
+
+    @Schema(description = "컴포넌트 이름", example = "database")
+    private String componentName;
+
+    @Schema(description = "처리 시간 (ms)", example = "150")
+    private Integer duration;
 }
