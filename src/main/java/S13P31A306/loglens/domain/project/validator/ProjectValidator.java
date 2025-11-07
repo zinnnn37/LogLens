@@ -146,17 +146,6 @@ public class ProjectValidator {
         }
     }
 
-    /**
-     * 특정 사용자가 프로젝트 멤버인지 확인
-     *
-     * @param projectId 프로젝트 ID
-     * @param userId    사용자 ID
-     * @return true: 멤버, false: 비멤버
-     */
-    public boolean isProjectMember(Integer projectId, Integer userId) {
-        return projectMemberRepository.existsByProjectIdAndUserId(projectId, userId);
-    }
-
     public void validateProjectAccess(final Project project, final String email) {
         log.debug("{} 프로젝트 접근 권한 검증: projectId={}, projectName={}, user={}",
                 LOG_PREFIX, project.getId(), project.getProjectName(), email);
