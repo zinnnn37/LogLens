@@ -22,7 +22,7 @@ configurations {
 
 repositories {
 	mavenCentral()
-//    mavenLocal()
+    // mavenLocal()
     maven {
         url 'https://api.loglens.co.kr/maven-repo'
     }

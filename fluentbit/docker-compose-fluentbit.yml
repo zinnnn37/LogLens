@@ -1,0 +1,115 @@
+services:
+  fluent-bit:
+    image: fluent/fluent-bit:2.2          # Fluent Bit 2.2 공식 이미지 사용
+    container_name: fluent-bit
+
+    volumes:
+      # ──────────────────────────────────────────────
+      # ✅ 설정 파일 마운트
+      # Fluent Bit 실행 시 필요한 설정 및 파서, Lua 스크립트를 읽어옴
+      # 읽기 전용(:ro)으로 지정하여 컨테이너 내부에서 수정 방지
+      # ──────────────────────────────────────────────
+      - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - ./transform.lua:/fluent-bit/scripts/transform.lua:ro
+
+      # ✅ 로그 파일 경로 (입력)
+      # 로컬 애플리케이션(Spring Boot 등)이 생성하는 로그를 읽기 전용으로 마운트
+      - ../logs:/logs:ro
+
+      # ✅ Fluent Bit 내부 상태 데이터베이스
+      # 수집한 로그의 '읽은 위치(offset)' 등을 저장하여 재시작 시 중복 수집 방지
+      - fluent-bit-db:/var/log
+
+      # ✅ 백업 로그 저장소
+      # Fluent Bit이 수집한 로그를 가공 후 백업용으로 보관
+      - fluent-bit-backup:/var/log/fluent-bit-backup
+
+    environment:
+      # ──────────────────────────────────────────────
+      # ✅ 환경 변수 (로그 메타데이터)
+      # PROJECT_UUID: 프로젝트 구분용 UUID (Kafka / OpenSearch 전송 시 식별자)
+      # PROJECT_NAME: 프로젝트 이름 (예: Loglens, Eatda)
+      # ──────────────────────────────────────────────
+      PROJECT_UUID: "8a61821c-121e-3fc8-8d4b-e318a8a3fd62"
+      PROJECT_NAME: "Loglens"
+
+    ports:
+      # ──────────────────────────────────────────────
+      # ✅ HTTP 모니터링 서버
+      # Fluent Bit의 내장 HTTP 서버를 외부로 노출
+      # (http://localhost:2020/api/v1/metrics, /api/v1/health 등)
+      # ──────────────────────────────────────────────
+      - "2020:2020"
+
+      # ──────────────────────────────────────────────
+      # ✅ Forward Protocol 수신 포트
+      # Docker logging driver가 로그를 전송하는 포트
+      # ──────────────────────────────────────────────
+      - "24224:24224"
+
+    restart: unless-stopped               # 예기치 않은 중단 시 자동 재시작 (수동 중지 제외)
+
+    # ──────────────────────────────────────────────
+    # ✅ Docker 네트워크 연결
+    # Blue/Green 컨테이너와 통신하기 위한 네트워크 설정
+    # ──────────────────────────────────────────────
+    networks:
+      - loglens-network
+
+    # ──────────────────────────────────────────────
+    # ✅ 리소스 제한 (도커 엔진 수준의 컨테이너 자원 제어)
+    # CPU / 메모리 사용량 상한 설정 → 서버 과부하 방지
+    # ──────────────────────────────────────────────
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'                     # 최대 CPU 0.5 코어
+          memory: 512M                    # 최대 메모리 512MB
+        reservations:
+          cpus: '0.25'                    # 최소 예약 0.25 코어
+          memory: 256M                    # 최소 예약 256MB
+
+    # ──────────────────────────────────────────────
+    # ✅ 헬스체크 설정
+    # 컨테이너 내부의 HTTP 서버 상태(/api/v1/health)를 주기적으로 점검
+    # 정상 응답이 없으면 Docker가 unhealthy 상태로 표시 (재시작 가능)
+    # ──────────────────────────────────────────────
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:2020/api/v1/health || exit 1" ]
+      interval: 30s       # 30초마다 검사
+      timeout: 10s        # 10초 안에 응답 없으면 실패로 간주
+      retries: 3          # 최대 3회 재시도
+      start_period: 10s   # 컨테이너 시작 후 10초간 대기 후 헬스체크 시작
+
+    # ──────────────────────────────────────────────
+    # ✅ Docker 자체 로그 설정
+    # Fluent Bit 컨테이너의 stdout/stderr 로그를 JSON 파일로 저장
+    # 로그 파일이 커지면 자동 로테이션 (최대 10MB × 3개)
+    # ──────────────────────────────────────────────
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ──────────────────────────────────────────────
+# ✅ Docker 볼륨 정의
+# 컨테이너가 재시작되어도 데이터 유지 (Fluent Bit 상태/백업 로그 등)
+# 실제 경로는 /var/lib/docker/volumes/<이름>/_data
+# ──────────────────────────────────────────────
+volumes:
+  fluent-bit-db:
+    driver: local
+  fluent-bit-backup:
+    driver: local
+
+# ──────────────────────────────────────────────
+# ✅ Docker 네트워크 정의
+# Blue/Green 컨테이너와 통신하기 위해 동일한 네트워크 사용
+# external: true - 기존에 생성된 네트워크를 사용 (생성하지 않음)
+# ──────────────────────────────────────────────
+networks:
+  loglens-network:
+    external: true
+    name: loglens-network

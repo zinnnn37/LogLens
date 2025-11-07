@@ -19,9 +19,9 @@ spring:
       ddl-auto: create
     show-sql: true
 
-# 서버 포트 8081로 설정
+# 서버 포트 8080로 설정
 server:
-  port: 8081
+  port: 8080
 
 logging:
   level:
@@ -34,8 +34,7 @@ dependency:
     api-key: 48d96cd7-bf8d-38f5-891c-9c2f6430d871
 
     collector:
-#      url: http://localhost:8080
-      url: https://api.loglens.co.kr  # 8080으로 변경
+      url: https://api.loglens.store
     enabled: true
 
     stacktrace:

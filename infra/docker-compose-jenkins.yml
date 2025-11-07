@@ -1,0 +1,34 @@
+# docker-compose-jenkins.yml
+version: '3.8'
+
+services:
+  jenkins:
+    build:
+      context: ./jenkins
+      dockerfile: Dockerfile
+    container_name: loglens-jenkins
+    user: root
+    ports:
+      - "9000:8080"
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker
+    restart: unless-stopped
+    networks:
+      - loglens-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/login || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+volumes:
+  jenkins-data:
+    driver: local
+
+networks:
+  loglens-network:
+    external: true
+    name: loglens-network
