@@ -44,12 +44,9 @@ public class DashboardServiceImpl implements DashboardService {
     private final ComponentMetricsService componentMetricsService;
     private final FrontendMetricsService frontendMetricsService;
     private final DependencyGraphService dependencyGraphService;
-    private final ProjectRepository projectRepository;
-    private final ProjectMemberRepository projectMemberRepository;
     private final LogMetricsRepository logMetricsRepository;
     private final DashboardValidator validator;
     private final DashboardMapper mapper;
-    private final OpenSearchClient openSearchClient;
 
     @Override
     public DashboardOverviewResponse getStatisticsOverview(String projectUuid, String startTime, String endTime) {
