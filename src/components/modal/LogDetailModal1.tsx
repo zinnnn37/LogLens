@@ -71,7 +71,7 @@ const LogDetailModal1 = ({
 
         try {
           const params = {
-            log_id: log.logId,
+            logId: log.logId,
             project_uuid: projectUuid,
           };
           const response = await analyzeLogs(params);

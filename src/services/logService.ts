@@ -23,13 +23,13 @@ export const searchLogs = async (
   return response;
 };
 
-// 로그 분석 API
+// 로그 상세조회
 export const analyzeLogs = async (
   params: LogAnalysisParams, 
 ): Promise<LogAnalysisResponse> => {
-  const { log_id, project_uuid } = params;
+  const { logId, project_uuid } = params;
 
-  const url = API_PATH.LOGS_ANALYZE(log_id);
+  const url = API_PATH.LOGS_DETAIL(logId);
 
   const response = await apiClient.get<LogAnalysisResponse>(url, {
     project_uuid: project_uuid,

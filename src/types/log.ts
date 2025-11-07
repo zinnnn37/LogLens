@@ -61,9 +61,9 @@ export interface TraceIdSearchResponse {
   logs: LogData[];
 }
 
-// 로그 분석(상세 조회)
+// 로그 상세 조회
 export interface LogAnalysisParams{
-  log_id:number;
+  logId:number;
   project_uuid:string;
 }
 
@@ -79,7 +79,7 @@ export interface LogAnalysisData{
 }
 
 export interface LogAnalysisResponse{
-  log_id:number;
+  logId:number;
   analysis:LogAnalysisData;
   from_cache:boolean;
 }
