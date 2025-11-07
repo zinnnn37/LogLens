@@ -7,6 +7,7 @@ import S13P31A306.loglens.domain.dashboard.dto.response.DashboardOverviewRespons
 import S13P31A306.loglens.domain.dashboard.dto.response.ProjectComponentsResponse;
 import S13P31A306.loglens.domain.dashboard.dto.response.TopFrequentErrorsResponse;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
+import S13P31A306.loglens.domain.dashboard.service.TopFrequentErrorsService;
 import S13P31A306.loglens.global.annotation.ValidUuid;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 public class DashboardController implements DashboardApi {
 
     private final DashboardService dashboardService;
+    private final TopFrequentErrorsService topFrequentErrorsService;
 
     /**
      * 통계 개요 조회
@@ -44,14 +46,14 @@ public class DashboardController implements DashboardApi {
     /**
      * 자주 발생하는 에러 Top 10 조회
      */
-    @GetMapping("/statistics/top")
+    @GetMapping("/errors/top")
     public ResponseEntity<? extends BaseResponse> getTopFrequentErrors(
             @RequestParam String projectUuid,
             @RequestParam(defaultValue = "10") Integer limit,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
-        TopFrequentErrorsResponse response = dashboardService.getTopFrequentErrors(projectUuid, limit, startTime, endTime);
+        TopFrequentErrorsResponse response = topFrequentErrorsService.getTopFrequentErrors(projectUuid, startTime, endTime, limit);
         return ApiResponseFactory.success(
                 DashboardSuccessCode.FREQUENT_ERROR_RETRIEVED,
                 response
