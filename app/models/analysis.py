@@ -2,7 +2,7 @@
 Log analysis models
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from typing import List, Optional
 from datetime import datetime
 from enum import Enum
@@ -32,6 +32,15 @@ class LogAnalysisResult(BaseModel):
     analysis_type: AnalysisType = Field(default=AnalysisType.SINGLE, description="분석 유형 (SINGLE: 단일 로그, TRACE_BASED: Trace 기반)")
     target_type: TargetType = Field(default=TargetType.LOG, description="분석 대상 타입 (LOG: 로그, LOG_DETAILS: 로그 상세)")
     analyzed_at: datetime = Field(default_factory=datetime.utcnow, description="분석 시각 (UTC)")
+
+    @field_serializer('analyzed_at')
+    def serialize_datetime(self, dt: datetime, _info):
+        """
+        ISO 8601 format with milliseconds and Z suffix for Java compatibility.
+        Converts Python datetime (microseconds) to Java LocalDateTime format (milliseconds + Z).
+        Example: 2025-11-07T04:55:57.172655 -> 2025-11-07T04:55:57.172Z
+        """
+        return dt.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
 
     class Config:
         json_schema_extra = {

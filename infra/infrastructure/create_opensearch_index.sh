@@ -8,7 +8,7 @@ set -e
 
 OPENSEARCH_HOST="${OPENSEARCH_HOST:-http://localhost:9200}"
 INDEX_TEMPLATE_NAME="logs-template"
-INDEX_PATTERN="logs-*"
+INDEX_PATTERN="*_2*_*"  # Matches {project_uuid}_{YYYY}_{MM} format (2000s)
 
 echo "🔍 OpenSearch 연결 확인: $OPENSEARCH_HOST"
 
@@ -39,6 +39,7 @@ curl -X PUT "$OPENSEARCH_HOST/_index_template/$INDEX_TEMPLATE_NAME" \
   "index_patterns": ["'"$INDEX_PATTERN"'"],
   "template": {
     "settings": {
+      "index.knn": true,
       "number_of_shards": 1,
       "number_of_replicas": 0,
       "refresh_interval": "5s",
@@ -52,7 +53,12 @@ curl -X PUT "$OPENSEARCH_HOST/_index_template/$INDEX_TEMPLATE_NAME" \
           "type": "long"
         },
         "project_uuid": {
-          "type": "keyword"
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword"
+            }
+          }
         },
         "timestamp": {
           "type": "date",
@@ -173,6 +179,15 @@ curl -X PUT "$OPENSEARCH_HOST/_index_template/$INDEX_TEMPLATE_NAME" \
             "analyzed_at": {
               "type": "date"
             }
+          }
+        },
+        "log_vector": {
+          "type": "knn_vector",
+          "dimension": 1536,
+          "method": {
+            "name": "hnsw",
+            "space_type": "innerproduct",
+            "engine": "faiss"
           }
         },
         "indexed_at": {
