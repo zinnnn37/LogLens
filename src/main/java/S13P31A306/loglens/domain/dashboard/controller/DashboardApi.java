@@ -34,7 +34,7 @@ public interface DashboardApi {
      * @return 총 로그 수, 에러율, API 호출 통계 등
      */
     ResponseEntity<? extends BaseResponse> getStatisticsOverview(
-            @RequestParam String projectUuid,
+            @ValidUuid @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     );
@@ -49,7 +49,7 @@ public interface DashboardApi {
      * @return 에러 타입별 발생 횟수 및 비율
      */
     ResponseEntity<? extends BaseResponse> getTopFrequentErrors(
-            @RequestParam String projectUuid,
+            @ValidUuid @RequestParam String projectUuid,
             @RequestParam(defaultValue = "10") Integer limit,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
@@ -64,7 +64,7 @@ public interface DashboardApi {
      * @return 엔드포인트별 호출 수, 평균 응답 시간, 에러율
      */
     ResponseEntity<? extends BaseResponse> getApiCallStatistics(
-            @RequestParam String projectUuid,
+            @ValidUuid @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     );
@@ -78,7 +78,7 @@ public interface DashboardApi {
      * @return 시간대별 로그 발생 패턴 (레벨별)
      */
     ResponseEntity<? extends BaseResponse> getLogHeatmap(
-            @RequestParam String projectUuid,
+            @ValidUuid @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     );
@@ -90,7 +90,7 @@ public interface DashboardApi {
      * @return 컴포넌트 노드와 간선 정보
      */
     ResponseEntity<? extends BaseResponse> getDependencyArchitecture(
-            @RequestParam String projectUuid
+            @ValidUuid @RequestParam String projectUuid
     );
 
     /**

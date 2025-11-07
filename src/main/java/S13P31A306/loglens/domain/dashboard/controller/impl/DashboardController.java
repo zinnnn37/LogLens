@@ -11,6 +11,7 @@ import S13P31A306.loglens.domain.dashboard.service.TopFrequentErrorsService;
 import S13P31A306.loglens.global.annotation.ValidUuid;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
+import S13P31A306.loglens.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -18,11 +19,15 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import static S13P31A306.loglens.domain.dashboard.constants.DashboardErrorCode.PROJECT_UUID_REQUIRED;
+
 @Slf4j
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class DashboardController implements DashboardApi {
+
+    private static final String LOG_PREFIX = "[DashboardController]";
 
     private final DashboardService dashboardService;
     private final TopFrequentErrorsService topFrequentErrorsService;
@@ -32,10 +37,12 @@ public class DashboardController implements DashboardApi {
      */
     @GetMapping("/statistics/overview")
     public ResponseEntity<? extends BaseResponse> getStatisticsOverview(
-            @RequestParam String projectUuid,
+            @ValidUuid @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
+        log.info("{} 대시보드 통계 api 호출", LOG_PREFIX);
+
         DashboardOverviewResponse response = dashboardService.getStatisticsOverview(projectUuid, startTime, endTime);
         return ApiResponseFactory.success(
                 DashboardSuccessCode.OVERVIEW_RETRIEVED,
@@ -48,11 +55,13 @@ public class DashboardController implements DashboardApi {
      */
     @GetMapping("/errors/top")
     public ResponseEntity<? extends BaseResponse> getTopFrequentErrors(
-            @RequestParam String projectUuid,
+            @ValidUuid @RequestParam String projectUuid,
             @RequestParam(defaultValue = "10") Integer limit,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
+        log.info("{} 자주 발생하는 에러 TOP {} api 호출", LOG_PREFIX, limit);
+
         TopFrequentErrorsResponse response = topFrequentErrorsService.getTopFrequentErrors(projectUuid, startTime, endTime, limit);
         return ApiResponseFactory.success(
                 DashboardSuccessCode.FREQUENT_ERROR_RETRIEVED,
@@ -65,7 +74,7 @@ public class DashboardController implements DashboardApi {
      */
     @GetMapping("/statistics/api-calls")
     public ResponseEntity<? extends BaseResponse> getApiCallStatistics(
-            @RequestParam String projectUuid,
+            @ValidUuid @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
@@ -77,7 +86,7 @@ public class DashboardController implements DashboardApi {
      */
     @GetMapping("/statistics/logs/heatmap")
     public ResponseEntity<? extends BaseResponse> getLogHeatmap(
-            @RequestParam String projectUuid,
+            @ValidUuid @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
@@ -89,7 +98,7 @@ public class DashboardController implements DashboardApi {
      */
     @GetMapping("/dashboards/dependencies/architecture")
     public ResponseEntity<? extends BaseResponse> getDependencyArchitecture(
-            @RequestParam String projectUuid
+            @ValidUuid @RequestParam String projectUuid
     ) {
         return null;
     }
@@ -165,4 +174,5 @@ public class DashboardController implements DashboardApi {
         // PageResponse<AlertResponse> response = dashboardService.getAlertFeed(projectId, severity, isRead, page, size);
         return null;
     }
+
 }
