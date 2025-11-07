@@ -208,7 +208,7 @@ const LogsPage = () => {
         escapeCSV(log.logger),
         escapeCSV(log.message),
         escapeCSV(log.traceId),
-        escapeCSV(log.logId),
+        log.logId,
         escapeCSV(log.comment),
       ].join(',');
     });

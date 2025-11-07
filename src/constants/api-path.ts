@@ -48,5 +48,5 @@ export const API_PATH = {
   LOGS_SEARCH: '/api/logs',
 
   // 로그 분석
-  LOGS_ANALYZE: (log_id:string) =>`/api/v1/logs/${log_id}/analysis`
+  LOGS_ANALYZE: (log_id:number) =>`/api/v1/logs/${log_id}/analysis`
 } as const;

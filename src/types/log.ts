@@ -16,7 +16,7 @@ export interface LogSearchParams {
 }
 
 export interface LogData {
-  logId: string;
+  logId: number;
   traceId: string;
   timestamp: string; // ISO 8601 date-time
   logLevel: 'WARN' | 'ERROR' | 'INFO';
@@ -63,7 +63,7 @@ export interface TraceIdSearchResponse {
 
 // 로그 분석(상세 조회)
 export interface LogAnalysisParams{
-  log_id:string;
+  log_id:number;
   project_uuid:string;
 }
 
@@ -79,7 +79,7 @@ export interface LogAnalysisData{
 }
 
 export interface LogAnalysisResponse{
-  log_id:string;
+  log_id:number;
   analysis:LogAnalysisData;
   from_cache:boolean;
 }
