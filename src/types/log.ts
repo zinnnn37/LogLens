@@ -60,3 +60,26 @@ export interface TraceIdSearchResponse {
   summary: LogSummary;
   logs: LogData[];
 }
+
+// 로그 분석(상세 조회)
+export interface LogAnalysisParams{
+  log_id:string;
+  project_uuid:string;
+}
+
+export interface LogAnalysisData{
+  summary:string;
+  error_cause:string;
+  solution:string;
+  tags:string[];
+  analysis_type:string;
+  target_type:string;
+  analyzed_at:string;
+
+}
+
+export interface LogAnalysisResponse{
+  log_id:string;
+  analysis:LogAnalysisData;
+  from_cache:boolean;
+}
