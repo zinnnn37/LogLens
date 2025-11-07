@@ -31,12 +31,15 @@ logging:
 
 dependency:
   logger:
-    api-key: 99293c70-6c65-3b76-b24a-1e2aa7aad6da
+    api-key: 48d96cd7-bf8d-38f5-891c-9c2f6430d871
 
     collector:
-      url: http://localhost:8080
-#      url: https://api.loglens.co.kr  # 8080으로 변경
+#      url: http://localhost:8080
+      url: https://api.loglens.co.kr  # 8080으로 변경
     enabled: true
+
+    stacktrace:
+      max-lines: 3
 
     frontend:
       enabled: true
