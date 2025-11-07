@@ -89,3 +89,11 @@ opensearch:
   max-connections-per-route: 25    # 라우트당 최대 연결 수
   connection-timeout: 5000         # 연결 타임아웃 (5초)
   socket-timeout: 30000            # 소켓 타임아웃 (30초)
+
+# ===================================================================
+# AI 서비스 설정 (AI Service Configuration)
+# ===================================================================
+ai:
+  service:
+    base-url: ${AI_SERVICE_URL}
+    timeout: 30000                 # AI 분석 타임아웃 (30초, LLM 처리 시간 고려)
