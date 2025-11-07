@@ -58,7 +58,15 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
         // 3. 시간 파싱 및 기본값 설정
         LocalDateTime parsedEnd = dashboardValidator.validateAndParseTime(endTime);
         LocalDateTime parsedStart = dashboardValidator.validateAndParseTime(startTime);
-        LocalDateTime end = parsedEnd != null ? parsedEnd : parsedStart != null ? parsedStart.plusDays(7) : LocalDateTime.now();
+
+        LocalDateTime end;
+        if (parsedEnd != null) {
+            end = parsedEnd;
+        } else if (parsedStart != null) {
+            end = parsedStart.plusDays(7);
+        } else {
+            end = LocalDateTime.now();
+        }
         LocalDateTime start = parsedStart != null ? parsedStart : end.minusDays(7);
 
         // 4. 시간 범위 검증
