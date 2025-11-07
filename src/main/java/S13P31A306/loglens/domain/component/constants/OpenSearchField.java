@@ -12,7 +12,8 @@ public enum OpenSearchField {
 
     // ──────────────── 트레이싱 / 식별자 ────────────────
     TRACE_ID("trace_id"),
-    PROJECT_UUID("project_uuid.keyword"),
+    PROJECT_UUID("project_uuid"),
+    PROJECT_UUID_KEYWORD("project_uuid.keyword"),
     LOG_ID("log_id"),
 
     // ──────────────── 컨텍스트 / 메타데이터 ────────────────
@@ -50,9 +51,16 @@ public enum OpenSearchField {
 
     // ──────────────── 상세 로그 (log_details 내부 필드) ────────────────
     LOG_DETAILS("log_details"),
+    EXCEPTION_TYPE("log_details.exception_type"),
+    EXECUTION_TIME("log_details.execution_time"),
     RESPONSE_STATUS("log_details.response_status"),
     HTTP_METHOD("log_details.http_method"),
-    REQUEST_URI("log_details.request_uri");
+    REQUEST_URI("log_details.request_uri"),
+    REQUEST_BODY("log_details.request_body"),
+    RESPONSE_BODY("log_details.response_body"),
+    LOG_DETAILS_CLASS_NAME("log_details.class_name"),
+    LOG_DETAILS_METHOD_NAME("log_details.method_name"),
+    LOG_DETAILS_STACKTRACE("log_details.stacktrace");
 
     private final String fieldName;
 }
