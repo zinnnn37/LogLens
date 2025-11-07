@@ -3,7 +3,6 @@ package S13P31A306.loglens.domain.dashboard.service.impl;
 import S13P31A306.loglens.domain.dashboard.dto.opensearch.ErrorAggregation;
 import S13P31A306.loglens.domain.dashboard.dto.opensearch.ErrorStatistics;
 import S13P31A306.loglens.domain.dashboard.service.TopFrequentErrorsQueryService;
-import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.validator.ProjectValidator;
 import S13P31A306.loglens.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.json.JsonData;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.FieldValue;
+import org.opensearch.client.opensearch._types.aggregations.Aggregate;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.SearchResponse;
@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static S13P31A306.loglens.global.constants.GlobalErrorCode.OPENSEARCH_OPERATION_FAILED;
 
@@ -33,6 +34,7 @@ import static S13P31A306.loglens.global.constants.GlobalErrorCode.OPENSEARCH_OPE
 public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQueryService {
 
     private static final String LOG_PREFIX = "[TopFrequentErrorsQueryService]";
+    private static final String INDEX_NAME = "logs-*";
 
     private final OpenSearchClient openSearchClient;
     private final ProjectValidator projectValidator;
@@ -57,17 +59,14 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
 
         log.info("{} Top {} 에러 집계 쿼리 시작: projectUuid={}", LOG_PREFIX, limit, projectUuid);
 
-        Project project = projectValidator.validateProjectExists(projectUuid);
-        Integer projectId = project.getId();
-
         try {
             SearchRequest request = SearchRequest.of(s -> s
-                    .index("logs")
+                    .index(INDEX_NAME)
                     .size(0)
-                    .query(buildErrorLogQuery(projectId, start, end))
+                    .query(buildErrorLogQuery(projectUuid, start, end))
                     .aggregations("by_error_type", a -> a
                             .terms(t -> t
-                                    .field("log_details.exception_type.keyword")
+                                    .field("log_details.exception_type")
                                     .size(limit))
                             .aggregations("first_occurrence", a2 -> a2
                                     .min(m -> m.field("timestamp")))
@@ -111,25 +110,33 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
 
         log.debug("{} 에러 통계 쿼리 시작: projectUuid={}", LOG_PREFIX, projectUuid);
 
-        Project project = projectValidator.validateProjectExists(projectUuid);
-        Integer projectId = project.getId();
-
         try {
             SearchRequest request = SearchRequest.of(s -> s
-                    .index("logs")
+                    .index(INDEX_NAME)
                     .size(0)
-                    .query(buildErrorLogQuery(projectId, start, end))
+                    .query(buildErrorLogQuery(projectUuid, start, end))
                     .aggregations("unique_types", a -> a
-                            .cardinality(c -> c.field("log_details.exception_type.keyword")))
+                            .cardinality(c -> c.field("log_details.exception_type")))
             );
 
             SearchResponse<Void> response = openSearchClient.search(request, Void.class);
 
-            long totalErrors = response.hits().total().value();
-            int uniqueTypes = (int) response.aggregations()
-                    .get("unique_types")
-                    .cardinality()
-                    .value();
+            int totalErrors = 0;
+            int uniqueTypes = 0;
+
+            if (response.hits().total() != null) {
+                totalErrors = Math.toIntExact(response.hits().total().value());
+            }
+
+            Map<String, Aggregate> aggregations = response.aggregations();
+
+            if (aggregations != null && aggregations.containsKey("unique_types")) {
+                Aggregate uniqueTypesAgg = aggregations.get("unique_types");
+
+                if (uniqueTypesAgg != null && uniqueTypesAgg.cardinality() != null) {
+                    uniqueTypes = (int) uniqueTypesAgg.cardinality().value();
+                }
+            }
 
             log.debug("{} 에러 통계 조회 완료: totalErrors={}, uniqueTypes={}",
                     LOG_PREFIX, totalErrors, uniqueTypes);
@@ -138,7 +145,7 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
 
         } catch (IOException e) {
             log.error("{} OpenSearch 에러 통계 조회 실패", LOG_PREFIX, e);
-            return new ErrorStatistics(0L, 0);
+            throw new BusinessException(OPENSEARCH_OPERATION_FAILED);
         }
     }
 
@@ -146,18 +153,18 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
      * 프로젝트의 ERROR 로그 기본 쿼리 생성
      * project_uuid, log_level(ERROR), timestamp 범위 조건을 포함한 bool 쿼리 생성
      *
-     * @param projectId 프로젝트 UUID
+     * @param projectUud 프로젝트 UUID
      * @param start 조회 시작 시간
      * @param end 조회 종료 시간
      * @return OpenSearch Query 객체
      */
-    private Query buildErrorLogQuery(Integer projectId, LocalDateTime start, LocalDateTime end) {
+    private Query buildErrorLogQuery(String projectUud, LocalDateTime start, LocalDateTime end) {
         return Query.of(q -> q.bool(b -> b
                 .must(m -> m.term(t -> t
-                        .field("project_uuid.keyword")
-                        .value(FieldValue.of(projectId))))
+                        .field("project_uuid")
+                        .value(FieldValue.of(projectUud))))
                 .must(m -> m.term(t -> t
-                        .field("log_level.keyword")
+                        .field("log_level")
                         .value(FieldValue.of("ERROR"))))
                 .must(m -> m.range(r -> r
                         .field("timestamp")
@@ -171,53 +178,80 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
      *
      * @param response OpenSearch 검색 응답
      * @return ErrorAggregation 리스트
+     * @throws BusinessException 예상하지 못한 에러
      */
     private List<ErrorAggregation> parseErrorAggregations(SearchResponse<Void> response) {
         List<ErrorAggregation> result = new ArrayList<>();
 
-        var buckets = response.aggregations()
-                .get("by_error_type")
-                .sterms()
-                .buckets()
-                .array();
+        try {
+            Map<String, Aggregate> aggregations = response.aggregations();
 
-        for (var bucket : buckets) {
-            String exceptionType = bucket.key();
-            Integer count = (int) bucket.docCount();
-
-            // first/last occurrence
-            LocalDateTime firstOccurrence = parseTimestamp(
-                    bucket.aggregations().get("first_occurrence").min().valueAsString());
-            LocalDateTime lastOccurrence = parseTimestamp(
-                    bucket.aggregations().get("last_occurrence").max().valueAsString());
-
-            // sample_data에서 message, stack_trace, logger 추출
-            var hits = bucket.aggregations()
-                    .get("sample_data")
-                    .topHits()
-                    .hits()
-                    .hits();
-
-            if (hits.isEmpty()) {
-                continue;
+            if (aggregations == null || !aggregations.containsKey("by_error_type")) {
+                log.debug("{} by_error_type aggregation 결과 없음", LOG_PREFIX);
+                return result;
             }
 
-            var source = hits.getFirst().source();
-            String message = extractField(source, "message");
-            String stackTrace = extractStackTraceFirstLine(source);
-            String logger = extractField(source, "logger");
+            Aggregate aggregation = aggregations.get("by_error_type");
 
-            result.add(new ErrorAggregation(
-                    exceptionType,
-                    message,
-                    count,
-                    firstOccurrence,
-                    lastOccurrence,
-                    stackTrace,
-                    logger
-            ));
+            if (aggregation == null || aggregation.sterms() == null) {
+                log.debug("{} sterms aggregation 결과 없음", LOG_PREFIX);
+                return result;
+            }
+
+            var buckets = aggregation.sterms().buckets().array();
+
+            if (buckets == null || buckets.isEmpty()) {
+                log.debug("{} buckets 비어있음", LOG_PREFIX);
+                return result;
+            }
+
+            for (var bucket : buckets) {
+                String exceptionType = bucket.key();
+                Integer count = (int) bucket.docCount();
+
+                LocalDateTime firstOccurrence = parseTimestamp(
+                        bucket.aggregations().get("first_occurrence").min().valueAsString());
+                LocalDateTime lastOccurrence = parseTimestamp(
+                        bucket.aggregations().get("last_occurrence").max().valueAsString());
+
+                if (firstOccurrence == null || lastOccurrence == null) {
+                    log.warn("{} timeStamp 형식 이상", LOG_PREFIX);
+                    continue;
+                }
+
+                // sample_data에서 message, stack_trace, logger 추출
+                var hits = bucket.aggregations()
+                        .get("sample_data")
+                        .topHits()
+                        .hits()
+                        .hits();
+
+                if (hits.isEmpty()) {
+                    continue;
+                }
+
+                var source = hits.getFirst().source();
+                String message = extractField(source, "message");
+                String stackTrace = extractStackTraceFirstLine(source);
+                String logger = extractField(source, "logger");
+
+                result.add(new ErrorAggregation(
+                        exceptionType,
+                        message,
+                        count,
+                        firstOccurrence,
+                        lastOccurrence,
+                        stackTrace,
+                        logger
+                ));
+            }
+        } catch (NullPointerException e) {
+            log.warn("{} aggregation 파싱 중 NullPointerException 발생: {}", LOG_PREFIX, e.getMessage());
+            return new ArrayList<>();
+        } catch (Exception e) {
+            log.error("{} aggregation 파싱 중 예상치 못한 오류 발생", LOG_PREFIX, e);
+            throw new BusinessException(OPENSEARCH_OPERATION_FAILED);
         }
-
         return result;
     }
 
@@ -234,7 +268,7 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
             return LocalDateTime.parse(timestamp, DateTimeFormatter.ISO_DATE_TIME);
         } catch (Exception e) {
             log.error("{} timestamp 파싱 실패: time={}", LOG_PREFIX, timestamp);
-            return LocalDateTime.now();
+            return null;
         }
     }
 
