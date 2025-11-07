@@ -11,7 +11,7 @@ public enum DashboardErrorCode implements ErrorCode {
 
     // 400 BAD REQUEST
     INVALID_TIME_FORMAT("DSB400-1", "유효하지 않은 시간 형식입니다", HttpStatus.BAD_REQUEST.value()),
-    INVALID_TIME_RANGE("DSB400-2", "유효하지 않은 시강 범위입니다.", HttpStatus.BAD_REQUEST.value()),
+    INVALID_TIME_RANGE("DSB400-2", "유효하지 않은 시간 범위입니다.", HttpStatus.BAD_REQUEST.value()),
     INVALID_LIMIT("DSB400-3", "유효하지 않은 limit 값입니다.", HttpStatus.BAD_REQUEST.value()),
     PERIOD_EXCEEDS_LIMIT("DSB400-4", "조회 기간은 최대 90일을 초과할 수 없습니다.", HttpStatus.BAD_REQUEST.value()),
     PROJECT_UUID_REQUIRED("DSB400-5", "프로젝트 ID는 필수입니다.",  HttpStatus.BAD_REQUEST.value()),
