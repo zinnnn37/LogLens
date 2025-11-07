@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Workflow } from 'lucide-react';
 import { analyzeLogs } from '@/services/logService';
 import type { LogData, LogAnalysisData } from '@/types/log';
 
@@ -71,7 +71,7 @@ const LogDetailModal1 = ({
 
         try {
           const params = {
-            logId: log.logId, 
+            logId: log.logId,
             project_uuid: projectUuid,
           };
           const response = await analyzeLogs(params);
@@ -87,7 +87,6 @@ const LogDetailModal1 = ({
       fetchAnalysis();
     }
 
-    // 모달이 닫히면 상태 초기화
     if (!open) {
       setAnalysis(null);
       setIsLoading(false);
@@ -100,6 +99,15 @@ const LogDetailModal1 = ({
   }
 
   const isErrorLevel = log.logLevel === 'ERROR';
+
+  // 요청 흐름 보기 새 탭 열기 핸들러
+  const handleOpenRequestFlow = () => {
+    if (!projectUuid || !log.traceId) { return; }
+
+    const params = new URLSearchParams({ traceId: log.traceId });
+    const url = `/project/${projectUuid}/request-flow?${params.toString()}`;
+    window.open(url, '_blank');
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -123,7 +131,6 @@ const LogDetailModal1 = ({
             <InfoRow label="Logger" value={log.logger} />
             <InfoRow label="Layer" value={log.layer} />
           </InfoSection>
-
 
           {/* 로딩 중 */}
           {isLoading && (
@@ -172,16 +179,28 @@ const LogDetailModal1 = ({
           )}
         </div>
 
-        {isErrorLevel && (
-          <DialogFooter>
+        <DialogFooter className="gap-2 sm:justify-end">
+          {/* 요청 흐름 버튼 */}
+          <Button
+            variant="outline"
+            onClick={handleOpenRequestFlow}
+            className="gap-2"
+          >
+            <Workflow className="h-4 w-4" />
+            요청 흐름 보기
+          </Button>
+
+          {/* Jira 버튼 */}
+          {isErrorLevel && (
             <Button
               onClick={onGoToNextPage}
-              disabled={isLoading || !analysis} 
+              disabled={isLoading || !analysis}
+              className="bg-[#0052CC] hover:bg-[#0747A6]" 
             >
               Jira 티켓 발행
             </Button>
-          </DialogFooter>
-        )}
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
