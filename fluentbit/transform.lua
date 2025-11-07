@@ -24,6 +24,32 @@ local function simple_json_parse(str)
 end
 
 function transform_log(tag, timestamp, record)
+
+    -- ====================================================
+    -- 🔥 프론트엔드 배열 로그 처리 (재귀 호출)
+    -- ====================================================
+    if record["logs"] and type(record["logs"]) == "table" then
+        local logs_array = record["logs"]
+        local results = {}
+
+        for i, log_entry in ipairs(logs_array) do
+            if type(log_entry) == "table" then
+                -- 각 로그 항목을 개별적으로 변환 (재귀 호출)
+                local code, ts, transformed = transform_log(tag, timestamp, log_entry)
+                if code == 1 and transformed then
+                    table.insert(results, transformed)
+                end
+            end
+        end
+
+        -- 변환된 로그들을 개별 레코드로 반환
+        if #results > 0 then
+            return 2, timestamp, results
+        else
+            return -1, timestamp, record  -- 처리 실패 시 drop
+        end
+    end
+
     local new_record = {}
     local now = os.date("!%Y-%m-%dT%H:%M:%S.000Z")
 
@@ -51,9 +77,9 @@ function transform_log(tag, timestamp, record)
     ----------------------------------------------------
     new_record["project_uuid"] = record["project_uuid"] or "default-project"
 
-    -- timestamp: @timestamp를 그대로 유지 (ISO 8601 형식)
-    -- Logstash에서 최종 처리하도록 원본 값 보존
-    new_record["@timestamp"] = record["@timestamp"] or record["timestamp"] or now
+    -- timestamp 정규화: timestamp 또는 @timestamp를 @timestamp로 통일
+    local ts = record["@timestamp"] or record["timestamp"] or now
+    new_record["@timestamp"] = ts
 
     new_record["indexed_at"] = now
     new_record["service_name"] = record["service_name"] or record["app_name"] or "unknown-service"
@@ -64,6 +90,7 @@ function transform_log(tag, timestamp, record)
     -- 3️⃣ layer 추출 및 정규화
     ----------------------------------------------------
     local layer = record["layer"]
+    local original_layer = layer
 
     -- layer 대소문자 정규화 (CONTROLLER → Controller)
     if layer then
@@ -75,6 +102,8 @@ function transform_log(tag, timestamp, record)
             layer = "Repository"
         elseif layer == "FILTER" then
             layer = "Filter"
+        elseif layer == "FRONT" or layer == "FRONTEND" then
+            layer = "Frontend"
         elseif layer == "UNKNOWN" then
             layer = "Other"
         end
@@ -103,34 +132,41 @@ function transform_log(tag, timestamp, record)
     local src = record["source_type"]
 
     if not src then
-        local raw_layer = layer or record["layer"]
-        local raw_tag = tag or ""
-
-        -- 우선 layer, tag, logger 등에서 후보 문자열을 추출
-        local hint = ""
-        if raw_layer then
-            hint = string.upper(tostring(raw_layer))
-        elseif raw_tag then
-            hint = string.upper(tostring(raw_tag))
-        elseif record["logger"] then
-            hint = string.upper(tostring(record["logger"]))
+        if original_layer then
+            local upper_original = string.upper(tostring(original_layer))
+            if upper_original == "FRONT" or upper_original == "FRONTEND" or upper_original == "FE" then
+                src = "FE"
+            elseif upper_original == "BACK" or upper_original == "BACKEND" or upper_original == "BE" then
+                src = "BE"
+            elseif upper_original == "INFRA" then
+                src = "INFRA"
+            end
         end
 
-        -- FE / FRONT / FRONTEND 매칭
-        if string.match(hint, "FRONT") or string.match(hint, "FRONTEND") or string.match(hint, "FE") then
-            src = "FE"
+        -- src가 아직 결정되지 않았으면 기존 로직 수행
+        if not src then
+            local hint = ""
+            if layer then
+                hint = string.upper(tostring(layer))
+            elseif tag then
+                hint = string.upper(tostring(tag))
+            elseif record["logger"] then
+                hint = string.upper(tostring(record["logger"]))
+            end
 
-            -- BE / BACK / BACKEND 매칭
-        elseif string.match(hint, "BACK") or string.match(hint, "BACKEND") or string.match(hint, "BE") then
-            src = "BE"
-
-            -- INFRA 매칭
-        elseif string.match(hint, "INFRA") then
-            src = "INFRA"
-
-            -- 나머지는 OTHERS
-        else
-            src = "OTHERS"
+            -- FE / FRONTEND 매칭
+            if string.match(hint, "FRONTEND") or string.match(hint, "FRONT") or string.match(hint, "^FE$") then
+                src = "FE"
+                -- BE / BACK / BACKEND 매칭
+            elseif string.match(hint, "BACKEND") or string.match(hint, "BACK") or string.match(hint, "^BE$") then
+                src = "BE"
+                -- INFRA 매칭
+            elseif string.match(hint, "INFRA") then
+                src = "INFRA"
+                -- 나머지는 OTHERS
+            else
+                src = "OTHERS"
+            end
         end
     end
 
@@ -147,7 +183,8 @@ function transform_log(tag, timestamp, record)
     new_record["level"] = lvl
     new_record["log_level"] = lvl
 
-    local trace_id = record["trace_id"]
+    -- trace_id 정규화: traceId → trace_id
+    local trace_id = record["trace_id"] or record["traceId"]
     if not trace_id and record["message"] then
         trace_id = string.match(record["message"], "([a-f0-9%-]{36})")
     end
@@ -191,7 +228,11 @@ function transform_log(tag, timestamp, record)
     ----------------------------------------------------
     -- 7️⃣ log_details: 상세 정보 수집 (스키마 준수)
     ----------------------------------------------------
-    local exec_time = record["execution_time_ms"] or record["executionTimeMs"] or record["execution_time"] or nil
+    -- execution_time 정규화: executionTimeMs → execution_time_ms
+    local exec_time = record["execution_time_ms"]
+            or record["executionTimeMs"]
+            or record["execution_time"]
+            or nil
     if type(exec_time) == "string" then
         exec_time = tonumber(exec_time)
     end
