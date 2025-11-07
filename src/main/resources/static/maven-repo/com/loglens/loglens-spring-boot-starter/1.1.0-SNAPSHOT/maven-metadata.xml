@@ -3,7 +3,7 @@
   <groupId>com.loglens</groupId>
   <artifactId>loglens-spring-boot-starter</artifactId>
   <versioning>
-    <lastUpdated>20251107054416</lastUpdated>
+    <lastUpdated>20251107063527</lastUpdated>
     <snapshot>
       <localCopy>true</localCopy>
     </snapshot>
@@ -11,18 +11,18 @@
       <snapshotVersion>
         <extension>jar</extension>
         <value>1.1.0-SNAPSHOT</value>
-        <updated>20251107054416</updated>
+        <updated>20251107063527</updated>
       </snapshotVersion>
       <snapshotVersion>
         <extension>pom</extension>
         <value>1.1.0-SNAPSHOT</value>
-        <updated>20251107054416</updated>
+        <updated>20251107063527</updated>
       </snapshotVersion>
       <snapshotVersion>
         <classifier>sources</classifier>
         <extension>jar</extension>
         <value>1.1.0-SNAPSHOT</value>
-        <updated>20251107054416</updated>
+        <updated>20251107063527</updated>
       </snapshotVersion>
     </snapshotVersions>
   </versioning>
