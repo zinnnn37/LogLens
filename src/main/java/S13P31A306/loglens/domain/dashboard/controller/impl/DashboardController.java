@@ -2,24 +2,19 @@ package S13P31A306.loglens.domain.dashboard.controller.impl;
 
 import S13P31A306.loglens.domain.dashboard.constants.DashboardSuccessCode;
 import S13P31A306.loglens.domain.dashboard.controller.DashboardApi;
-import S13P31A306.loglens.domain.dashboard.dto.response.ComponentDependencyResponse;
-import S13P31A306.loglens.domain.dashboard.dto.response.DashboardOverviewResponse;
-import S13P31A306.loglens.domain.dashboard.dto.response.ProjectComponentsResponse;
-import S13P31A306.loglens.domain.dashboard.dto.response.TopFrequentErrorsResponse;
+import S13P31A306.loglens.domain.dashboard.dto.response.*;
+import S13P31A306.loglens.domain.dashboard.service.ApiEndpointService;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
 import S13P31A306.loglens.domain.dashboard.service.TopFrequentErrorsService;
 import S13P31A306.loglens.global.annotation.ValidUuid;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
-import S13P31A306.loglens.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-
-import static S13P31A306.loglens.domain.dashboard.constants.DashboardErrorCode.PROJECT_UUID_REQUIRED;
 
 @Slf4j
 @RestController
@@ -31,6 +26,7 @@ public class DashboardController implements DashboardApi {
 
     private final DashboardService dashboardService;
     private final TopFrequentErrorsService topFrequentErrorsService;
+    private final ApiEndpointService apiEndpointService;
 
     /**
      * 통계 개요 조회
@@ -53,6 +49,7 @@ public class DashboardController implements DashboardApi {
     /**
      * 자주 발생하는 에러 Top 10 조회
      */
+    @Override
     @GetMapping("/errors/top")
     public ResponseEntity<? extends BaseResponse> getTopFrequentErrors(
             @ValidUuid @RequestParam String projectUuid,
@@ -72,13 +69,21 @@ public class DashboardController implements DashboardApi {
     /**
      * API 호출 통계 조회
      */
+    @Override
     @GetMapping("/statistics/api-calls")
     public ResponseEntity<? extends BaseResponse> getApiCallStatistics(
             @ValidUuid @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
-            @RequestParam(required = false) String endTime
+            @RequestParam(required = false) String endTime,
+            @RequestParam(required = false) Integer limit
     ) {
-        return null;
+        log.info("{} API 통계 {}개 호출", LOG_PREFIX, limit);
+
+        ApiEndpointResponse response = apiEndpointService.getApiEndpointStatistics(projectUuid, startTime, endTime, limit);
+        return ApiResponseFactory.success(
+                DashboardSuccessCode.API_STATISTICS_RETRIEVED,
+                response
+        );
     }
 
     /**
