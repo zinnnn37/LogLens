@@ -107,8 +107,12 @@ public class DashboardValidator {
      * @throws BusinessException timeStr이 유효하지 않은 ISO 8601 형식인 경우 (INVALID_TIME_FORMAT)
      */
     public LocalDateTime validateAndParseTime(String time) {
-        // TODO: null 입력 확인
         log.info("{} 시간 문자열 파싱 시작: time={}", LOG_PREFIX, time);
+
+        if (Objects.isNull(time)) {
+            return null;
+        }
+
         try {
             log.info("{} 시간 문자열 파싱 성공: time={}", LOG_PREFIX, time);
             return LocalDateTime.parse(time, DateTimeFormatter.ISO_DATE_TIME);
