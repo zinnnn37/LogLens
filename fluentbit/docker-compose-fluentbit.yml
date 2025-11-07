@@ -50,12 +50,8 @@ services:
 
     restart: unless-stopped               # 예기치 않은 중단 시 자동 재시작 (수동 중지 제외)
 
-    # ──────────────────────────────────────────────
-    # ✅ Docker 네트워크 연결
-    # Blue/Green 컨테이너와 통신하기 위한 네트워크 설정
-    # ──────────────────────────────────────────────
     networks:
-      - loglens-network
+      - default
 
     # ──────────────────────────────────────────────
     # ✅ 리소스 제한 (도커 엔진 수준의 컨테이너 자원 제어)
@@ -104,12 +100,6 @@ volumes:
   fluent-bit-backup:
     driver: local
 
-# ──────────────────────────────────────────────
-# ✅ Docker 네트워크 정의
-# Blue/Green 컨테이너와 통신하기 위해 동일한 네트워크 사용
-# external: true - 기존에 생성된 네트워크를 사용 (생성하지 않음)
-# ──────────────────────────────────────────────
 networks:
-  loglens-network:
-    external: true
-    name: loglens-network
+  default:
+    driver: bridge
