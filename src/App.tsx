@@ -7,7 +7,12 @@ const App = () => {
   return (
     <>
       <RouterProvider router={router} />
-      <Toaster theme="system" position="top-center" richColors  duration={1500} />
+      <Toaster
+        theme="system"
+        position="top-center"
+        richColors
+        duration={1500}
+      />
     </>
   );
 };

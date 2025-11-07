@@ -75,7 +75,7 @@ const LogDetailModal1 = ({
             project_uuid: projectUuid,
           };
           const response = await analyzeLogs(params);
-          setAnalysis(response.analysis); 
+          setAnalysis(response.analysis);
         } catch (e) {
           console.error('로그 분석 API 실패:', e);
           setError('AI 분석 데이터를 불러오는 데 실패했습니다.');
@@ -92,7 +92,7 @@ const LogDetailModal1 = ({
       setIsLoading(false);
       setError(null);
     }
-  }, [open, log, projectUuid]); 
+  }, [open, log, projectUuid]);
 
   if (!log) {
     return null;
@@ -129,7 +129,7 @@ const LogDetailModal1 = ({
               {/* 로딩 중 */}
               {isLoading && (
                 <InfoSection title="AI 분석 중...">
-                  <div className="flex justify-center items-center h-20">
+                  <div className="flex h-20 items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                     <span className="ml-2 text-gray-500">
                       에러 원인을 분석하고 있습니다...
@@ -149,19 +149,19 @@ const LogDetailModal1 = ({
               {analysis && !isLoading && (
                 <>
                   <InfoSection title="로그 요약">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    <p className="text-sm whitespace-pre-wrap text-gray-700">
                       {analysis.summary}
                     </p>
                   </InfoSection>
 
                   <InfoSection title="에러 원인">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    <p className="text-sm whitespace-pre-wrap text-gray-700">
                       {analysis.error_cause}
                     </p>
                   </InfoSection>
 
                   <InfoSection title="해결 방안">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    <p className="text-sm whitespace-pre-wrap text-gray-700">
                       {analysis.solution}
                     </p>
                   </InfoSection>
@@ -173,10 +173,7 @@ const LogDetailModal1 = ({
 
         {isErrorLevel && (
           <DialogFooter>
-            <Button
-              onClick={onGoToNextPage}
-              disabled={isLoading || !analysis}
-            >
+            <Button onClick={onGoToNextPage} disabled={isLoading || !analysis}>
               Jira 티켓 발행
             </Button>
           </DialogFooter>

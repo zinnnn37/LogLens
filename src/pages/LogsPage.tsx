@@ -2,10 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { searchLogs } from '@/services/logService';
-import type {
-  LogData,
-  LogSearchParams,
-} from '@/types/log';
+import type { LogData, LogSearchParams } from '@/types/log';
 
 import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -39,10 +36,7 @@ const LogsPage = () => {
   const [criteria, setCriteria] = useState<SearchCriteria | null>(null);
 
   const fetchLogs = useCallback(
-    async (
-      isInitial: boolean,
-      searchCriteria: SearchCriteria | null,
-    ) => {
+    async (isInitial: boolean, searchCriteria: SearchCriteria | null) => {
       if (!projectUuid) {
         return;
       }

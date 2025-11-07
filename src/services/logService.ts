@@ -25,7 +25,7 @@ export const searchLogs = async (
 
 // 로그 상세조회
 export const analyzeLogs = async (
-  params: LogAnalysisParams, 
+  params: LogAnalysisParams,
 ): Promise<LogAnalysisResponse> => {
   const { logId, project_uuid } = params;
 
