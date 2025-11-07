@@ -22,6 +22,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static S13P31A306.loglens.global.constants.GlobalErrorCode.OPENSEARCH_OPERATION_FAILED;
 
@@ -188,21 +189,21 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
         try {
             Map<String, Aggregate> aggregations = response.aggregations();
 
-            if (aggregations == null || !aggregations.containsKey("by_error_type")) {
+            if (Objects.isNull(aggregations) || !aggregations.containsKey("by_error_type")) {
                 log.debug("{} by_error_type aggregation 결과 없음", LOG_PREFIX);
                 return result;
             }
 
             Aggregate aggregation = aggregations.get("by_error_type");
 
-            if (aggregation == null || aggregation.sterms() == null) {
+            if (Objects.isNull(aggregation) || Objects.isNull(aggregation.sterms())) {
                 log.debug("{} sterms aggregation 결과 없음", LOG_PREFIX);
                 return result;
             }
 
             var buckets = aggregation.sterms().buckets().array();
 
-            if (buckets == null || buckets.isEmpty()) {
+            if (Objects.isNull(buckets) || buckets.isEmpty()) {
                 log.debug("{} buckets 비어있음", LOG_PREFIX);
                 return result;
             }
@@ -216,7 +217,7 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
                 LocalDateTime lastOccurrence = parseTimestamp(
                         bucket.aggregations().get("last_occurrence").max().valueAsString());
 
-                if (firstOccurrence == null || lastOccurrence == null) {
+                if (Objects.isNull(firstOccurrence) || Objects.isNull(lastOccurrence)) {
                     log.warn("{} timeStamp 형식 이상", LOG_PREFIX);
                     continue;
                 }
@@ -262,7 +263,7 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
 
     /**
      * ISO 8601 형식의 timestamp 문자열을 LocalDateTime으로 변환
-     * 파싱 실패 시 현재 시간을 반환
+     * 파싱 실패 시 null 반환
      *
      * @param timestamp ISO 8601 형식의 시간 문자열
      * @return 변환된 LocalDateTime 또는 현재 시간
