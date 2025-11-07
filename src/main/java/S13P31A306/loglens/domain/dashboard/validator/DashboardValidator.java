@@ -54,6 +54,26 @@ public class DashboardValidator {
     }
 
     /**
+     * 프로젝트 접근 권한 검증
+     *
+     * @param projectId 프로젝트 UUID
+     * @return 프로젝트 ID
+     * @throws BusinessException 프로젝트가 존재하지 않거나 접근 권한 없음
+     */
+    public Integer validateProjectAccess(Integer projectId) {
+        log.debug("{} 프로젝트 접근 권한 확인: projectId={}", LOG_PREFIX, projectId);
+
+        // 프로젝트 존재 검증
+        Project project = projectValidator.validateProjectExists(projectId);
+
+        // 프로젝트 멤버 여부 검증
+        Integer userId = authHelper.getCurrentUserId();
+        projectValidator.validateMemberExists(project.getId(), userId);
+
+        return project.getId();
+    }
+
+    /**
      * 프로젝트 존재 여부 및 접근 권한 검증
      *
      * @param projectUuid 프로젝트 UUID
@@ -163,7 +183,7 @@ public class DashboardValidator {
      * @return 검증 및 기본값이 설정된 [startTime, endTime] 배열
      * @throws BusinessException 검증 실패시 적절한 에러 코드와 함께 예외 발생
      */
-    public LocalDateTime[] validateApiStatsRequest(Integer projectId, Integer limit, String startTimeStr, String endTimeStr) {
+    public LocalDateTime[] validateApiEndpointRequest(Integer projectId, Integer limit, String startTimeStr, String endTimeStr) {
         log.info("{} api 통계 검증 시도: projectId={}, limit={}, start={}, end={}", LOG_PREFIX, projectId, limit, startTimeStr, endTimeStr);
 
         if (!Objects.isNull(limit)) {

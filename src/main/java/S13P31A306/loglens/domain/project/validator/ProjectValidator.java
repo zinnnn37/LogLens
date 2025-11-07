@@ -53,6 +53,22 @@ public class ProjectValidator {
     }
 
     /**
+     * 프로젝트 ID로 프로젝트 존재 여부 검증
+     *
+     * @param projectId 프로젝트 UUID
+     * @return Project 조회된 프로젝트 엔티티
+     * @throws BusinessException 프로젝트가 존재하지 않는 경우
+     */
+    public Project validateProjectExists(Integer projectId) {
+        log.debug("{} 프로젝트 존재 여부 검증: projectId={}", LOG_PREFIX, projectId);
+        return projectRepository.findById(projectId)
+                .orElseThrow(() -> {
+                    log.warn("{} 프로젝트 없음: uuid={}", LOG_PREFIX, projectId);
+                    return new BusinessException(PROJECT_NOT_FOUND);
+                });
+    }
+
+    /**
      * 현재 사용자의 프로젝트 접근 권한 검증
      *
      * @param projectId 프로젝트 ID
