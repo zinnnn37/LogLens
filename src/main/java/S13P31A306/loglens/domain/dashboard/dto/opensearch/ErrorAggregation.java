@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 public record ErrorAggregation(
         String exceptionType,
         String message,
-        Long count,
+        Integer count,
         LocalDateTime firstOccurrence,
         LocalDateTime lastOccurrence,
         String stackTrace,
