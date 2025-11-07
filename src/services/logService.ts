@@ -6,8 +6,8 @@ import type {
   LogSearchParams,
   LogSearchResponse,
   TraceIdSearchResponse,
-  LogAnalysisParams,
-  LogAnalysisResponse,
+  LogDetailParams,
+  LogDetailResponse,
 } from '@/types/log';
 
 /**
@@ -25,14 +25,14 @@ export const searchLogs = async (
 
 // 로그 상세조회
 export const analyzeLogs = async (
-  params: LogAnalysisParams,
-): Promise<LogAnalysisResponse> => {
-  const { logId, project_uuid } = params;
+  params: LogDetailParams,
+): Promise<LogDetailResponse> => {
+  const { logId, projectUuid } = params;
 
   const url = API_PATH.LOGS_DETAIL(logId);
 
-  const response = await apiClient.get<LogAnalysisResponse>(url, {
-    project_uuid: project_uuid,
+  const response = await apiClient.get<LogDetailResponse>(url, {
+    projectUuid: projectUuid,
   });
 
   return response;
