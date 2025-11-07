@@ -5,6 +5,7 @@ import S13P31A306.loglens.domain.dashboard.controller.DashboardApi;
 import S13P31A306.loglens.domain.dashboard.dto.response.ComponentDependencyResponse;
 import S13P31A306.loglens.domain.dashboard.dto.response.DashboardOverviewResponse;
 import S13P31A306.loglens.domain.dashboard.dto.response.ProjectComponentsResponse;
+import S13P31A306.loglens.domain.dashboard.dto.response.TopFrequentErrorsResponse;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
 import S13P31A306.loglens.global.annotation.ValidUuid;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
@@ -50,7 +51,7 @@ public class DashboardController implements DashboardApi {
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
-        DashboardOverviewResponse response = dashboardService.getTopFrequentErrors(projectUuid, limit, startTime, endTime);
+        TopFrequentErrorsResponse response = dashboardService.getTopFrequentErrors(projectUuid, limit, startTime, endTime);
         return ApiResponseFactory.success(
                 DashboardSuccessCode.FREQUENT_ERROR_RETRIEVED,
                 response
