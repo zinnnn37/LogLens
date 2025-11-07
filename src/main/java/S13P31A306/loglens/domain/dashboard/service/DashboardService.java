@@ -17,17 +17,6 @@ public interface DashboardService {
      */
     DashboardOverviewResponse getStatisticsOverview(String projectUuid, String startTime, String endTime);
 
-    /**
-     * 프로젝트에서 가장 많이 발생하는 에러 top limit 조회
-     *
-     * @param projectUuid
-     * @param limit
-     * @param startTime
-     * @param endTime
-     * @return TopFrequentErrorResponse limit개의 에러
-     */
-    TopFrequentErrorsResponse getTopFrequentErrors(String projectUuid, Integer limit, String startTime, String endTime);
-
     ProjectComponentsResponse getProjectComponents(String projectUuid, UserDetails userDetails);
 
     ComponentDependencyResponse getComponentDependencies(String projectUuid, Integer componentId, UserDetails userDetails);
