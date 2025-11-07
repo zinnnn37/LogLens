@@ -16,13 +16,23 @@ export type RelationshipType =
   | 'DATABASE_QUERY'
   | 'API_CALL';
 
+export interface ComponentMetrics {
+  callCount: number;
+  errorCount: number;
+  warnCount: number;
+  errorRate: number;
+  lastMeasuredAt: string;
+}
+
 export interface Component {
-  id: string;
+  id: number;
   name: string;
   type: ComponentType;
+  classType: string;
   layer: ComponentLayer;
   packageName: string;
   technology: string;
+  metrics: ComponentMetrics | null;
 }
 
 export interface ComponentPagination {
@@ -38,6 +48,19 @@ export interface ComponentSummary {
   byLayer: Record<ComponentLayer, number>;
 }
 
+// 백엔드 응답 형식
+export interface ComponentListApiResponse {
+  code: string;
+  message: string;
+  status: number;
+  data: {
+    projectId: number;
+    components: Component[];
+  };
+  timestamp: string;
+}
+
+// 프론트엔드에서 사용할 데이터 형식 (기존 유지)
 export interface ComponentListData {
   projectId: string;
   components: Component[];
@@ -114,5 +137,44 @@ export interface ComponentDependencyResponse {
   code: number;
   message: string;
   data: ComponentDependencyData;
+  timestamp: string;
+}
+
+// 백엔드 의존성 API 응답 형식
+export interface DependencyGraphEdge {
+  from: number;
+  to: number;
+}
+
+export interface DependencyGraphSummary {
+  totalComponents: number;
+  totalCalls: number;
+  totalErrors: number;
+  totalWarns: number;
+  averageErrorRate: number;
+  highestErrorComponent: string | null;
+  highestCallComponent: string | null;
+}
+
+export interface DependencyFrontendSummary {
+  totalTraces: number;
+  totalInfoLogs: number;
+  totalWarnLogs: number;
+  totalErrorLogs: number;
+  errorRate: number;
+}
+
+export interface ComponentDependencyApiResponse {
+  code: string;
+  message: string;
+  status: number;
+  data: {
+    components: Component[];
+    graph: {
+      edges: DependencyGraphEdge[];
+    };
+    graphSummary: DependencyGraphSummary;
+    frontendSummary: DependencyFrontendSummary;
+  };
   timestamp: string;
 }
