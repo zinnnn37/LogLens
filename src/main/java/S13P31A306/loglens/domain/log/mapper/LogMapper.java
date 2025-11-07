@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Objects;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
 @Mapper(
@@ -15,7 +16,7 @@ import org.mapstruct.ReportingPolicy;
 public interface LogMapper {
 
     /**
-     * Log Entity -> LogResponse DTO 변환 id 필드
+     * Log Entity -> LogResponse DTO 변환 logId 필드: Log의 numeric logId를 LogResponse의 logId로 매핑
      */
     LogResponse toLogResponse(Log log);
 
