@@ -33,6 +33,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -145,24 +146,51 @@ public class DashboardServiceImpl implements DashboardService {
         // 6. 그래프 생성
         DependencyGraphResponse graph = DependencyGraphResponse.from(allDependencies);
 
+        List<ComponentInfo> connectedComponents = filterConnectedComponents(componentInfos, graph);
+
         // 7. Backend 메트릭 요약 생성
         GraphMetricsSummary graphSummary =
-                calculateGraphMetricsSummary(componentInfos);
+                calculateGraphMetricsSummary(connectedComponents);
 
         // 8. Frontend 메트릭 조회 (DB에서)
         FrontendMetricsSummary frontendMetrics =
                 frontendMetricsService.getFrontendMetricsByProjectId(projectId);
 
-        log.debug("{} 컴포넌트 의존성 조회 완료: componentId={}, totalComponents={}, edges={}, frontendTraces={}",
-                LOG_PREFIX, componentId, componentInfos.size(), graph.edges().size(), frontendMetrics.totalTraces());
+        log.debug("{} 컴포넌트 의존성 조회 완료: componentId={}, totalComponents={}, connectedComponents={}, edges={}, frontendTraces={}",
+                LOG_PREFIX, componentId, componentInfos.size(), connectedComponents.size(), graph.edges().size(), frontendMetrics.totalTraces());
 
         // 9. 응답 생성 (Frontend 메트릭 포함)
         return new ComponentDependencyResponse(
-                componentInfos,
+                connectedComponents,
                 graph,
                 graphSummary,
                 frontendMetrics  // ✅ Frontend 메트릭 추가
         );
+    }
+
+    /**
+     * 그래프에 연결된 컴포넌트만 필터링
+     *
+     * @param componentInfos 전체 컴포넌트 정보 리스트
+     * @param graph 의존성 그래프
+     * @return 그래프에 포함된 컴포넌트만 포함하는 리스트
+     */
+    private List<ComponentInfo> filterConnectedComponents(
+            List<ComponentInfo> componentInfos,
+            DependencyGraphResponse graph) {
+
+        // 그래프의 엣지에서 사용된 모든 컴포넌트 ID 추출
+        Set<Integer> connectedComponentIds = graph.edges().stream()
+                .flatMap(edge -> Stream.of(edge.from(), edge.to()))
+                .collect(Collectors.toSet());
+
+        log.debug("{} 그래프 연결 컴포넌트 필터링: 전체={}, 연결됨={}",
+                LOG_PREFIX, componentInfos.size(), connectedComponentIds.size());
+
+        // 연결된 컴포넌트만 반환
+        return componentInfos.stream()
+                .filter(info -> connectedComponentIds.contains(info.id()))
+                .toList();
     }
 
     /**
