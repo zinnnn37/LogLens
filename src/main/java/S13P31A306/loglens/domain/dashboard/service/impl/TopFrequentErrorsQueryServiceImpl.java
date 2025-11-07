@@ -181,6 +181,8 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
      * @throws BusinessException 예상하지 못한 에러
      */
     private List<ErrorAggregation> parseErrorAggregations(SearchResponse<Void> response) {
+        log.debug("{} OpenSearch 쿼리 결과 변환", LOG_PREFIX);
+
         List<ErrorAggregation> result = new ArrayList<>();
 
         try {
@@ -245,6 +247,9 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
                         logger
                 ));
             }
+
+            log.debug("{} OpenSearch 쿼리 결과 변환 성공", LOG_PREFIX);
+            return result;
         } catch (NullPointerException e) {
             log.warn("{} aggregation 파싱 중 NullPointerException 발생: {}", LOG_PREFIX, e.getMessage());
             return new ArrayList<>();
@@ -252,7 +257,7 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
             log.error("{} aggregation 파싱 중 예상치 못한 오류 발생", LOG_PREFIX, e);
             throw new BusinessException(OPENSEARCH_OPERATION_FAILED);
         }
-        return result;
+
     }
 
     /**
@@ -299,14 +304,20 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
      * @return 스택 트레이스 첫 라인 또는 빈 문자열
      */
     private String extractStackTraceFirstLine(JsonData source) {
+        log.info("{} Stack Trace의 첫 라인 추출 시작", LOG_PREFIX);
+
         try {
             String fullStackTrace = source.toJson().asJsonObject().getString("stack_trace", "");
             if (fullStackTrace.isBlank()) {
                 return "";
             }
             int firstNewLine = fullStackTrace.indexOf('\n');
+
+            log.info("{} Stack Trace의 첫 라인 추출 성공", LOG_PREFIX);
+
             return firstNewLine > 0 ? fullStackTrace.substring(0, firstNewLine) : fullStackTrace;
         } catch (Exception e) {
+            log.info("{} Stack Trace 추출 실패", LOG_PREFIX);
             return "";
         }
     }
