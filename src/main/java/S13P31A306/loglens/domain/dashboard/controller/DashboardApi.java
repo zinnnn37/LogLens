@@ -40,13 +40,13 @@ public interface DashboardApi {
     );
 
     /**
-     * 자주 발생하는 에러 Top N 조회
-     *
-     * @param projectUuid 프로젝트 UUID
-     * @param limit 조회할 에러 개수 (기본 10개)
-     * @param startTime 조회 시작 시간
-     * @param endTime 조회 종료 시간
-     * @return 에러 타입별 발생 횟수 및 비율
+     * 가장 많이 발생한 에러 Top limit 조회
+     * 
+     * @param projectUuid 프로젝트 Uuid
+     * @param limit 조회할 에러 갯수
+     * @param startTime 조회 시작 범위
+     * @param endTime 조회 종료 범위
+     * @return 조회 기간, 에러 목록, 에러 통계 요약 등
      */
     ResponseEntity<? extends BaseResponse> getTopFrequentErrors(
             @ValidUuid @RequestParam String projectUuid,
@@ -57,16 +57,18 @@ public interface DashboardApi {
 
     /**
      * API 호출 통계 조회
-     *
-     * @param projectUuid 프로젝트 UUID
-     * @param startTime 조회 시작 시간
-     * @param endTime 조회 종료 시간
-     * @return 엔드포인트별 호출 수, 평균 응답 시간, 에러율
+     * 
+     * @param projectUuid 프로젝트 Uuid
+     * @param startTime 조회 시작 범위
+     * @param endTime 조회 종료 범위
+     * @param limit 조회할 API 갯수
+     * @return 조회 기간, 엔드포인트 목록, API 통계 요약 등
      */
     ResponseEntity<? extends BaseResponse> getApiCallStatistics(
             @ValidUuid @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
-            @RequestParam(required = false) String endTime
+            @RequestParam(required = false) String endTime,
+            @RequestParam(required = false) Integer limit
     );
 
     /**
