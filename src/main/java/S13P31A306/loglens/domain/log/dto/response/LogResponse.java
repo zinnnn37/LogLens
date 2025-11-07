@@ -11,8 +11,8 @@ import lombok.Data;
 @Data
 @Builder
 public class LogResponse {
-    @Schema(description = "로그 ID (OpenSearch Document ID)", example = "abc123xyz789")
-    private String logId; // OpenSearch _id is a string
+    @Schema(description = "로그 ID", example = "12345")
+    private Long logId;
 
     @Schema(description = "Trace ID", example = "trace-abc-123")
     private String traceId;
