@@ -12,8 +12,8 @@ public enum OpenSearchField {
     TRACE_ID("trace_id.keyword"),
     COMPONENT_NAME("component_name.keyword"),
     PROJECT_UUID("project_uuid.keyword"),
-    SOURCE_TYPE("source_type.keyword"),
-    LOG_LEVEL("level.keyword");
+    SOURCE_TYPE("source_type"),
+    LOG_LEVEL("level");
 
     private final String fieldName;
 }
