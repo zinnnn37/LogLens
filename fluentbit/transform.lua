@@ -32,8 +32,16 @@ function transform_log(tag, timestamp, record)
         local logs_array = record["logs"]
         local results = {}
 
+        -- 🔥 최상위 레코드의 project_uuid를 가져옴 (Fluent Bit에서 주입한 것)
+        local parent_project_uuid = record["project_uuid"]
+        local parent_service_name = record["service_name"]
+
         for i, log_entry in ipairs(logs_array) do
             if type(log_entry) == "table" then
+                -- 🔥 하위 로그에 project_uuid 전달
+                log_entry["project_uuid"] = log_entry["project_uuid"] or parent_project_uuid
+                log_entry["service_name"] = log_entry["service_name"] or parent_service_name
+
                 -- 각 로그 항목을 개별적으로 변환 (재귀 호출)
                 local code, ts, transformed = transform_log(tag, timestamp, log_entry)
                 if code == 1 and transformed then
