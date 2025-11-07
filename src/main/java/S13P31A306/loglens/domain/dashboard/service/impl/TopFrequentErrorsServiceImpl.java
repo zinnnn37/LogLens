@@ -58,7 +58,7 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
         // 3. 시간 파싱 및 기본값 설정
         LocalDateTime parsedEnd = dashboardValidator.validateAndParseTime(endTime);
         LocalDateTime parsedStart = dashboardValidator.validateAndParseTime(startTime);
-        LocalDateTime end = parsedEnd != null ? parsedEnd : LocalDateTime.now();
+        LocalDateTime end = parsedEnd != null ? parsedEnd : parsedStart != null ? parsedStart.plusDays(7) : LocalDateTime.now();
         LocalDateTime start = parsedStart != null ? parsedStart : end.minusDays(7);
 
         // 4. 시간 범위 검증
@@ -143,7 +143,7 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
      */
     private List<TopFrequentErrorsResponse.ErrorInfo> buildErrorInfos(
             List<ErrorAggregation> errorAggs,
-            Long totalErrorCount,
+            Integer totalErrorCount,
             Map<String, List<Component>> loggerToComponents) {
 
         int rank = 1;
@@ -151,9 +151,9 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
 
         for (ErrorAggregation agg : errorAggs) {
             // percentage 계산 (소수점 1자리)
-            double percentage = totalErrorCount > 0
-                    ? Math.round((agg.count() * 100.0 / totalErrorCount) * 10.0) / 10.0
-                    : 0.0;
+            float percentage = (float) (totalErrorCount > 0
+                                ? Math.round((agg.count() * 100.0 / totalErrorCount) * 10.0) / 10.0
+                                : 0.0);
 
             // 컴포넌트 매칭
             List<TopFrequentErrorsResponse.ErrorInfo.ComponentInfo> componentInfos =
@@ -196,9 +196,9 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
                 .mapToLong(TopFrequentErrorsResponse.ErrorInfo::count)
                 .sum();
 
-        double topNPercentage = statistics.totalErrors() > 0
-                ? Math.round((topNCount * 100.0 / statistics.totalErrors()) * 10.0) / 10.0
-                : 0.0;
+        float topNPercentage = (float) (statistics.totalErrors() > 0
+                        ? Math.round((topNCount * 100.0 / statistics.totalErrors()) * 10.0) / 10.0
+                        : 0.0);
 
         return new TopFrequentErrorsResponse.ErrorSummary(
                 statistics.totalErrors(),
