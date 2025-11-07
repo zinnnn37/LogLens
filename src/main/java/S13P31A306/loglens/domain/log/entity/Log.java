@@ -71,8 +71,11 @@ public class Log {
     private Integer duration;
 
     // ========== 에러 정보 ==========
-    @JsonProperty("stack_trace")
+    @JsonProperty("stacktrace")
     private String stackTrace;
+
+    @JsonProperty("component_name")
+    private String componentName;
 
     // ========== 로그 상세 ==========
     @JsonProperty("log_details")
