@@ -11,7 +11,7 @@ import lombok.Data;
 @Data
 @Builder
 public class LogResponse {
-    @Schema(description = "로그 ID", example = "12345")
+    @Schema(description = "로그 ID (고유 식별자)", example = "1234567890")
     private Long logId;
 
     @Schema(description = "Trace ID", example = "trace-abc-123")

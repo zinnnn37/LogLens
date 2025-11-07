@@ -138,6 +138,50 @@ public class LogRepositoryImpl implements LogRepository {
     }
 
     @Override
+    public java.util.Optional<Log> findByLogId(Long logId, String projectUuid) {
+        log.debug("{} OpenSearch에서 로그 ID로 조회: logId={}, projectUuid={}", LOG_PREFIX, logId, projectUuid);
+
+        try {
+            // 쿼리 생성: log_id와 project_uuid 매칭
+            Query query = Query.of(q -> q.bool(b -> b
+                    .filter(f -> f.term(t -> t
+                            .field(OpenSearchField.LOG_ID.getFieldName())
+                            .value(FieldValue.of(logId))))
+                    .filter(f -> f.term(t -> t
+                            .field(OpenSearchField.PROJECT_UUID.getFieldName())
+                            .value(FieldValue.of(projectUuid))))));
+
+            SearchRequest searchRequest = new SearchRequest.Builder()
+                    .index(getProjectIndexPattern(projectUuid))
+                    .query(query)
+                    .size(1)
+                    .build();
+
+            SearchResponse<Log> response = openSearchClient.search(searchRequest, Log.class);
+
+            if (response.hits().hits().isEmpty()) {
+                log.debug("{} 로그를 찾을 수 없음: logId={}, projectUuid={}", LOG_PREFIX, logId, projectUuid);
+                return java.util.Optional.empty();
+            }
+
+            Hit<Log> hit = response.hits().hits().get(0);
+            Log logEntity = hit.source();
+            if (logEntity != null) {
+                logEntity.setId(hit.id()); // OpenSearch document _id 설정
+                log.debug("{} 로그 조회 성공: logId={}, _id={}", LOG_PREFIX, logId, hit.id());
+                return java.util.Optional.of(logEntity);
+            }
+
+            return java.util.Optional.empty();
+
+        } catch (IOException e) {
+            log.error("{} OpenSearch findByLogId 중 에러 발생: logId={}, projectUuid={}",
+                    LOG_PREFIX, logId, projectUuid, e);
+            throw new BusinessException(GlobalErrorCode.OPENSEARCH_OPERATION_FAILED, null, e);
+        }
+    }
+
+    @Override
     public boolean existsByProjectUuid(String projectUuid) {
         log.debug("{} 프로젝트 UUID로 로그 존재 확인: projectUuid={}", LOG_PREFIX, projectUuid);
         try {
