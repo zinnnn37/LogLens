@@ -37,7 +37,7 @@ public class LogSearchRequest {
     @Schema(description = "검색 키워드", example = "NullPointerException")
     private String keyword;
 
-    @Schema(description = "Trace ID", example = "bed95fd3-67b2-4d1d-8d97-b71a4c4d06b9")
+    @Schema(description = "Trace ID", example = "8cbbe4e8-2cde-454b-bc79-d89d45cd3018")
     private String traceId;
 
     @Schema(description = "정렬 옵션 (필드,방향)", example = "TIMESTAMP,DESC", defaultValue = "TIMESTAMP,DESC")
