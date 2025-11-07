@@ -18,8 +18,7 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
-import static S13P31A306.loglens.domain.dashboard.constants.DashboardErrorCode.INVALID_TIME_FORMAT;
-import static S13P31A306.loglens.domain.dashboard.constants.DashboardErrorCode.INVALID_TIME_RANGE;
+import static S13P31A306.loglens.domain.dashboard.constants.DashboardErrorCode.*;
 
 
 @Slf4j
@@ -88,6 +87,19 @@ public class DashboardValidator {
     }
 
     /**
+     * limit 값 검증 (1~50 범위)
+     *
+     * @param limit 조회할 에러 개수
+     * @throws BusinessException limit이 1~50 범위를 벗어나는 경우 (INVALID_LIMIT)
+     */
+    public void validateLimit(Integer limit) {
+        if (limit < 1 || limit > 50) {
+            log.warn("{} 잘못된 limit 값: {}", LOG_PREFIX, limit);
+            throw new BusinessException(INVALID_LIMIT);
+        }
+    }
+
+    /**
      * 시간 문자열을 파싱하거나 기본값을 반환
      *
      * @param time 파싱할 시간 문자열 (ISO 8601 형식, null 또는 빈 문자열 가능)
@@ -95,6 +107,7 @@ public class DashboardValidator {
      * @throws BusinessException timeStr이 유효하지 않은 ISO 8601 형식인 경우 (INVALID_TIME_FORMAT)
      */
     public LocalDateTime validateAndParseTime(String time) {
+        // TODO: null 입력 확인
         log.info("{} 시간 문자열 파싱 시작: time={}", LOG_PREFIX, time);
         try {
             log.info("{} 시간 문자열 파싱 성공: time={}", LOG_PREFIX, time);
