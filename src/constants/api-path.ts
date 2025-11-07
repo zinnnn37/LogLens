@@ -46,4 +46,7 @@ export const API_PATH = {
 
   // 로그 검색
   LOGS_SEARCH: '/api/logs',
+
+  // 로그 상세 조회(분석 포함)
+  LOGS_DETAIL: (logId: number) => `/api/logs/${logId}`,
 } as const;

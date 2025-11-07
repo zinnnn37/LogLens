@@ -2,14 +2,11 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { searchLogs } from '@/services/logService';
-import type {
-  LogData,
-  LogSearchParams,
-} from '@/types/log';
+import type { LogData, LogSearchParams } from '@/types/log';
 
 import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { FileDown } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 import DetailLogSearchBox, {
@@ -39,10 +36,7 @@ const LogsPage = () => {
   const [criteria, setCriteria] = useState<SearchCriteria | null>(null);
 
   const fetchLogs = useCallback(
-    async (
-      isInitial: boolean,
-      searchCriteria: SearchCriteria | null,
-    ) => {
+    async (isInitial: boolean, searchCriteria: SearchCriteria | null) => {
       if (!projectUuid) {
         return;
       }
@@ -107,6 +101,7 @@ const LogsPage = () => {
     savedCriteria.current = criteria;
   }, [criteria]);
 
+  /* // 5초 자동 갱신 (서버 부하로 임시 주석 처리)
   useEffect(() => {
     const tick = async () => {
       if (loading || !projectUuid) {
@@ -116,7 +111,7 @@ const LogsPage = () => {
       const currentCriteria = savedCriteria.current;
       const params: LogSearchParams = {
         projectUuid,
-        cursor: undefined, 
+        cursor: undefined,
         size: 50,
         logLevel: currentCriteria?.logLevel?.length
           ? currentCriteria.logLevel
@@ -156,6 +151,7 @@ const LogsPage = () => {
     const intervalId = setInterval(tick, 5000);
     return () => clearInterval(intervalId);
   }, [loading, projectUuid]);
+  */
 
   // 검색핸들러
   const handleSearch = (newCriteria: SearchCriteria) => {
@@ -208,7 +204,7 @@ const LogsPage = () => {
         escapeCSV(log.logger),
         escapeCSV(log.message),
         escapeCSV(log.traceId),
-        escapeCSV(log.logId),
+        log.logId,
         escapeCSV(log.comment),
       ].join(',');
     });
@@ -345,7 +341,7 @@ const LogsPage = () => {
         className="fixed right-6 bottom-[72px] flex h-14 w-14 items-center justify-center rounded-full p-0 shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
         aria-label="CSV 다운로드"
       >
-        <FileDown className="h-6 w-6" />
+        <Download className="h-6 w-6" />
       </Button>
 
       <FloatingChecklist />
