@@ -107,6 +107,7 @@ const LogsPage = () => {
     savedCriteria.current = criteria;
   }, [criteria]);
 
+  /* // 5초 자동 갱신 (서버 부하로 임시 주석 처리)
   useEffect(() => {
     const tick = async () => {
       if (loading || !projectUuid) {
@@ -116,7 +117,7 @@ const LogsPage = () => {
       const currentCriteria = savedCriteria.current;
       const params: LogSearchParams = {
         projectUuid,
-        cursor: undefined, 
+        cursor: undefined,
         size: 50,
         logLevel: currentCriteria?.logLevel?.length
           ? currentCriteria.logLevel
@@ -156,6 +157,7 @@ const LogsPage = () => {
     const intervalId = setInterval(tick, 5000);
     return () => clearInterval(intervalId);
   }, [loading, projectUuid]);
+  */
 
   // 검색핸들러
   const handleSearch = (newCriteria: SearchCriteria) => {
