@@ -18,6 +18,7 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
+import static S13P31A306.loglens.domain.dashboard.constants.DashboardConstants.*;
 import static S13P31A306.loglens.domain.dashboard.constants.DashboardErrorCode.*;
 
 
@@ -107,13 +108,26 @@ public class DashboardValidator {
     }
 
     /**
-     * limit 값 검증 (1~50 범위)
+     * 에러 로그 통계 limit 값 검증 (1~50 범위)
      *
      * @param limit 조회할 에러 개수
      * @throws BusinessException limit이 1~50 범위를 벗어나는 경우 (INVALID_LIMIT)
      */
-    public void validateLimit(Integer limit) {
-        if (limit < 1 || limit > 50) {
+    public void validateErrorLimit(Integer limit) {
+        if (limit < ERROR_MIN_LIMIT || limit > ERROR_MAX_LIMIT) {
+            log.warn("{} 잘못된 limit 값: {}", LOG_PREFIX, limit);
+            throw new BusinessException(INVALID_LIMIT);
+        }
+    }
+
+    /**
+     * API 통계 limit 값 검증 (1~50 범위)
+     *
+     * @param limit 조회할 에러 개수
+     * @throws BusinessException limit이 1~50 범위를 벗어나는 경우 (INVALID_LIMIT)
+     */
+    public void validateApiEndpointLimit(Integer limit) {
+        if (limit < API_ENDPOINT_MIN_LIMIT || limit > API_ENDPOINT_MAX_LIMIT) {
             log.warn("{} 잘못된 limit 값: {}", LOG_PREFIX, limit);
             throw new BusinessException(INVALID_LIMIT);
         }
@@ -156,9 +170,9 @@ public class DashboardValidator {
             log.warn("{} 시작 시간은 종료 시간보다 앞서야 합니다: start={}, end={}", LOG_PREFIX, start, end);
             throw new BusinessException(INVALID_TIME_RANGE);
         }
-        if (ChronoUnit.DAYS.between(start, end) > 90) {
-            log.warn("{} 최대 조회 기간을 초과합니다(최대 90일): {}일",
-                    LOG_PREFIX, ChronoUnit.DAYS.between(start, end));
+        if (ChronoUnit.DAYS.between(start, end) > ERROR_MAX_DEFAULT_RETRIEVAL_TIME) {
+            log.warn("{} 최대 조회 기간을 초과합니다(최대 {}일): {}일",
+                    LOG_PREFIX, ERROR_MAX_DEFAULT_RETRIEVAL_TIME, ChronoUnit.DAYS.between(start, end));
             throw new BusinessException(INVALID_TIME_RANGE);
         }
     }
@@ -187,7 +201,7 @@ public class DashboardValidator {
         log.info("{} api 통계 검증 시도: projectId={}, limit={}, start={}, end={}", LOG_PREFIX, projectId, limit, startTimeStr, endTimeStr);
 
         if (!Objects.isNull(limit)) {
-            validateLimit(limit);
+            validateApiEndpointLimit(limit);
         }
 
         LocalDateTime startTime = validateAndParseTime(startTimeStr);
@@ -196,12 +210,12 @@ public class DashboardValidator {
 
         // 시간 기본값 설정
         if (Objects.isNull(startTime) && Objects.isNull(endTime)) {
-            startTime = now.minusDays(1);
+            startTime = now.minusDays(API_ENDPOINT_DEFAULT_TIME_RANGE);
             endTime = now;
         } else if (!Objects.isNull(startTime) && Objects.isNull(endTime)) {
-            endTime = startTime.plusDays(1);
-        } else if (Objects.isNull(startTime) && !Objects.isNull(endTime)) {
-            startTime = endTime.minusDays(1);
+            endTime = startTime.plusDays(API_ENDPOINT_DEFAULT_TIME_RANGE);
+        } else if (Objects.isNull(startTime)) {
+            startTime = endTime.minusDays(API_ENDPOINT_DEFAULT_TIME_RANGE);
         }
         validateTimeRange(startTime, endTime);
 

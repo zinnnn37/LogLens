@@ -32,6 +32,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static S13P31A306.loglens.domain.dashboard.constants.DashboardConstants.OVERVIEW_DEFAULT_TIME_RANGE;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -64,13 +66,13 @@ public class DashboardServiceImpl implements DashboardService {
             end = LocalDateTime.parse(endTime, DateTimeFormatter.ISO_DATE_TIME);
         } else if (startTime != null) {
             start = LocalDateTime.parse(startTime, DateTimeFormatter.ISO_DATE_TIME);
-            end = start.plusDays(7);
+            end = start.plusDays(OVERVIEW_DEFAULT_TIME_RANGE);
         } else if (endTime != null) {
             end = LocalDateTime.parse(endTime, DateTimeFormatter.ISO_DATE_TIME);
-            start = end.minusDays(7);
+            start = end.minusDays(OVERVIEW_DEFAULT_TIME_RANGE);
         } else {
             end = LocalDateTime.now();
-            start = end.minusDays(7);
+            start = end.minusDays(OVERVIEW_DEFAULT_TIME_RANGE);
         }
 
         // 로그 수 집계

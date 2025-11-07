@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static S13P31A306.loglens.domain.dashboard.constants.DashboardConstants.ERROR_DEFAULT_TIME_RANGE;
+
 /**
  * 자주 발생하는 에러 조회 서비스 구현체
  */
@@ -53,7 +55,7 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
         Integer projectId = dashboardValidator.validateProjectAccess(projectUuid);
 
         // 2. limit 검증
-        dashboardValidator.validateLimit(limit);
+        dashboardValidator.validateErrorLimit(limit);
 
         // 3. 시간 파싱 및 기본값 설정
         LocalDateTime parsedEnd = dashboardValidator.validateAndParseTime(endTime);
@@ -63,11 +65,11 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
         if (parsedEnd != null) {
             end = parsedEnd;
         } else if (parsedStart != null) {
-            end = parsedStart.plusDays(7);
+            end = parsedStart.plusDays(ERROR_DEFAULT_TIME_RANGE);
         } else {
             end = LocalDateTime.now();
         }
-        LocalDateTime start = parsedStart != null ? parsedStart : end.minusDays(7);
+        LocalDateTime start = parsedStart != null ? parsedStart : end.minusDays(ERROR_DEFAULT_TIME_RANGE);
 
         // 4. 시간 범위 검증
         dashboardValidator.validateTimeRange(start, end);
