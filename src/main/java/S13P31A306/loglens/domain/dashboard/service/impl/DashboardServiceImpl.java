@@ -116,23 +116,6 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     @Override
-    public TopFrequentErrorsResponse getTopFrequentErrors(String projectUuid, Integer limit, String startTime, String endTime) {
-        log.info("{} 가장 많이 발생한 에러 top {} 조회: projectUuid={}, start={}, end={}",
-                LOG_PREFIX, limit,  projectUuid, startTime, endTime);
-
-        // 프로젝트 접근 권한 검증
-        Integer projectId = validator.validateProjectAccess(projectUuid);
-
-        // 시간 범위 설정
-        LocalDateTime parsedEnd = validator.validateAndParseTime(endTime);
-        LocalDateTime parsedStart = validator.validateAndParseTime(startTime);
-
-
-
-        return null;
-    }
-
-    @Override
     public ProjectComponentsResponse getProjectComponents(
             final String projectUuid,
             final UserDetails userDetails
