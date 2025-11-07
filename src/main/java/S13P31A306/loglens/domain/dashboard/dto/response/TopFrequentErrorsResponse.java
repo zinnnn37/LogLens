@@ -46,7 +46,7 @@ public record TopFrequentErrorsResponse(
             Integer count,
 
             @Schema(description = "전체 에러 중 비율 (%)", example = "23.4")
-            Double percentage,
+            Float percentage,
 
             @Schema(description = "최초 발생 시각", example = "2025-10-10T08:23:15Z")
             LocalDateTime firstOccurrence,
@@ -75,13 +75,13 @@ public record TopFrequentErrorsResponse(
     public record ErrorSummary(
 
             @Schema(description = "조회 기간 총 에러 수", example = "14765")
-            Long totalErrors,
+            Integer totalErrors,
 
             @Schema(description = "고유 에러 타입 수", example = "47")
             Integer uniqueErrorTypes,
 
             @Schema(description = "Top 10이 차지하는 비율 (%)", example = "68.3")
-            Double top10Percentage
+            Float top10Percentage
 
     ) {
     }
