@@ -19,20 +19,13 @@ import S13P31A306.loglens.domain.project.entity.LogMetrics;
 import S13P31A306.loglens.domain.project.repository.LogMetricsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.opensearch.client.json.JsonData;
 import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.client.opensearch.core.SearchRequest;
-import org.opensearch.client.opensearch.core.SearchResponse;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.userdetails.UserDetails;
 import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -119,6 +112,23 @@ public class DashboardServiceImpl implements DashboardService {
                         avgResponseTime
                 ))
                 .build();
+    }
+
+    @Override
+    public TopFrequentErrorsResponse getTopFrequentErrors(String projectUuid, Integer limit, String startTime, String endTime) {
+        log.info("{} 가장 많이 발생한 에러 top {} 조회: projectUuid={}, start={}, end={}",
+                LOG_PREFIX, limit,  projectUuid, startTime, endTime);
+
+        // 프로젝트 접근 권한 검증
+        Integer projectId = validator.validateProjectAccess(projectUuid);
+
+        // 시간 범위 설정
+        LocalDateTime parsedEnd = validator.validateAndParseTime(endTime);
+        LocalDateTime parsedStart = validator.validateAndParseTime(startTime);
+
+
+
+        return null;
     }
 
     @Override
