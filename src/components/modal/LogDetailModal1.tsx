@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, Workflow } from 'lucide-react';
+import { Loader2, ScanSearch } from 'lucide-react';
 import { analyzeLogs } from '@/services/logService';
 import type { LogData, LogAnalysisData } from '@/types/log';
 
@@ -186,7 +186,7 @@ const LogDetailModal1 = ({
             onClick={handleOpenRequestFlow}
             className="gap-2"
           >
-            <Workflow className="h-4 w-4" />
+            <ScanSearch className="h-4 w-4" />
             요청 흐름 보기
           </Button>
 
