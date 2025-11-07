@@ -1,6 +1,5 @@
 package S13P31A306.loglens.domain.project.service.impl;
 
-import S13P31A306.loglens.domain.project.constants.LogMetricsConstants;
 import S13P31A306.loglens.domain.project.entity.LogMetrics;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.LogMetricsRepository;
@@ -18,8 +17,6 @@ import org.opensearch.client.json.JsonData;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -35,7 +32,7 @@ import static S13P31A306.loglens.domain.project.constants.LogMetricsConstants.AG
 public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
 
     private static final String LOG_PREFIX = "[LogMetricsBatchService]";
-    private static final String INDEX_NAME = "logs";
+    private static final String INDEX_NAME = "logs-*";
 
     private final ProjectRepository projectRepository;
     private final LogMetricsRepository logMetricsRepository;
