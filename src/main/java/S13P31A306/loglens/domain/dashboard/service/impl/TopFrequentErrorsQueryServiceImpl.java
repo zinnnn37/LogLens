@@ -174,7 +174,7 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
 
         for (var bucket : buckets) {
             String exceptionType = bucket.key();
-            Long count = bucket.docCount();
+            Integer count = (int) bucket.docCount();
 
             // first/last occurrence
             LocalDateTime firstOccurrence = parseTimestamp(
