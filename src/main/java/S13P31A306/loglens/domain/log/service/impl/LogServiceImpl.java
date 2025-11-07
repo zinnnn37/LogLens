@@ -188,7 +188,7 @@ public class LogServiceImpl implements LogService {
         }
 
         // 3-2. AI 분석이 없으면 AI 서비스 호출
-        if (analysis == null) {
+        if (Objects.isNull(analysis)) {
             LogServiceImpl.log.info("{} AI 서비스 호출하여 분석 수행: logId={}", LOG_PREFIX, logId);
             try {
                 AiAnalysisResponse aiResponse = aiServiceClient.analyzeLog(logId, projectUuid);

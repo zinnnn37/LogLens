@@ -410,7 +410,7 @@ public class LogRepositoryImpl implements LogRepository {
      */
     private List<FieldValue> convertCursorToFieldValues(String cursor) {
         Object[] searchAfterValues = decodeCursor(cursor);
-        if (searchAfterValues == null) {
+        if (Objects.isNull(searchAfterValues)) {
             return List.of();
         }
         return Arrays.stream(searchAfterValues)
