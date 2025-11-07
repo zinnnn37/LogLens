@@ -43,6 +43,5 @@ public class AiAnalysisDto {
 
     @Schema(description = "분석 시각 (UTC)", example = "2025-01-15T10:30:45.123Z")
     @JsonProperty("analyzed_at")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private LocalDateTime analyzedAt;
 }
