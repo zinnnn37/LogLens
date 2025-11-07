@@ -63,7 +63,7 @@ const LogDetailModal1 = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open && log && log.logLevel === 'ERROR' && projectUuid) {
+    if (open && log && projectUuid) {
       const fetchAnalysis = async () => {
         setIsLoading(true);
         setAnalysis(null);
@@ -71,7 +71,7 @@ const LogDetailModal1 = ({
 
         try {
           const params = {
-            logId: log.logId,
+            logId: log.logId, 
             project_uuid: projectUuid,
           };
           const response = await analyzeLogs(params);
@@ -87,6 +87,7 @@ const LogDetailModal1 = ({
       fetchAnalysis();
     }
 
+    // 모달이 닫히면 상태 초기화
     if (!open) {
       setAnalysis(null);
       setIsLoading(false);
@@ -123,37 +124,37 @@ const LogDetailModal1 = ({
             <InfoRow label="Layer" value={log.layer} />
           </InfoSection>
 
-          {/* 로그 레벨 ERROR 인 경우에 */}
-          {isErrorLevel && (
+
+          {/* 로딩 중 */}
+          {isLoading && (
+            <InfoSection title="AI 분석 중...">
+              <div className="flex h-20 items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <span className="ml-2 text-gray-500">
+                  로그를 분석하고 있습니다...
+                </span>
+              </div>
+            </InfoSection>
+          )}
+
+          {/* 에러 발생 */}
+          {error && (
+            <InfoSection title="분석 실패">
+              <p className="text-sm text-red-500">{error}</p>
+            </InfoSection>
+          )}
+
+          {/* 성공 */}
+          {analysis && !isLoading && (
             <>
-              {/* 로딩 중 */}
-              {isLoading && (
-                <InfoSection title="AI 분석 중...">
-                  <div className="flex h-20 items-center justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                    <span className="ml-2 text-gray-500">
-                      에러 원인을 분석하고 있습니다...
-                    </span>
-                  </div>
-                </InfoSection>
-              )}
+              <InfoSection title="로그 요약">
+                <p className="text-sm whitespace-pre-wrap text-gray-700">
+                  {analysis.summary}
+                </p>
+              </InfoSection>
 
-              {/* 에러 발생 */}
-              {error && (
-                <InfoSection title="분석 실패">
-                  <p className="text-sm text-red-500">{error}</p>
-                </InfoSection>
-              )}
-
-              {/* 성공 */}
-              {analysis && !isLoading && (
+              {isErrorLevel && (
                 <>
-                  <InfoSection title="로그 요약">
-                    <p className="text-sm whitespace-pre-wrap text-gray-700">
-                      {analysis.summary}
-                    </p>
-                  </InfoSection>
-
                   <InfoSection title="에러 원인">
                     <p className="text-sm whitespace-pre-wrap text-gray-700">
                       {analysis.error_cause}
@@ -173,7 +174,10 @@ const LogDetailModal1 = ({
 
         {isErrorLevel && (
           <DialogFooter>
-            <Button onClick={onGoToNextPage} disabled={isLoading || !analysis}>
+            <Button
+              onClick={onGoToNextPage}
+              disabled={isLoading || !analysis} 
+            >
               Jira 티켓 발행
             </Button>
           </DialogFooter>
