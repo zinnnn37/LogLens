@@ -12,6 +12,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
+import java.util.Objects;
+
+import static S13P31A306.loglens.domain.dashboard.constants.DashboardErrorCode.INVALID_TIME_FORMAT;
+import static S13P31A306.loglens.domain.dashboard.constants.DashboardErrorCode.INVALID_TIME_RANGE;
+
 
 @Slf4j
 @Component
@@ -77,4 +86,44 @@ public class DashboardValidator {
         }
 
     }
+
+    /**
+     * 시간 문자열을 파싱하거나 기본값을 반환
+     *
+     * @param time 파싱할 시간 문자열 (ISO 8601 형식, null 또는 빈 문자열 가능)
+     * @return 파싱된 LocalDateTime 또는 기본값
+     * @throws BusinessException timeStr이 유효하지 않은 ISO 8601 형식인 경우 (INVALID_TIME_FORMAT)
+     */
+    public LocalDateTime validateAndParseTime(String time) {
+        log.info("{} 시간 문자열 파싱 시작: time={}", LOG_PREFIX, time);
+        try {
+            log.info("{} 시간 문자열 파싱 성공: time={}", LOG_PREFIX, time);
+            return LocalDateTime.parse(time, DateTimeFormatter.ISO_DATE_TIME);
+        } catch (DateTimeParseException e) {
+            log.warn("{} 시간 파싱 실패: {}", LOG_PREFIX, time);
+            throw new BusinessException(INVALID_TIME_FORMAT);
+        }
+    }
+
+    /**
+     * 시간 범위 유효성 검증
+     *
+     * @param start 조회 시작 시간
+     * @param end 조회 종료 시간
+     * @throws BusinessException 시작 시간이 종료 시간보다 늦은 경우 (INVALID_TIME_RANGE)
+     * @throws BusinessException 조회 기간이 90일을 초과하는 경우 (PERIOD_EXCEEDS_LIMIT)
+     */
+    public void validateTimeRange(LocalDateTime start, LocalDateTime end) {
+        log.info("{} 시간 범위 유효성 검증: start={}, end={}", LOG_PREFIX, start, end);
+        if (start.isAfter(end)) {
+            log.warn("{} 시작 시간은 종료 시간보다 앞서야 합니다: start={}, end={}", LOG_PREFIX, start, end);
+            throw new BusinessException(INVALID_TIME_RANGE);
+        }
+        if (ChronoUnit.DAYS.between(start, end) > 90) {
+            log.warn("{} 최대 조회 기간을 초과합니다(최대 90일): {}일",
+                    LOG_PREFIX, ChronoUnit.DAYS.between(start, end));
+            throw new BusinessException(INVALID_TIME_RANGE);
+        }
+    }
+
 }
