@@ -9,11 +9,50 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum OpenSearchField {
+
+    // ──────────────── 트레이싱 / 식별자 ────────────────
     TRACE_ID("trace_id"),
-    COMPONENT_NAME("component_name"),
     PROJECT_UUID("project_uuid.keyword"),
+    LOG_ID("log_id"),
+
+    // ──────────────── 컨텍스트 / 메타데이터 ────────────────
+    COMPONENT_NAME("component_name"),
+    SERVICE_NAME("service_name"),
     SOURCE_TYPE("source_type"),
-    LOG_LEVEL("level");
+    LAYER("layer"),
+    LOGGER("logger"),
+
+    // ──────────────── 로그 레벨 및 내용 ────────────────
+    LOG_LEVEL("log_level"),
+    LEVEL("level"),
+    MESSAGE("message"),
+    MESSAGE_KEYWORD("message.keyword"),
+    COMMENT("comment"),
+
+    // ──────────────── 클래스 / 메서드 / 스레드 ────────────────
+    CLASS_NAME("class_name"),
+    METHOD_NAME("method_name"),
+    THREAD_NAME("thread_name"),
+
+    // ──────────────── 시간 관련 ────────────────
+    TIMESTAMP("timestamp"),
+    INDEXED_AT("indexed_at"),
+    AT_TIMESTAMP("@timestamp"),
+
+    // ──────────────── 요청 / 응답 / IP ────────────────
+    REQUESTER_IP("requester_ip"),
+    DURATION("duration"),
+    STACKTRACE("stacktrace"),
+
+    // ──────────────── AI 분석 / 벡터 ────────────────
+    AI_ANALYSIS("ai_analysis"),
+    LOG_VECTOR("log_vector"),
+
+    // ──────────────── 상세 로그 (log_details 내부 필드) ────────────────
+    LOG_DETAILS("log_details"),
+    RESPONSE_STATUS("log_details.response_status"),
+    HTTP_METHOD("log_details.http_method"),
+    REQUEST_URI("log_details.request_uri");
 
     private final String fieldName;
 }
