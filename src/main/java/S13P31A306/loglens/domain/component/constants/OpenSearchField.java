@@ -9,8 +9,8 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum OpenSearchField {
-    TRACE_ID("trace_id.keyword"),
-    COMPONENT_NAME("component_name.keyword"),
+    TRACE_ID("trace_id"),
+    COMPONENT_NAME("component_name"),
     PROJECT_UUID("project_uuid.keyword"),
     SOURCE_TYPE("source_type"),
     LOG_LEVEL("level");
