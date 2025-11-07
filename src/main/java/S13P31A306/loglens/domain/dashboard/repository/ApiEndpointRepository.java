@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
-public interface ApiStatsRepository extends JpaRepository<ApiEndpoint, Integer> {
+public interface ApiEndpointRepository extends JpaRepository<ApiEndpoint, Integer> {
 
     /**
      * 프로젝트의 API 엔드포인트 목록을 총 요청 수 기준 내림차순으로 조회

@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Schema(description = "API 통계 조회 응답")
-public record ApiStatsResponse(
+public record ApiEndpointResponse(
         @Schema(description = "프로젝트 ID", example = "12345")
         Integer projectId,
 
@@ -56,7 +56,7 @@ public record ApiStatsResponse(
             Integer anomalyCount,
 
             @Schema(description = "마지막 접근시간", example = "2025-10-17T15:30:00Z")
-            LocalDateTime lastAccessed
+            java.time.LocalTime lastAccessed
     ) {
     }
 

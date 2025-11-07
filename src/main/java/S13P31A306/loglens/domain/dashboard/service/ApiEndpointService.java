@@ -1,11 +1,11 @@
 package S13P31A306.loglens.domain.dashboard.service;
 
-import S13P31A306.loglens.domain.dashboard.dto.response.ApiStatsResponse;
+import S13P31A306.loglens.domain.dashboard.dto.response.ApiEndpointResponse;
 
 /**
  * Api 통계 조회 서비스
  */
-public interface ApiStatsService {
+public interface ApiEndpointService {
 
     /**
      * 프로젝트의 API 엔드포인트 통계 조회
@@ -16,7 +16,7 @@ public interface ApiStatsService {
      * @param limit 조회할 API 개수 (nullable, 기본값 10)
      * @return API 통계 응답
      */
-    ApiStatsResponse getApiStats(Integer projectId, String startTime, String endTime, Integer limit);
+    ApiEndpointResponse getApiEndpoint(Integer projectId, String startTime, String endTime, Integer limit);
 
 
 }
