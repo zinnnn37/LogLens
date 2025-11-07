@@ -143,4 +143,52 @@ public class DashboardValidator {
         }
     }
 
+    /**
+     * API 통계 조회 요청 파라미터 전체 검증 및 기본값 설정
+     * 다음 항목을 순서대로 검증:
+     * 1. 프로젝트 존재 여부 및 접근 권한</li>
+     * 2. limit 범위 (1~50)</li>
+     * 3. 시간 형식 (ISO 8601)</li>
+     * 4. 시간 범위 (startTime < endTime)</li>
+     *
+     * 시간 파라미터 기본값:
+     * 1. startTime만 있는 경우: endTime = startTime + 1일</li>
+     * 2. endTime만 있는 경우: startTime = endTime - 1일</li>
+     * 3. 둘 다 없는 경우: startTime = 현재 - 1일, endTime = 현재</li>
+     *
+     * @param projectId 프로젝트 ID
+     * @param limit 조회할 API 개수 (nullable, 기본값 10)
+     * @param startTimeStr 조회 시작 시간 (nullable)
+     * @param endTimeStr 조회 종료 시간 (nullable)
+     * @return 검증 및 기본값이 설정된 [startTime, endTime] 배열
+     * @throws BusinessException 검증 실패시 적절한 에러 코드와 함께 예외 발생
+     */
+    public LocalDateTime[] validateApiStatsRequest(Integer projectId, Integer limit, String startTimeStr, String endTimeStr) {
+        log.info("{} api 통계 검증 시도: projectId={}, limit={}, start={}, end={}", LOG_PREFIX, projectId, limit, startTimeStr, endTimeStr);
+
+        if (!Objects.isNull(limit)) {
+            validateLimit(limit);
+        }
+
+        LocalDateTime startTime = validateAndParseTime(startTimeStr);
+        LocalDateTime endTime = validateAndParseTime(endTimeStr);
+        LocalDateTime now = LocalDateTime.now();
+
+        // 시간 기본값 설정
+        if (Objects.isNull(startTime) && Objects.isNull(endTime)) {
+            startTime = now.minusDays(1);
+            endTime = now;
+        } else if (!Objects.isNull(startTime) && Objects.isNull(endTime)) {
+            endTime = startTime.plusDays(1);
+        } else if (Objects.isNull(startTime) && !Objects.isNull(endTime)) {
+            startTime = endTime.minusDays(1);
+        }
+        validateTimeRange(startTime, endTime);
+
+        log.debug("{} API 통계 조회 요청 검증 완료: start={}, end={}",
+                LOG_PREFIX, startTime, endTime);
+
+        return new LocalDateTime[]{startTime, endTime};
+    }
+
 }
