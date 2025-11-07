@@ -3,6 +3,8 @@ package S13P31A306.loglens.domain.dashboard.service.impl;
 import S13P31A306.loglens.domain.dashboard.dto.opensearch.ErrorAggregation;
 import S13P31A306.loglens.domain.dashboard.dto.opensearch.ErrorStatistics;
 import S13P31A306.loglens.domain.dashboard.service.TopFrequentErrorsQueryService;
+import S13P31A306.loglens.domain.project.entity.Project;
+import S13P31A306.loglens.domain.project.validator.ProjectValidator;
 import S13P31A306.loglens.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,7 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
     private static final String LOG_PREFIX = "[TopFrequentErrorsQueryService]";
 
     private final OpenSearchClient openSearchClient;
+    private final ProjectValidator projectValidator;
 
     /**
      * Top N 에러 집계 조회
@@ -54,11 +57,14 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
 
         log.info("{} Top {} 에러 집계 쿼리 시작: projectUuid={}", LOG_PREFIX, limit, projectUuid);
 
+        Project project = projectValidator.validateProjectExists(projectUuid);
+        Integer projectId = project.getId();
+
         try {
             SearchRequest request = SearchRequest.of(s -> s
                     .index("logs")
                     .size(0)
-                    .query(buildErrorLogQuery(projectUuid, start, end))
+                    .query(buildErrorLogQuery(projectId, start, end))
                     .aggregations("by_error_type", a -> a
                             .terms(t -> t
                                     .field("log_details.exception_type.keyword")
@@ -82,7 +88,7 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
 
             return result;
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("{} OpenSearch 에러 집계 쿼리 실패", LOG_PREFIX, e);
             throw new BusinessException(OPENSEARCH_OPERATION_FAILED);
         }
@@ -105,11 +111,14 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
 
         log.debug("{} 에러 통계 쿼리 시작: projectUuid={}", LOG_PREFIX, projectUuid);
 
+        Project project = projectValidator.validateProjectExists(projectUuid);
+        Integer projectId = project.getId();
+
         try {
             SearchRequest request = SearchRequest.of(s -> s
                     .index("logs")
                     .size(0)
-                    .query(buildErrorLogQuery(projectUuid, start, end))
+                    .query(buildErrorLogQuery(projectId, start, end))
                     .aggregations("unique_types", a -> a
                             .cardinality(c -> c.field("log_details.exception_type.keyword")))
             );
@@ -137,16 +146,16 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
      * 프로젝트의 ERROR 로그 기본 쿼리 생성
      * project_uuid, log_level(ERROR), timestamp 범위 조건을 포함한 bool 쿼리 생성
      *
-     * @param projectUuid 프로젝트 UUID
+     * @param projectId 프로젝트 UUID
      * @param start 조회 시작 시간
      * @param end 조회 종료 시간
      * @return OpenSearch Query 객체
      */
-    private Query buildErrorLogQuery(String projectUuid, LocalDateTime start, LocalDateTime end) {
+    private Query buildErrorLogQuery(Integer projectId, LocalDateTime start, LocalDateTime end) {
         return Query.of(q -> q.bool(b -> b
                 .must(m -> m.term(t -> t
                         .field("project_uuid.keyword")
-                        .value(FieldValue.of(projectUuid))))
+                        .value(FieldValue.of(projectId))))
                 .must(m -> m.term(t -> t
                         .field("log_level.keyword")
                         .value(FieldValue.of("ERROR"))))
