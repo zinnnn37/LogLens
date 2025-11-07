@@ -6,7 +6,7 @@ import type { LogData, LogSearchParams } from '@/types/log';
 
 import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { FileDown } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 import DetailLogSearchBox, {
@@ -341,7 +341,7 @@ const LogsPage = () => {
         className="fixed right-6 bottom-[72px] flex h-14 w-14 items-center justify-center rounded-full p-0 shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
         aria-label="CSV 다운로드"
       >
-        <FileDown className="h-6 w-6" />
+        <Download className="h-6 w-6" />
       </Button>
 
       <FloatingChecklist />
