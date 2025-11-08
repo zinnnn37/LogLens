@@ -11,14 +11,14 @@ import org.springframework.format.annotation.DateTimeFormat;
 public class LogSearchRequest {
 
     @Sensitive
-    @Schema(description = "프로젝트 UUID", example = "alwkcmqe-cf4e-3cea-8755-ebf105062705")
+    @Schema(description = "프로젝트 UUID", example = "a0b4a1a9-d2ae-3672-a0e1-3a4863922226")
     private String projectUuid;
 
     @Schema(description = "페이지네이션 커서", example = "eyJzb3J0IjpbMTcwNTMxMjgwMDAwMCwiYWJjMTIzIl19")
     private String cursor;
 
-    @Schema(description = "페이지 크기", example = "50", defaultValue = "50")
-    private Integer size = 50;
+    @Schema(description = "페이지 크기", example = "50", defaultValue = "100")
+    private Integer size = 100;
 
     @Schema(description = "검색 시작 시간", example = "2025-11-01T00:00:00")
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
@@ -37,7 +37,7 @@ public class LogSearchRequest {
     @Schema(description = "검색 키워드", example = "NullPointerException")
     private String keyword;
 
-    @Schema(description = "Trace ID", example = "cff8de02-ed46-4400-a430-23d16a254d1d")
+    @Schema(description = "Trace ID", example = "71ae1754-3e1d-487c-bc96-9353d73a5b67")
     private String traceId;
 
     @Schema(description = "정렬 옵션 (필드,방향)", example = "TIMESTAMP,DESC", defaultValue = "TIMESTAMP,DESC")
