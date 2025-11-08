@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 public enum OpenSearchField {
 
     // ──────────────── 트레이싱 / 식별자 ────────────────
-    TRACE_ID("trace_id"),
+    TRACE_ID("trace_id.keyword"),
     PROJECT_UUID("project_uuid"),
     PROJECT_UUID_KEYWORD("project_uuid.keyword"),
     LOG_ID("log_id"),
@@ -19,12 +19,11 @@ public enum OpenSearchField {
     // ──────────────── 컨텍스트 / 메타데이터 ────────────────
     COMPONENT_NAME("component_name"),
     SERVICE_NAME("service_name"),
-    SOURCE_TYPE("source_type"),
-    LAYER("layer"),
+    SOURCE_TYPE("source_type.keyword"),  // keyword 서브필드 사용
     LOGGER("logger"),
 
     // ──────────────── 로그 레벨 및 내용 ────────────────
-    LOG_LEVEL("log_level"),
+    LOG_LEVEL("log_level.keyword"),  // keyword 서브필드 사용
     LEVEL("level"),
     MESSAGE("message"),
     MESSAGE_KEYWORD("message.keyword"),
