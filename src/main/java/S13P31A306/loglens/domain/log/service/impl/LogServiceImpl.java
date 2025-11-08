@@ -142,7 +142,7 @@ public class LogServiceImpl implements LogService {
         log.info("{} 로그 상세 조회 시작: logId={}, projectUuid={}", LOG_PREFIX, logId, projectUuid);
 
         // 1. OpenSearch에서 로그 조회
-        Log log = logRepository.findByLogId(logId, projectUuid)
+        Log logEntity = logRepository.findByLogId(logId, projectUuid)
                 .orElseThrow(() -> {
                     LogServiceImpl.log.warn("{} 로그를 찾을 수 없음: logId={}, projectUuid={}",
                             LOG_PREFIX, logId, projectUuid);
@@ -151,23 +151,23 @@ public class LogServiceImpl implements LogService {
 
         // 2. 기본 로그 정보로 LogDetailResponse 빌드 시작
         LogDetailResponse.LogDetailResponseBuilder builder = LogDetailResponse.builder()
-                .logId(log.getLogId())
-                .traceId(log.getTraceId())
-                .logLevel(log.getLogLevel())
-                .sourceType(log.getSourceType())
-                .message(log.getMessage())
-                .timestamp(!Objects.isNull(log.getTimestamp()) ? log.getTimestamp().toLocalDateTime() : null)
-                .logger(log.getLogger())
-                .layer(log.getLayer())
-                .comment(log.getComment())
-                .serviceName(log.getServiceName())
-                .className(log.getClassName())
-                .methodName(log.getMethodName())
-                .threadName(log.getThreadName())
-                .requesterIp(log.getRequesterIp())
-                .duration(log.getDuration())
-                .stackTrace(log.getStackTrace())
-                .logDetails(log.getLogDetails());
+                .logId(logEntity.getLogId())
+                .traceId(logEntity.getTraceId())
+                .logLevel(logEntity.getLogLevel())
+                .sourceType(logEntity.getSourceType())
+                .message(logEntity.getMessage())
+                .timestamp(!Objects.isNull(logEntity.getTimestamp()) ? logEntity.getTimestamp().toLocalDateTime() : null)
+                .logger(logEntity.getLogger())
+                .layer(logEntity.getLayer())
+                .comment(logEntity.getComment())
+                .serviceName(logEntity.getServiceName())
+                .className(logEntity.getClassName())
+                .methodName(logEntity.getMethodName())
+                .threadName(logEntity.getThreadName())
+                .requesterIp(logEntity.getRequesterIp())
+                .duration(logEntity.getDuration())
+                .stackTrace(logEntity.getStackTrace())
+                .logDetails(logEntity.getLogDetails());
 
         // 3. AI 분석 결과 확인 및 처리
         AiAnalysisDto analysis = null;
@@ -176,7 +176,7 @@ public class LogServiceImpl implements LogService {
         Double similarityScore = null;
 
         // 3-1. OpenSearch에 저장된 aiAnalysis 확인
-        Map<String, Object> aiAnalysisMap = log.getAiAnalysis();
+        Map<String, Object> aiAnalysisMap = logEntity.getAiAnalysis();
         if (aiAnalysisMap != null && !aiAnalysisMap.isEmpty()) {
             LogServiceImpl.log.info("{} OpenSearch에 저장된 AI 분석 결과 사용: logId={}", LOG_PREFIX, logId);
             try {
