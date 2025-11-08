@@ -17,7 +17,7 @@ public enum OpenSearchField {
     LOG_ID("log_id"),
 
     // ──────────────── 컨텍스트 / 메타데이터 ────────────────
-    COMPONENT_NAME("component_name"),
+    COMPONENT_NAME("component_name.keyword"),
     SERVICE_NAME("service_name"),
     SOURCE_TYPE("source_type.keyword"),  // keyword 서브필드 사용
     LOGGER("logger"),
