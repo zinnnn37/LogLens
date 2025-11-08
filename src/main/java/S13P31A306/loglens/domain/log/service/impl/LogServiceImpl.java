@@ -144,7 +144,7 @@ public class LogServiceImpl implements LogService {
         // 1. OpenSearch에서 로그 조회
         Log logEntity = logRepository.findByLogId(logId, projectUuid)
                 .orElseThrow(() -> {
-                    LogServiceImpl.log.warn("{} 로그를 찾을 수 없음: logId={}, projectUuid={}",
+                    log.warn("{} 로그를 찾을 수 없음: logId={}, projectUuid={}",
                             LOG_PREFIX, logId, projectUuid);
                     return new BusinessException(LogErrorCode.LOG_NOT_FOUND);
                 });
@@ -156,7 +156,8 @@ public class LogServiceImpl implements LogService {
                 .logLevel(logEntity.getLogLevel())
                 .sourceType(logEntity.getSourceType())
                 .message(logEntity.getMessage())
-                .timestamp(!Objects.isNull(logEntity.getTimestamp()) ? logEntity.getTimestamp().toLocalDateTime() : null)
+                .timestamp(
+                        !Objects.isNull(logEntity.getTimestamp()) ? logEntity.getTimestamp().toLocalDateTime() : null)
                 .logger(logEntity.getLogger())
                 .layer(logEntity.getLayer())
                 .comment(logEntity.getComment())
@@ -178,18 +179,18 @@ public class LogServiceImpl implements LogService {
         // 3-1. OpenSearch에 저장된 aiAnalysis 확인
         Map<String, Object> aiAnalysisMap = logEntity.getAiAnalysis();
         if (aiAnalysisMap != null && !aiAnalysisMap.isEmpty()) {
-            LogServiceImpl.log.info("{} OpenSearch에 저장된 AI 분석 결과 사용: logId={}", LOG_PREFIX, logId);
+            log.info("{} OpenSearch에 저장된 AI 분석 결과 사용: logId={}", LOG_PREFIX, logId);
             try {
                 analysis = objectMapper.convertValue(aiAnalysisMap, AiAnalysisDto.class);
                 fromCache = true;
             } catch (Exception e) {
-                LogServiceImpl.log.error("{} AI 분석 결과 변환 실패: logId={}", LOG_PREFIX, logId, e);
+                log.error("{} AI 분석 결과 변환 실패: logId={}", LOG_PREFIX, logId, e);
             }
         }
 
         // 3-2. AI 분석이 없으면 AI 서비스 호출
         if (Objects.isNull(analysis)) {
-            LogServiceImpl.log.info("{} AI 서비스 호출하여 분석 수행: logId={}", LOG_PREFIX, logId);
+            log.info("{} AI 서비스 호출하여 분석 수행: logId={}", LOG_PREFIX, logId);
             try {
                 AiAnalysisResponse aiResponse = aiServiceClient.analyzeLog(logId, projectUuid);
                 if (aiResponse != null && aiResponse.getAnalysis() != null) {
@@ -197,12 +198,12 @@ public class LogServiceImpl implements LogService {
                     fromCache = aiResponse.getFromCache();
                     similarLogId = aiResponse.getSimilarLogId();
                     similarityScore = aiResponse.getSimilarityScore();
-                    LogServiceImpl.log.info("{} AI 분석 완료: logId={}, fromCache={}", LOG_PREFIX, logId, fromCache);
+                    log.info("{} AI 분석 완료: logId={}, fromCache={}", LOG_PREFIX, logId, fromCache);
                 } else {
-                    LogServiceImpl.log.warn("{} AI 분석 결과가 null: logId={}", LOG_PREFIX, logId);
+                    log.warn("{} AI 분석 결과가 null: logId={}", LOG_PREFIX, logId);
                 }
             } catch (Exception e) {
-                LogServiceImpl.log.error("{} AI 서비스 호출 실패, 분석 없이 로그만 반환: logId={}", LOG_PREFIX, logId, e);
+                log.error("{} AI 서비스 호출 실패, 분석 없이 로그만 반환: logId={}", LOG_PREFIX, logId, e);
             }
         }
 
@@ -214,7 +215,7 @@ public class LogServiceImpl implements LogService {
                 .similarityScore(similarityScore)
                 .build();
 
-        LogServiceImpl.log.info("{} 로그 상세 조회 완료: logId={}, hasAnalysis={}", LOG_PREFIX, logId, analysis != null);
+        log.info("{} 로그 상세 조회 완료: logId={}, hasAnalysis={}", LOG_PREFIX, logId, analysis != null);
         return response;
     }
 }
