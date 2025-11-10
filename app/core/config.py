@@ -57,7 +57,7 @@ class Settings(BaseSettings):
 
     # Agent Settings (ReAct Agent for Chatbot V2)
     AGENT_MODEL: str = "gpt-4o-mini"              # Agent용 LLM 모델
-    AGENT_MAX_ITERATIONS: int = 5                 # 최대 도구 호출 횟수
+    AGENT_MAX_ITERATIONS: int = 10                # 최대 도구 호출 횟수
     AGENT_VERBOSE: bool = True                    # Agent 실행 로그 출력 (디버깅용)
 
     @property

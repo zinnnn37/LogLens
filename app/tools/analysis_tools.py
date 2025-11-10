@@ -24,10 +24,13 @@ async def get_log_statistics(
     - 특정 기간의 로그 분포 확인 (예: "오늘 에러가 몇 개야?")
     - 서비스별 로그 현황 파악
 
-    Args:
-        project_uuid: 프로젝트 UUID (언더스코어 형식)
+    입력 파라미터 (JSON 형식):
         time_hours: 통계 기간 (시간 단위, 기본 24시간)
         group_by: 집계 기준 (level, service_name, source_type 중 하나, 기본 level)
+
+    참고:
+    - project_uuid는 자동으로 주입되므로 전달하지 마세요.
+    - ⚠️ "로그가 없습니다" 응답은 유효한 결과입니다. 다른 도구로 재시도하지 마세요.
 
     Returns:
         통계 정보 (레벨별/서비스별 로그 개수, 에러율 등)
@@ -41,8 +44,8 @@ async def get_log_statistics(
         "end": end_time.isoformat() + "Z"
     }
 
-    # 인덱스 패턴
-    index_pattern = f"{project_uuid}_*"
+    # 인덱스 패턴 (UUID의 하이픈을 언더스코어로 변환)
+    index_pattern = f"{project_uuid.replace('-', '_')}_*"
 
     # Aggregation 쿼리
     query_body = {
@@ -168,11 +171,15 @@ async def get_recent_errors(
     - 특정 서비스의 에러만 조회 (예: "user-service 에러 보여줘")
     - 에러 발생 빈도 파악
 
-    Args:
-        project_uuid: 프로젝트 UUID (언더스코어 형식)
+    입력 파라미터 (JSON 형식):
         limit: 조회할 개수 (기본 10개)
         service_name: 특정 서비스만 조회 (선택)
         time_hours: 검색할 시간 범위 (시간 단위, 기본 24시간)
+
+    참고:
+    - project_uuid는 자동으로 주입되므로 전달하지 마세요.
+    - ⚠️ "ERROR 레벨 로그가 없습니다" 응답은 유효한 결과입니다. 다른 도구로 재시도하지 마세요.
+    - ⚠️ 전체 에러 현황을 파악하려면 service_name 필터 없이 먼저 조회하세요. 서비스별 상세 분석은 그 다음에 필요시에만 수행하세요.
 
     Returns:
         최근 에러 목록 (시간 역순)
@@ -186,8 +193,8 @@ async def get_recent_errors(
         "end": end_time.isoformat() + "Z"
     }
 
-    # 인덱스 패턴
-    index_pattern = f"{project_uuid}_*"
+    # 인덱스 패턴 (UUID의 하이픈을 언더스코어로 변환)
+    index_pattern = f"{project_uuid.replace('-', '_')}_*"
 
     # Query 구성
     must_clauses = [
@@ -260,7 +267,7 @@ async def get_recent_errors(
         summary_lines.append("최근 에러 목록:")
         for i, hit in enumerate(hits, 1):
             source = hit["_source"]
-            msg = source.get("message", "")[:150]
+            msg = source.get("message", "")[:400]
             timestamp_str = source.get("timestamp", "")[:19]
             service = source.get("service_name", "unknown")
             log_id = source.get("log_id", "")

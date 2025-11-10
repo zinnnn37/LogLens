@@ -27,12 +27,15 @@ async def search_logs_by_keyword(
     - 특정 에러 메시지로 로그 찾기 (예: "NullPointerException")
     - 특정 단어가 포함된 로그 찾기 (예: "user-service")
 
-    Args:
-        keyword: 검색할 키워드 (메시지 내용)
-        project_uuid: 프로젝트 UUID (언더스코어 형식)
+    입력 파라미터 (JSON 형식):
+        keyword: 검색할 키워드 (메시지 내용, 필수)
         level: 로그 레벨 필터 (ERROR, WARN, INFO, DEBUG 중 하나, 선택)
         service_name: 서비스 이름 필터 (선택)
         time_hours: 검색할 시간 범위 (시간 단위, 기본 24시간)
+
+    참고:
+    - project_uuid는 자동으로 주입되므로 전달하지 마세요.
+    - ⚠️ "검색 결과가 없습니다" 응답은 유효한 결과입니다. 다른 도구로 재시도하지 마세요.
 
     Returns:
         검색 결과 요약 (건수, 주요 메시지, 시간 정보)
@@ -73,8 +76,8 @@ async def search_logs_by_keyword(
         }
     }
 
-    # 인덱스 패턴
-    index_pattern = f"{project_uuid}_*"
+    # 인덱스 패턴 (UUID의 하이픈을 언더스코어로 변환)
+    index_pattern = f"{project_uuid.replace('-', '_')}_*"
 
     try:
         # OpenSearch 검색
@@ -113,7 +116,7 @@ async def search_logs_by_keyword(
         summary_lines.append("최근 로그 5개:")
         for i, hit in enumerate(hits[:5], 1):
             source = hit["_source"]
-            msg = source.get("message", "")[:100]
+            msg = source.get("message", "")[:300]
             level_str = source.get("level", "?")
             timestamp_str = source.get("timestamp", "")[:19]
             service = source.get("service_name", "unknown")
@@ -145,12 +148,15 @@ async def search_logs_by_similarity(
     - 자연어 질문으로 관련 로그 찾기 (예: "사용자 인증 실패 관련 로그")
     - 특정 상황과 유사한 로그 찾기 (예: "데이터베이스 연결 문제")
 
-    Args:
-        query: 검색 쿼리 (자연어)
-        project_uuid: 프로젝트 UUID (언더스코어 형식)
+    입력 파라미터 (JSON 형식):
+        query: 검색 쿼리 (자연어, 필수)
         k: 반환할 로그 개수 (기본 5개)
         level: 로그 레벨 필터 (ERROR, WARN, INFO, DEBUG 중 하나, 선택)
         time_hours: 검색할 시간 범위 (시간 단위, 기본 168시간=7일)
+
+    참고:
+    - project_uuid는 자동으로 주입되므로 전달하지 마세요.
+    - ⚠️ "유사한 로그를 찾을 수 없습니다" 응답은 유효한 결과입니다. 다른 도구로 재시도하지 마세요.
 
     Returns:
         유사한 로그 목록 (상위 k개)

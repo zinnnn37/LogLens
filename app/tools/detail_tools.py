@@ -21,15 +21,16 @@ async def get_log_detail(
     - 특정 로그의 전체 내용 확인 (스택 트레이스 포함)
     - 에러 원인 분석을 위한 상세 정보 조회
 
-    Args:
-        log_id: 로그 ID (ULID)
-        project_uuid: 프로젝트 UUID (언더스코어 형식)
+    입력 파라미터 (JSON 형식):
+        log_id: 로그 ID (정수, 필수)
+
+    참고: project_uuid는 자동으로 주입되므로 전달하지 마세요.
 
     Returns:
         로그 상세 정보 (메시지, 스택 트레이스, 메타데이터 전체)
     """
-    # 인덱스 패턴
-    index_pattern = f"{project_uuid}_*"
+    # 인덱스 패턴 (UUID의 하이픈을 언더스코어로 변환)
+    index_pattern = f"{project_uuid.replace('-', '_')}_*"
 
     # Query 구성
     query = {
@@ -93,7 +94,7 @@ async def get_log_detail(
         if stack_trace:
             summary_lines.append("")
             summary_lines.append("📚 스택 트레이스:")
-            summary_lines.append(stack_trace[:500])  # 최대 500자
+            summary_lines.append(stack_trace[:1500])  # 최대 1500자
             if len(stack_trace) > 500:
                 summary_lines.append("... (생략)")
 
@@ -126,16 +127,17 @@ async def get_logs_by_trace_id(
     - 특정 요청의 전체 흐름 추적 (분산 트레이싱)
     - 연관된 로그를 시간순으로 확인하여 문제 원인 파악
 
-    Args:
-        trace_id: Trace ID
-        project_uuid: 프로젝트 UUID (언더스코어 형식)
+    입력 파라미터 (JSON 형식):
+        trace_id: Trace ID (문자열, 필수)
         limit: 최대 조회 개수 (기본 50개)
+
+    참고: project_uuid는 자동으로 주입되므로 전달하지 마세요.
 
     Returns:
         연관된 로그 목록 (시간순)
     """
-    # 인덱스 패턴
-    index_pattern = f"{project_uuid}_*"
+    # 인덱스 패턴 (UUID의 하이픈을 언더스코어로 변환)
+    index_pattern = f"{project_uuid.replace('-', '_')}_*"
 
     # Query 구성
     query = {
@@ -189,7 +191,7 @@ async def get_logs_by_trace_id(
             timestamp_str = source.get("timestamp", "")[:23]
             level = source.get("level", "?")
             service = source.get("service_name", "unknown")
-            msg = source.get("message", "")[:100]
+            msg = source.get("message", "")[:300]
             log_id = source.get("log_id", "")
             http_status = source.get("http_status")
             exc_type = source.get("exception_type")

@@ -4,11 +4,15 @@ Chatbot V2 endpoints - ReAct Agent 기반
 LLM이 자율적으로 도구를 선택하여 로그 분석
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi.responses import StreamingResponse
 import logging
+import re
+import json
 
 from app.services.chatbot_service_v2 import chatbot_service_v2
 from app.models.chat import ChatRequest, ChatResponse
+from app.agents.chatbot_agent import create_log_analysis_agent
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -205,6 +209,18 @@ logger = logging.getLogger(__name__)
 async def ask_chatbot_v2(request: ChatRequest):
     """ReAct Agent 기반 로그 질문 응답"""
     try:
+        # project_uuid 형식 검증 (인덱스 이름 형식 거부)
+        if re.match(r'^.+_\d{4}_\d{2}$', request.project_uuid):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"잘못된 project_uuid 형식입니다. "
+                    f"인덱스 이름(_YYYY_MM 포함)이 아닌 프로젝트 UUID만 전달하세요. "
+                    f"예: '9f8c4c75-a936-3ab6-92a5-d1309cd9f87e' (올바름), "
+                    f"'9f8c4c75-a936-3ab6-92a5-d1309cd9f87e_2025_11' (잘못됨)"
+                )
+            )
+
         result = await chatbot_service_v2.ask(
             question=request.question,
             project_uuid=request.project_uuid,
@@ -222,3 +238,203 @@ async def ask_chatbot_v2(request: ChatRequest):
             exc_info=True
         )
         raise HTTPException(status_code=500, detail=f"Chatbot V2 error: {str(e)}")
+
+
+@router.post(
+    "/chatbot/ask/stream",
+    summary="챗봇 질문 (V2 - Agent 기반, 스트리밍)",
+    description="""
+    **ReAct Agent 기반 로그 분석 챗봇 (V2 - 실시간 스트리밍)**
+
+    `/api/v2/chatbot/ask`와 동일한 기능이지만 **실시간 스트리밍**으로 답변을 전송합니다.
+
+    ## 스트리밍 방식
+
+    - **SSE (Server-Sent Events)** 형식 사용
+    - Agent의 중간 추론 과정(Thought/Action/Observation)은 숨기고 **최종 답변만** 스트리밍
+    - 답변이 생성되는 즉시 실시간으로 전송
+
+    ## 응답 형식
+
+    ```
+    data: 최근 24시간 동안 \\n\\n
+    data: **ERROR 3건** 발생했습니다.\\n\\n
+    data: 주요 에러:\\n
+    data: 1. DatabaseTimeout (payment-service)\\n
+    data: [DONE]
+    ```
+
+    - 각 청크는 `data: ` 접두사로 시작
+    - 줄바꿈은 `\\n`으로 이스케이프됨 (프론트엔드에서 `\\n` → `\n` 변환)
+    - 완료 시그널: `data: [DONE]`
+    - 에러 발생 시: `data: [ERROR]` 후 에러 정보
+
+    ## V1 vs V2 스트리밍 비교
+
+    | 특징 | V1 Stream | V2 Stream |
+    |------|-----------|-----------|
+    | 응답 시작 | 즉시 (Vector 검색 후) | 다소 지연 (Agent 추론 중) |
+    | 중간 과정 | 없음 | 숨김 (Thought/Action 미표시) |
+    | 도구 사용 | Vector 검색만 | 6가지 도구 자율 선택 |
+    | 캐싱 | 지원 | 미지원 |
+
+    ## 주의사항
+
+    - Agent가 도구를 선택하고 실행하는 동안 **최대 5-10초** 지연 가능
+    - 첫 토큰이 늦게 도착할 수 있음 (Agent 추론 시간)
+    - 복잡한 질문일수록 응답 시작이 늦어짐
+    """,
+    responses={
+        200: {
+            "description": "스트리밍 응답 성공 (SSE 형식)",
+            "content": {
+                "text/event-stream": {
+                    "example": "data: 최근 24시간 동안\\n\\ndata: ERROR 3건 발생\\n\\ndata: [DONE]\\n\\n"
+                }
+            }
+        },
+        400: {
+            "description": "잘못된 요청",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "question field is required"}
+                }
+            }
+        },
+        500: {
+            "description": "Agent 실행 오류",
+            "content": {
+                "text/event-stream": {
+                    "example": "data: [ERROR]\\n\\ndata: {\"error\": \"Agent execution failed\"}\\n\\n"
+                }
+            }
+        }
+    }
+)
+async def ask_chatbot_v2_stream(
+    background_tasks: BackgroundTasks,
+    request: ChatRequest
+):
+    """ReAct Agent 기반 로그 질문 응답 (실시간 스트리밍)"""
+    async def generate():
+        try:
+            # 1. project_uuid 형식 검증 (인덱스 이름 형식 거부)
+            if re.match(r'^.+_\d{4}_\d{2}$', request.project_uuid):
+                error_msg = (
+                    f"잘못된 project_uuid 형식입니다. "
+                    f"인덱스 이름(_YYYY_MM 포함)이 아닌 프로젝트 UUID만 전달하세요. "
+                    f"예: '9f8c4c75-a936-3ab6-92a5-d1309cd9f87e' (올바름), "
+                    f"'9f8c4c75-a936-3ab6-92a5-d1309cd9f87e_2025_11' (잘못됨)"
+                )
+                yield "data: [ERROR]\n\n"
+                yield f"data: {json.dumps({'error': error_msg})}\n\n"
+                return
+
+            # 2. Agent 생성
+            agent_executor = create_log_analysis_agent(request.project_uuid)
+
+            # 3. 대화 히스토리 포맷팅
+            history_text = ""
+            if request.chat_history:
+                history_text = "\n\n## 이전 대화:\n"
+                for msg in request.chat_history:
+                    role = "User" if msg.role == "user" else "Assistant"
+                    history_text += f"{role}: {msg.content}\n"
+
+            agent_input = {
+                "input": request.question,
+                "chat_history": history_text
+            }
+
+            # 4. Agent 스트리밍 실행
+            full_answer = ""
+            is_streaming = False  # "Final Answer:" 감지 후 True
+            buffer = ""  # 토큰 버퍼
+
+            try:
+                # LangChain 0.2.x: astream_events 사용
+                async for event in agent_executor.astream_events(
+                    agent_input,
+                    version="v1"
+                ):
+                    kind = event["event"]
+
+                    # LLM 토큰만 스트리밍 (최종 답변만)
+                    if kind == "on_chat_model_stream":
+                        chunk = event.get("data", {}).get("chunk")
+                        if chunk and hasattr(chunk, "content"):
+                            content = chunk.content
+
+                            if content:
+                                buffer += content
+
+                                # "Final Answer:" 패턴 감지
+                                if "Final Answer:" in buffer and not is_streaming:
+                                    is_streaming = True
+                                    # "Final Answer:" 이후 텍스트만 추출
+                                    parts = buffer.split("Final Answer:", 1)
+                                    if len(parts) > 1:
+                                        answer_start = parts[1].lstrip()  # 앞 공백 제거
+                                        if answer_start:
+                                            full_answer += answer_start
+                                            escaped = answer_start.replace("\n", "\\n")
+                                            yield f"data: {escaped}\n\n"
+                                    buffer = ""  # 버퍼 초기화
+                                elif is_streaming:
+                                    # 이미 Final Answer 시작됨, 그대로 스트리밍
+                                    full_answer += content
+                                    escaped_content = content.replace("\n", "\\n")
+                                    yield f"data: {escaped_content}\n\n"
+                                # else: Final Answer 이전이므로 스킵 (Thought, Action 등)
+
+                # 5. Completion signal
+                yield "data: [DONE]\n\n"
+
+            except AttributeError:
+                # astream_events가 없는 경우 fallback: 일반 실행 후 타이핑 효과
+                logger.warning("astream_events not available, using fallback streaming")
+
+                # 분석 중 메시지
+                yield "data: 로그를 분석하고 있습니다...\\n\\n\n\n"
+
+                # Agent 실행 (비동기)
+                result = await agent_executor.ainvoke(agent_input)
+                answer = result.get("output", "")
+
+                # 답변을 단어 단위로 스트리밍 (타이핑 효과)
+                import asyncio
+                words = answer.split(" ")
+                for i, word in enumerate(words):
+                    if i == 0:
+                        # 첫 단어: "분석 중..." 덮어쓰기
+                        yield f"data: {word.replace(chr(10), '\\n')}\n\n"
+                    else:
+                        # 공백 포함
+                        yield f"data:  {word.replace(chr(10), '\\n')}\n\n"
+                    await asyncio.sleep(0.02)  # 20ms 딜레이
+
+                yield "data: [DONE]\n\n"
+
+        except Exception as e:
+            logger.error(
+                f"Chatbot V2 stream error for project {request.project_uuid}: {str(e)}",
+                extra={
+                    "project_uuid": request.project_uuid,
+                    "question": request.question[:100],
+                    "error": str(e),
+                },
+                exc_info=True
+            )
+            yield "data: [ERROR]\n\n"
+            error_data = json.dumps({"error": str(e)})
+            yield f"data: {error_data}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Nginx 버퍼링 비활성화
+        }
+    )

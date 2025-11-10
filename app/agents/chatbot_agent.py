@@ -17,64 +17,114 @@ from app.tools.detail_tools import get_log_detail, get_logs_by_trace_id
 from app.core.config import settings
 
 
-# ReAct Agent System Prompt (한국어)
-AGENT_PROMPT_TEMPLATE = """당신은 로그 분석 전문가입니다. 사용자의 질문에 답하기 위해 적절한 도구를 선택하세요.
-{chat_history}
+# ReAct Agent System Prompt (한국어) - LangChain 표준 형식
+AGENT_PROMPT_TEMPLATE = """Answer the following questions as best you can. You have access to the following tools:
 
-## 사용 가능한 도구
 {tools}
 
-## 도구 선택 가이드
+CRITICAL RULES FOR "NO DATA FOUND" RESPONSES:
+- If a tool returns "로그가 없습니다" or "ERROR 레벨 로그가 없습니다" or "검색 결과가 없습니다", this is a VALID FINAL RESULT
+- DO NOT retry with different parameters
+- DO NOT try other tools
+- IMMEDIATELY write: "Thought: I now know the final answer" followed by "Final Answer: [explain no logs found]"
+- Example response format when no data found:
+  Thought: I now know the final answer
+  Final Answer: 최근 24시간 동안 ERROR 로그가 발생하지 않았습니다. 시스템이 정상 작동 중입니다.
 
-1. **시스템 상태/통계 질문** (예: "시스템 상태는?", "오늘 에러가 몇 개야?")
-   → get_log_statistics 사용
+SEVERITY ASSESSMENT GUIDELINES (for "가장 심각한", "most serious" questions):
+- Database/Connection errors (DatabaseTimeout, ConnectionPoolExhausted, ConnectionRefused) = MOST SERIOUS (affects all users)
+- Authentication/Security errors (InvalidToken, AuthFailure, UnauthorizedAccess) = HIGH severity (security risk)
+- NullPointerException, IllegalStateException, RuntimeException = MEDIUM severity (specific feature broken)
+- Slow queries, cache misses, warnings = LOW severity (performance degradation only)
+- When asked "가장 심각한 에러", "most critical error": Call get_recent_errors ONCE, analyze error types using above criteria, provide Final Answer
+- DO NOT call get_recent_errors multiple times with different service_name filters unless specifically requested
 
-2. **최근 에러 확인** (예: "최근 에러 보여줘", "에러 목록")
-   → get_recent_errors 사용
+EFFICIENCY RULES TO PREVENT ITERATION LOOPS:
+- For "most X" questions (가장 심각한, 가장 많은, most frequent), use ONE broad query first without filters
+- Analyze the results and make a decision immediately - DO NOT iterate through all possible combinations
+- AVOID calling the same tool multiple times with slightly different parameters
+- Example workflow: "가장 심각한 에러가 뭐야?" → get_recent_errors(limit=10) → analyze types based on severity → Final Answer (total: 1-2 tool calls)
 
-3. **키워드 검색** (예: "NullPointerException 찾아줘", "user-service 로그")
-   → search_logs_by_keyword 사용
+FORMATTING GUIDELINES FOR FINAL ANSWER:
+- For ANALYSIS questions (통계, 분석, 요약): Use structured markdown with ## headers, **bold** numbers, tables
+- For SIMPLE questions (인사, 단순 조회): Keep it concise and natural
+- Always include specific numbers, timestamps, service names when available
+- Example structured: "## 📊 요약\n최근 7일간 **4건**의 에러 발생\n\n| 서비스 | 건수 |\n|------|------|\n| user-service | 2건 |"
+- Example simple: "안녕하세요! 로그 분석이 필요하시면 질문해주세요."
 
-4. **의미적 검색** (예: "인증 실패 관련 로그", "데이터베이스 문제")
-   → search_logs_by_similarity 사용
+DETAIL REQUIREMENTS FOR ANALYSIS RESPONSES:
+- Include FULL error messages (do not truncate or summarize)
+- Show complete stack traces when analyzing errors (minimum 5-10 lines of context)
+- Always state the time range analyzed (e.g., "최근 24시간", "2025-11-01 ~ 2025-11-07")
+- Include HTTP details when relevant (method, path, status code)
+- Cite specific log_ids so users can reference them (e.g., "log_id: 101")
+- Use code blocks (```) for stack traces and technical details
+- Target 1000-3000 characters for comprehensive analysis responses
 
-5. **특정 로그 상세** (log_id가 주어진 경우)
-   → get_log_detail 사용
+EXAMPLE SCENARIO - "가장 심각한 에러가 뭐야?":
+Question: 가장 심각한 에러가 뭐야?
+Thought: I need to get recent errors first and determine which is most serious based on severity guidelines
+Action: get_recent_errors
+Action Input: {{"limit": 10, "time_hours": 24}}
+Observation: === 최근 에러 로그 (최근 24시간) ===
+총 3건의 에러 발생, 상위 3건 표시
 
-6. **트레이스 추적** (trace_id가 주어진 경우)
-   → get_logs_by_trace_id 사용
+에러 타입별 분포:
+  - Unknown: 3건
 
-7. **인사말/간단한 질문** (예: "안녕", "고마워")
-   → 도구 사용 없이 바로 답변
+최근 에러 목록:
+1. [Unknown] 2025-11-10T09:19
+   서비스: user-service
+   메시지: NullPointerException: User object is null at line 45...
+   (log_id: 101)
 
-## 중요 규칙
-- project_uuid는 항상 제공되므로 모든 도구 호출 시 전달하세요
-- 도구 실행 결과를 받으면 사용자가 이해하기 쉽게 요약하세요
-- 필요하면 여러 도구를 연속으로 사용하세요 (최대 5회)
-- 정보가 부족하면 추가 도구를 사용하거나 사용자에게 명확히 안내하세요
-- 한국어로 답변하세요
+2. [Unknown] 2025-11-10T06:19
+   서비스: payment-service
+   메시지: DatabaseTimeout: Connection pool exhausted after 30s...
+   (log_id: 102)
 
-## 답변 형식
+3. [Unknown] 2025-11-09T21:19
+   서비스: auth-service
+   메시지: InvalidTokenException: JWT signature verification failed...
+   (log_id: 103)
 
-Thought: (무엇을 해야 할지 생각)
-Action: (사용할 도구 이름)
-Action Input: (도구에 전달할 입력, JSON 형식)
-Observation: (도구 실행 결과)
-... (필요시 Thought/Action/Observation 반복)
+Thought: According to severity guidelines, DatabaseTimeout (affects all users) is MOST SERIOUS, more critical than NullPointerException or InvalidToken
+Final Answer: ## 🚨 가장 심각한 에러
+
+**DatabaseTimeout** (log_id: 102)
+
+**발생 시간:** 3시간 전 (2025-11-10 06:19)
+**서비스:** payment-service
+**심각도:** 최고 (CRITICAL)
+
+**에러 내용:**
+```
+DatabaseTimeout: Connection pool exhausted after 30s
+```
+
+**영향 범위:**
+결제 서비스의 데이터베이스 연결 풀이 고갈되어 **모든 사용자의 결제 요청이 실패**했습니다.
+
+**권장 조치:**
+1. 즉시 DB 연결 풀 크기 확인 및 증설
+2. 장시간 실행 중인 쿼리 확인
+3. Connection leak 여부 점검
+
+Use the following format:
+
+Question: the input question you must answer
+Thought: you should always think about what to do
+Action: the action to take, should be one of [{tool_names}]
+Action Input: the input to the action (JSON format)
+Observation: the result of the action
+... (this Thought/Action/Action Input/Observation can repeat N times)
 Thought: I now know the final answer
-Final Answer: (최종 답변, 한국어)
+Final Answer: the final answer to the original input question (in Korean)
 
----
+Begin!
 
-## Tools
-{tool_names}
-
-## Question
-{input}
-
-## Agent Scratchpad
-{agent_scratchpad}
-"""
+Question: {input}
+Thought:{agent_scratchpad}"""
 
 AGENT_PROMPT = PromptTemplate.from_template(AGENT_PROMPT_TEMPLATE)
 
@@ -93,7 +143,8 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
     llm = ChatOpenAI(
         model=settings.AGENT_MODEL,
         temperature=0,  # 일관된 답변
-        api_key=settings.OPENAI_API_KEY
+        api_key=settings.OPENAI_API_KEY,
+        stop=["\nObservation"]  # Observation 환각 방지
     )
 
     # project_uuid가 바인딩된 wrapper 함수들 생성
@@ -109,8 +160,9 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
         if isinstance(tool_input, str) and tool_input:
             try:
                 kwargs.update(json.loads(tool_input))
-            except:
-                pass
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in search_logs_by_keyword: {e}, input: {tool_input}")
+                # Continue with default parameters
         # Inject project_uuid and call the tool function directly
         params = {**kwargs, "project_uuid": project_uuid}
         return await search_logs_by_keyword.ainvoke(params)
@@ -120,8 +172,9 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
         if isinstance(tool_input, str) and tool_input:
             try:
                 kwargs.update(json.loads(tool_input))
-            except:
-                pass
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in search_logs_by_similarity: {e}, input: {tool_input}")
+                # Continue with default parameters
         params = {**kwargs, "project_uuid": project_uuid}
         return await search_logs_by_similarity.ainvoke(params)
 
@@ -130,8 +183,9 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
         if isinstance(tool_input, str) and tool_input:
             try:
                 kwargs.update(json.loads(tool_input))
-            except:
-                pass
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in get_log_statistics: {e}, input: {tool_input}")
+                # Continue with default parameters
         params = {**kwargs, "project_uuid": project_uuid}
         return await get_log_statistics.ainvoke(params)
 
@@ -140,8 +194,9 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
         if isinstance(tool_input, str) and tool_input:
             try:
                 kwargs.update(json.loads(tool_input))
-            except:
-                pass
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in get_recent_errors: {e}, input: {tool_input}")
+                # Continue with default parameters
         params = {**kwargs, "project_uuid": project_uuid}
         return await get_recent_errors.ainvoke(params)
 
@@ -150,8 +205,9 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
         if isinstance(tool_input, str) and tool_input:
             try:
                 kwargs.update(json.loads(tool_input))
-            except:
-                pass
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in get_log_detail: {e}, input: {tool_input}")
+                # Continue with default parameters
         params = {**kwargs, "project_uuid": project_uuid}
         return await get_log_detail.ainvoke(params)
 
@@ -160,8 +216,9 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
         if isinstance(tool_input, str) and tool_input:
             try:
                 kwargs.update(json.loads(tool_input))
-            except:
-                pass
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in get_logs_by_trace_id: {e}, input: {tool_input}")
+                # Continue with default parameters
         params = {**kwargs, "project_uuid": project_uuid}
         return await get_logs_by_trace_id.ainvoke(params)
 
@@ -217,7 +274,8 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
         agent=agent,
         tools=tools,
         verbose=settings.AGENT_VERBOSE,  # 디버깅 로그
-        max_iterations=settings.AGENT_MAX_ITERATIONS,  # 최대 5회 도구 호출
+        max_iterations=settings.AGENT_MAX_ITERATIONS,  # 최대 10회 도구 호출
+        early_stopping_method="force",  # "generate"는 langchain 0.2.x에서 broken (known bug)
         handle_parsing_errors=True,  # 파싱 에러 자동 처리
         return_intermediate_steps=False,  # 중간 단계 반환 (선택)
     )
