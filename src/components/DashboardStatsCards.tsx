@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { DashboardStats } from '@/types/dashboard';
+import type { DashboardSummary } from '@/types/dashboard';
 
 interface DashboardStatsCardsProps {
-  stats: DashboardStats;
+  stats: DashboardSummary;
 }
 
 const DashboardStatsCards = ({ stats }: DashboardStatsCardsProps) => {
