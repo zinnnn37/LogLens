@@ -1,26 +1,49 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import Architecture from '@/components/Architecture';
 import DependencyComponents from '@/components/DependencyComponents';
 import ComponentDependencyGraph from '@/components/ComponentDependencyGraph';
 import FloatingChecklist from '@/components/FloatingChecklist';
 import { DUMMY_ARCHITECTURE_DATA } from '@/mocks/dummyArchitecture';
-import { DUMMY_COMPONENTS_DATA } from '@/mocks/dummyComponents';
-import { DUMMY_COMPONENT_DEPENDENCY } from '@/mocks/dummyComponentDependency';
+import {
+  getComponents,
+  getComponentDependencies,
+} from '@/services/componentService';
 
 const DependencyGraphPage = () => {
   const { projectUuid } = useParams<{ projectUuid: string }>();
-
-  // TODO: projectUuid를 사용해서 실제 프로젝트 의존성 데이터 가져오기
-  console.log('Current project UUID:', projectUuid);
 
   // 선택된 노드 상태 (backend-api를 클릭하면 컴포넌트 목록 표시)
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   // 선택된 컴포넌트 상태 (컴포넌트를 클릭하면 상세 의존성 그래프 표시)
   const [selectedComponent, setSelectedComponent] = useState<{
-    id: string;
+    id: number;
     name: string;
   } | null>(null);
+
+  // 컴포넌트 목록 조회
+  const { data: componentsData, isLoading: isComponentsLoading } = useQuery({
+    queryKey: ['components', projectUuid],
+    queryFn: () => getComponents(projectUuid!),
+    enabled: Boolean(projectUuid) && selectedNode === 'backend-api',
+  });
+
+  // 컴포넌트 의존성 조회
+  const {
+    data: dependencyData,
+    isLoading: isDependencyLoading,
+    error: dependencyError,
+  } = useQuery({
+    queryKey: ['componentDependencies', selectedComponent?.id, projectUuid],
+    queryFn: () => getComponentDependencies(selectedComponent!.id, projectUuid),
+    enabled: Boolean(selectedComponent?.id) && Boolean(projectUuid),
+  });
+
+  // 에러 로깅
+  if (dependencyError) {
+    console.error('Dependency fetch error:', dependencyError);
+  }
 
   // 노드 클릭 핸들러
   const handleNodeClick = (nodeId: string, nodeName: string) => {
@@ -33,7 +56,7 @@ const DependencyGraphPage = () => {
   };
 
   // 컴포넌트 클릭 핸들러
-  const handleComponentClick = (componentId: string, componentName: string) => {
+  const handleComponentClick = (componentId: number, componentName: string) => {
     console.log('Component clicked:', componentId, componentName);
     setSelectedComponent({ id: componentId, name: componentName });
   };
@@ -71,8 +94,8 @@ const DependencyGraphPage = () => {
         {selectedNode === 'backend-api' && (
           <div className="mt-6">
             <DependencyComponents
-              data={DUMMY_COMPONENTS_DATA}
-              isLoading={false}
+              data={componentsData ?? null}
+              isLoading={isComponentsLoading}
               onClose={handleCloseComponents}
               onComponentClick={handleComponentClick}
             />
@@ -82,11 +105,32 @@ const DependencyGraphPage = () => {
         {/* 선택된 컴포넌트의 상세 의존성 그래프 표시 */}
         {selectedComponent && (
           <div className="mt-6">
-            <ComponentDependencyGraph
-              data={DUMMY_COMPONENT_DEPENDENCY}
-              isLoading={false}
-              onClose={handleCloseDependencyGraph}
-            />
+            {dependencyError ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-red-900">
+                      의존성 데이터 로딩 실패
+                    </h3>
+                    <p className="mt-1 text-sm text-red-700">
+                      컴포넌트 의존성 정보를 불러오는 중 오류가 발생했습니다.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleCloseDependencyGraph}
+                    className="rounded-lg px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100"
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <ComponentDependencyGraph
+                data={dependencyData ?? null}
+                isLoading={isDependencyLoading}
+                onClose={handleCloseDependencyGraph}
+              />
+            )}
           </div>
         )}
       </div>
