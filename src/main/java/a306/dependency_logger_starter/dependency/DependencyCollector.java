@@ -29,6 +29,7 @@ public class DependencyCollector {
     private final ApplicationContext applicationContext;
     private final ObjectMapper objectMapper;
     private final DependencyLogSender sender;
+    private final DatabaseDetector databaseDetector;
 
     @Value("${spring.application.name:unknown-project}")
     private String projectName;
@@ -55,8 +56,11 @@ public class DependencyCollector {
         // 3-2. Class-based Repository (JDBC, Custom 등)
         collectClassBasedRepositories(componentMap, relations);
 
-        log.info("✅ 수집 완료! (컴포넌트: {}, 관계: {})",
-                componentMap.size(), relations.size());
+        // 4. 데이터베이스 감지
+        List<String> databases = databaseDetector.detectAllDatabases();
+
+        log.info("✅ 수집 완료! (컴포넌트: {}, 관계: {}, DB: {})",
+                componentMap.size(), relations.size(), databases.size());
 
         // ✅ 1단계: 컴포넌트만 먼저 전송
         log.info("📤 [1단계] 컴포넌트 정보 전송...");
@@ -69,7 +73,7 @@ public class DependencyCollector {
         sender.sendComponents(batchRequest);
         // ✅ 2단계: 의존성 관계 나중에 전송
         log.info("📤 [2단계] 의존성 관계 정보 전송...");
-        sender.sendDependencies(projectName, relations);
+        sender.sendDependencies(projectName, relations, databases);
 
         log.info("🎉 전송 완료!");
     }
