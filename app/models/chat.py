@@ -36,25 +36,71 @@ class ChatRequest(BaseModel):
     )
     filters: Optional[Dict[str, Any]] = Field(
         None,
-        description="로그 검색 필터 (선택사항). 가능한 필드: level (ERROR/WARN/INFO), service_name (서비스명), class_name (클래스명), method_name (메서드명)"
+        description="""🆕 **자동 추출됨!** (선택사항, 일반적으로 전달 불필요)
+
+question에서 자동으로 필터 조건을 추출합니다. 명시적으로 전달하면 자동 추출을 건너뜁니다.
+
+**자동 추출되는 필터**:
+- level: ERROR, WARN, INFO (예: "에러 로그" → {level: "ERROR"})
+- service_name: 서비스명 (예: "user-service 로그" → {service_name: "user-service"})
+- source_type: FE, BE (예: "프론트엔드 에러" → {source_type: "FE"})
+- ip: IP 주소 (예: "192.168.1.100 로그" → {ip: "192.168.1.100"})
+
+**직접 지정 시 가능한 필드**: level, service_name, class_name, method_name, source_type, layer, ip"""
     )
     time_range: Optional[Dict[str, str]] = Field(
         None,
-        description="시간 범위 필터 (선택사항, ISO 8601 형식). 형식: {'start': 'YYYY-MM-DDTHH:MM:SSZ', 'end': 'YYYY-MM-DDTHH:MM:SSZ'}"
+        description="""🆕 **자동 추출됨!** (선택사항, 기본값: 최근 7일)
+
+question에서 시간 표현을 자동으로 파싱합니다. 명시하지 않으면 최근 7일이 기본값입니다.
+
+**자동 추출 예시**:
+- "최근 1시간" → 현재부터 1시간 전
+- "오늘" → 오늘 00:00 ~ 현재
+- "어제" → 어제 00:00 ~ 23:59
+- "2024-01-15" → 해당 날짜 전체
+
+**직접 지정 시 형식**: ISO 8601 (YYYY-MM-DDTHH:MM:SSZ)
+- 예: {"start": "2024-01-15T00:00:00Z", "end": "2024-01-15T23:59:59Z"}"""
     )
 
     class Config:
         json_schema_extra = {
-            "example": {
-                "question": "그 중 가장 심각한 건?",
-                "project_uuid": "test-project",
-                "chat_history": [
-                    {"role": "user", "content": "최근 에러 알려줘"},
-                    {"role": "assistant", "content": "NPE 3건, DB 타임아웃 2건 발생했습니다"}
-                ],
-                "filters": {"level": "ERROR", "service_name": "user-service"},
-                "time_range": {"start": "2024-01-15T00:00:00Z", "end": "2024-01-15T23:59:59Z"},
-            }
+            "examples": [
+                {
+                    "summary": "간단한 질문 (권장) - 자동 필터 추출",
+                    "description": "question만 입력하면 필터와 시간 범위가 자동으로 추출됩니다",
+                    "value": {
+                        "question": "최근 1시간 동안 user-service에서 발생한 ERROR 로그 알려줘",
+                        "project_uuid": "test-project"
+                        # filters와 time_range는 자동으로 추출됨:
+                        # - filters: {"level": "ERROR", "service_name": "user-service"}
+                        # - time_range: 최근 1시간
+                    }
+                },
+                {
+                    "summary": "대화 히스토리 포함",
+                    "description": "이전 대화를 참조하여 후속 질문에 답변",
+                    "value": {
+                        "question": "그 중 가장 심각한 건?",
+                        "project_uuid": "test-project",
+                        "chat_history": [
+                            {"role": "user", "content": "최근 에러 알려줘"},
+                            {"role": "assistant", "content": "NPE 3건, DB 타임아웃 2건 발생했습니다"}
+                        ]
+                    }
+                },
+                {
+                    "summary": "고급 사용 - 필터 직접 지정 (선택사항)",
+                    "description": "자동 추출 대신 필터와 시간 범위를 직접 지정할 수 있습니다",
+                    "value": {
+                        "question": "이 로그들의 패턴을 분석해줘",
+                        "project_uuid": "test-project",
+                        "filters": {"level": "ERROR", "service_name": "payment-api"},
+                        "time_range": {"start": "2024-01-15T00:00:00Z", "end": "2024-01-15T23:59:59Z"}
+                    }
+                }
+            ]
         }
 
 

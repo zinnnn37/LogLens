@@ -84,20 +84,64 @@ logger = logging.getLogger(__name__)
             "description": "답변 성공",
             "content": {
                 "application/json": {
-                    "example": {
-                        "answer": "최근 24시간 동안 user-service에서 3건의 NullPointerException이 발생했습니다. 모두 UserService.getUser() 메서드에서 발생했으며, user_id=12345에 해당하는 데이터가 DB에 없어서 발생한 것으로 보입니다.",
-                        "from_cache": False,
-                        "related_logs": [
-                            {
-                                "log_id": 12345,
-                                "timestamp": "2024-01-15T10:30:00Z",
-                                "level": "ERROR",
-                                "message": "NullPointerException in UserService.getUser()",
-                                "service_name": "user-service",
-                                "similarity_score": 0.92
+                    "examples": {
+                        "auto_filter_extraction": {
+                            "summary": "자동 필터 추출 (새로 생성)",
+                            "description": "question에서 필터가 자동으로 추출되어 검색됨",
+                            "value": {
+                                "answer": "최근 1시간 동안 user-service에서 3건의 ERROR가 발생했습니다. 모두 NullPointerException으로, UserService.getUser() 메서드에서 발생했습니다.",
+                                "from_cache": False,
+                                "related_logs": [
+                                    {
+                                        "log_id": 12345,
+                                        "timestamp": "2025-11-10T09:30:00Z",
+                                        "level": "ERROR",
+                                        "message": "NullPointerException in UserService.getUser()",
+                                        "service_name": "user-service",
+                                        "similarity_score": 0.95
+                                    }
+                                ],
+                                "answered_at": "2025-11-10T10:00:00Z"
                             }
-                        ],
-                        "answered_at": "2024-01-15T10:35:00Z"
+                        },
+                        "cached_answer": {
+                            "summary": "캐시된 답변 (빠른 응답)",
+                            "description": "이전에 동일한 질문이 있어 캐시에서 즉시 반환",
+                            "value": {
+                                "answer": "최근 24시간 동안 ERROR 레벨 로그는 총 15건 발생했습니다. 주요 원인은 NullPointerException(8건)과 DatabaseConnectionException(7건)입니다.",
+                                "from_cache": True,
+                                "related_logs": [
+                                    {
+                                        "log_id": 12346,
+                                        "timestamp": "2025-11-10T08:15:00Z",
+                                        "level": "ERROR",
+                                        "message": "DatabaseConnectionException: Connection timeout",
+                                        "service_name": "payment-service",
+                                        "similarity_score": 0.88
+                                    }
+                                ],
+                                "answered_at": "2025-11-10T10:00:00Z"
+                            }
+                        },
+                        "conversation_context": {
+                            "summary": "대화 히스토리 활용",
+                            "description": "이전 대화를 참조하여 후속 질문에 답변",
+                            "value": {
+                                "answer": "그 중 가장 심각한 것은 payment-service의 DatabaseConnectionException입니다. 결제 처리가 중단되어 비즈니스에 직접적인 영향을 미치고 있습니다.",
+                                "from_cache": False,
+                                "related_logs": [
+                                    {
+                                        "log_id": 12346,
+                                        "timestamp": "2025-11-10T08:15:00Z",
+                                        "level": "ERROR",
+                                        "message": "DatabaseConnectionException: Connection timeout",
+                                        "service_name": "payment-service",
+                                        "similarity_score": 0.92
+                                    }
+                                ],
+                                "answered_at": "2025-11-10T10:01:00Z"
+                            }
+                        }
                     }
                 }
             }
