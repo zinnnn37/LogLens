@@ -1,5 +1,6 @@
 package a306.dependency_logger_starter.config;
 
+import a306.dependency_logger_starter.dependency.DatabaseDetector;
 import a306.dependency_logger_starter.dependency.DependencyCollector;
 import a306.dependency_logger_starter.dependency.client.DependencyLogSender;
 import a306.dependency_logger_starter.logging.aspect.ExceptionHandlerLoggingAspect;
@@ -18,6 +19,7 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.Ordered;
+import org.springframework.core.env.Environment;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
@@ -82,14 +84,24 @@ public class LoggerAutoConfiguration {
     }
 
     /**
+     * 데이터베이스 감지기
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public DatabaseDetector databaseDetector(Environment environment) {
+        return new DatabaseDetector(environment);
+    }
+
+    /**
      * 의존성 수집기 (ApplicationReadyEvent 사용)
      */
     @Bean
     public DependencyCollector dependencyCollector(
             ApplicationContext applicationContext,
             ObjectMapper objectMapper,
-            DependencyLogSender sender) {
-        return new DependencyCollector(applicationContext, objectMapper, sender);
+            DependencyLogSender sender,
+            DatabaseDetector databaseDetector) {
+        return new DependencyCollector(applicationContext, objectMapper, sender, databaseDetector);
     }
 
     /**
