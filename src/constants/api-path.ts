@@ -31,6 +31,12 @@ export const API_PATH = {
   COMPONENT_DEPENDENCIES: (componentId: number) =>
     `/api/dashboards/components/${componentId}/dependencies`,
 
+// 대시보드 통계 개요 조회
+STATISTICS_OVERVIEW: '/api/statistics/overview',
+
+
+
+
   // 프로젝트 삭제
   DELETE_PROJECT: (projectUuid: string) => `/api/projects/${projectUuid}`,
 
