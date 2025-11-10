@@ -12,6 +12,7 @@ public record DependencyGraphBatchRequest(
 
         @NotEmpty(message = "의존성 목록은 비어있을 수 없습니다")
         @Valid
-        List<DependencyRelationRequest> dependencies
+        List<DependencyRelationRequest> dependencies,
+        List<String> databases
 ) {
 }
