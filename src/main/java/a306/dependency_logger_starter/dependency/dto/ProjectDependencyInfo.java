@@ -9,6 +9,7 @@ import java.util.List;
 public record ProjectDependencyInfo(
         String projectName,
         List<Component> components,
-        List<DependencyRelation> dependencies
+        List<DependencyRelation> dependencies,
+        List<String> databases
 ) {
 }
