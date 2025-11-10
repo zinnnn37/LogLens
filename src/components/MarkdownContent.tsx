@@ -25,7 +25,13 @@ const MarkdownContent = ({ content }: MarkdownContentProps) => {
       <ol className="my-2 ml-6 list-decimal space-y-1">{children}</ol>
     ),
     li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-    code: ({ inline, children, className }) => {
+    code: props => {
+      const { inline, children, className } = props as {
+        inline?: boolean;
+        children?: React.ReactNode;
+        className?: string;
+      };
+
       if (inline) {
         return (
           <code className="rounded bg-red-100 px-1.5 py-0.5 font-mono text-[13px] font-medium text-red-700">
