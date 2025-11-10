@@ -3,6 +3,7 @@ package S13P31A306.loglens.domain.log.controller.impl;
 import S13P31A306.loglens.domain.log.constants.LogSuccessCode;
 import S13P31A306.loglens.domain.log.controller.LogApi;
 import S13P31A306.loglens.domain.log.dto.request.LogSearchRequest;
+import S13P31A306.loglens.domain.log.dto.request.LogStreamRequest;
 import S13P31A306.loglens.domain.log.dto.response.LogDetailResponse;
 import S13P31A306.loglens.domain.log.dto.response.LogPageResponse;
 import S13P31A306.loglens.domain.log.dto.response.TraceLogResponse;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/logs")
@@ -51,5 +53,13 @@ public class LogController implements LogApi {
     ) {
         LogDetailResponse response = logService.getLogDetail(logId, projectUuid);
         return ApiResponseFactory.success(LogSuccessCode.LOG_DETAIL_READ_SUCCESS, response);
+    }
+
+    @Override
+    @GetMapping("/stream")
+    public SseEmitter streamLogs(@ModelAttribute LogStreamRequest request) {
+        LogSearchRequest searchRequest = request.toLogSearchRequest();
+        logValidator.validate(searchRequest);
+        return logService.streamLogs(searchRequest);
     }
 }
