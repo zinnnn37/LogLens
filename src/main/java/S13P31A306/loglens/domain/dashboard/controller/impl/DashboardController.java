@@ -5,6 +5,7 @@ import S13P31A306.loglens.domain.dashboard.controller.DashboardApi;
 import S13P31A306.loglens.domain.dashboard.dto.response.*;
 import S13P31A306.loglens.domain.dashboard.service.ApiEndpointService;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
+import S13P31A306.loglens.domain.dashboard.service.HeatmapService;
 import S13P31A306.loglens.domain.dashboard.service.TopFrequentErrorsService;
 import S13P31A306.loglens.global.annotation.ValidUuid;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
@@ -27,6 +28,7 @@ public class DashboardController implements DashboardApi {
     private final DashboardService dashboardService;
     private final TopFrequentErrorsService topFrequentErrorsService;
     private final ApiEndpointService apiEndpointService;
+    private final HeatmapService heatmapService;
 
     /**
      * 통계 개요 조회
@@ -93,9 +95,16 @@ public class DashboardController implements DashboardApi {
     public ResponseEntity<? extends BaseResponse> getLogHeatmap(
             @ValidUuid @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
-            @RequestParam(required = false) String endTime
+            @RequestParam(required = false) String endTime,
+            @RequestParam(required = false) String logLevel
     ) {
-        return null;
+        log.info("{} 히트맵 조회 api 호출", LOG_PREFIX);
+
+        HeatmapResponse response = heatmapService.getLogHeatmap(projectUuid, startTime, endTime, logLevel);
+        return ApiResponseFactory.success(
+                DashboardSuccessCode.HEATMAP_RETRIEVED,
+                response
+        );
     }
 
     /**

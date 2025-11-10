@@ -760,7 +760,8 @@ public interface DashboardApi {
     ResponseEntity<? extends BaseResponse> getLogHeatmap(
             @ValidUuid @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
-            @RequestParam(required = false) String endTime
+            @RequestParam(required = false) String endTime,
+            @RequestParam(required = false) String logLevel
     );
 
     /**
