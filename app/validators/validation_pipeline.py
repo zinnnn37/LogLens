@@ -4,6 +4,7 @@ Validation pipeline orchestrator
 
 from typing import List, Dict, Any
 from app.validators.base_validator import BaseValidator, ValidationResult
+from app.validators.error_type_validator import ErrorTypeValidator
 from app.validators.structural_validator import StructuralValidator
 from app.validators.content_validator import ContentValidator
 from app.models.analysis import LogAnalysisResult
@@ -27,7 +28,10 @@ class ValidationPipeline:
         self.validators: List[BaseValidator] = []
         self.overall_threshold = overall_threshold
 
-        # Setup validators
+        # Setup validators (order matters - ErrorTypeValidator runs first)
+        self.validators.append(
+            ErrorTypeValidator()  # 🆕 NEW - 1순위: 에러 타입 분류 검증
+        )
         self.validators.append(
             StructuralValidator(config={"threshold": structural_threshold})
         )
@@ -60,7 +64,7 @@ class ValidationPipeline:
             if validator.name == "StructuralValidator":
                 result = await validator.validate(analysis)
             else:
-                # ContentValidator requires log_data
+                # ErrorTypeValidator and ContentValidator require log_data
                 result = await validator.validate(analysis, log_data)
 
             results.append(result)

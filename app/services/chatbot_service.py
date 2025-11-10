@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.chains.chatbot_chain import chatbot_chain
 from app.services.embedding_service import embedding_service
 from app.services.similarity_service import similarity_service
+from app.services.filter_parser import parse_question
 from app.models.chat import ChatResponse, RelatedLog, ChatMessage
 from app.utils.index_naming import format_index_name
 
@@ -42,6 +43,7 @@ class ChatbotService:
         Answer a question about logs using RAG with context-aware caching and history support
 
         Strategy:
+        0. Auto-extract filters and time_range from question (if not provided)
         1. Generate question embedding
         2. Check QA cache for similar questions (2-stage validation)
            a. Semantic similarity (vector search)
@@ -56,12 +58,22 @@ class ChatbotService:
             question: User's question
             project_uuid: Project UUID for multi-tenancy isolation
             chat_history: Previous conversation history
-            filters: Optional filters for log search
-            time_range: Optional time range filter
+            filters: Optional filters for log search (if None, auto-extracted from question)
+            time_range: Optional time range filter (if None, auto-extracted or default to 7 days)
 
         Returns:
             Chat response
         """
+        # Step 0: Auto-extract filters and time_range from question (if not explicitly provided)
+        if filters is None or time_range is None:
+            extracted_filters, extracted_time_range = await parse_question(question)
+
+            # Use extracted values only if not provided by caller
+            if filters is None:
+                filters = extracted_filters
+            if time_range is None:
+                time_range = extracted_time_range
+
         # Step 1: Generate question embedding
         question_vector = await embedding_service.embed_query(question)
 
@@ -108,6 +120,7 @@ class ChatbotService:
             k=self.max_context,
             filters=filters,
             project_uuid=project_uuid,  # Project isolation
+            time_range=time_range,  # Time range filter
         )
 
         # Step 4: Prepare context from logs

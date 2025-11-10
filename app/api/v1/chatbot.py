@@ -26,15 +26,36 @@ logger = logging.getLogger(__name__)
     description="""
     자연어로 로그에 대해 질문하고 AI 기반 답변을 받습니다. RAG(Retrieval-Augmented Generation) 방식으로 관련 로그를 검색하여 컨텍스트로 활용합니다.
 
+    ## 🆕 자동 필터 추출 (NEW!)
+
+    **question만 입력하면 AI가 자동으로 필터 조건을 추출합니다!**
+
+    - "에러 로그 보여줘" → `filters: {level: "ERROR"}` 자동 추출
+    - "user-service의 최근 1시간 WARNING" → `filters: {level: "WARN", service_name: "user-service"}` + `time_range: 최근 1시간` 자동 추출
+    - "오늘 프론트엔드 에러" → `filters: {level: "ERROR", source_type: "FE"}` + `time_range: 오늘` 자동 추출
+    - "IP 192.168.1.100에서 발생한 로그" → `filters: {ip: "192.168.1.100"}` 자동 추출
+
+    **자동 추출되는 필터**:
+    - 로그 레벨 (ERROR, WARN, INFO)
+    - 서비스 이름 (user-service, payment-api 등)
+    - 소스 타입 (FE, BE)
+    - IP 주소
+    - 시간 표현 (최근 N시간, 오늘, 어제, 특정 날짜 등)
+
+    **기본 시간 범위**: 명시되지 않으면 자동으로 최근 7일 적용
+
+    **참고**: filters, time_range를 명시적으로 전달하면 자동 추출을 건너뜁니다.
+
     ## 처리 흐름
 
+    0. **자동 필터 추출**: question에서 filters와 time_range 자동 파싱 (명시되지 않은 경우)
     1. **질문 임베딩 생성**: 질문을 1536차원 벡터로 변환
     2. **QA 캐시 확인** (2단계 검증):
        - a. 의미적 유사도 검색 (코사인 유사도 ≥ 0.8)
        - b. 메타데이터 매칭 (project_uuid, filters, time_range) + TTL 검증
     3. **캐시 히트**: 저장된 답변 반환 (40-60% 비용 절감)
     4. **캐시 미스**:
-       - Vector 검색으로 관련 로그 탐색 (project_uuid 필터링)
+       - Vector 검색으로 관련 로그 탐색 (추출된 filters + time_range 적용)
        - GPT-4o mini로 RAG 답변 생성 (대화 히스토리 포함)
        - QA 페어 캐싱 (메타데이터 + 동적 TTL)
 
@@ -44,11 +65,13 @@ logger = logging.getLogger(__name__)
     - 토큰 기반 히스토리 압축 (최대 1500 토큰)
     - 예: "그 에러는 언제 발생했어?" → 이전 대화의 에러를 참조
 
-    ## 필터링 옵션
+    ## 필터링 옵션 (선택사항)
+
+    **자동 추출되므로 일반적으로 전달할 필요 없음**. 하지만 명시적으로 전달하고 싶다면:
 
     - **level**: ERROR, WARN, INFO 등
     - **service_name**: 특정 서비스만 검색
-    - **time_range**: 시간 범위 지정 (ISO 8601)
+    - **time_range**: 시간 범위 지정 (ISO 8601 형식: {"start": "2024-01-15T00:00:00Z", "end": "2024-01-15T23:59:59Z"})
 
     ## 답변 형식
 
@@ -223,12 +246,26 @@ async def ask_chatbot_stream(request: ChatRequest, background_tasks: BackgroundT
                                 yield "data: [DONE]\n\n"
                                 return
 
-            # 3. Search relevant logs
+            # 3. Auto-extract filters and time_range if not provided
+            filters = request.filters
+            time_range = request.time_range
+
+            if filters is None or time_range is None:
+                from app.services.filter_parser import parse_question
+                extracted_filters, extracted_time_range = await parse_question(request.question)
+
+                if filters is None:
+                    filters = extracted_filters
+                if time_range is None:
+                    time_range = extracted_time_range
+
+            # 4. Search relevant logs
             relevant_logs_data = await similarity_service.find_similar_logs(
                 log_vector=question_vector,
                 k=chatbot_service.max_context,
-                filters=request.filters,
+                filters=filters,
                 project_uuid=request.project_uuid,
+                time_range=time_range,
             )
 
             # 4. Prepare context
@@ -263,7 +300,7 @@ async def ask_chatbot_stream(request: ChatRequest, background_tasks: BackgroundT
 
             # 8. Cache QA pair (백그라운드에서 비동기)
             related_log_ids = [log["log_id"] for log in relevant_logs_data]
-            ttl = chatbot_service._calculate_ttl(request.question, request.time_range)
+            ttl = chatbot_service._calculate_ttl(request.question, time_range)
 
             background_tasks.add_task(
                 chatbot_service._cache_qa_pair,
@@ -273,8 +310,8 @@ async def ask_chatbot_stream(request: ChatRequest, background_tasks: BackgroundT
                 related_log_ids=related_log_ids,
                 metadata={
                     "project_uuid": request.project_uuid,
-                    "filters": request.filters,
-                    "time_range": request.time_range,
+                    "filters": filters,  # Use extracted filters
+                    "time_range": time_range,  # Use extracted time_range
                 },
                 ttl=ttl
             )

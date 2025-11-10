@@ -21,6 +21,7 @@ class SimilarityService:
         k: int = 5,
         filters: Optional[Dict[str, Any]] = None,
         project_uuid: Optional[str] = None,
+        time_range: Optional[Dict[str, str]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Find similar logs using KNN search
@@ -30,6 +31,7 @@ class SimilarityService:
             k: Number of results to return
             filters: Optional filters (e.g., level, service_name)
             project_uuid: Project UUID for multi-tenancy filtering
+            time_range: Optional time range filter (e.g., {"start": "2024-01-15T00:00:00Z", "end": "2024-01-15T23:59:59Z"})
 
         Returns:
             List of similar logs with scores
@@ -68,6 +70,17 @@ class SimilarityService:
                         filter_clauses.append({"bool": {"must_not": {"exists": {"field": field}}}})
                 else:
                     filter_clauses.append({"term": {field: value}})
+
+        # Add time_range filter if provided
+        if time_range:
+            filter_clauses.append({
+                "range": {
+                    "timestamp": {
+                        "gte": time_range.get("start"),
+                        "lte": time_range.get("end")
+                    }
+                }
+            })
 
         # Always filter by project_uuid if provided
         if project_uuid:

@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     LONG_CACHE_TTL: int = 86400    # 1 day (for absolute time queries like "2024-01-15")
     CACHE_CANDIDATE_SIZE: int = 10  # Number of candidates to check for metadata matching
 
+    # Time Range Settings
+    DEFAULT_TIME_RANGE_DAYS: int = 7  # Default time range in days when not specified (1 week)
+
     # Map-Reduce Settings (for token optimization in trace analysis)
     ENABLE_MAP_REDUCE: bool = True  # Enable Map-Reduce pattern for large log sets
     LOG_CHUNK_SIZE: int = 5  # Number of logs per chunk in Map phase
