@@ -1,6 +1,8 @@
 // src/components/modal/LogDetailModal1.tsx
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import ReactMarkdown, { type Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Dialog,
   DialogContent,
@@ -22,7 +24,9 @@ const InfoSection = ({
 }) => (
   <div className="mb-6">
     <h3 className="mb-2 text-base font-semibold text-gray-900">{title}</h3>
-    <div className="space-y-2 rounded-md border bg-gray-50 p-4">{children}</div>
+    <div className="space-y-2 rounded-md border bg-gray-50 p-4 overflow-auto">
+      {children}
+    </div>
   </div>
 );
 
@@ -41,6 +45,64 @@ const InfoRow = ({
   </div>
 );
 
+// react-markdown 컴포넌트 스타일 
+const markdownStyles: Components = {
+  ul: ({ node, ...props }) => (
+    <ul className="list-disc pl-5 space-y-1" {...props} />
+  ),
+  ol: ({ node, ...props }) => (
+    <ol className="list-decimal pl-5 space-y-1" {...props} />
+  ),
+  li: ({ node, ...props }) => <li className="pl-1" {...props} />,
+  h1: ({ node, ...props }) => (
+    <h1 className="text-xl font-bold mt-4 mb-2" {...props} />
+  ),
+  h2: ({ node, ...props }) => (
+    <h2 className="text-lg font-bold mt-3 mb-2" {...props} />
+  ),
+  h3: ({ node, ...props }) => (
+    <h3 className="text-md font-bold mt-2 mb-1" {...props} />
+  ),
+  blockquote: ({ node, ...props }) => (
+    <blockquote
+      className="border-l-4 border-gray-300 pl-4 italic text-gray-600"
+      {...props}
+    />
+  ),
+  a: ({ node, ...props }) => (
+    <a
+      className="text-blue-600 hover:underline"
+      target="_blank"
+      rel="noopener noreferrer"
+      {...props}
+    />
+  ),
+  code: ({ className, children, node, ...props }) => {
+    const isInline =
+      !className && typeof children === 'string' && !children.includes('\n');
+
+    if (isInline) {
+      return (
+        <code
+          className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-red-500"
+          {...props}
+        >
+          {children}
+        </code>
+      );
+    }
+
+    return (
+      <code
+        className="block bg-gray-800 text-gray-100 p-3 rounded-md text-xs font-mono overflow-x-auto my-2"
+        {...props}
+      >
+        {children}
+      </code>
+    );
+  },
+};
+
 export interface LogDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -48,9 +110,6 @@ export interface LogDetailModalProps {
   onGoToNextPage: () => void;
 }
 
-/**
- * 로그 상세 정보 모달
- */
 const LogDetailModal1 = ({
   open,
   onOpenChange,
@@ -100,10 +159,10 @@ const LogDetailModal1 = ({
 
   const isErrorLevel = log.logLevel === 'ERROR';
 
-  // 요청 흐름 보기 새 탭 열기 핸들러
   const handleOpenRequestFlow = () => {
-    if (!projectUuid || !log.traceId) { return; }
-
+    if (!projectUuid || !log.traceId) {
+      return;
+    }
     const params = new URLSearchParams({ traceId: log.traceId });
     const url = `/project/${projectUuid}/request-flow?${params.toString()}`;
     window.open(url, '_blank');
@@ -111,12 +170,12 @@ const LogDetailModal1 = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>로그 상세정보 - {log.traceId}</DialogTitle>
         </DialogHeader>
 
-        <div className="max-h-[60vh] overflow-y-auto p-1 pr-4">
+        <div className="flex-1 overflow-y-auto p-1 pr-4">
           <InfoSection title="로그 정보">
             <InfoRow label="Level" value={log.logLevel} />
             <InfoRow label="System" value={log.sourceType} />
@@ -132,7 +191,6 @@ const LogDetailModal1 = ({
             <InfoRow label="Layer" value={log.layer} />
           </InfoSection>
 
-          {/* 로딩 중 */}
           {isLoading && (
             <InfoSection title="AI 분석 중...">
               <div className="flex h-20 items-center justify-center">
@@ -144,34 +202,47 @@ const LogDetailModal1 = ({
             </InfoSection>
           )}
 
-          {/* 에러 발생 */}
           {error && (
             <InfoSection title="분석 실패">
               <p className="text-sm text-red-500">{error}</p>
             </InfoSection>
           )}
 
-          {/* 성공 */}
           {analysis && !isLoading && (
             <>
               <InfoSection title="로그 요약">
-                <p className="text-sm whitespace-pre-wrap text-gray-700">
-                  {analysis.summary}
-                </p>
+                <div className="text-sm text-gray-800 leading-relaxed">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownStyles}
+                  >
+                    {analysis.summary}
+                  </ReactMarkdown>
+                </div>
               </InfoSection>
 
               {isErrorLevel && (
                 <>
                   <InfoSection title="에러 원인">
-                    <p className="text-sm whitespace-pre-wrap text-gray-700">
-                      {analysis.error_cause}
-                    </p>
+                    <div className="text-sm text-gray-800 leading-relaxed">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={markdownStyles}
+                      >
+                        {analysis.error_cause}
+                      </ReactMarkdown>
+                    </div>
                   </InfoSection>
 
                   <InfoSection title="해결 방안">
-                    <p className="text-sm whitespace-pre-wrap text-gray-700">
-                      {analysis.solution}
-                    </p>
+                    <div className="text-sm text-gray-800 leading-relaxed">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={markdownStyles}
+                      >
+                        {analysis.solution}
+                      </ReactMarkdown>
+                    </div>
                   </InfoSection>
                 </>
               )}
@@ -179,8 +250,7 @@ const LogDetailModal1 = ({
           )}
         </div>
 
-        <DialogFooter className="gap-2 sm:justify-end">
-          {/* 요청 흐름 버튼 */}
+        <DialogFooter className="gap-2 sm:justify-end mt-4">
           <Button
             variant="outline"
             onClick={handleOpenRequestFlow}
@@ -190,12 +260,11 @@ const LogDetailModal1 = ({
             요청 흐름 보기
           </Button>
 
-          {/* Jira 버튼 */}
           {isErrorLevel && (
             <Button
               onClick={onGoToNextPage}
               disabled={isLoading || !analysis}
-              className="bg-[#0052CC] hover:bg-[#0747A6]" 
+              className="bg-[#0052CC] hover:bg-[#0747A6]"
             >
               Jira 티켓 발행
             </Button>
