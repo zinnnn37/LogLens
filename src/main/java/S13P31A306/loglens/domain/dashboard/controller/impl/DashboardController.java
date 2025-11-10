@@ -99,25 +99,16 @@ public class DashboardController implements DashboardApi {
     }
 
     /**
-     * 의존성 아키텍처 전체 구조 조회
-     */
-    @GetMapping("/dashboards/dependencies/architecture")
-    public ResponseEntity<? extends BaseResponse> getDependencyArchitecture(
-            @ValidUuid @RequestParam String projectUuid
-    ) {
-        return null;
-    }
-
-    /**
      * 의존성 컴포넌트 목록 조회
      */
-    @GetMapping("/dashboards/dependencies/components")
-    public ResponseEntity<? extends BaseResponse> getDependencyComponents(
-            @RequestParam String projectUuid,
-            @RequestParam(required = false) String layer,
-            @RequestParam(required = false) String componentType
+    @GetMapping("/dashboards/dependencies/architecture")
+    public ResponseEntity<? extends BaseResponse> getDatabaseComponents(
+            @ValidUuid @RequestParam String projectUuid,
+            @AuthenticationPrincipal UserDetails userDetails
     ) {
-        return null;
+        DatabaseComponentResponse response = dashboardService.getDatabaseComponents(projectUuid, userDetails);
+
+        return ApiResponseFactory.success(DashboardSuccessCode.DATABASES_RETRIEVED, response);
     }
 
     /**
