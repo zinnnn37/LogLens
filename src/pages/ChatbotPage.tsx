@@ -84,7 +84,7 @@ const ChatbotPage = () => {
             continue;
           }
 
-          const data = line.slice(6);
+          const data = line.slice(6); // "data: " 이후의 내용
 
           // 완료 시그널
           if (data.trim() === '[DONE]') {
@@ -116,37 +116,34 @@ const ChatbotPage = () => {
               }
             } catch (e) {
               if (e instanceof SyntaxError) {
-                continue;
+                // JSON 파싱 실패시 일반 텍스트로 처리
+                fullText += data;
+              } else {
+                throw e;
               }
-              throw e;
             }
             continue;
           }
 
-          // 데이터 처리
-          if (data.length === 0) {
-            // 빈 줄: 줄바꿈 추가
-            console.log('빈 줄 감지');
-            fullText += '\n\n';
-          } else {
-            // 일반 텍스트
-            console.log('텍스트:', JSON.stringify(data));
-            fullText += data;
-          }
+          // 데이터 처리 - 각 청크를 누적
+          fullText += data;
 
-          // 화면 업데이트
-          if (!hasStartedResponse && fullText.trim().length > 0) {
+          // \n을 실제 줄바꿈으로 변환
+          const displayText = fullText.replace(/\\n/g, '\n');
+
+          // 화면 업데이트 (누적 텍스트 표시)
+          if (!hasStartedResponse && displayText.trim().length > 0) {
             hasStartedResponse = true;
             setMessages(prev => [
               ...prev,
-              { role: 'assistant', content: fullText, isComplete: false },
+              { role: 'assistant', content: displayText, isComplete: false },
             ]);
           } else if (hasStartedResponse) {
             setMessages(prev => {
               const updated = [...prev];
               updated[updated.length - 1] = {
                 role: 'assistant',
-                content: fullText,
+                content: displayText,
                 isComplete: false,
               };
               return updated;
