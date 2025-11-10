@@ -5,7 +5,6 @@ import Architecture from '@/components/Architecture';
 import DependencyComponents from '@/components/DependencyComponents';
 import ComponentDependencyGraph from '@/components/ComponentDependencyGraph';
 import FloatingChecklist from '@/components/FloatingChecklist';
-import { DUMMY_ARCHITECTURE_DATA } from '@/mocks/dummyArchitecture';
 import {
   getComponents,
   getComponentDependencies,
@@ -73,11 +72,13 @@ const DependencyGraphPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-6 py-0">
       <div className="mx-auto max-w-7xl">
         {/* 페이지 헤더 */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">의존성 그래프</h1>
+          <h1 className="font-godoM text-xl font-bold text-gray-900">
+            의존성 그래프
+          </h1>
           <p className="mt-1 text-sm text-gray-500">
             프로젝트의 고수준 아키텍처 흐름을 시각화합니다
           </p>
@@ -85,8 +86,7 @@ const DependencyGraphPage = () => {
 
         {/* Architecture 컴포넌트 */}
         <Architecture
-          data={DUMMY_ARCHITECTURE_DATA}
-          isLoading={false}
+          projectUuid={projectUuid || ''}
           onNodeClick={handleNodeClick}
         />
 
