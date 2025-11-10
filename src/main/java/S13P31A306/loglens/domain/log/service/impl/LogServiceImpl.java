@@ -319,13 +319,14 @@ public class LogServiceImpl implements LogService {
      * 폴링용 검색 요청 생성 마지막 조회 시간 이후의 로그만 조회하도록 설정
      */
     private LogSearchRequest createPollingRequest(LogSearchRequest original, LocalDateTime lastTimestamp) {
-        LogSearchRequest pollingRequest = new LogSearchRequest();
-        pollingRequest.setProjectUuid(original.getProjectUuid());
-        pollingRequest.setSize(original.getSize());
-        pollingRequest.setLogLevel(original.getLogLevel());
-        pollingRequest.setSourceType(original.getSourceType());
-        pollingRequest.setKeyword(original.getKeyword());
-        pollingRequest.setSort(original.getSort());
+        LogSearchRequest pollingRequest = LogSearchRequest.builder()
+                .projectUuid(original.getProjectUuid())
+                .size(original.getSize())
+                .logLevel(original.getLogLevel())
+                .sourceType(original.getSourceType())
+                .keyword(original.getKeyword())
+                .sort(original.getSort())
+                .build();
 
         // 마지막 조회 시간 이후의 로그만 조회
         if (Objects.nonNull(lastTimestamp)) {

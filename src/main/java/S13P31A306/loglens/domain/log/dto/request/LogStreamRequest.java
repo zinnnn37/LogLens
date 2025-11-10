@@ -3,6 +3,8 @@ package S13P31A306.loglens.domain.log.dto.request;
 import S13P31A306.loglens.global.annotation.Sensitive;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
+
+import lombok.Builder;
 import lombok.Data;
 
 // @formatter:off
@@ -13,6 +15,7 @@ import lombok.Data;
  */
 // @formatter:on
 @Data
+@Builder
 public class LogStreamRequest {
 
     @Sensitive
@@ -35,13 +38,13 @@ public class LogStreamRequest {
      * LogStreamRequest를 LogSearchRequest로 변환 SSE 스트리밍에 필요한 필드만 설정하고 sort는 TIMESTAMP,DESC로 고정
      */
     public LogSearchRequest toLogSearchRequest() {
-        LogSearchRequest request = new LogSearchRequest();
-        request.setProjectUuid(this.projectUuid);
-        request.setSize(this.size);
-        request.setLogLevel(this.logLevel);
-        request.setSourceType(this.sourceType);
-        request.setKeyword(this.keyword);
-        request.setSort("TIMESTAMP,DESC"); // 고정값
-        return request;
+        return LogSearchRequest.builder()
+                .projectUuid(this.projectUuid)
+                .size(this.size)
+                .logLevel(this.logLevel)
+                .sourceType(this.sourceType)
+                .keyword(this.keyword)
+                .sort("TIMESTAMP,DESC")
+                .build();
     }
 }
