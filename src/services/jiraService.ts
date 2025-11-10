@@ -5,6 +5,7 @@ import type {
   JiraConnectData,
   JiraIssueParams,
   JiraIssueData,
+  JiraConnectionStatusData
 } from '@/types/jira';
 import { API_PATH } from '@/constants/api-path';
 
@@ -20,4 +21,14 @@ export const createJiraIssue = async (
   payload: JiraIssueParams,
 ): Promise<JiraIssueData> => {
   return apiClient.post<JiraIssueData>(API_PATH.JIRA_CREATE_ISSUE, payload);
+};
+
+// Jira 연결 상태 조회
+export const getJiraConnectionStatus = async (
+  projectUuid: string,
+): Promise<JiraConnectionStatusData> => {
+  return apiClient.get<JiraConnectionStatusData>(
+    API_PATH.JIRA_CONNECTION_STATUS,
+    { projectUuid }, 
+  );
 };
