@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { FrequentErrorsData } from '@/types/error';
+import type { DashboardTopErrorsData } from '@/types/dashboard';
 
 interface FrequentErrorsCardProps {
-  data: FrequentErrorsData;
+  data: DashboardTopErrorsData;
 }
 
 const FrequentErrorsCard = ({ data }: FrequentErrorsCardProps) => {
