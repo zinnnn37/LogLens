@@ -144,7 +144,7 @@ public class DashboardValidator {
     public LocalDateTime validateAndParseTime(String time) {
         log.info("{} 시간 문자열 파싱 시작: time={}", LOG_PREFIX, time);
 
-        if (Objects.isNull(time)) {
+        if (Objects.isNull(time) || time.isBlank()) {
             return null;
         }
 
