@@ -50,7 +50,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -58,7 +57,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @ExtendWith(MockitoExtension.class)
 class LogServiceImplTest {
 
-    @InjectMocks
     private LogServiceImpl logService;
 
     @Mock
@@ -80,9 +78,19 @@ class LogServiceImplTest {
     private ScheduledFuture<?> scheduledFuture;
 
     private LogSearchRequest baseRequest;
+    private static final long SSE_TIMEOUT = 300000L; // 5분
 
     @BeforeEach
     void setup() {
+        logService = new LogServiceImpl(
+                logRepository,
+                logMapper,
+                objectMapper,
+                aiServiceClient,
+                sseScheduler,
+                SSE_TIMEOUT
+        );
+
         baseRequest = new LogSearchRequest();
         baseRequest.setProjectUuid("550e8400-e29b-41d4-a716-446655440000");
         baseRequest.setSize(50);
@@ -428,7 +436,7 @@ class LogServiceImplTest {
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.getTimeout()).isEqualTo(60 * 60 * 1000L); // 1시간
+            assertThat(result.getTimeout()).isEqualTo(SSE_TIMEOUT); // 5분
 
             verify(sseScheduler).scheduleAtFixedRate(any(Runnable.class), eq(0L), eq(5L), eq(TimeUnit.SECONDS));
         }
