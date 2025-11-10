@@ -1,6 +1,6 @@
 package S13P31A306.loglens.domain.project.constants;
 
-public class ProjectPageNumber {
+public class ProjectConstants {
 
     public static final int MIN_PAGE_SIZE = 1;
     public static final int MAX_PAGE_SIZE = 100;

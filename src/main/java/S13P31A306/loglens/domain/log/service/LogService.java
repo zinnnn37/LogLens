@@ -1,6 +1,7 @@
 package S13P31A306.loglens.domain.log.service;
 
 import S13P31A306.loglens.domain.log.dto.request.LogSearchRequest;
+import S13P31A306.loglens.domain.log.dto.response.LogDetailResponse;
 import S13P31A306.loglens.domain.log.dto.response.LogPageResponse;
 import S13P31A306.loglens.domain.log.dto.response.TraceLogResponse;
 
@@ -24,4 +25,14 @@ public interface LogService {
      * @return Trace ID에 해당하는 로그 목록 및 요약 정보
      */
     TraceLogResponse getLogsByTraceId(LogSearchRequest request);
+
+    /**
+     * 로그 상세 정보 조회 (AI 분석 포함)
+     * OpenSearch에서 로그를 조회하고, AI 분석이 없는 경우 AI 서비스를 호출하여 분석 결과를 포함합니다.
+     *
+     * @param logId       로그 ID
+     * @param projectUuid 프로젝트 UUID
+     * @return 로그 상세 정보 및 AI 분석 결과
+     */
+    LogDetailResponse getLogDetail(Long logId, String projectUuid);
 }

@@ -90,7 +90,7 @@ public class JiraValidator {
      * @param logId 로그 ID
      * @throws BusinessException 로그가 없을 경우
      */
-    public void validateLogExists(Integer logId) {
+    public void validateLogExists(Long logId) {
         log.debug("{} 로그 존재 여부 검증: logId={}", LOG_PREFIX, logId);
 
         // TODO: 실제 구현 시 LogRepository로 로그 존재 확인
