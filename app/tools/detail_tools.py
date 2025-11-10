@@ -38,7 +38,7 @@ async def get_log_detail(
 
     try:
         # OpenSearch 검색
-        results = await opensearch_client.search(
+        results = opensearch_client.search(
             index=index_pattern,
             body={
                 "query": query,
@@ -144,7 +144,7 @@ async def get_logs_by_trace_id(
 
     try:
         # OpenSearch 검색
-        results = await opensearch_client.search(
+        results = opensearch_client.search(
             index=index_pattern,
             body={
                 "query": query,

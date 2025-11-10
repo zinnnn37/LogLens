@@ -78,7 +78,7 @@ async def search_logs_by_keyword(
 
     try:
         # OpenSearch 검색
-        results = await opensearch_client.search(
+        results = opensearch_client.search(
             index=index_pattern,
             body={
                 "query": query,

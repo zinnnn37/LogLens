@@ -5,7 +5,6 @@ LLM이 자율적으로 도구를 선택하여 로그 분석 수행
 """
 
 from typing import List
-from functools import partial
 
 from langchain.agents import create_react_agent, AgentExecutor
 from langchain_openai import ChatOpenAI
@@ -20,6 +19,7 @@ from app.core.config import settings
 
 # ReAct Agent System Prompt (한국어)
 AGENT_PROMPT_TEMPLATE = """당신은 로그 분석 전문가입니다. 사용자의 질문에 답하기 위해 적절한 도구를 선택하세요.
+{chat_history}
 
 ## 사용 가능한 도구
 {tools}
@@ -96,44 +96,112 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
         api_key=settings.OPENAI_API_KEY
     )
 
-    # project_uuid를 바인딩한 Tool 목록
-    # partial을 사용하여 project_uuid를 미리 전달
+    # project_uuid가 바인딩된 wrapper 함수들 생성
+    # Note: LangChain Tool requires sync 'func' and async 'coroutine'
+    # We provide dummy sync func and actual async coroutine
+
+    def _dummy_func(*args, **kwargs):
+        raise NotImplementedError("Use async version")
+
+    async def _search_logs_by_keyword_wrapper(tool_input: str = "", **kwargs):
+        # tool_input is passed by agent, parse it if it's a JSON string
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except:
+                pass
+        # Inject project_uuid and call the tool function directly
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await search_logs_by_keyword.ainvoke(params)
+
+    async def _search_logs_by_similarity_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except:
+                pass
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await search_logs_by_similarity.ainvoke(params)
+
+    async def _get_log_statistics_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except:
+                pass
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await get_log_statistics.ainvoke(params)
+
+    async def _get_recent_errors_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except:
+                pass
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await get_recent_errors.ainvoke(params)
+
+    async def _get_log_detail_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except:
+                pass
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await get_log_detail.ainvoke(params)
+
+    async def _get_logs_by_trace_id_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except:
+                pass
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await get_logs_by_trace_id.ainvoke(params)
+
+    # Tool 목록 (wrapper 함수 사용)
     tools: List[Tool] = [
         Tool(
             name="search_logs_by_keyword",
             description=search_logs_by_keyword.description,
-            func=partial(search_logs_by_keyword.invoke, project_uuid=project_uuid),
-            coroutine=partial(search_logs_by_keyword.ainvoke, project_uuid=project_uuid)
+            func=_dummy_func,
+            coroutine=_search_logs_by_keyword_wrapper
         ),
         Tool(
             name="search_logs_by_similarity",
             description=search_logs_by_similarity.description,
-            func=partial(search_logs_by_similarity.invoke, project_uuid=project_uuid),
-            coroutine=partial(search_logs_by_similarity.ainvoke, project_uuid=project_uuid)
+            func=_dummy_func,
+            coroutine=_search_logs_by_similarity_wrapper
         ),
         Tool(
             name="get_log_statistics",
             description=get_log_statistics.description,
-            func=partial(get_log_statistics.invoke, project_uuid=project_uuid),
-            coroutine=partial(get_log_statistics.ainvoke, project_uuid=project_uuid)
+            func=_dummy_func,
+            coroutine=_get_log_statistics_wrapper
         ),
         Tool(
             name="get_recent_errors",
             description=get_recent_errors.description,
-            func=partial(get_recent_errors.invoke, project_uuid=project_uuid),
-            coroutine=partial(get_recent_errors.ainvoke, project_uuid=project_uuid)
+            func=_dummy_func,
+            coroutine=_get_recent_errors_wrapper
         ),
         Tool(
             name="get_log_detail",
             description=get_log_detail.description,
-            func=partial(get_log_detail.invoke, project_uuid=project_uuid),
-            coroutine=partial(get_log_detail.ainvoke, project_uuid=project_uuid)
+            func=_dummy_func,
+            coroutine=_get_log_detail_wrapper
         ),
         Tool(
             name="get_logs_by_trace_id",
             description=get_logs_by_trace_id.description,
-            func=partial(get_logs_by_trace_id.invoke, project_uuid=project_uuid),
-            coroutine=partial(get_logs_by_trace_id.ainvoke, project_uuid=project_uuid)
+            func=_dummy_func,
+            coroutine=_get_logs_by_trace_id_wrapper
         ),
     ]
 

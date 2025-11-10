@@ -48,15 +48,19 @@ class ChatbotServiceV2:
                 elif msg.role == "assistant":
                     langchain_history.append(AIMessage(content=msg.content))
 
+        # 대화 히스토리를 문자열로 포맷팅 (프롬프트에 포함)
+        history_text = ""
+        if langchain_history:
+            history_text = "\n\n## 이전 대화:\n"
+            for msg in langchain_history:
+                role = "User" if isinstance(msg, HumanMessage) else "Assistant"
+                history_text += f"{role}: {msg.content}\n"
+
         # Agent 실행 입력 구성
         agent_input = {
             "input": question,
-            # "chat_history": langchain_history  # ReAct Agent는 기본적으로 history 미지원
+            "chat_history": history_text  # 프롬프트 변수로 전달
         }
-
-        # TODO: chat_history 지원을 위해서는 AgentExecutor에 memory 추가 필요
-        # from langchain.memory import ConversationBufferMemory
-        # memory = ConversationBufferMemory(chat_memory=langchain_history)
 
         try:
             # Agent 실행 (비동기)
@@ -69,8 +73,8 @@ class ChatbotServiceV2:
             # Agent는 자체적으로 로그를 검색하므로 related_logs는 빈 리스트
             return ChatResponse(
                 answer=answer,
-                related_logs=[],  # Agent가 내부적으로 로그 처리
-                chat_history=chat_history or []
+                from_cache=False,  # V2는 캐싱 미지원
+                related_logs=[]  # Agent가 내부적으로 로그 처리
             )
 
         except Exception as e:
@@ -78,8 +82,8 @@ class ChatbotServiceV2:
             # 에러 발생 시 사용자 친화적 메시지 반환
             return ChatResponse(
                 answer=f"죄송합니다. 질문 처리 중 오류가 발생했습니다: {str(e)}",
-                related_logs=[],
-                chat_history=chat_history or []
+                from_cache=False,
+                related_logs=[]
             )
 
 

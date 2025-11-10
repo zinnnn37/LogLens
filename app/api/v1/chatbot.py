@@ -225,15 +225,27 @@ async def ask_chatbot(
     description="""
     자연어로 로그에 대해 질문하고 실시간 타이핑 효과로 답변을 받습니다. SSE(Server-Sent Events) 형식으로 응답이 스트리밍됩니다.
 
+    ## 줄바꿈 처리 (중요!)
+
+    **스트리밍 모드에서의 특별 처리**:
+    - 모든 텍스트 청크의 줄바꿈(`\\n`)은 `\\\\n`으로 이스케이프되어 전송됩니다
+    - SSE 형식의 제약(`data:` 프로토콜)으로 인한 처리입니다
+    - **프론트엔드에서 반드시 `\\\\n`을 `\\n`으로 변환**하여 렌더링해야 합니다
+
+    **일반 응답(`/chatbot/ask`)과의 차이**:
+    - 일반 응답: 정상 줄바꿈 문자(`\\n`) 사용
+    - 스트리밍 응답: 이스케이프된 줄바꿈(`\\\\n`) 사용
+
     ## SSE 응답 형식
 
     ```
-    data: 최근 24시간 동안\n\n
-    data: user-service에서\n\n
+    data: 최근 24시간 동안\\n\\nuser-service에서\n\n
     data: 3건의 에러가\n\n
     data: 발생했습니다.\n\n
     data: [DONE]\n\n
     ```
+
+    **주의**: 위 예제에서 `\\\\n`은 실제 줄바꿈을 의미하는 이스케이프된 문자열입니다.
 
     ## 응답 시그널
 
@@ -266,7 +278,9 @@ async def ask_chatbot(
       } else if (event.data === '[ERROR]') {
         // 다음 메시지에서 에러 내용 수신
       } else {
-        console.log(event.data); // 텍스트 청크 출력
+        // \\\\n을 실제 줄바꿈으로 변환 (중요!)
+        const text = event.data.replace(/\\\\n/g, '\\n');
+        console.log(text); // 텍스트 청크 출력
       }
     };
     ```
@@ -276,6 +290,7 @@ async def ask_chatbot(
     - Content-Type: `text/event-stream`
     - 캐시 비활성화 (Cache-Control: no-cache)
     - Nginx 버퍼링 비활성화 (X-Accel-Buffering: no)
+    - **줄바꿈 변환 필수**: 프론트엔드에서 `\\\\n` → `\\n` 변환 필요
     """,
     responses={
         200: {

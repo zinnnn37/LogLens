@@ -84,8 +84,8 @@ async def get_log_statistics(
     }
 
     try:
-        # OpenSearch Aggregation 실행
-        results = await opensearch_client.search(
+        # OpenSearch Aggregation 실행 (sync client)
+        results = opensearch_client.search(
             index=index_pattern,
             body=query_body
         )
@@ -214,8 +214,8 @@ async def get_recent_errors(
     }
 
     try:
-        # OpenSearch 검색
-        results = await opensearch_client.search(
+        # OpenSearch 검색 (sync client)
+        results = opensearch_client.search(
             index=index_pattern,
             body={
                 "query": query,
