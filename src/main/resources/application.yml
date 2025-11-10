@@ -97,3 +97,11 @@ ai:
   service:
     base-url: ${AI_SERVICE_URL:https://ai.loglens.store}
     timeout: 30000                 # AI 분석 타임아웃 (30초, LLM 처리 시간 고려)
+
+# ===================================================================
+# SSE 스트리밍 설정 (SSE Streaming Configuration)
+# ===================================================================
+sse:
+  scheduler:
+    pool-size: 50                  # SSE 스케줄러 스레드 풀 크기 (동시 50개 연결 지원)
+  timeout: 300000                  # SSE 연결 타임아웃 (5분, 밀리초)

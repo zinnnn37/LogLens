@@ -1,6 +1,7 @@
 package S13P31A306.loglens.domain.log.controller;
 
 import S13P31A306.loglens.domain.log.dto.request.LogSearchRequest;
+import S13P31A306.loglens.domain.log.dto.request.LogStreamRequest;
 import S13P31A306.loglens.global.config.swagger.annotation.ApiInternalServerError;
 import S13P31A306.loglens.global.config.swagger.annotation.ApiUnauthorizedError;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
@@ -19,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @ApiInternalServerError
 @ApiUnauthorizedError
@@ -261,4 +263,80 @@ public interface LogApi {
             @PathVariable @NotNull Long logId,
             @RequestParam @NotNull String projectUuid
     );
+
+    @Operation(
+            summary = "실시간 로그 스트리밍 (SSE)",
+            description = """
+                    Server-Sent Events를 통해 실시간으로 로그를 스트리밍합니다.
+                    - 5초 간격으로 새로운 로그를 조회하여 클라이언트에 전송합니다.
+                    - 새 로그가 없을 때는 heartbeat 이벤트를 전송합니다.
+                    - 연결 유지 시간: 1시간
+                    - 이벤트 타입:
+                      - `log-update`: 새로운 로그 데이터
+                      - `heartbeat`: 연결 유지 확인
+                    """,
+            parameters = {
+                    @Parameter(in = ParameterIn.HEADER, name = "Authorization", description = "Bearer {access_token}", required = true, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "SSE 스트림 연결 성공",
+                            content = @Content(
+                                    mediaType = "text/event-stream",
+                                    examples = @ExampleObject(
+                                            name = "SseStreamExample",
+                                            summary = "SSE 스트림 예시",
+                                            description = "실시간으로 전송되는 로그 데이터 예시입니다.",
+                                            value = """
+                                                    event: log-update
+                                                    data: [{"logId":"abc123xyz789","traceId":"trace-abc-123","logLevel":"ERROR","sourceType":"BE","message":"NullPointerException occurred","timestamp":"2024-01-15T10:30:45.123Z","logger":"com.example.UserService","layer":"Service","comment":null}]
+                                                    
+                                                    event: heartbeat
+                                                    data: No new logs
+                                                    """
+                                    )
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "입력값 유효성 검증 실패",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "ProjectUuidRequired",
+                                            value = """
+                                                    {
+                                                      "code": "LG400-09",
+                                                      "message": "projectUuid는 필수입니다.",
+                                                      "status": 400,
+                                                      "timestamp": "2025-11-03T15:02:00Z"
+                                                    }
+                                                    """
+                                    )
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "프로젝트 접근 권한 없음",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "ProjectForbidden",
+                                            value = """
+                                                    {
+                                                      "code": "LG403-01",
+                                                      "message": "해당 프로젝트에 대한 접근 권한이 없습니다.",
+                                                      "status": 403,
+                                                      "timestamp": "2025-11-03T15:04:00Z"
+                                                    }
+                                                    """
+                                    )
+                            )
+                    )
+            }
+    )
+    SseEmitter streamLogs(@ParameterObject @ModelAttribute LogStreamRequest request);
 }

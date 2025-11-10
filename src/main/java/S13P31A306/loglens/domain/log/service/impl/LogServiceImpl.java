@@ -18,14 +18,19 @@ import S13P31A306.loglens.domain.log.service.LogService;
 import S13P31A306.loglens.global.client.AiServiceClient;
 import S13P31A306.loglens.global.exception.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Slf4j
 @Service
@@ -33,11 +38,14 @@ import org.springframework.stereotype.Service;
 public class LogServiceImpl implements LogService {
 
     private static final String LOG_PREFIX = "[LogService]";
+    private static final long POLLING_INTERVAL = 5; // 5초
 
     private final LogRepository logRepository;
     private final LogMapper logMapper;
     private final ObjectMapper objectMapper; // For cursor encoding/decoding
     private final AiServiceClient aiServiceClient;
+    private final ScheduledExecutorService sseScheduler;
+    private final long sseTimeout;
 
     @Override
     public LogPageResponse getLogs(LogSearchRequest request) {
@@ -217,5 +225,117 @@ public class LogServiceImpl implements LogService {
 
         log.info("{} 로그 상세 조회 완료: logId={}, hasAnalysis={}", LOG_PREFIX, logId, analysis != null);
         return response;
+    }
+
+    @Override
+    public SseEmitter streamLogs(LogSearchRequest request) {
+        log.info("{} 실시간 로그 스트리밍 시작: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
+
+        SseEmitter emitter = new SseEmitter(sseTimeout);
+
+        // 마지막으로 전송한 로그의 timestamp를 추적하기 위한 변수
+        LocalDateTime[] lastTimestamp = {request.getStartTime()};
+
+        // 스케줄러를 저장하여 연결 종료 시 취소할 수 있도록 함
+        // final 배열로 감싸서 람다 내부에서 참조 가능하게 함
+        ScheduledFuture<?>[] scheduledFutureHolder = new ScheduledFuture<?>[1];
+
+        scheduledFutureHolder[0] = sseScheduler.scheduleAtFixedRate(() -> {
+            try {
+                // 검색 조건 복사 및 시작 시간 업데이트
+                LogSearchRequest pollingRequest = createPollingRequest(request, lastTimestamp[0]);
+
+                // 새로운 로그 조회
+                LogSearchResult result = searchLogs(pollingRequest.getProjectUuid(), pollingRequest);
+
+                if (!result.logs().isEmpty()) {
+                    List<LogResponse> logResponses = mapToLogResponses(result);
+
+                    // SSE로 데이터 전송
+                    emitter.send(SseEmitter.event()
+                            .name("log-update")
+                            .data(logResponses));
+
+                    // 마지막 timestamp 업데이트
+                    if (!logResponses.isEmpty()) {
+                        lastTimestamp[0] = logResponses.getLast().getTimestamp();
+                    }
+
+                    log.debug("{} 새로운 로그 전송: 개수={}", LOG_PREFIX, logResponses.size());
+                } else {
+                    // 새 로그가 없으면 heartbeat 전송
+                    emitter.send(SseEmitter.event()
+                            .name("heartbeat")
+                            .data("No new logs"));
+                    log.debug("{} Heartbeat 전송", LOG_PREFIX);
+                }
+            } catch (Exception e) {
+                // IOException은 클라이언트 연결 끊김으로 정상적인 상황
+                if (e instanceof java.io.IOException) {
+                    log.debug("{} 클라이언트 연결 종료됨", LOG_PREFIX);
+                    if (Objects.nonNull(scheduledFutureHolder[0])) {
+                        scheduledFutureHolder[0].cancel(true);
+                    }
+                    emitter.complete();
+                } else {
+                    log.error("{} 로그 스트리밍 중 오류 발생", LOG_PREFIX, e);
+                    emitter.completeWithError(e);
+                }
+            }
+        }, 0, POLLING_INTERVAL, TimeUnit.SECONDS);
+
+        // 연결 종료 시 스케줄러 정리
+        emitter.onCompletion(() -> {
+            if (Objects.nonNull(scheduledFutureHolder[0])) {
+                scheduledFutureHolder[0].cancel(true);
+            }
+            log.info("{} SSE 연결 정상 종료: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
+        });
+
+        emitter.onTimeout(() -> {
+            if (Objects.nonNull(scheduledFutureHolder[0])) {
+                scheduledFutureHolder[0].cancel(true);
+            }
+            log.info("{} SSE 연결 타임아웃: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
+            emitter.complete();
+        });
+
+        emitter.onError((e) -> {
+            if (Objects.nonNull(scheduledFutureHolder[0])) {
+                scheduledFutureHolder[0].cancel(true);
+            }
+            // IOException은 클라이언트가 연결을 끊은 정상적인 상황
+            if (e instanceof java.io.IOException) {
+                log.debug("{} SSE 클라이언트 연결 종료: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
+            } else {
+                log.error("{} SSE 연결 오류: projectUuid={}", LOG_PREFIX, request.getProjectUuid(), e);
+            }
+        });
+
+        return emitter;
+    }
+
+    /**
+     * 폴링용 검색 요청 생성 마지막 조회 시간 이후의 로그만 조회하도록 설정
+     */
+    private LogSearchRequest createPollingRequest(LogSearchRequest original, LocalDateTime lastTimestamp) {
+        LogSearchRequest pollingRequest = new LogSearchRequest();
+        pollingRequest.setProjectUuid(original.getProjectUuid());
+        pollingRequest.setSize(original.getSize());
+        pollingRequest.setLogLevel(original.getLogLevel());
+        pollingRequest.setSourceType(original.getSourceType());
+        pollingRequest.setKeyword(original.getKeyword());
+        pollingRequest.setSort(original.getSort());
+
+        // 마지막 조회 시간 이후의 로그만 조회
+        if (Objects.nonNull(lastTimestamp)) {
+            pollingRequest.setStartTime(lastTimestamp);
+        } else if (Objects.nonNull(original.getStartTime())) {
+            pollingRequest.setStartTime(original.getStartTime());
+        }
+
+        pollingRequest.setEndTime(original.getEndTime());
+
+        return pollingRequest;
     }
 }
