@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -11,12 +11,11 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-import type {
-  ArchitectureData,
-  ArchitectureNode,
-  ArchitectureEdge,
-  NodeType,
-} from '@/types/architecture';
+import { apiClient } from '@/services/apiClient';
+import { API_PATH } from '@/constants/api-path';
+import type { ArchitectureDependenciesResponse } from '@/types/architecture';
+
+type NodeType = 'FRONTEND' | 'BACKEND' | 'DATABASE';
 
 // 노드 타입별 색상 정의
 const NODE_COLORS: Record<
@@ -37,7 +36,7 @@ const NODE_COLORS: Record<
     text: '#f1f5f9',
     accent: '#10b981',
   },
-  INFRA: {
+  DATABASE: {
     bg: '#1e293b',
     border: '#f59e0b',
     shadow: 'rgba(245, 158, 11, 0.3)',
@@ -46,23 +45,22 @@ const NODE_COLORS: Record<
   },
 };
 
-// 레이어별 X 좌표 (가로 방향 레이어 - 간격 증가)
-const LAYER_X_POSITIONS: Record<string, number> = {
-  PRESENTATION: 50,
-  GATEWAY: 450,
-  APPLICATION: 850,
-  DATA: 1250,
-};
-
 interface ArchitectureProps {
-  data: ArchitectureData | null;
+  projectUuid: string;
   isLoading?: boolean;
   onNodeClick?: (nodeId: string, nodeName: string) => void;
 }
 
-const Architecture = ({ data, isLoading, onNodeClick }: ArchitectureProps) => {
+const Architecture = ({
+  projectUuid,
+  isLoading: externalLoading,
+  onNodeClick,
+}: ArchitectureProps) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [databases, setDatabases] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // 노드 클릭 핸들러
   const handleNodeClick = useCallback(
@@ -74,122 +72,273 @@ const Architecture = ({ data, isLoading, onNodeClick }: ArchitectureProps) => {
     [onNodeClick],
   );
 
-  // 아키텍처 데이터를 ReactFlow 노드/엣지로 변환
-  const convertToFlowElements = useCallback(
-    (architectureData: ArchitectureData) => {
-      // 노드 변환
-      const flowNodes: Node[] = architectureData.nodes.map(
-        (node: ArchitectureNode) => {
-          const color = NODE_COLORS[node.type];
-          const xPosition = LAYER_X_POSITIONS[node.layer] || 0;
-
-          // 같은 레이어 내 노드들을 수직으로 배치
-          const nodesInSameLayer = architectureData.nodes.filter(
-            n => n.layer === node.layer,
-          );
-          const indexInLayer = nodesInSameLayer.indexOf(node);
-          const yPosition = 100 + indexInLayer * 200;
-
-          return {
-            id: node.id,
-            type: 'default',
-            position: { x: xPosition, y: yPosition },
-            data: {
-              label: (
-                <div className="relative">
-                  {/* 상단 액센트 바 */}
-                  <div
-                    className="absolute top-0 right-0 left-0 h-1 rounded-t"
-                    style={{ background: color.accent }}
-                  />
-                  <div className="px-4 pt-4 pb-3">
-                    {/* 타입 배지 */}
-                    <div className="mb-2 flex items-center justify-between">
-                      <span
-                        className="rounded px-2 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase"
-                        style={{
-                          background: `${color.accent}15`,
-                          color: color.accent,
-                        }}
-                      >
-                        {node.type}
-                      </span>
-                    </div>
-                    {/* 노드 이름 */}
-                    <div
-                      className="mb-1 font-mono text-sm font-bold"
-                      style={{ color: color.text }}
-                    >
-                      {node.name}
-                    </div>
-                    {/* 기술 스택 */}
-                    <div
-                      className="font-mono text-xs"
-                      style={{ color: `${color.text}99` }}
-                    >
-                      {node.technology}
-                    </div>
-                  </div>
-                </div>
-              ),
-            },
-            style: {
-              background: color.bg,
-              border: `2px solid ${color.border}`,
-              borderRadius: '8px',
-              padding: '0',
-              width: 200,
-              boxShadow: `0 4px 12px ${color.shadow}, 0 0 0 1px ${color.border}20`,
-              cursor: 'pointer',
-            },
-            sourcePosition: Position.Right,
-            targetPosition: Position.Left,
-          };
-        },
-      );
-
-      // 엣지 변환 - 간단한 점선 애니메이션
-      const flowEdges: Edge[] = architectureData.edges.map(
-        (edge: ArchitectureEdge, index: number) => ({
-          id: `edge-${index}`,
-          source: edge.source,
-          target: edge.target,
-          type: 'smoothstep',
-          animated: true,
-          label: edge.relationship,
-          labelStyle: {
-            fontSize: 10,
-            fill: '#475569',
-            fontWeight: 600,
-            fontFamily: 'monospace',
-          },
-          labelBgStyle: {
-            fill: '#f8fafc',
-            fillOpacity: 0.95,
-          },
-          style: {
-            stroke: '#3b82f6',
-            strokeWidth: 2,
-          },
-        }),
-      );
-
-      return { nodes: flowNodes, edges: flowEdges };
-    },
-    [],
-  );
-
-  // 데이터가 변경될 때 노드와 엣지 업데이트
-  useEffect(() => {
-    if (data) {
-      const { nodes: flowNodes, edges: flowEdges } =
-        convertToFlowElements(data);
-      setNodes(flowNodes);
-      setEdges(flowEdges);
+  // DB 정보를 가져오는 함수
+  const fetchDatabases = useCallback(async () => {
+    if (!projectUuid) {
+      return;
     }
-  }, [data, convertToFlowElements, setNodes, setEdges]);
 
-  if (isLoading) {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await apiClient.get<
+        ArchitectureDependenciesResponse['data']
+      >(API_PATH.ARCHITECTURE_DEPENDENCIES, {
+        projectUuid,
+      });
+
+      setDatabases(response.databases || []);
+    } catch (err) {
+      console.error('Failed to fetch databases:', err);
+      setError('데이터베이스 정보를 불러오는데 실패했습니다.');
+      setDatabases([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [projectUuid]);
+
+  // 고정된 아키텍처 노드와 DB 노드를 생성하는 함수
+  const createArchitectureNodes = useCallback((dbList: string[]) => {
+    const flowNodes: Node[] = [];
+    const flowEdges: Edge[] = [];
+
+    // 1. Frontend 노드 (고정 - React)
+    const frontendColor = NODE_COLORS.FRONTEND;
+    flowNodes.push({
+      id: 'frontend-react',
+      type: 'default',
+      position: { x: 80, y: 180 },
+      data: {
+        label: (
+          <div className="relative">
+            <div
+              className="absolute top-0 right-0 left-0 h-0.5 rounded-t"
+              style={{ background: frontendColor.accent }}
+            />
+            <div className="px-2 pt-1.5 pb-1.5">
+              <div className="mb-0.5 flex items-center justify-between">
+                <span
+                  className="rounded px-1 py-0.5 font-mono text-[8px] font-semibold tracking-wider uppercase"
+                  style={{
+                    background: `${frontendColor.accent}15`,
+                    color: frontendColor.accent,
+                  }}
+                >
+                  FRONTEND
+                </span>
+              </div>
+              <div
+                className="mb-0.5 font-mono text-[10px] font-bold"
+                style={{ color: frontendColor.text }}
+              >
+                React
+              </div>
+              <div
+                className="font-mono text-[8px]"
+                style={{ color: `${frontendColor.text}99` }}
+              >
+                Web Application
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      style: {
+        background: frontendColor.bg,
+        border: `1px solid ${frontendColor.border}`,
+        borderRadius: '4px',
+        padding: '0',
+        width: 100,
+        boxShadow: `0 1px 4px ${frontendColor.shadow}, 0 0 0 1px ${frontendColor.border}20`,
+        cursor: 'pointer',
+      },
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+    });
+
+    // 2. Backend 노드 (고정 - Spring Boot)
+    const backendColor = NODE_COLORS.BACKEND;
+    flowNodes.push({
+      id: 'backend-api',
+      type: 'default',
+      position: { x: 280, y: 180 },
+      data: {
+        label: (
+          <div className="relative">
+            <div
+              className="absolute top-0 right-0 left-0 h-0.5 rounded-t"
+              style={{ background: backendColor.accent }}
+            />
+            <div className="px-2 pt-1.5 pb-1.5">
+              <div className="mb-0.5 flex items-center justify-between">
+                <span
+                  className="rounded px-1 py-0.5 font-mono text-[8px] font-semibold tracking-wider uppercase"
+                  style={{
+                    background: `${backendColor.accent}15`,
+                    color: backendColor.accent,
+                  }}
+                >
+                  BACKEND
+                </span>
+              </div>
+              <div
+                className="mb-0.5 font-mono text-[10px] font-bold"
+                style={{ color: backendColor.text }}
+              >
+                Spring Boot
+              </div>
+              <div
+                className="font-mono text-[8px]"
+                style={{ color: `${backendColor.text}99` }}
+              >
+                API Server
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      style: {
+        background: backendColor.bg,
+        border: `1px solid ${backendColor.border}`,
+        borderRadius: '4px',
+        padding: '0',
+        width: 100,
+        boxShadow: `0 1px 4px ${backendColor.shadow}, 0 0 0 1px ${backendColor.border}20`,
+        cursor: 'pointer',
+      },
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+    });
+
+    // Frontend -> Backend 엣지
+    flowEdges.push({
+      id: 'edge-frontend-backend',
+      source: 'frontend-react',
+      target: 'backend-api',
+      type: 'smoothstep',
+      animated: true,
+      label: 'HTTP_REQUEST',
+      labelStyle: {
+        fontSize: 8,
+        fill: '#475569',
+        fontWeight: 600,
+        fontFamily: 'monospace',
+      },
+      labelBgStyle: {
+        fill: '#f8fafc',
+        fillOpacity: 0.95,
+      },
+      style: {
+        stroke: '#3b82f6',
+        strokeWidth: 1,
+      },
+    });
+
+    // 3. Database 노드들 (동적 - API에서 받아온 정보)
+    const databaseColor = NODE_COLORS.DATABASE;
+    dbList.forEach((db, index) => {
+      const nodeId = `database-${db.toLowerCase()}-${index}`;
+      const yPosition = 100 + index * 100;
+
+      flowNodes.push({
+        id: nodeId,
+        type: 'default',
+        position: { x: 500, y: yPosition },
+        data: {
+          label: (
+            <div className="relative">
+              <div
+                className="absolute top-0 right-0 left-0 h-0.5 rounded-t"
+                style={{ background: databaseColor.accent }}
+              />
+              <div className="px-2 pt-1.5 pb-1.5">
+                <div className="mb-0.5 flex items-center justify-between">
+                  <span
+                    className="rounded px-1 py-0.5 font-mono text-[8px] font-semibold tracking-wider uppercase"
+                    style={{
+                      background: `${databaseColor.accent}15`,
+                      color: databaseColor.accent,
+                    }}
+                  >
+                    DATABASE
+                  </span>
+                </div>
+                <div
+                  className="mb-0.5 font-mono text-[10px] font-bold"
+                  style={{ color: databaseColor.text }}
+                >
+                  {db}
+                </div>
+                <div
+                  className="font-mono text-[8px]"
+                  style={{ color: `${databaseColor.text}99` }}
+                >
+                  Data Storage
+                </div>
+              </div>
+            </div>
+          ),
+        },
+        style: {
+          background: databaseColor.bg,
+          border: `1px solid ${databaseColor.border}`,
+          borderRadius: '4px',
+          padding: '0',
+          width: 100,
+          boxShadow: `0 1px 4px ${databaseColor.shadow}, 0 0 0 1px ${databaseColor.border}20`,
+          cursor: 'pointer',
+        },
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
+      });
+
+      // Backend -> Database 엣지
+      flowEdges.push({
+        id: `edge-backend-${nodeId}`,
+        source: 'backend-api',
+        target: nodeId,
+        type: 'smoothstep',
+        animated: true,
+        label: 'DATABASE_QUERY',
+        labelStyle: {
+          fontSize: 8,
+          fill: '#475569',
+          fontWeight: 600,
+          fontFamily: 'monospace',
+        },
+        labelBgStyle: {
+          fill: '#f8fafc',
+          fillOpacity: 0.95,
+        },
+        style: {
+          stroke: '#10b981',
+          strokeWidth: 1,
+        },
+      });
+    });
+
+    return { nodes: flowNodes, edges: flowEdges };
+  }, []);
+
+  // 프로젝트 UUID가 변경될 때 DB 정보 가져오기
+  useEffect(() => {
+    if (projectUuid) {
+      fetchDatabases();
+    }
+  }, [projectUuid, fetchDatabases]);
+
+  // DB 정보가 변경될 때 노드와 엣지 업데이트
+  useEffect(() => {
+    const { nodes: flowNodes, edges: flowEdges } =
+      createArchitectureNodes(databases);
+    setNodes(flowNodes);
+    setEdges(flowEdges);
+  }, [databases, createArchitectureNodes, setNodes, setEdges]);
+
+  const loading = isLoading || externalLoading;
+
+  if (loading) {
     return (
       <div className="flex h-[400px] items-center justify-center rounded-lg border bg-white shadow-sm">
         <div className="text-gray-500">아키텍처 데이터를 불러오는 중...</div>
@@ -197,12 +346,18 @@ const Architecture = ({ data, isLoading, onNodeClick }: ArchitectureProps) => {
     );
   }
 
-  if (!data) {
+  if (error) {
     return (
       <div className="flex h-[400px] items-center justify-center rounded-lg border bg-white shadow-sm">
-        <div className="text-gray-500">
-          아키텍처 데이터가 없습니다. 기간을 선택해주세요.
-        </div>
+        <div className="text-red-500">{error}</div>
+      </div>
+    );
+  }
+
+  if (!projectUuid) {
+    return (
+      <div className="flex h-[400px] items-center justify-center rounded-lg border bg-white shadow-sm">
+        <div className="text-gray-500">프로젝트를 선택해주세요.</div>
       </div>
     );
   }
@@ -217,12 +372,15 @@ const Architecture = ({ data, isLoading, onNodeClick }: ArchitectureProps) => {
               Architecture Overview
             </h2>
             <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
-              <span className="font-mono">Project: {data.projectId}</span>
-              <span>•</span>
-              <span className="font-mono">
-                {new Date(data.period.startDate).toLocaleDateString()} -{' '}
-                {new Date(data.period.endDate).toLocaleDateString()}
-              </span>
+              <span className="font-mono">Project: {projectUuid}</span>
+              {databases.length > 0 && (
+                <>
+                  <span>•</span>
+                  <span className="font-mono">
+                    Databases: {databases.join(', ')}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -243,9 +401,14 @@ const Architecture = ({ data, isLoading, onNodeClick }: ArchitectureProps) => {
           <Controls />
           <MiniMap
             nodeColor={node => {
-              const nodeData = data.nodes.find(n => n.id === node.id);
-              if (nodeData) {
-                return NODE_COLORS[nodeData.type].border;
+              if (node.id.startsWith('frontend-')) {
+                return NODE_COLORS.FRONTEND.border;
+              }
+              if (node.id === 'backend-api' || node.id.startsWith('backend-')) {
+                return NODE_COLORS.BACKEND.border;
+              }
+              if (node.id.startsWith('database-')) {
+                return NODE_COLORS.DATABASE.border;
               }
               return '#666';
             }}
