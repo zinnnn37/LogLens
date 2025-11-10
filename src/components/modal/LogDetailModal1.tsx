@@ -163,6 +163,7 @@ const LogDetailModal1 = ({
     if (!projectUuid || !log.traceId) {
       return;
     }
+
     const params = new URLSearchParams({ traceId: log.traceId });
     const url = `/project/${projectUuid}/request-flow?${params.toString()}`;
     window.open(url, '_blank');

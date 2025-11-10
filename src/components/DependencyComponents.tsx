@@ -4,7 +4,7 @@ interface DependencyComponentsProps {
   data: ComponentListData | null;
   isLoading?: boolean;
   onClose?: () => void;
-  onComponentClick?: (componentId: string, componentName: string) => void;
+  onComponentClick?: (componentId: number, componentName: string) => void;
 }
 
 const DependencyComponents = ({

@@ -24,6 +24,13 @@ export const API_PATH = {
   // 컴포넌트 목록 조회
   COMPONENTS: (projectId: string) => `/api/projects/${projectId}/components`,
 
+  // 대시보드 컴포넌트 목록 조회
+  DASHBOARD_COMPONENTS: '/api/dashboards/components',
+
+  // 컴포넌트 의존성 조회
+  COMPONENT_DEPENDENCIES: (componentId: number) =>
+    `/api/dashboards/components/${componentId}/dependencies`,
+
   // 프로젝트 삭제
   DELETE_PROJECT: (projectUuid: string) => `/api/projects/${projectUuid}`,
 

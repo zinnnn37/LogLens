@@ -12,12 +12,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-import type {
-  ComponentDependencyData,
-  ComponentType,
-  ComponentLayer,
-  DependencyNode,
-} from '@/types/component';
+import type { ComponentDependencyData, ComponentType } from '@/types/component';
 
 // 컴포넌트 타입별 색상 (다크 테마)
 const TYPE_COLORS: Record<
@@ -61,15 +56,6 @@ const TYPE_COLORS: Record<
   },
 };
 
-// 레이어별 Y 좌표 (수직 방향 레이어)
-const LAYER_Y_POSITIONS: Record<ComponentLayer, number> = {
-  PRESENTATION: 50,
-  CONTROLLER: 200,
-  SERVICE: 350,
-  REPOSITORY: 500,
-  VALIDATOR: 350,
-};
-
 interface ComponentDependencyGraphProps {
   data: ComponentDependencyData | null;
   isLoading?: boolean;
@@ -84,20 +70,42 @@ const ComponentDependencyGraph = ({
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  // 의존성 노드들을 평탄화하여 모든 노드 추출
-  const flattenDependencyNodes = useCallback(
-    (dependencyNodes: DependencyNode[]): DependencyNode[] => {
-      const result: DependencyNode[] = [];
-      const flatten = (nodes: DependencyNode[]) => {
-        nodes.forEach(node => {
-          result.push(node);
-          if (node.children && node.children.length > 0) {
-            flatten(node.children);
+  // BFS로 노드의 레벨 계산 (선택된 컴포넌트 기준)
+  const calculateNodeLevels = useCallback(
+    (edges: { source: string; target: string }[], centerNodeId: string) => {
+      const levels = new Map<string, number>();
+      const visited = new Set<string>();
+
+      // 중심 노드는 레벨 0
+      levels.set(centerNodeId, 0);
+      visited.add(centerNodeId);
+
+      // BFS 큐: [nodeId, level]
+      const queue: [string, number][] = [[centerNodeId, 0]];
+
+      while (queue.length > 0) {
+        const [currentNode, currentLevel] = queue.shift()!;
+
+        // downstream 탐색: 현재 노드에서 나가는 엣지 (오른쪽으로)
+        edges.forEach(edge => {
+          if (edge.source === currentNode && !visited.has(edge.target)) {
+            visited.add(edge.target);
+            levels.set(edge.target, currentLevel + 1);
+            queue.push([edge.target, currentLevel + 1]);
           }
         });
-      };
-      flatten(dependencyNodes);
-      return result;
+
+        // upstream 탐색: 현재 노드로 들어오는 엣지 (왼쪽으로)
+        edges.forEach(edge => {
+          if (edge.target === currentNode && !visited.has(edge.source)) {
+            visited.add(edge.source);
+            levels.set(edge.source, currentLevel - 1);
+            queue.push([edge.source, currentLevel - 1]);
+          }
+        });
+      }
+
+      return levels;
     },
     [],
   );
@@ -105,49 +113,76 @@ const ComponentDependencyGraph = ({
   // 그래프 데이터를 ReactFlow 노드/엣지로 변환
   const convertToFlowElements = useCallback(
     (componentData: ComponentDependencyData) => {
-      const { graph, component, upstream, downstream } = componentData;
+      const { graph, component } = componentData;
 
-      // 모든 downstream 노드 평탄화
-      const allDownstream = flattenDependencyNodes(downstream);
+      // 노드 레벨 계산 (BFS로 연결된 노드만 찾음)
+      const nodeLevels = calculateNodeLevels(graph.edges, component.id);
 
-      // 중심 컴포넌트는 가운데 배치
-      const centerX = 500;
+      // 레벨이 계산된 노드만 = 실제로 연결된 노드만
+      const connectedNodes = graph.nodes.filter(node =>
+        nodeLevels.has(node.id),
+      );
+
+      // 레벨별로 노드 그룹화
+      const nodesByLevel = new Map<number, typeof connectedNodes>();
+      connectedNodes.forEach(node => {
+        const level = nodeLevels.get(node.id)!;
+        if (!nodesByLevel.has(level)) {
+          nodesByLevel.set(level, []);
+        }
+        nodesByLevel.get(level)!.push(node);
+      });
+
+      console.log('=== 그래프 렌더링 ===');
+      console.log('전체 컴포넌트:', graph.nodes.length);
+      console.log('연결된 컴포넌트:', connectedNodes.length);
+      console.log('중심:', component.name, `(ID: ${component.id})`);
+
+      const levelGroups = new Map<number, string[]>();
+      connectedNodes.forEach(node => {
+        const level = nodeLevels.get(node.id)!;
+        if (!levelGroups.has(level)) {
+          levelGroups.set(level, []);
+        }
+        levelGroups.get(level)!.push(node.name);
+      });
+
+      Array.from(levelGroups.keys())
+        .sort((a, b) => a - b)
+        .forEach(level => {
+          const direction =
+            level === 0
+              ? '[중심]'
+              : level < 0
+                ? `[Upstream -${Math.abs(level)}]`
+                : `[Downstream +${level}]`;
+          console.log(`${direction}:`, levelGroups.get(level)!.join(', '));
+        });
+
+      // 레이아웃 설정
+      const centerX = 600;
       const centerY = 300;
+      const horizontalGap = 350;
+      const verticalGap = 180;
 
-      const flowNodes: Node[] = graph.nodes.map(graphNode => {
+      const flowNodes: Node[] = connectedNodes.map(graphNode => {
         const color = TYPE_COLORS[graphNode.type] || TYPE_COLORS.BACKEND;
         const isCenterNode = graphNode.id === component.id;
 
-        // upstream은 왼쪽, 중심은 중간, downstream은 오른쪽
-        let xPosition = centerX;
-        let yPosition = LAYER_Y_POSITIONS[graphNode.layer] || centerY;
+        // 레벨 기반 위치 계산
+        const level = nodeLevels.get(graphNode.id) ?? 0;
+        const nodesAtLevel = nodesByLevel.get(level) || [];
+        const indexAtLevel = nodesAtLevel.findIndex(n => n.id === graphNode.id);
+        const totalAtLevel = nodesAtLevel.length;
 
-        if (isCenterNode) {
-          xPosition = centerX;
-          yPosition = centerY;
-        } else if (upstream.some(u => u.id === graphNode.id)) {
-          xPosition = centerX - 300;
-          yPosition = centerY;
-        } else if (allDownstream.some(d => d.id === graphNode.id)) {
-          // depth에 따라 x 좌표 결정
-          // const node = allDownstream.find(d => d.id === graphNode.id);
-          const depth = findNodeDepth(graphNode.id, downstream);
-          xPosition = centerX + 300 + depth * 250;
+        const xPosition = centerX + level * horizontalGap;
+        const yPosition =
+          centerY -
+          ((totalAtLevel - 1) * verticalGap) / 2 +
+          indexAtLevel * verticalGap;
 
-          // 같은 depth의 노드들을 수직으로 배치
-          const nodesAtSameDepth = allDownstream.filter(
-            d => findNodeDepth(d.id, downstream) === depth,
-          );
-          const indexAtDepth = nodesAtSameDepth.findIndex(
-            d => d.id === graphNode.id,
-          );
-          yPosition = centerY - 100 + indexAtDepth * 150;
-        }
-
-        // 상세 정보 포함
-        const nodeInfo = allDownstream.find(d => d.id === graphNode.id);
-        const upstreamInfo = upstream.find(u => u.id === graphNode.id);
-        const detailInfo = nodeInfo || upstreamInfo;
+        // metrics 정보 가져오기
+        const metrics = graphNode.metrics;
 
         return {
           id: graphNode.id,
@@ -158,51 +193,67 @@ const ComponentDependencyGraph = ({
               <div className="relative">
                 {/* 상단 액센트 바 */}
                 <div
-                  className="absolute top-0 right-0 left-0 h-1 rounded-t"
+                  className="absolute top-0 right-0 left-0 h-1.5 rounded-t-lg"
                   style={{
-                    background: isCenterNode ? '#ef4444' : color.accent,
+                    background: isCenterNode
+                      ? 'linear-gradient(90deg, #ef4444, #dc2626)'
+                      : `linear-gradient(90deg, ${color.accent}, ${color.border})`,
                   }}
                 />
-                <div className="px-3 pt-3 pb-2">
+                <div className="px-4 pt-4 pb-3">
                   {/* 노드 이름 */}
                   <div
-                    className="mb-1 font-mono text-xs font-bold"
+                    className="mb-1.5 text-sm leading-tight font-semibold"
                     style={{ color: color.text }}
                   >
                     {graphNode.name}
                   </div>
-                  {/* 레이어 */}
-                  <div
-                    className="mb-2 font-mono text-xs uppercase"
-                    style={{ color: `${color.text}66` }}
-                  >
-                    {graphNode.layer}
-                  </div>
-                  {/* 상세 정보 */}
-                  {detailInfo && (
-                    <div
-                      className="space-y-0.5 border-t pt-2 font-mono text-xs"
+                  {/* 레이어 배지 */}
+                  <div className="mb-3">
+                    <span
+                      className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium tracking-wide uppercase"
                       style={{
-                        borderColor: `${color.text}20`,
-                        color: `${color.text}99`,
+                        backgroundColor: `${color.accent}20`,
+                        color: color.accent,
                       }}
                     >
-                      <div className="flex justify-between">
-                        <span>Calls:</span>
-                        <span className="font-bold">
-                          {detailInfo.callCount.toLocaleString()}
+                      {graphNode.layer}
+                    </span>
+                  </div>
+                  {/* 상세 정보 */}
+                  {metrics && (
+                    <div
+                      className="space-y-1.5 border-t pt-2.5 text-xs"
+                      style={{
+                        borderColor: `${color.text}15`,
+                        color: `${color.text}cc`,
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-blue-400"></span>
+                          Calls
+                        </span>
+                        <span className="font-semibold tabular-nums">
+                          {metrics.callCount.toLocaleString()}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Errors:</span>
-                        <span className="font-bold text-red-400">
-                          {detailInfo.errorCount}
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-red-400"></span>
+                          Errors
+                        </span>
+                        <span className="font-semibold text-red-400 tabular-nums">
+                          {metrics.errorCount}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Avg:</span>
-                        <span className="font-bold">
-                          {detailInfo.averageResponseTime}ms
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+                          Warns
+                        </span>
+                        <span className="font-semibold text-amber-400 tabular-nums">
+                          {metrics.warnCount}
                         </span>
                       </div>
                     </div>
@@ -212,63 +263,62 @@ const ComponentDependencyGraph = ({
             ),
           },
           style: {
-            background: color.bg,
-            border: `2px solid ${isCenterNode ? '#ef4444' : color.border}`,
-            borderRadius: '8px',
+            background: isCenterNode
+              ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)'
+              : color.bg,
+            border: isCenterNode
+              ? '3px solid #ef4444'
+              : `2px solid ${color.border}`,
+            borderRadius: '12px',
             padding: '0',
-            width: 180,
+            width: 220,
             boxShadow: isCenterNode
-              ? '0 4px 12px rgba(239, 68, 68, 0.4), 0 0 0 1px #ef444420'
-              : `0 4px 12px ${color.shadow}, 0 0 0 1px ${color.border}20`,
+              ? '0 8px 24px rgba(239, 68, 68, 0.35), 0 0 0 1px rgba(239, 68, 68, 0.2)'
+              : `0 4px 16px ${color.shadow}, 0 0 0 1px ${color.border}15`,
           },
           sourcePosition: Position.Right,
           targetPosition: Position.Left,
         };
       });
 
-      // 엣지 변환 (심플하고 깔끔하게)
-      const flowEdges: Edge[] = graph.edges.map((edge, index) => ({
-        id: `edge-${index}`,
-        source: edge.source,
-        target: edge.target,
-        type: 'smoothstep',
-        animated: true,
-        style: {
-          stroke: '#64748b',
-          strokeWidth: 2,
-        },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: '#64748b',
-          width: 20,
-          height: 20,
-        },
-      }));
+      // 연결된 노드 사이의 엣지만 필터링
+      const connectedNodeIdSet = new Set(connectedNodes.map(n => n.id));
+      const filteredEdges = graph.edges.filter(
+        edge =>
+          connectedNodeIdSet.has(edge.source) &&
+          connectedNodeIdSet.has(edge.target),
+      );
+
+      // 엣지 변환 (파란색 엣지가 항상 위에 오도록 zIndex 설정)
+      const flowEdges: Edge[] = filteredEdges.map((edge, index) => {
+        // 중심 노드와 직접 연결된 엣지인지 확인
+        const isDirectEdge =
+          edge.source === component.id || edge.target === component.id;
+
+        return {
+          id: `edge-${index}`,
+          source: edge.source,
+          target: edge.target,
+          type: 'smoothstep',
+          animated: isDirectEdge, // 중심 노드와 직접 연결된 엣지만 애니메이션
+          style: {
+            stroke: isDirectEdge ? '#3b82f6' : '#94a3b8', // 파란색 vs 회색
+            strokeWidth: isDirectEdge ? 3 : 2,
+          },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: isDirectEdge ? '#3b82f6' : '#94a3b8',
+            width: 20,
+            height: 20,
+          },
+          zIndex: isDirectEdge ? 1000 : 1, // 파란색 엣지는 항상 위에
+        };
+      });
 
       return { nodes: flowNodes, edges: flowEdges };
     },
-    [flattenDependencyNodes],
+    [calculateNodeLevels],
   );
-
-  // 노드의 depth 찾기 (재귀)
-  const findNodeDepth = (
-    nodeId: string,
-    nodes: DependencyNode[],
-    currentDepth = 0,
-  ): number => {
-    for (const node of nodes) {
-      if (node.id === nodeId) {
-        return currentDepth;
-      }
-      if (node.children && node.children.length > 0) {
-        const depth = findNodeDepth(nodeId, node.children, currentDepth + 1);
-        if (depth !== -1) {
-          return depth;
-        }
-      }
-    }
-    return -1;
-  };
 
   // 데이터가 변경될 때 노드와 엣지 업데이트
   useEffect(() => {
@@ -324,17 +374,23 @@ const ComponentDependencyGraph = ({
       </div>
 
       {/* ReactFlow 다이어그램 */}
-      <div className="h-[500px] bg-slate-50">
+      <div className="h-[600px] bg-gradient-to-br from-slate-50 to-slate-100">
         <ReactFlow
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           fitView
+          fitViewOptions={{ padding: 0.2 }}
           attributionPosition="bottom-left"
+          minZoom={0.1}
+          maxZoom={1.5}
         >
-          <Background />
-          <Controls />
+          <Background gap={16} size={1} color="#cbd5e1" />
+          <Controls
+            className="rounded-lg border border-gray-300 bg-white shadow-lg"
+            showInteractive={false}
+          />
           <MiniMap
             nodeColor={node => {
               if (node.id === data.component.id) {
@@ -350,9 +406,10 @@ const ComponentDependencyGraph = ({
             nodeStrokeWidth={3}
             zoomable
             pannable
+            className="rounded-lg border-2 border-gray-300 bg-white shadow-lg"
             style={{
-              width: 120,
-              height: 80,
+              width: 140,
+              height: 100,
             }}
           />
         </ReactFlow>
