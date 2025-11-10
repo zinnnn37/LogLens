@@ -86,6 +86,16 @@ public class MethodLoggingAspect {
         String componentName = targetClass.getSimpleName();
         String layer = detectLayer(targetClass);
 
+        String actualRepositoryName = null;
+        if ("REPOSITORY".equals(layer)) {
+            actualRepositoryName = extractActualRepositoryName(joinPoint.getTarget());
+            if (actualRepositoryName != null) {
+                MDC.put("actual_repository_name", actualRepositoryName);
+                componentName = actualRepositoryName;
+                packageName = extractRepositoryPackage(joinPoint.getTarget());
+            }
+        }
+
         HttpInfo httpInfo = extractHttpInfo();
         Map<String, Object> parameters = collectParameters(signature, joinPoint.getArgs());
 
@@ -111,6 +121,59 @@ public class MethodLoggingAspect {
         }
 
         return result;
+    }
+
+    /**
+     * Repository의 실제 패키지명 추출
+     */
+    private String extractRepositoryPackage(Object target) {
+        try {
+            Class<?>[] interfaces = target.getClass().getInterfaces();
+            for (Class<?> iface : interfaces) {
+                String name = iface.getSimpleName();
+                if (name.endsWith("Repository") &&
+                        !name.equals("Repository") &&
+                        !name.equals("JpaRepository")) {
+                    return iface.getName();
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Repository 패키지 추출 실패: {}", e.getMessage());
+        }
+        return target.getClass().getName();
+    }
+
+    /**
+     * JPA Repository Proxy에서 실제 Repository 인터페이스 이름 추출
+     */
+    private String extractActualRepositoryName(Object target) {
+        if (target == null) {
+            return null;
+        }
+
+        try {
+            Class<?>[] interfaces = target.getClass().getInterfaces();
+
+            for (Class<?> iface : interfaces) {
+                String name = iface.getSimpleName();
+                if (name.endsWith("Repository") &&
+                        !name.equals("Repository") &&
+                        !name.equals("JpaRepository") &&
+                        !name.equals("CrudRepository") &&
+                        !name.equals("PagingAndSortingRepository") &&
+                        !name.equals("QueryByExampleExecutor") &&
+                        !name.equals("JpaSpecificationExecutor")) {
+
+                    log.debug("실제 Repository 발견: {}", name);
+                    return name;
+                }
+            }
+
+        } catch (Exception e) {
+            log.debug("Repository 이름 추출 실패: {}", e.getMessage());
+        }
+
+        return null;
     }
 
     private String detectLayer(Class<?> targetClass) {
