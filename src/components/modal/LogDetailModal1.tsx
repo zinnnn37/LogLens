@@ -140,10 +140,10 @@ const LogDetailModal1 = ({
     if (log?.logLevel === 'ERROR' && projectUuid) {
       setIsJiraLoading(true);
       getJiraConnectionStatus(projectUuid)
-        .then((response) => {
+        .then(response => {
           setIsJiraConnected(response.exists);
         })
-        .catch((e) => {
+        .catch(e => {
           console.error('Jira 연동 상태 확인 실패:', e);
           setIsJiraConnected(false);
         })
@@ -240,7 +240,7 @@ const LogDetailModal1 = ({
               <p className="text-sm text-red-500">{error}</p>
               <Button
                 onClick={handleAnalyzeClick}
-                className="gap-2 mt-4"
+                className="mt-4 gap-2"
                 variant="outline"
               >
                 <Wand2 className="h-4 w-4" />
