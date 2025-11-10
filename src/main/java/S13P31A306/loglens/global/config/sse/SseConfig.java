@@ -18,6 +18,9 @@ public class SseConfig {
     @Value("${sse.scheduler.pool-size:50}")
     private int poolSize;
 
+    @Value("${sse.timeout:300000}")
+    private long sseTimeout;
+
     //@formatter:off
     /**
      * SSE 스트리밍을 위한 스케줄러
@@ -34,6 +37,11 @@ public class SseConfig {
         );
         executor.setRemoveOnCancelPolicy(true); // 취소된 태스크는 즉시 제거
         return executor;
+    }
+
+    @Bean(name = "sseTimeout")
+    public long sseTimeout() {
+        return sseTimeout;
     }
 
     /**

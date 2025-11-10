@@ -104,3 +104,4 @@ ai:
 sse:
   scheduler:
     pool-size: 50                  # SSE 스케줄러 스레드 풀 크기 (동시 50개 연결 지원)
+  timeout: 300000                  # SSE 연결 타임아웃 (5분, 밀리초)

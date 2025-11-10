@@ -38,7 +38,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class LogServiceImpl implements LogService {
 
     private static final String LOG_PREFIX = "[LogService]";
-    private static final long SSE_TIMEOUT = 60 * 60 * 1000L; // 1시간
     private static final long POLLING_INTERVAL = 5; // 5초
 
     private final LogRepository logRepository;
@@ -46,6 +45,7 @@ public class LogServiceImpl implements LogService {
     private final ObjectMapper objectMapper; // For cursor encoding/decoding
     private final AiServiceClient aiServiceClient;
     private final ScheduledExecutorService sseScheduler;
+    private final long sseTimeout;
 
     @Override
     public LogPageResponse getLogs(LogSearchRequest request) {
@@ -231,7 +231,7 @@ public class LogServiceImpl implements LogService {
     public SseEmitter streamLogs(LogSearchRequest request) {
         log.info("{} 실시간 로그 스트리밍 시작: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
 
-        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT);
+        SseEmitter emitter = new SseEmitter(sseTimeout);
 
         // 마지막으로 전송한 로그의 timestamp를 추적하기 위한 변수
         LocalDateTime[] lastTimestamp = {request.getStartTime()};
