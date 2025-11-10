@@ -13,4 +13,6 @@ public interface ComponentRepository extends JpaRepository<Component, Integer> {
     Integer countByProjectId(Integer projectId);
 
     List<Component> findAllByProjectId(Integer projectId);
+
+    Optional<Component> findByProjectIdAndPackageNameAndName(Integer projectId, String packageName, String className);
 }
