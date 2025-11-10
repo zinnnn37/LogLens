@@ -3,6 +3,9 @@ import { API_PATH } from '@/constants/api-path';
 import type {
   DashboardOverviewParams,
   DashboardOverviewData,
+  DashboardApiStatsData,
+  DashboardApiStatsParams,
+  
 } from '@/types/dashboard';
 
 /**
@@ -17,3 +20,17 @@ export const getDashboardOverview = async (
   );
   return response;
 };
+
+/**
+ * API 호출 통계 조회 API
+ */
+export const getDashboardApiStats = async (
+  params: DashboardApiStatsParams,
+): Promise<DashboardApiStatsData> => {
+  const response = await apiClient.get<DashboardApiStatsData>(
+    API_PATH.STATISTICS_API_CALLS,
+    params,
+  );
+  return response;
+};
+
