@@ -11,7 +11,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 public class LogSearchRequest {
 
     @Sensitive
-    @Schema(description = "프로젝트 UUID", example = "9f8c4c75-a936-3ab6-92a5-d1309cd9f87e")
+    @Schema(description = "프로젝트 UUID", example = "9911573f-8a1d-3b96-98b4-5a0def93513b")
     private String projectUuid;
 
     @Schema(description = "페이지네이션 커서", example = "eyJzb3J0IjpbMTcwNTMxMjgwMDAwMCwiYWJjMTIzIl19")
@@ -37,7 +37,7 @@ public class LogSearchRequest {
     @Schema(description = "검색 키워드", example = "NullPointerException")
     private String keyword;
 
-    @Schema(description = "Trace ID", example = "e78e7203-b81c-43c5-9611-571163183411")
+    @Schema(description = "Trace ID", example = "d5d9098c-c959-41aa-825a-fa417790292d")
     private String traceId;
 
     @Schema(description = "정렬 옵션 (필드,방향)", example = "TIMESTAMP,DESC", defaultValue = "TIMESTAMP,DESC")

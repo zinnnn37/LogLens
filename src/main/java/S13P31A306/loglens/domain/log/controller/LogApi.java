@@ -182,8 +182,8 @@ public interface LogApi {
                     """,
             parameters = {
                     @Parameter(in = ParameterIn.HEADER, name = "Authorization", description = "Bearer {access_token}", required = true, schema = @Schema(type = "string")),
-                    @Parameter(in = ParameterIn.PATH, name = "logId", description = "로그 ID", required = true, schema = @Schema(type = "integer", format = "int64")),
-                    @Parameter(in = ParameterIn.QUERY, name = "projectUuid", description = "프로젝트 UUID", required = true, schema = @Schema(type = "string"))
+                    @Parameter(in = ParameterIn.PATH, name = "logId", description = "로그 ID", required = true, schema = @Schema(type = "integer", format = "int64"), example = "4274323622"),
+                    @Parameter(in = ParameterIn.QUERY, name = "projectUuid", description = "프로젝트 UUID", required = true, schema = @Schema(type = "string"), example = "9911573f-8a1d-3b96-98b4-5a0def93513b")
             },
             responses = {
                     @ApiResponse(
