@@ -93,6 +93,7 @@ export interface GraphNode {
   name: string;
   type: ComponentType;
   layer: ComponentLayer;
+  metrics?: ComponentMetrics | null;
 }
 
 export interface GraphEdge {

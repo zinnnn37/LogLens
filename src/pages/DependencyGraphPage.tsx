@@ -23,10 +23,7 @@ const DependencyGraphPage = () => {
   } | null>(null);
 
   // 컴포넌트 목록 조회
-  const {
-    data: componentsData,
-    isLoading: isComponentsLoading,
-  } = useQuery({
+  const { data: componentsData, isLoading: isComponentsLoading } = useQuery({
     queryKey: ['components', projectUuid],
     queryFn: () => getComponents(projectUuid!),
     enabled: Boolean(projectUuid) && selectedNode === 'backend-api',
@@ -39,8 +36,7 @@ const DependencyGraphPage = () => {
     error: dependencyError,
   } = useQuery({
     queryKey: ['componentDependencies', selectedComponent?.id, projectUuid],
-    queryFn: () =>
-      getComponentDependencies(selectedComponent!.id, projectUuid),
+    queryFn: () => getComponentDependencies(selectedComponent!.id, projectUuid),
     enabled: Boolean(selectedComponent?.id) && Boolean(projectUuid),
   });
 

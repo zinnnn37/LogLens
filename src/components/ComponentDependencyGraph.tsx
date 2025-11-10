@@ -12,10 +12,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-import type {
-  ComponentDependencyData,
-  ComponentType,
-} from '@/types/component';
+import type { ComponentDependencyData, ComponentType } from '@/types/component';
 
 // 컴포넌트 타입별 색상 (다크 테마)
 const TYPE_COLORS: Record<
@@ -59,7 +56,6 @@ const TYPE_COLORS: Record<
   },
 };
 
-
 interface ComponentDependencyGraphProps {
   data: ComponentDependencyData | null;
   isLoading?: boolean;
@@ -74,46 +70,45 @@ const ComponentDependencyGraph = ({
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-
   // BFS로 노드의 레벨 계산 (선택된 컴포넌트 기준)
-  const calculateNodeLevels = useCallback((
-    edges: { source: string; target: string }[],
-    centerNodeId: string
-  ) => {
-    const levels = new Map<string, number>();
-    const visited = new Set<string>();
+  const calculateNodeLevels = useCallback(
+    (edges: { source: string; target: string }[], centerNodeId: string) => {
+      const levels = new Map<string, number>();
+      const visited = new Set<string>();
 
-    // 중심 노드는 레벨 0
-    levels.set(centerNodeId, 0);
-    visited.add(centerNodeId);
+      // 중심 노드는 레벨 0
+      levels.set(centerNodeId, 0);
+      visited.add(centerNodeId);
 
-    // BFS 큐: [nodeId, level]
-    const queue: [string, number][] = [[centerNodeId, 0]];
+      // BFS 큐: [nodeId, level]
+      const queue: [string, number][] = [[centerNodeId, 0]];
 
-    while (queue.length > 0) {
-      const [currentNode, currentLevel] = queue.shift()!;
+      while (queue.length > 0) {
+        const [currentNode, currentLevel] = queue.shift()!;
 
-      // downstream 탐색: 현재 노드에서 나가는 엣지 (오른쪽으로)
-      edges.forEach(edge => {
-        if (edge.source === currentNode && !visited.has(edge.target)) {
-          visited.add(edge.target);
-          levels.set(edge.target, currentLevel + 1);
-          queue.push([edge.target, currentLevel + 1]);
-        }
-      });
+        // downstream 탐색: 현재 노드에서 나가는 엣지 (오른쪽으로)
+        edges.forEach(edge => {
+          if (edge.source === currentNode && !visited.has(edge.target)) {
+            visited.add(edge.target);
+            levels.set(edge.target, currentLevel + 1);
+            queue.push([edge.target, currentLevel + 1]);
+          }
+        });
 
-      // upstream 탐색: 현재 노드로 들어오는 엣지 (왼쪽으로)
-      edges.forEach(edge => {
-        if (edge.target === currentNode && !visited.has(edge.source)) {
-          visited.add(edge.source);
-          levels.set(edge.source, currentLevel - 1);
-          queue.push([edge.source, currentLevel - 1]);
-        }
-      });
-    }
+        // upstream 탐색: 현재 노드로 들어오는 엣지 (왼쪽으로)
+        edges.forEach(edge => {
+          if (edge.target === currentNode && !visited.has(edge.source)) {
+            visited.add(edge.source);
+            levels.set(edge.source, currentLevel - 1);
+            queue.push([edge.source, currentLevel - 1]);
+          }
+        });
+      }
 
-    return levels;
-  }, []);
+      return levels;
+    },
+    [],
+  );
 
   // 그래프 데이터를 ReactFlow 노드/엣지로 변환
   const convertToFlowElements = useCallback(
@@ -125,7 +120,7 @@ const ComponentDependencyGraph = ({
 
       // 레벨이 계산된 노드만 = 실제로 연결된 노드만
       const connectedNodes = graph.nodes.filter(node =>
-        nodeLevels.has(node.id)
+        nodeLevels.has(node.id),
       );
 
       // 레벨별로 노드 그룹화
@@ -138,16 +133,31 @@ const ComponentDependencyGraph = ({
         nodesByLevel.get(level)!.push(node);
       });
 
-      console.log('=== 그래프 디버깅 ===');
-      console.log('전체 노드 수:', graph.nodes.length);
-      console.log('연결된 노드 수:', connectedNodes.length);
-      console.log('중심 컴포넌트:', component.name, `(ID: ${component.id})`);
-      console.log('노드별 레벨:');
+      console.log('=== 그래프 렌더링 ===');
+      console.log('전체 컴포넌트:', graph.nodes.length);
+      console.log('연결된 컴포넌트:', connectedNodes.length);
+      console.log('중심:', component.name, `(ID: ${component.id})`);
+
+      const levelGroups = new Map<number, string[]>();
       connectedNodes.forEach(node => {
-        const level = nodeLevels.get(node.id);
-        const direction = level === 0 ? '중심' : level! < 0 ? `← upstream (${Math.abs(level!)})` : `downstream (${level}) →`;
-        console.log(`  - ${node.name}: ${direction}`);
+        const level = nodeLevels.get(node.id)!;
+        if (!levelGroups.has(level)) {
+          levelGroups.set(level, []);
+        }
+        levelGroups.get(level)!.push(node.name);
       });
+
+      Array.from(levelGroups.keys())
+        .sort((a, b) => a - b)
+        .forEach(level => {
+          const direction =
+            level === 0
+              ? '[중심]'
+              : level < 0
+                ? `[Upstream -${Math.abs(level)}]`
+                : `[Downstream +${level}]`;
+          console.log(`${direction}:`, levelGroups.get(level)!.join(', '));
+        });
 
       // 레이아웃 설정
       const centerX = 600;
@@ -166,14 +176,13 @@ const ComponentDependencyGraph = ({
         const totalAtLevel = nodesAtLevel.length;
 
         const xPosition = centerX + level * horizontalGap;
-        const yPosition = centerY - (totalAtLevel - 1) * verticalGap / 2 + indexAtLevel * verticalGap;
+        const yPosition =
+          centerY -
+          ((totalAtLevel - 1) * verticalGap) / 2 +
+          indexAtLevel * verticalGap;
 
-        // 상세 정보는 일단 null (나중에 개선 가능)
-        const detailInfo = {
-          callCount: 0,
-          errorCount: 0,
-          averageResponseTime: 0,
-        };
+        // metrics 정보 가져오기
+        const metrics = graphNode.metrics;
 
         return {
           id: graphNode.id,
@@ -194,7 +203,7 @@ const ComponentDependencyGraph = ({
                 <div className="px-4 pt-4 pb-3">
                   {/* 노드 이름 */}
                   <div
-                    className="mb-1.5 font-semibold text-sm leading-tight"
+                    className="mb-1.5 text-sm leading-tight font-semibold"
                     style={{ color: color.text }}
                   >
                     {graphNode.name}
@@ -202,7 +211,7 @@ const ComponentDependencyGraph = ({
                   {/* 레이어 배지 */}
                   <div className="mb-3">
                     <span
-                      className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide"
+                      className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium tracking-wide uppercase"
                       style={{
                         backgroundColor: `${color.accent}20`,
                         color: color.accent,
@@ -212,7 +221,7 @@ const ComponentDependencyGraph = ({
                     </span>
                   </div>
                   {/* 상세 정보 */}
-                  {detailInfo && (
+                  {metrics && (
                     <div
                       className="space-y-1.5 border-t pt-2.5 text-xs"
                       style={{
@@ -226,7 +235,7 @@ const ComponentDependencyGraph = ({
                           Calls
                         </span>
                         <span className="font-semibold tabular-nums">
-                          {detailInfo.callCount.toLocaleString()}
+                          {metrics.callCount.toLocaleString()}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -234,17 +243,17 @@ const ComponentDependencyGraph = ({
                           <span className="h-1.5 w-1.5 rounded-full bg-red-400"></span>
                           Errors
                         </span>
-                        <span className="font-semibold tabular-nums text-red-400">
-                          {detailInfo.errorCount}
+                        <span className="font-semibold text-red-400 tabular-nums">
+                          {metrics.errorCount}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-green-400"></span>
-                          Avg
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+                          Warns
                         </span>
-                        <span className="font-semibold tabular-nums">
-                          {detailInfo.averageResponseTime}ms
+                        <span className="font-semibold text-amber-400 tabular-nums">
+                          {metrics.warnCount}
                         </span>
                       </div>
                     </div>
@@ -274,14 +283,17 @@ const ComponentDependencyGraph = ({
 
       // 연결된 노드 사이의 엣지만 필터링
       const connectedNodeIdSet = new Set(connectedNodes.map(n => n.id));
-      const filteredEdges = graph.edges.filter(edge =>
-        connectedNodeIdSet.has(edge.source) && connectedNodeIdSet.has(edge.target)
+      const filteredEdges = graph.edges.filter(
+        edge =>
+          connectedNodeIdSet.has(edge.source) &&
+          connectedNodeIdSet.has(edge.target),
       );
 
       // 엣지 변환
       const flowEdges: Edge[] = filteredEdges.map((edge, index) => {
         // 중심 노드와 직접 연결된 엣지인지 확인
-        const isDirectEdge = edge.source === component.id || edge.target === component.id;
+        const isDirectEdge =
+          edge.source === component.id || edge.target === component.id;
 
         return {
           id: `edge-${index}`,
@@ -306,7 +318,6 @@ const ComponentDependencyGraph = ({
     },
     [calculateNodeLevels],
   );
-
 
   // 데이터가 변경될 때 노드와 엣지 업데이트
   useEffect(() => {

@@ -108,76 +108,18 @@ export const getComponentDependencies = async (
     throw new Error('Center component not found');
   }
 
-  // 그래프를 기반으로 upstream과 downstream 분류
-  const upstreamIds = new Set<number>();
-  const downstreamIds = new Set<number>();
+  console.log('=== API 응답 데이터 ===');
+  console.log('컴포넌트 수:', data.components.length);
+  console.log('엣지 수:', data.graph.edges.length);
+  console.log('엣지:', data.graph.edges);
 
-  data.graph.edges.forEach(edge => {
-    if (edge.to === componentId) {
-      upstreamIds.add(edge.from);
-    }
-    if (edge.from === componentId) {
-      downstreamIds.add(edge.to);
-    }
-  });
-
-  // upstream과 downstream을 DependencyNode 형식으로 변환
-  const upstream = Array.from(upstreamIds)
-    .map(id => {
-      const comp = data.components.find(c => c.id === id);
-      if (!comp) return null;
-      return {
-        id: comp.id.toString(),
-        name: comp.name,
-        type: comp.type,
-        layer: comp.layer,
-        relationship: 'METHOD_CALL' as const,
-        callCount: comp.metrics?.callCount || 0,
-        errorCount: comp.metrics?.errorCount || 0,
-        averageResponseTime: 0,
-      };
-    })
-    .filter((node): node is NonNullable<typeof node> => node !== null);
-
-  // downstream을 재귀적으로 구성
-  const buildDownstreamTree = (nodeId: number, visited = new Set<number>()) => {
-    if (visited.has(nodeId)) return null;
-    visited.add(nodeId);
-
-    const comp = data.components.find(c => c.id === nodeId);
-    if (!comp) return null;
-
-    const childIds = data.graph.edges
-      .filter(edge => edge.from === nodeId)
-      .map(edge => edge.to);
-
-    const children = childIds
-      .map(childId => buildDownstreamTree(childId, visited))
-      .filter((node): node is NonNullable<typeof node> => node !== null);
-
-    return {
-      id: comp.id.toString(),
-      name: comp.name,
-      type: comp.type,
-      layer: comp.layer,
-      relationship: 'METHOD_CALL' as const,
-      callCount: comp.metrics?.callCount || 0,
-      errorCount: comp.metrics?.errorCount || 0,
-      averageResponseTime: 0,
-      children: children.length > 0 ? children : undefined,
-    };
-  };
-
-  const downstream = Array.from(downstreamIds)
-    .map(id => buildDownstreamTree(id))
-    .filter((node): node is NonNullable<typeof node> => node !== null);
-
-  // GraphNode와 GraphEdge 변환
+  // 간단하게 변환: GraphNode와 GraphEdge만 생성 (metrics 포함)
   const nodes: GraphNode[] = data.components.map(comp => ({
     id: comp.id.toString(),
     name: comp.name,
     type: comp.type,
     layer: comp.layer,
+    metrics: comp.metrics,
   }));
 
   const edges: GraphEdge[] = data.graph.edges.map(edge => ({
@@ -187,8 +129,16 @@ export const getComponentDependencies = async (
     relationship: 'METHOD_CALL' as const,
   }));
 
+  // upstream/downstream 계산 (단순화)
+  const upstreamCount = data.graph.edges.filter(
+    e => e.to === componentId,
+  ).length;
+  const downstreamCount = data.graph.edges.filter(
+    e => e.from === componentId,
+  ).length;
+
   return {
-    projectId: '1', // projectId는 응답에 없으므로 임시값
+    projectId: '1',
     component: {
       id: centerComponent.id.toString(),
       name: centerComponent.name,
@@ -197,17 +147,17 @@ export const getComponentDependencies = async (
       packageName: centerComponent.packageName,
       technology: centerComponent.technology,
     },
-    upstream,
-    downstream,
+    upstream: [], // 더미 데이터 (그래프 렌더링에서는 안 씀)
+    downstream: [], // 더미 데이터
     graph: {
       nodes,
       edges,
     },
     summary: {
-      upstreamCount: upstream.length,
-      downstreamCount: downstream.length,
-      totalDependencies: data.graphSummary.totalComponents - 1, // 중심 컴포넌트 제외
-      maxDepth: 0, // 백엔드에서 제공하지 않음
+      upstreamCount,
+      downstreamCount,
+      totalDependencies: data.graphSummary.totalComponents - 1,
+      maxDepth: 0,
       totalCalls: data.graphSummary.totalCalls,
       totalErrors: data.graphSummary.totalErrors,
       overallErrorRate: data.graphSummary.averageErrorRate,
