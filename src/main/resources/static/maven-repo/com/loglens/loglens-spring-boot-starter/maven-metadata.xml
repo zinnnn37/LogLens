@@ -3,13 +3,14 @@
   <groupId>com.loglens</groupId>
   <artifactId>loglens-spring-boot-starter</artifactId>
   <versioning>
-    <latest>1.1.1-SNAPSHOT</latest>
+    <latest>1.1.2-SNAPSHOT</latest>
     <release>1.1.0</release>
     <versions>
       <version>1.1.0</version>
       <version>1.1.0-SNAPSHOT</version>
       <version>1.1.1-SNAPSHOT</version>
+      <version>1.1.2-SNAPSHOT</version>
     </versions>
-    <lastUpdated>20251107073836</lastUpdated>
+    <lastUpdated>20251110003333</lastUpdated>
   </versioning>
 </metadata>
