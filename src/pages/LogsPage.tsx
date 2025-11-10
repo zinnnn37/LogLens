@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { searchLogs } from '@/services/logService';
+import { createJiraIssue } from '@/services/jiraService';
 import type { LogData, LogSearchParams } from '@/types/log';
 
 import { useParams } from 'react-router-dom';
@@ -146,7 +147,7 @@ const LogsPage = () => {
             if (actuallyNewLogs.length === 0) {
               return prevLogs;
             }
-            return [...actuallyNewLogs, ...prevLogs]; // '위에' 쌓기
+            return [...actuallyNewLogs, ...prevLogs];
           });
         }
       } catch (error) {
@@ -174,7 +175,8 @@ const LogsPage = () => {
   const handleDownloadCSV = () => {
     if (logs.length === 0) {
       toast.warning('다운로드할 로그 데이터가 없습니다.', {
-        description: '현재 화면에 조회된 로그가 0개입니다. 로그 검색 후 시도해주세요.',
+        description:
+          '현재 화면에 조회된 로그가 0개입니다. 로그 검색 후 시도해주세요.',
         icon: <Download className="h-4 w-4 text-orange-500" />,
         duration: 3000,
       });
@@ -281,16 +283,25 @@ const LogsPage = () => {
   /**
    * 발행하기 버튼
    */
-  const handleSubmitJira = (formData: JiraTicketFormData) => {
-    console.log(
-      'Jira Ticket Submitted:',
-      formData,
-      'for log:',
-      selectedLog?.logId,
-    );
-    // TODO: 실제 Jira 티켓 발행 API 호출
-    alert('이쁜 alert 로 수정 예정입니다.');
-    setIsModalOpen(false);
+  const handleSubmitJira = async (formData: JiraTicketFormData) => {
+    if (!projectUuid || !selectedLog?.logId) {
+      toast.error('프로젝트 정보나 로그 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    try {
+      await createJiraIssue({
+        projectUuid: projectUuid,
+        logId: selectedLog.logId,
+        ...formData,
+      });
+
+      toast.success('Jira 이슈가 성공적으로 발행되었습니다!');
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error('Jira 이슈 발행 실패:', error);
+      toast.error('Jira 이슈 발행에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    }
   };
 
   return (

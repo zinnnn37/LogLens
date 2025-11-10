@@ -1,4 +1,5 @@
 // src/components/modal/LogDetailModal2.tsx
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +12,14 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { LogData } from '@/types/log';
+import type { JiraIssueType, JiraIssuePriority } from '@/types/jira';
+
+export interface JiraTicketFormData {
+  summary: string;
+  description: string;
+  issueType: JiraIssueType;
+  priority: JiraIssuePriority;
+}
 
 export interface LogDetailModal2Props {
   log: LogData;
@@ -18,31 +27,23 @@ export interface LogDetailModal2Props {
   onSubmit: (formData: JiraTicketFormData) => void;
 }
 
-export interface JiraTicketFormData {
-  issueType: string;
-  priority: string;
-}
-
 // 이슈 타입
-const JIRA_ISSUE_TYPES = [
-  { value: 'bug', label: '버그 (Bug)' },
-  { value: 'task', label: '태스크 (Task)' },
-  { value: 'story', label: '스토리 (Story)' },
-  { value: 'epic', label: '에픽 (Epic)' },
+const JIRA_ISSUE_TYPES: { value: JiraIssueType; label: string }[] = [
+  { value: 'Bug', label: '버그 (Bug)' },
+  { value: 'Task', label: '태스크 (Task)' },
+  { value: 'Story', label: '스토리 (Story)' },
+  { value: 'Epic', label: '에픽 (Epic)' },
 ];
 
-// 우선순위
-const JIRA_PRIORITIES = [
-  { value: 'highest', label: 'Highest' },
-  { value: 'high', label: 'High' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'low', label: 'Low' },
-  { value: 'lowest', label: 'Lowest' },
+// 우선 순위
+const JIRA_PRIORITIES: { value: JiraIssuePriority; label: string }[] = [
+  { value: 'Highest', label: 'Highest' },
+  { value: 'High', label: 'High' },
+  { value: 'Medium', label: 'Medium' },
+  { value: 'Low', label: 'Low' },
+  { value: 'Lowest', label: 'Lowest' },
 ];
 
-/**
- * 폼 섹션 래퍼
- */
 const FormSection = ({
   label,
   htmlFor,
@@ -60,64 +61,71 @@ const FormSection = ({
   </div>
 );
 
-/**
- * Jira 티켓 발행 모달
- */
 const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
+  // 폼 상태 관리
+  const [summary, setSummary] = useState(
+    `[${log.logLevel}] ${log.message.substring(0, 50)}...`
+  );
+  const [description, setDescription] = useState(
+    `[로그 상세 정보]\n- TraceID: ${log.traceId}\n- Level: ${log.logLevel
+    }\n- System: ${log.sourceType}\n- Date: ${new Date(
+      log.timestamp
+    ).toLocaleString()}\n\n[Message]\n${log.message}`
+  );
+  const [issueType, setIssueType] = useState<JiraIssueType>('Bug');
+  const [priority, setPriority] = useState<JiraIssuePriority>('Medium');
+
   const handleSubmit = () => {
-    //  TODO : 수정예정
     const formData: JiraTicketFormData = {
-      issueType: 'bug',
-      priority: 'medium',
+      summary,
+      description,
+      issueType,
+      priority,
     };
     onSubmit(formData);
   };
 
   return (
     <div className="flex flex-col space-y-6">
-      {/* 헤더 */}
       <div className="border-b pb-4">
-        <h2 className="text-lg font-semibold">{log.traceId} Jira 티켓 발행</h2>
+        <h2 className="text-lg font-semibold">
+          {log.traceId} Jira 티켓 발행
+        </h2>
         <p className="text-sm text-gray-500">{new Date().toLocaleString()}</p>
       </div>
 
-      {/* 입력 폼 */}
       <div className="space-y-4">
-        {/* 제목 */}
         <FormSection label="제목" htmlFor="jira-title">
           <Input
             id="jira-title"
-            placeholder="자동으로 생성됨"
+            placeholder="이슈 제목을 입력하세요"
             className="font-mono"
-            defaultValue={`[${log.logLevel}] ${log.message.substring(0, 50)}...`}
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
           />
         </FormSection>
 
-        {/* 설명 */}
         <FormSection label="설명" htmlFor="jira-desc">
           <Textarea
             id="jira-desc"
-            placeholder="자동으로 생성됨"
-            rows={4}
-            className="font-mono"
-            defaultValue={`[로그 상세 정보]\n- TraceID: ${
-              log.traceId
-            }\n- Level: ${log.logLevel}\n- System: ${
-              log.sourceType
-            }\n- Date: ${new Date(
-              log.timestamp,
-            ).toLocaleString()}\n\n[Message]\n${log.message}`}
+            placeholder="이슈 설명을 입력하세요"
+            rows={10}
+            className="font-mono resize-none"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
           />
         </FormSection>
 
-        {/* 이슈타입 */}
         <FormSection label="이슈타입" htmlFor="jira-issue-type">
-          <Select defaultValue="bug">
+          <Select
+            value={issueType}
+            onValueChange={(val) => setIssueType(val as JiraIssueType)}
+          >
             <SelectTrigger id="jira-issue-type">
               <SelectValue placeholder="선택..." />
             </SelectTrigger>
             <SelectContent>
-              {JIRA_ISSUE_TYPES.map(type => (
+              {JIRA_ISSUE_TYPES.map((type) => (
                 <SelectItem key={type.value} value={type.value}>
                   {type.label}
                 </SelectItem>
@@ -126,14 +134,16 @@ const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
           </Select>
         </FormSection>
 
-        {/* 우선순위 (원본과 동일) */}
         <FormSection label="우선순위" htmlFor="jira-priority">
-          <Select defaultValue="medium">
+          <Select
+            value={priority}
+            onValueChange={(val) => setPriority(val as JiraIssuePriority)}
+          >
             <SelectTrigger id="jira-priority">
               <SelectValue placeholder="선택..." />
             </SelectTrigger>
             <SelectContent>
-              {JIRA_PRIORITIES.map(p => (
+              {JIRA_PRIORITIES.map((p) => (
                 <SelectItem key={p.value} value={p.value}>
                   {p.label}
                 </SelectItem>
@@ -143,12 +153,16 @@ const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
         </FormSection>
       </div>
 
-      {/* 푸터 */}
       <div className="flex justify-end space-x-2 pt-4">
         <Button variant="outline" onClick={onGoBack}>
           이전
         </Button>
-        <Button onClick={handleSubmit}>발행하기</Button>
+        <Button
+          onClick={handleSubmit}
+          className="bg-[#0052CC] hover:bg-[#0747A6]"
+        >
+          발행하기
+        </Button>
       </div>
     </div>
   );
