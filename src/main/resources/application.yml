@@ -95,5 +95,5 @@ opensearch:
 # ===================================================================
 ai:
   service:
-    base-url: ${AI_SERVICE_URL}
+    base-url: ${AI_SERVICE_URL:https://ai.loglens.store}
     timeout: 30000                 # AI 분석 타임아웃 (30초, LLM 처리 시간 고려)

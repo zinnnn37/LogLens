@@ -112,11 +112,108 @@ public class LogRepositoryImpl implements LogRepository {
     @Override
     public TraceLogSearchResult findByTraceId(String projectUuid, LogSearchRequest request) {
         log.debug("{} OpenSearch에서 Trace ID 기반 로그 조회 시작: projectUuid={}, request={}", LOG_PREFIX, projectUuid, request);
+
         // 1. 검색 쿼리 생성
         Query query = buildSearchQuery(projectUuid, request);
 
         // 2. SearchRequest 빌드 (Aggregation 포함)
         SearchRequest searchRequest = buildTraceSearchRequest(projectUuid, query);
+
+        // ============================================================
+        // 🔍 상세 디버깅 로그 시작
+        // ============================================================
+        log.debug("{} ============================================", LOG_PREFIX);
+        log.debug("{} Trace ID 검색 상세 디버깅 정보", LOG_PREFIX);
+        log.debug("{} ============================================", LOG_PREFIX);
+        log.debug("{} [기본 정보]", LOG_PREFIX);
+        log.debug("{}   - 인덱스 패턴: {}", LOG_PREFIX, getProjectIndexPattern(projectUuid));
+        log.debug("{}   - Project UUID (원본): {}", LOG_PREFIX, projectUuid);
+        log.debug("{}   - Project UUID (변환): {}", LOG_PREFIX, projectUuid.replace("-", "_"));
+        log.debug("{}   - Trace ID: {}", LOG_PREFIX, request.getTraceId());
+        log.debug("{}   - 시작 시간: {}", LOG_PREFIX, request.getStartTime());
+        log.debug("{}   - 종료 시간: {}", LOG_PREFIX, request.getEndTime());
+        log.debug("{}   - 키워드: {}", LOG_PREFIX, request.getKeyword());
+
+        log.debug("{} [SearchRequest 정보]", LOG_PREFIX);
+        log.debug("{}   - 인덱스: {}", LOG_PREFIX, searchRequest.index());
+        log.debug("{}   - Size: {}", LOG_PREFIX, searchRequest.size());
+        log.debug("{}   - Sort: {}", LOG_PREFIX, searchRequest.sort());
+
+        log.debug("{} [OpenSearchField 필드명]", LOG_PREFIX);
+        log.debug("{}   - PROJECT_UUID_KEYWORD: {}", LOG_PREFIX, OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName());
+        log.debug("{}   - TRACE_ID: {}", LOG_PREFIX, OpenSearchField.TRACE_ID.getFieldName());
+        log.debug("{}   - LOG_LEVEL: {}", LOG_PREFIX, OpenSearchField.LOG_LEVEL.getFieldName());
+        log.debug("{}   - SOURCE_TYPE: {}", LOG_PREFIX, OpenSearchField.SOURCE_TYPE.getFieldName());
+
+        // Query 상세 분석
+        if (query.isBool()) {
+            BoolQuery boolQuery = query.bool();
+            log.debug("{} [Bool Query 구조]", LOG_PREFIX);
+            log.debug("{}   - Filter 개수: {}", LOG_PREFIX, boolQuery.filter().size());
+            log.debug("{}   - Must 개수: {}", LOG_PREFIX, boolQuery.must().size());
+            log.debug("{}   - Should 개수: {}", LOG_PREFIX, boolQuery.should().size());
+            log.debug("{}   - MustNot 개수: {}", LOG_PREFIX, boolQuery.mustNot().size());
+
+            // 각 필터 상세 출력
+            for (int i = 0; i < boolQuery.filter().size(); i++) {
+                Query filter = boolQuery.filter().get(i);
+                log.debug("{} [Filter[{}]]", LOG_PREFIX, i);
+                log.debug("{}   - Type: term={}, terms={}, range={}, match={}",
+                        LOG_PREFIX, filter.isTerm(), filter.isTerms(), filter.isRange(), filter.isMatch());
+
+                if (filter.isTerm()) {
+                    String field = filter.term().field();
+                    FieldValue fieldValue = filter.term().value();
+                    log.debug("{}   - Term Field: {}", LOG_PREFIX, field);
+
+                    String value = null;
+                    if (fieldValue.isString()) {
+                        value = fieldValue.stringValue();
+                    } else if (fieldValue.isLong()) {
+                        value = String.valueOf(fieldValue.longValue());
+                    } else if (fieldValue.isDouble()) {
+                        value = String.valueOf(fieldValue.doubleValue());
+                    } else if (fieldValue.isBoolean()) {
+                        value = String.valueOf(fieldValue.booleanValue());
+                    }
+                    log.debug("{}   - Term Value: {}", LOG_PREFIX, value);
+                }
+
+                if (filter.isTerms()) {
+                    log.debug("{}   - Terms Field: {}", LOG_PREFIX, filter.terms().field());
+                    log.debug("{}   - Terms Values: {}", LOG_PREFIX, filter.terms().terms());
+                }
+
+                if (filter.isRange()) {
+                    log.debug("{}   - Range Field: {}", LOG_PREFIX, filter.range().field());
+                    log.debug("{}   - Range GTE: {}", LOG_PREFIX, filter.range().gte());
+                    log.debug("{}   - Range LTE: {}", LOG_PREFIX, filter.range().lte());
+                }
+
+                if (filter.isMatch()) {
+                    log.debug("{}   - Match Field: {}", LOG_PREFIX, filter.match().field());
+                    log.debug("{}   - Match Query: {}", LOG_PREFIX, filter.match().query());
+                }
+            }
+
+            // Must 쿼리 출력
+            for (int i = 0; i < boolQuery.must().size(); i++) {
+                Query must = boolQuery.must().get(i);
+                log.debug("{} [Must[{}]]", LOG_PREFIX, i);
+                log.debug("{}   - Type: term={}, terms={}, range={}, match={}",
+                        LOG_PREFIX, must.isTerm(), must.isTerms(), must.isRange(), must.isMatch());
+
+                if (must.isMatch()) {
+                    log.debug("{}   - Match Field: {}", LOG_PREFIX, must.match().field());
+                    log.debug("{}   - Match Query: {}", LOG_PREFIX, must.match().query());
+                }
+            }
+        }
+
+        log.debug("{} ============================================", LOG_PREFIX);
+        // ============================================================
+        // 🔍 상세 디버깅 로그 끝
+        // ============================================================
 
         // 3. OpenSearch 쿼리 실행
         try {
@@ -133,6 +230,10 @@ public class LogRepositoryImpl implements LogRepository {
             return result;
         } catch (IOException e) {
             log.error("{} OpenSearch findByTraceId 중 에러 발생", LOG_PREFIX, e);
+            log.error("{} 에러 상세: {}", LOG_PREFIX, e.getMessage());
+            if (e.getCause() != null) {
+                log.error("{} 에러 원인: {}", LOG_PREFIX, e.getCause().getMessage());
+            }
             throw new BusinessException(GlobalErrorCode.OPENSEARCH_OPERATION_FAILED, null, e);
         }
     }
@@ -148,7 +249,7 @@ public class LogRepositoryImpl implements LogRepository {
                             .field(OpenSearchField.LOG_ID.getFieldName())
                             .value(FieldValue.of(logId))))
                     .filter(f -> f.term(t -> t
-                            .field(OpenSearchField.PROJECT_UUID.getFieldName())
+                            .field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
                             .value(FieldValue.of(projectUuid))))));
 
             SearchRequest searchRequest = new SearchRequest.Builder()
@@ -187,7 +288,7 @@ public class LogRepositoryImpl implements LogRepository {
         try {
             SearchRequest searchRequest = new SearchRequest.Builder()
                     .index(getProjectIndexPattern(projectUuid))
-                    .query(q -> q.term(t -> t.field(OpenSearchField.PROJECT_UUID.getFieldName())
+                    .query(q -> q.term(t -> t.field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
                             .value(FieldValue.of(projectUuid))))
                     .size(1)
                     .build();
@@ -474,7 +575,7 @@ public class LogRepositoryImpl implements LogRepository {
      */
     private void addProjectFilter(BoolQuery.Builder builder, String projectUuid) {
         builder.filter(q -> q.term(
-                t -> t.field(OpenSearchField.PROJECT_UUID.getFieldName()).value(FieldValue.of(projectUuid))));
+                t -> t.field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName()).value(FieldValue.of(projectUuid))));
     }
 
     /**

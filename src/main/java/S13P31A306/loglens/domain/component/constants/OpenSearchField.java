@@ -11,28 +11,28 @@ import lombok.RequiredArgsConstructor;
 public enum OpenSearchField {
 
     // ──────────────── 트레이싱 / 식별자 ────────────────
-    TRACE_ID("trace_id"),
-    PROJECT_UUID("project_uuid.keyword"),
+    TRACE_ID("trace_id.keyword"),
+    PROJECT_UUID("project_uuid"),
+    PROJECT_UUID_KEYWORD("project_uuid.keyword"),
     LOG_ID("log_id"),
 
     // ──────────────── 컨텍스트 / 메타데이터 ────────────────
-    COMPONENT_NAME("component_name"),
-    SERVICE_NAME("service_name"),
-    SOURCE_TYPE("source_type"),
-    LAYER("layer"),
-    LOGGER("logger"),
+    COMPONENT_NAME("component_name.keyword"),
+    SERVICE_NAME("service_name.keyword"),
+    SOURCE_TYPE("source_type.keyword"),  // keyword 서브필드 사용
+    LOGGER("logger.keyword"),
 
     // ──────────────── 로그 레벨 및 내용 ────────────────
-    LOG_LEVEL("log_level"),
-    LEVEL("level"),
+    LOG_LEVEL("log_level.keyword"),  // keyword 서브필드 사용
+    LEVEL("level.keyword"),
     MESSAGE("message"),
     MESSAGE_KEYWORD("message.keyword"),
     COMMENT("comment"),
 
     // ──────────────── 클래스 / 메서드 / 스레드 ────────────────
-    CLASS_NAME("class_name"),
-    METHOD_NAME("method_name"),
-    THREAD_NAME("thread_name"),
+    CLASS_NAME("class_name.keyword"),
+    METHOD_NAME("method_name.keyword"),
+    THREAD_NAME("thread_name.keyword"),
 
     // ──────────────── 시간 관련 ────────────────
     TIMESTAMP("timestamp"),
@@ -50,9 +50,16 @@ public enum OpenSearchField {
 
     // ──────────────── 상세 로그 (log_details 내부 필드) ────────────────
     LOG_DETAILS("log_details"),
+    EXCEPTION_TYPE("log_details.exception_type"),
+    EXECUTION_TIME("log_details.execution_time"),
     RESPONSE_STATUS("log_details.response_status"),
     HTTP_METHOD("log_details.http_method"),
-    REQUEST_URI("log_details.request_uri");
+    REQUEST_URI("log_details.request_uri"),
+    REQUEST_BODY("log_details.request_body"),
+    RESPONSE_BODY("log_details.response_body"),
+    LOG_DETAILS_CLASS_NAME("log_details.class_name"),
+    LOG_DETAILS_METHOD_NAME("log_details.method_name"),
+    LOG_DETAILS_STACKTRACE("log_details.stacktrace");
 
     private final String fieldName;
 }
