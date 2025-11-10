@@ -61,7 +61,6 @@ export interface JiraConnectionStatusData {
   jiraProjectKey: string;
 }
 
-
 // 지라 이슈 생성
 
 export type JiraIssueType = 'Bug' | 'Task' | 'Story' | 'Epic';
