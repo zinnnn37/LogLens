@@ -34,6 +34,9 @@ export const API_PATH = {
 // 대시보드 통계 개요 조회
 STATISTICS_OVERVIEW: '/api/statistics/overview',
 
+// API 호출 통계 조회
+STATISTICS_API_CALLS: '/api/statistics/api-calls',
+
 
 
 
