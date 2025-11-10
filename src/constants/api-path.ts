@@ -38,7 +38,7 @@ STATISTICS_OVERVIEW: '/api/statistics/overview',
 STATISTICS_API_CALLS: '/api/statistics/api-calls',
 
 // 자주 발생하는 에러 TOP N 조회
-ErrorS_TOP_N: '/api/errors/top',
+STATISTICS_ERROS_TOP: '/api/errors/top',
 
 
 

@@ -5,7 +5,8 @@ import type {
   DashboardOverviewData,
   DashboardApiStatsData,
   DashboardApiStatsParams,
-  
+  DashboardTopErrorsData,
+  DashboardTopErrorsParams,
 } from '@/types/dashboard';
 
 /**
@@ -34,3 +35,15 @@ export const getDashboardApiStats = async (
   return response;
 };
 
+/**
+ * 자주 발생하는 에러 TOP N 조회 API
+ */
+export const getDashboardTopErrors = async (
+  params: DashboardTopErrorsParams,
+): Promise<DashboardTopErrorsData> => {
+  const response = await apiClient.get<DashboardTopErrorsData>(
+    API_PATH.STATISTICS_ERROS_TOP, // 또는 STATISTICS_TOP_ERRORS (이름 변경 시)
+    params,
+  );
+  return response;
+};
