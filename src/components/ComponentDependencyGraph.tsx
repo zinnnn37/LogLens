@@ -289,7 +289,7 @@ const ComponentDependencyGraph = ({
           connectedNodeIdSet.has(edge.target),
       );
 
-      // 엣지 변환
+      // 엣지 변환 (파란색 엣지가 항상 위에 오도록 zIndex 설정)
       const flowEdges: Edge[] = filteredEdges.map((edge, index) => {
         // 중심 노드와 직접 연결된 엣지인지 확인
         const isDirectEdge =
@@ -311,6 +311,7 @@ const ComponentDependencyGraph = ({
             width: 20,
             height: 20,
           },
+          zIndex: isDirectEdge ? 1000 : 1, // 파란색 엣지는 항상 위에
         };
       });
 
