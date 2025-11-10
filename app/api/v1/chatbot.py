@@ -2,7 +2,7 @@
 Chatbot endpoints
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Body
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage, AIMessage
 import json
@@ -168,7 +168,43 @@ logger = logging.getLogger(__name__)
         }
     }
 )
-async def ask_chatbot(request: ChatRequest):
+async def ask_chatbot(
+    request: ChatRequest = Body(
+        ...,
+        openapi_examples={
+            "simple_question": {
+                "summary": "간단한 질문 (권장) - 자동 필터 추출",
+                "description": "question만 입력하면 필터와 시간 범위가 자동으로 추출됩니다",
+                "value": {
+                    "question": "최근 1시간 동안 user-service에서 발생한 ERROR 로그 알려줘",
+                    "project_uuid": "test-project"
+                }
+            },
+            "with_history": {
+                "summary": "대화 히스토리 포함",
+                "description": "이전 대화를 참조하여 후속 질문에 답변",
+                "value": {
+                    "question": "그 중 가장 심각한 건?",
+                    "project_uuid": "test-project",
+                    "chat_history": [
+                        {"role": "user", "content": "최근 에러 알려줘"},
+                        {"role": "assistant", "content": "NPE 3건, DB 타임아웃 2건 발생했습니다"}
+                    ]
+                }
+            },
+            "advanced": {
+                "summary": "고급 사용 - 필터 직접 지정 (선택사항)",
+                "description": "자동 추출 대신 필터와 시간 범위를 직접 지정할 수 있습니다",
+                "value": {
+                    "question": "이 로그들의 패턴을 분석해줘",
+                    "project_uuid": "test-project",
+                    "filters": {"level": "ERROR", "service_name": "payment-api"},
+                    "time_range": {"start": "2024-01-15T00:00:00Z", "end": "2024-01-15T23:59:59Z"}
+                }
+            }
+        }
+    )
+):
     """RAG 기반 로그 질문 응답"""
     try:
         result = await chatbot_service.ask(
@@ -260,7 +296,44 @@ async def ask_chatbot(request: ChatRequest):
         }
     }
 )
-async def ask_chatbot_stream(request: ChatRequest, background_tasks: BackgroundTasks):
+async def ask_chatbot_stream(
+    background_tasks: BackgroundTasks,
+    request: ChatRequest = Body(
+        ...,
+        openapi_examples={
+            "simple_question": {
+                "summary": "간단한 질문 (권장) - 자동 필터 추출",
+                "description": "question만 입력하면 필터와 시간 범위가 자동으로 추출됩니다",
+                "value": {
+                    "question": "최근 1시간 동안 user-service에서 발생한 ERROR 로그 알려줘",
+                    "project_uuid": "test-project"
+                }
+            },
+            "with_history": {
+                "summary": "대화 히스토리 포함",
+                "description": "이전 대화를 참조하여 후속 질문에 답변",
+                "value": {
+                    "question": "그 중 가장 심각한 건?",
+                    "project_uuid": "test-project",
+                    "chat_history": [
+                        {"role": "user", "content": "최근 에러 알려줘"},
+                        {"role": "assistant", "content": "NPE 3건, DB 타임아웃 2건 발생했습니다"}
+                    ]
+                }
+            },
+            "advanced": {
+                "summary": "고급 사용 - 필터 직접 지정 (선택사항)",
+                "description": "자동 추출 대신 필터와 시간 범위를 직접 지정할 수 있습니다",
+                "value": {
+                    "question": "이 로그들의 패턴을 분석해줘",
+                    "project_uuid": "test-project",
+                    "filters": {"level": "ERROR", "service_name": "payment-api"},
+                    "time_range": {"start": "2024-01-15T00:00:00Z", "end": "2024-01-15T23:59:59Z"}
+                }
+            }
+        }
+    )
+):
     """RAG 기반 로그 질문 응답 (실시간 스트리밍)"""
     async def generate():
         try:
@@ -285,7 +358,8 @@ async def ask_chatbot_stream(request: ChatRequest, background_tasks: BackgroundT
                                 request.time_range,
                                 request.project_uuid
                             ):
-                                cached_answer = candidate["answer"]
+                                # 캐시된 답변 줄바꿈 이스케이프 (프론트엔드에서 \\n을 \n으로 변환)
+                                cached_answer = candidate["answer"].replace("\n", "\\n")
                                 yield f"data: {cached_answer}\n\n"
                                 yield "data: [DONE]\n\n"
                                 return
@@ -336,13 +410,19 @@ async def ask_chatbot_stream(request: ChatRequest, background_tasks: BackgroundT
                 content = chunk.content
                 full_answer += content
 
-                # SSE 형식으로 전송
-                yield f"data: {content}\n\n"
+                # 줄바꿈을 \\n으로 이스케이프 (프론트엔드에서 변환)
+                escaped_content = content.replace("\n", "\\n")
 
-            # 7. Completion signal
+                # SSE 형식으로 전송
+                yield f"data: {escaped_content}\n\n"
+
+            # 7. 전체 답변 줄바꿈 정규화 (캐싱용)
+            normalized_full_answer = chatbot_service._normalize_line_breaks(full_answer)
+
+            # 8. Completion signal
             yield "data: [DONE]\n\n"
 
-            # 8. Cache QA pair (백그라운드에서 비동기)
+            # 9. Cache QA pair (백그라운드에서 비동기, 정규화된 답변 저장)
             related_log_ids = [log["log_id"] for log in relevant_logs_data]
             ttl = chatbot_service._calculate_ttl(request.question, time_range)
 
@@ -350,7 +430,7 @@ async def ask_chatbot_stream(request: ChatRequest, background_tasks: BackgroundT
                 chatbot_service._cache_qa_pair,
                 question=request.question,
                 question_vector=question_vector,
-                answer=full_answer,
+                answer=normalized_full_answer,  # 정규화된 답변 저장
                 related_log_ids=related_log_ids,
                 metadata={
                     "project_uuid": request.project_uuid,

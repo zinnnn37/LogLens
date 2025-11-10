@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1 import router as v1_router
+from app.api.v2 import router as v2_router
 
 
 @asynccontextmanager
@@ -63,6 +64,10 @@ tags_metadata = [
     {
         "name": "chatbot",
         "description": "RAG 기반 대화형 로그 분석 - 자연어로 로그 검색 및 질문, 대화 히스토리 지원, 스트리밍 응답",
+    },
+    {
+        "name": "Chatbot V2 (Agent)",
+        "description": "ReAct Agent 기반 챗봇 - LLM이 자율적으로 도구를 선택하여 로그 분석 (시스템 통계, 에러 분석, 상세 조회 등)",
     },
 ]
 
@@ -128,6 +133,7 @@ app.add_middleware(
 
 # Include API routes
 app.include_router(v1_router, prefix="/api/v1")
+app.include_router(v2_router, prefix="/api/v2")
 
 
 @app.get("/")
@@ -138,4 +144,8 @@ async def root():
         "version": settings.APP_VERSION,
         "docs": "/docs",
         "health": "/api/v1/health",
+        "apis": {
+            "v1": "/api/v1",
+            "v2": "/api/v2 (Agent 기반)"
+        }
     }

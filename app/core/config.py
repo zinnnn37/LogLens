@@ -55,12 +55,40 @@ class Settings(BaseSettings):
     VALIDATION_MAX_RETRIES: int = 2               # 검증 실패 시 최대 재시도 횟수
     VALIDATION_ENABLE_RETRY: bool = True          # 검증 실패 시 재시도 활성화
 
+    # Agent Settings (ReAct Agent for Chatbot V2)
+    AGENT_MODEL: str = "gpt-4o-mini"              # Agent용 LLM 모델
+    AGENT_MAX_ITERATIONS: int = 5                 # 최대 도구 호출 횟수
+    AGENT_VERBOSE: bool = True                    # Agent 실행 로그 출력 (디버깅용)
+
     @property
     def cors_origins_list(self) -> list[str]:
-        """Parse CORS_ORIGINS string into list"""
-        if self.CORS_ORIGINS == "*":
+        """
+        Parse CORS_ORIGINS string into list
+
+        Supports multiple formats:
+        1. Wildcard: "*"
+        2. Comma-separated: "http://localhost:3000,http://localhost:5173"
+        3. JSON array: '["http://localhost:3000","http://localhost:5173"]'
+        """
+        origins_str = self.CORS_ORIGINS.strip()
+
+        # Handle wildcard
+        if origins_str == "*":
             return ["*"]
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+
+        # Handle JSON array format: ["url1","url2"]
+        if origins_str.startswith("[") and origins_str.endswith("]"):
+            import json
+            try:
+                parsed = json.loads(origins_str)
+                if isinstance(parsed, list):
+                    return [str(origin).strip() for origin in parsed if origin]
+            except json.JSONDecodeError:
+                # Fall through to comma-separated parsing if JSON parsing fails
+                pass
+
+        # Handle comma-separated format: url1,url2
+        return [origin.strip() for origin in origins_str.split(",") if origin.strip()]
 
     class Config:
         env_file = ".env"

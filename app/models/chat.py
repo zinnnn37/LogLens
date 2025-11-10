@@ -66,41 +66,10 @@ question에서 시간 표현을 자동으로 파싱합니다. 명시하지 않�
 
     class Config:
         json_schema_extra = {
-            "examples": [
-                {
-                    "summary": "간단한 질문 (권장) - 자동 필터 추출",
-                    "description": "question만 입력하면 필터와 시간 범위가 자동으로 추출됩니다",
-                    "value": {
-                        "question": "최근 1시간 동안 user-service에서 발생한 ERROR 로그 알려줘",
-                        "project_uuid": "test-project"
-                        # filters와 time_range는 자동으로 추출됨:
-                        # - filters: {"level": "ERROR", "service_name": "user-service"}
-                        # - time_range: 최근 1시간
-                    }
-                },
-                {
-                    "summary": "대화 히스토리 포함",
-                    "description": "이전 대화를 참조하여 후속 질문에 답변",
-                    "value": {
-                        "question": "그 중 가장 심각한 건?",
-                        "project_uuid": "test-project",
-                        "chat_history": [
-                            {"role": "user", "content": "최근 에러 알려줘"},
-                            {"role": "assistant", "content": "NPE 3건, DB 타임아웃 2건 발생했습니다"}
-                        ]
-                    }
-                },
-                {
-                    "summary": "고급 사용 - 필터 직접 지정 (선택사항)",
-                    "description": "자동 추출 대신 필터와 시간 범위를 직접 지정할 수 있습니다",
-                    "value": {
-                        "question": "이 로그들의 패턴을 분석해줘",
-                        "project_uuid": "test-project",
-                        "filters": {"level": "ERROR", "service_name": "payment-api"},
-                        "time_range": {"start": "2024-01-15T00:00:00Z", "end": "2024-01-15T23:59:59Z"}
-                    }
-                }
-            ]
+            "example": {
+                "question": "최근 1시간 동안 user-service에서 발생한 ERROR 로그 알려줘",
+                "project_uuid": "test-project"
+            }
         }
 
 

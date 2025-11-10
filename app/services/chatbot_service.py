@@ -108,8 +108,11 @@ class ChatbotService:
                             project_uuid
                         )
 
+                        # 캐시된 답변도 줄바꿈 정규화
+                        normalized_answer = self._normalize_line_breaks(cached["answer"])
+
                         return ChatResponse(
-                            answer=cached["answer"],
+                            answer=normalized_answer,
                             from_cache=True,
                             related_logs=related_logs,
                         )
@@ -146,9 +149,10 @@ class ChatbotService:
             }
         )
 
-        answer = response.content
+        # 답변 줄바꿈 정규화
+        answer = self._normalize_line_breaks(response.content)
 
-        # Step 6: Cache the QA pair with metadata
+        # Step 7: Cache the QA pair with metadata
         related_log_ids = [log["log_id"] for log in relevant_logs_data]
         ttl = self._calculate_ttl(question, time_range)
 
@@ -412,6 +416,50 @@ Log {i}:
 
         # Reverse back to chronological order
         return list(reversed(truncated))
+
+    def _normalize_line_breaks(self, text: str) -> str:
+        """
+        줄바꿈 기호 정규화 - 프론트엔드에서 일관된 렌더링을 위함
+
+        정규화 규칙:
+        1. Windows 줄바꿈(\r\n)을 Unix 형식(\n)으로 통일
+        2. 3개 이상 연속 줄바꿈을 2개로 축소 (빈 줄 최대 1개)
+        3. 목록 항목(-, *, 1., 2. 등) 앞에 줄바꿈 보장
+        4. 섹션 제목(##, ###) 앞뒤 줄바꿈 보장
+        5. 문장 끝 정리 (마침표 뒤 공백 제거)
+
+        Args:
+            text: 정규화할 텍스트
+
+        Returns:
+            정규화된 텍스트
+        """
+        if not text:
+            return text
+
+        # 1. Windows 줄바꿈을 Unix로 통일
+        text = text.replace('\r\n', '\n')
+
+        # 2. 3개 이상 연속 줄바꿈을 2개로 축소
+        text = re.sub(r'\n{3,}', '\n\n', text)
+
+        # 3. 목록 항목 앞에 줄바꿈 보장 (이미 줄바꿈이 있으면 추가 안 함)
+        # - 순서 없는 목록: "- ", "* "
+        # - 순서 있는 목록: "1. ", "2. " 등
+        text = re.sub(r'([^\n])\n([-*]\s)', r'\1\n\n\2', text)  # 목록 앞 빈 줄 추가
+        text = re.sub(r'([^\n])\n(\d+\.\s)', r'\1\n\n\2', text)  # 숫자 목록 앞 빈 줄 추가
+
+        # 4. 마크다운 섹션 제목(##, ###) 앞뒤 줄바꿈 보장
+        text = re.sub(r'([^\n])(#{2,3}\s)', r'\1\n\n\2', text)  # 제목 앞 빈 줄
+        text = re.sub(r'(#{2,3}[^\n]+)\n([^\n])', r'\1\n\n\2', text)  # 제목 뒤 빈 줄
+
+        # 5. 다시 3개 이상 줄바꿈 제거 (위 과정에서 생긴 중복 제거)
+        text = re.sub(r'\n{3,}', '\n\n', text)
+
+        # 6. 앞뒤 공백 제거
+        text = text.strip()
+
+        return text
 
 
 # Global instance
