@@ -23,20 +23,18 @@ import static S13P31A306.loglens.domain.component.constants.ComponentSuccessCode
 @RequiredArgsConstructor
 public class ComponentController {
     private final ComponentService componentService;
-    private final ComponentMapper componentMapper;
 
     @PostMapping("/batch")
     public ResponseEntity<BaseResponse> createComponentsBatch(
             @Valid @RequestBody ComponentBatchRequest request,
-            HttpServletRequest httpRequest) {  // ✅ 추가
+            HttpServletRequest httpRequest) {
 
-        // ✅ ApiKeyFilter에서 설정한 projectId 가져오기
         Integer projectId = (Integer) httpRequest.getAttribute("projectId");
 
         log.info("📥 컴포넌트 배치 저장 요청: 개수={}, projectId={}",
                 request.components().size(), projectId);
 
-        componentService.saveAll(request, projectId);  // ✅ projectId 전달
+        componentService.saveAll(request, projectId);
 
         return ApiResponseFactory.success(COMPONENTS_BATCH_CREATED);
     }

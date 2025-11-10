@@ -764,16 +764,6 @@ public interface DashboardApi {
     );
 
     /**
-     * 트레이스 플로우 조회
-     *
-     * @param traceId 트레이스 ID
-     * @return 로그 호출 흐름 (시간순 정렬된 컴포넌트 호출 체인)
-     */
-    ResponseEntity<? extends BaseResponse> getTraceFlow(
-            @PathVariable String traceId
-    );
-
-    /**
      * 알림 피드 조회
      *
      * @param projectUuid 프로젝트 UUID
