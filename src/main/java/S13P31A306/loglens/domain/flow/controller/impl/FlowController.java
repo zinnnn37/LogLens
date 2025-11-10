@@ -2,6 +2,7 @@ package S13P31A306.loglens.domain.flow.controller.impl;
 
 import S13P31A306.loglens.domain.flow.constants.FlowSuccessCode;
 import S13P31A306.loglens.domain.flow.controller.FlowApi;
+import S13P31A306.loglens.domain.flow.dto.response.TraceFlowResponse;
 import S13P31A306.loglens.domain.flow.dto.response.TraceLogsResponse;
 import S13P31A306.loglens.domain.flow.service.FlowService;
 import S13P31A306.loglens.global.annotation.ValidUuid;
@@ -26,5 +27,15 @@ public class FlowController implements FlowApi {
     ) {
         TraceLogsResponse response = flowService.getTraceLogsById(traceId, projectUuid);
         return ApiResponseFactory.success(FlowSuccessCode.TRACE_LOGS_RETRIEVED, response);
+    }
+
+    @Override
+    @GetMapping("/{traceId}/flow")
+    public ResponseEntity<? extends BaseResponse> getTraceFlow(
+            @PathVariable String traceId,
+            @ValidUuid @RequestParam String projectUuid
+    ) {
+        TraceFlowResponse response = flowService.getTraceFlowById(traceId, projectUuid);
+        return ApiResponseFactory.success(FlowSuccessCode.TRACE_FLOW_RETRIEVED, response);
     }
 }
