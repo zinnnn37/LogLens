@@ -4,10 +4,13 @@ import S13P31A306.loglens.global.annotation.Sensitive;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import java.util.List;
+
+import lombok.Builder;
 import lombok.Data;
 import org.springframework.format.annotation.DateTimeFormat;
 
 @Data
+@Builder
 public class LogSearchRequest {
 
     @Sensitive
