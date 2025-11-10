@@ -102,7 +102,9 @@ const LogDetailModal1 = ({
 
   // 요청 흐름 보기 새 탭 열기 핸들러
   const handleOpenRequestFlow = () => {
-    if (!projectUuid || !log.traceId) { return; }
+    if (!projectUuid || !log.traceId) {
+      return;
+    }
 
     const params = new URLSearchParams({ traceId: log.traceId });
     const url = `/project/${projectUuid}/request-flow?${params.toString()}`;
@@ -195,7 +197,7 @@ const LogDetailModal1 = ({
             <Button
               onClick={onGoToNextPage}
               disabled={isLoading || !analysis}
-              className="bg-[#0052CC] hover:bg-[#0747A6]" 
+              className="bg-[#0052CC] hover:bg-[#0747A6]"
             >
               Jira 티켓 발행
             </Button>
