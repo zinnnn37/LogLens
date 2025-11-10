@@ -53,7 +53,7 @@ export interface JiraConnectResponse {
   data: JiraConnectData;
 }
 
-// 지라 티켓 발행
+// 지라 이슈 생성
 
 export type JiraIssueType = 'Bug' | 'Task' | 'Story' | 'Epic';
 export type JiraIssuePriority =
@@ -63,45 +63,31 @@ export type JiraIssuePriority =
   | 'Low'
   | 'Lowest';
 
-// 요청
-export interface JiraIssueCreateRequest {
+export interface JiraIssueParams {
   projectUuid: string;
   logId: number;
   summary: string;
-  description?: string;
+  description: string;
   issueType: JiraIssueType;
   priority: JiraIssuePriority;
 }
 
-// 응답
-export interface JiraIssueCreatedBy {
+export interface JiraIssueCreator {
   userId: number;
   email: string;
   name: string;
 }
 
-export interface JiraIssueCreateData {
+export interface JiraIssueData {
   issueKey: string;
   jiraUrl: string;
-  createdBy: JiraIssueCreatedBy;
+  createdBy: JiraIssueCreator;
 }
 
-export interface JiraIssueCreateResponse {
+export interface JiraIssueResponse {
   code: string;
   message: string;
   status: number;
   timestamp: string;
-  data: JiraIssueCreateData;
-}
-
-// Jira 연동 상태 조회
-export interface JiraConnectionParams {
-  projectUuid: string;
-}
-
-export interface JiraConnectionResponse {
-  exists: boolean;
-  projectUuid: string;
-  connectionId: number;
-  jiraProjectKey: string;
+  data: JiraIssueData;
 }
