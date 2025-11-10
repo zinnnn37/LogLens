@@ -5,10 +5,12 @@ import ReactFlow, {
   MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   Position,
   MarkerType,
   type Node,
   type Edge,
+  ReactFlowProvider,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -62,13 +64,14 @@ interface ComponentDependencyGraphProps {
   onClose?: () => void;
 }
 
-const ComponentDependencyGraph = ({
+const ComponentDependencyGraphInner = ({
   data,
   isLoading,
   onClose,
 }: ComponentDependencyGraphProps) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const { fitView } = useReactFlow();
 
   // BFS로 노드의 레벨 계산 (선택된 컴포넌트 기준)
   const calculateNodeLevels = useCallback(
@@ -327,8 +330,13 @@ const ComponentDependencyGraph = ({
         convertToFlowElements(data);
       setNodes(flowNodes);
       setEdges(flowEdges);
+
+      // 노드가 업데이트된 후 fitView 실행
+      setTimeout(() => {
+        fitView({ padding: 0.2, duration: 300 });
+      }, 50);
     }
-  }, [data, convertToFlowElements, setNodes, setEdges]);
+  }, [data, convertToFlowElements, setNodes, setEdges, fitView]);
 
   if (isLoading) {
     return (
@@ -453,6 +461,15 @@ const ComponentDependencyGraph = ({
         </div>
       </div>
     </div>
+  );
+};
+
+// ReactFlowProvider로 감싸서 useReactFlow 훅 사용 가능하게 만듦
+const ComponentDependencyGraph = (props: ComponentDependencyGraphProps) => {
+  return (
+    <ReactFlowProvider>
+      <ComponentDependencyGraphInner {...props} />
+    </ReactFlowProvider>
   );
 };
 
