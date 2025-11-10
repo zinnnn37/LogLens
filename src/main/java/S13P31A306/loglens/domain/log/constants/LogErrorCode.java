@@ -20,7 +20,10 @@ public enum LogErrorCode implements ErrorCode {
     CURSOR_ENCODING_FAILED("LG400-18", "커서 인코딩에 실패했습니다.", 400),
 
     // 403 Forbidden
-    PROJECT_FORBIDDEN("LG403-01", "해당 프로젝트에 대한 접근 권한이 없습니다.", 403);
+    PROJECT_FORBIDDEN("LG403-01", "해당 프로젝트에 대한 접근 권한이 없습니다.", 403),
+
+    // 404 Not Found
+    LOG_NOT_FOUND("LG404-01", "로그를 찾을 수 없습니다.", 404);
 
     private final String code;
     private final String message;

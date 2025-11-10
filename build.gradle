@@ -75,6 +75,7 @@ dependencies {
 	// Notification 도메인 테스트에서 @WithMockUser, SecurityMockMvcRequestPostProcessors.user() 사용을 위해 추가
 	testImplementation 'org.springframework.security:spring-security-test'       // 스프링 시큐리티 테스트
 	testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'    // API 문서화
+	testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'              // MockWebServer (WebClient 테스트용)
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
 	// Apache HttpClient 5 (HTTP/1.1, HTTP/2 클라이언트)

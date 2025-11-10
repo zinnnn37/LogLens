@@ -1,5 +1,16 @@
 package S13P31A306.loglens.domain.component.service.impl;
 
+import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.BY_COMPONENT;
+import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.ERROR_COUNT;
+import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.ERROR_LOGS;
+import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.ERROR_TRACES;
+import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.INFO_LOGS;
+import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.TOTAL_CALLS;
+import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.TOTAL_TRACES;
+import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.WARN_COUNT;
+import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.WARN_LOGS;
+import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.WARN_TRACES;
+
 import S13P31A306.loglens.domain.component.constants.LogLevel;
 import S13P31A306.loglens.domain.component.constants.OpenSearchAggregation;
 import S13P31A306.loglens.domain.component.constants.OpenSearchField;
@@ -7,21 +18,19 @@ import S13P31A306.loglens.domain.component.constants.SourceType;
 import S13P31A306.loglens.domain.component.dto.MetricsData;
 import S13P31A306.loglens.domain.component.service.OpenSearchMetricsService;
 import S13P31A306.loglens.domain.dashboard.dto.FrontendMetricsSummary;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.client.opensearch._types.aggregations.*;
-import org.opensearch.client.opensearch._types.query_dsl.Query;
-import org.opensearch.client.opensearch.core.SearchRequest;
-import org.opensearch.client.opensearch.core.SearchResponse;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-
-import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.aggregations.Aggregate;
+import org.opensearch.client.opensearch._types.aggregations.StringTermsAggregate;
+import org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
+import org.opensearch.client.opensearch._types.query_dsl.Query;
+import org.opensearch.client.opensearch.core.SearchRequest;
+import org.opensearch.client.opensearch.core.SearchResponse;
+import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
@@ -31,9 +40,6 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
     private static final String LOG_PREFIX = "[OpenSearchMetricsService]";
 
     private final OpenSearchClient openSearchClient;
-
-    @Value("${opensearch.index.logs:logs-*}")
-    private String logsIndexPattern;
 
     @Override
     public Map<String, MetricsData> getProjectMetrics(String projectUuid) {
@@ -117,7 +123,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
         Query boolQuery = Query.of(q -> q
                 .bool(b -> b
                         .filter(f -> f.term(t -> t
-                                .field(OpenSearchField.PROJECT_UUID.getFieldName())
+                                .field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
                                 .value(v -> v.stringValue(projectUuid))
                         ))
                         .filter(f -> f.term(t -> t
@@ -138,7 +144,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
         ));
 
         return SearchRequest.of(s -> s
-                .index(logsIndexPattern)
+                .index(getProjectIndexPattern(projectUuid))
                 .size(0)
                 .query(boolQuery)
                 .aggregations(BY_COMPONENT, a -> a
@@ -166,13 +172,24 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
     }
 
     /**
+     * 프로젝트별 인덱스 패턴을 반환
+     *
+     * @param projectUuid 프로젝트 UUID (하이픈 포함)
+     * @return "{projectUuid_with_underscores}_*" 형식의 인덱스 패턴
+     */
+    private String getProjectIndexPattern(String projectUuid) {
+        String sanitizedUuid = projectUuid.replace("-", "_");
+        return sanitizedUuid + "_*";
+    }
+
+    /**
      * 단일 컴포넌트 메트릭 조회 쿼리 생성 (Backend)
      */
     private SearchRequest buildComponentMetricsRequest(String projectUuid, String componentName) {
         Query boolQuery = Query.of(q -> q
                 .bool(b -> b
                         .filter(f -> f.term(t -> t
-                                .field(OpenSearchField.PROJECT_UUID.getFieldName())
+                                .field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
                                 .value(v -> v.stringValue(projectUuid))
                         ))
                         .filter(f -> f.term(t -> t
@@ -197,7 +214,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
         ));
 
         return SearchRequest.of(s -> s
-                .index(logsIndexPattern)
+                .index(getProjectIndexPattern(projectUuid))  // ✅ 수정: 프로젝트별 인덱스 패턴 사용
                 .size(0)
                 .query(boolQuery)
                 .aggregations(TOTAL_CALLS, a -> a
@@ -225,7 +242,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
         Query boolQuery = Query.of(q -> q
                 .bool(b -> b
                         .filter(f -> f.term(t -> t
-                                .field(OpenSearchField.PROJECT_UUID.getFieldName())
+                                .field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
                                 .value(v -> v.stringValue(projectUuid))
                         ))
                         .filter(f -> f.term(t -> t
@@ -251,7 +268,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
         ));
 
         return SearchRequest.of(s -> s
-                .index(logsIndexPattern)
+                .index(getProjectIndexPattern(projectUuid))  // ✅ 수정: 프로젝트별 인덱스 패턴 사용
                 .size(0)
                 .query(boolQuery)
                 .aggregations(TOTAL_TRACES, a -> a

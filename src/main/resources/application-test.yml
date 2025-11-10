@@ -96,3 +96,11 @@ logging:
     org.hibernate.SQL: DEBUG
     # Spring 테스트 관련 로그는 INFO 레벨로 설정
     org.springframework.test: INFO
+
+# ===================================================================
+# AI 서비스 설정 (테스트용)
+# ===================================================================
+ai:
+  service:
+    base-url: http://localhost:8888  # 테스트용 더미 URL
+    timeout: 30000
