@@ -305,11 +305,11 @@ public interface LogApi {
                                     mediaType = "application/json",
                                     schema = @Schema(implementation = ErrorResponse.class),
                                     examples = @ExampleObject(
-                                            name = "ProjectIdRequired",
+                                            name = "ProjectUuidRequired",
                                             value = """
                                                     {
                                                       "code": "LG400-09",
-                                                      "message": "projectId는 필수입니다.",
+                                                      "message": "projectUuid는 필수입니다.",
                                                       "status": 400,
                                                       "timestamp": "2025-11-03T15:02:00Z"
                                                     }
