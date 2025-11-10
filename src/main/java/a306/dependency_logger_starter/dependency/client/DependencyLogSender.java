@@ -44,38 +44,6 @@ public class DependencyLogSender {
         log.info("  - 전송 활성화: {}", enabled);
     }
 
-    /**
-     * 프로젝트 전체 의존성 정보를 Collector에 전송 (Batch)
-     *
-     * @param projectInfo 프로젝트 의존성 정보
-     */
-    public void sendProjectDependencies(ProjectDependencyInfo projectInfo) {
-        if (!enabled) {
-            log.debug("의존성 전송이 비활성화되어 있습니다.");
-            return;
-        }
-
-        log.info("📤 프로젝트 의존성 정보 전송 시작: {}", projectInfo.projectName());
-        log.info("  - 컴포넌트: {} 개", projectInfo.components().size());
-        log.info("  - 의존성 관계: {} 개", projectInfo.dependencies().size());
-
-        webClient.post()
-                .uri("/api/dependencies/project")
-                .body(Mono.just(projectInfo), ProjectDependencyInfo.class)
-                .retrieve()
-                .bodyToMono(String.class)
-                .timeout(Duration.ofSeconds(30))
-                .doOnSuccess(response ->
-                        log.info("✅ 프로젝트 의존성 정보 전송 성공: {}", projectInfo.projectName())
-                )
-                .doOnError(error ->
-                        log.warn("⚠️ 프로젝트 의존성 정보 전송 실패: {} - {}",
-                                projectInfo.projectName(),
-                                error.getMessage())
-                )
-                .onErrorResume(e -> Mono.empty())
-                .subscribe();
-    }
 
     /**
      * 컴포넌트만 Collector에 전송
@@ -120,7 +88,7 @@ public class DependencyLogSender {
      * @param projectName 프로젝트명
      * @param dependencies 의존성 관계 목록
      */
-    public void sendDependencies(String projectName, List<DependencyRelation> dependencies) {
+    public void sendDependencies(String projectName, List<DependencyRelation> dependencies, List<String> databases) {
         if (!enabled) {
             log.debug("의존성 전송이 비활성화되어 있습니다.");
             return;
@@ -134,7 +102,8 @@ public class DependencyLogSender {
             ProjectDependencyInfo dependencyInfo = new ProjectDependencyInfo(
                     projectName,
                     List.of(),  // 빈 컴포넌트 리스트
-                    dependencies
+                    dependencies,
+                    databases
             );
 
             webClient.post()
