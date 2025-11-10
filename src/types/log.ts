@@ -61,23 +61,21 @@ export interface TraceIdSearchResponse {
   logs: LogData[];
 }
 
-
-
 // 로그 상세 조회
 export interface LogDetailParams {
   logId: number;
-  projectUuid: string; 
+  projectUuid: string;
 }
 
 // AI 분석 결과 데이터
 export interface LogAnalysisData {
   summary: string;
-  error_cause: string; 
+  error_cause: string;
   solution: string;
   tags: string[];
-  analysisType: string; 
-  targetType: string; 
-  analyzedAt: string; 
+  analysisType: string;
+  targetType: string;
+  analyzedAt: string;
 }
 
 // 로그 상세 정보 응답 (전체 구조 반영)
@@ -98,8 +96,8 @@ export interface LogDetailResponse {
   requesterIp: string | null;
   duration: number | null;
   stackTrace: string | null;
-  logDetails: Record<string, unknown> | null; 
-  analysis: LogAnalysisData | null; 
+  logDetails: Record<string, unknown> | null;
+  analysis: LogAnalysisData | null;
   fromCache: boolean | null;
   similarLogId: number | null;
   similarityScore: number | null;

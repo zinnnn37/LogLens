@@ -64,13 +64,14 @@ const FormSection = ({
 const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
   // 폼 상태 관리
   const [summary, setSummary] = useState(
-    `[${log.logLevel}] ${log.message.substring(0, 50)}...`
+    `[${log.logLevel}] ${log.message.substring(0, 50)}...`,
   );
   const [description, setDescription] = useState(
-    `[로그 상세 정보]\n- TraceID: ${log.traceId}\n- Level: ${log.logLevel
+    `[로그 상세 정보]\n- TraceID: ${log.traceId}\n- Level: ${
+      log.logLevel
     }\n- System: ${log.sourceType}\n- Date: ${new Date(
-      log.timestamp
-    ).toLocaleString()}\n\n[Message]\n${log.message}`
+      log.timestamp,
+    ).toLocaleString()}\n\n[Message]\n${log.message}`,
   );
   const [issueType, setIssueType] = useState<JiraIssueType>('Bug');
   const [priority, setPriority] = useState<JiraIssuePriority>('Medium');
@@ -88,9 +89,7 @@ const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
   return (
     <div className="flex flex-col space-y-6">
       <div className="border-b pb-4">
-        <h2 className="text-lg font-semibold">
-          {log.traceId} Jira 티켓 발행
-        </h2>
+        <h2 className="text-lg font-semibold">{log.traceId} Jira 티켓 발행</h2>
         <p className="text-sm text-gray-500">{new Date().toLocaleString()}</p>
       </div>
 
@@ -101,7 +100,7 @@ const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
             placeholder="이슈 제목을 입력하세요"
             className="font-mono"
             value={summary}
-            onChange={(e) => setSummary(e.target.value)}
+            onChange={e => setSummary(e.target.value)}
           />
         </FormSection>
 
@@ -110,22 +109,22 @@ const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
             id="jira-desc"
             placeholder="이슈 설명을 입력하세요"
             rows={10}
-            className="font-mono resize-none"
+            className="resize-none font-mono"
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={e => setDescription(e.target.value)}
           />
         </FormSection>
 
         <FormSection label="이슈타입" htmlFor="jira-issue-type">
           <Select
             value={issueType}
-            onValueChange={(val) => setIssueType(val as JiraIssueType)}
+            onValueChange={val => setIssueType(val as JiraIssueType)}
           >
             <SelectTrigger id="jira-issue-type">
               <SelectValue placeholder="선택..." />
             </SelectTrigger>
             <SelectContent>
-              {JIRA_ISSUE_TYPES.map((type) => (
+              {JIRA_ISSUE_TYPES.map(type => (
                 <SelectItem key={type.value} value={type.value}>
                   {type.label}
                 </SelectItem>
@@ -137,13 +136,13 @@ const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
         <FormSection label="우선순위" htmlFor="jira-priority">
           <Select
             value={priority}
-            onValueChange={(val) => setPriority(val as JiraIssuePriority)}
+            onValueChange={val => setPriority(val as JiraIssuePriority)}
           >
             <SelectTrigger id="jira-priority">
               <SelectValue placeholder="선택..." />
             </SelectTrigger>
             <SelectContent>
-              {JIRA_PRIORITIES.map((p) => (
+              {JIRA_PRIORITIES.map(p => (
                 <SelectItem key={p.value} value={p.value}>
                   {p.label}
                 </SelectItem>

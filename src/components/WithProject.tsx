@@ -122,7 +122,6 @@ const WithProject = ({
                               <Link2 className="h-4 w-4" />
                               Jira 연결
                             </Button>
-
                           )}
 
                           {/* 멤버 초대 */}

@@ -24,7 +24,7 @@ const InfoSection = ({
 }) => (
   <div className="mb-6">
     <h3 className="mb-2 text-base font-semibold text-gray-900">{title}</h3>
-    <div className="space-y-2 rounded-md border bg-gray-50 p-4 overflow-auto">
+    <div className="space-y-2 overflow-auto rounded-md border bg-gray-50 p-4">
       {children}
     </div>
   </div>
@@ -45,27 +45,27 @@ const InfoRow = ({
   </div>
 );
 
-// react-markdown 컴포넌트 스타일 
+// react-markdown 컴포넌트 스타일
 const markdownStyles: Components = {
   ul: ({ node, ...props }) => (
-    <ul className="list-disc pl-5 space-y-1" {...props} />
+    <ul className="list-disc space-y-1 pl-5" {...props} />
   ),
   ol: ({ node, ...props }) => (
-    <ol className="list-decimal pl-5 space-y-1" {...props} />
+    <ol className="list-decimal space-y-1 pl-5" {...props} />
   ),
   li: ({ node, ...props }) => <li className="pl-1" {...props} />,
   h1: ({ node, ...props }) => (
-    <h1 className="text-xl font-bold mt-4 mb-2" {...props} />
+    <h1 className="mt-4 mb-2 text-xl font-bold" {...props} />
   ),
   h2: ({ node, ...props }) => (
-    <h2 className="text-lg font-bold mt-3 mb-2" {...props} />
+    <h2 className="mt-3 mb-2 text-lg font-bold" {...props} />
   ),
   h3: ({ node, ...props }) => (
-    <h3 className="text-md font-bold mt-2 mb-1" {...props} />
+    <h3 className="text-md mt-2 mb-1 font-bold" {...props} />
   ),
   blockquote: ({ node, ...props }) => (
     <blockquote
-      className="border-l-4 border-gray-300 pl-4 italic text-gray-600"
+      className="border-l-4 border-gray-300 pl-4 text-gray-600 italic"
       {...props}
     />
   ),
@@ -84,7 +84,7 @@ const markdownStyles: Components = {
     if (isInline) {
       return (
         <code
-          className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-red-500"
+          className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-sm text-red-500"
           {...props}
         >
           {children}
@@ -94,7 +94,7 @@ const markdownStyles: Components = {
 
     return (
       <code
-        className="block bg-gray-800 text-gray-100 p-3 rounded-md text-xs font-mono overflow-x-auto my-2"
+        className="my-2 block overflow-x-auto rounded-md bg-gray-800 p-3 font-mono text-xs text-gray-100"
         {...props}
       >
         {children}
@@ -171,7 +171,7 @@ const LogDetailModal1 = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+      <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>로그 상세정보 - {log.traceId}</DialogTitle>
         </DialogHeader>
@@ -212,7 +212,7 @@ const LogDetailModal1 = ({
           {analysis && !isLoading && (
             <>
               <InfoSection title="로그 요약">
-                <div className="text-sm text-gray-800 leading-relaxed">
+                <div className="text-sm leading-relaxed text-gray-800">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={markdownStyles}
@@ -225,7 +225,7 @@ const LogDetailModal1 = ({
               {isErrorLevel && (
                 <>
                   <InfoSection title="에러 원인">
-                    <div className="text-sm text-gray-800 leading-relaxed">
+                    <div className="text-sm leading-relaxed text-gray-800">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={markdownStyles}
@@ -236,7 +236,7 @@ const LogDetailModal1 = ({
                   </InfoSection>
 
                   <InfoSection title="해결 방안">
-                    <div className="text-sm text-gray-800 leading-relaxed">
+                    <div className="text-sm leading-relaxed text-gray-800">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={markdownStyles}
@@ -251,7 +251,7 @@ const LogDetailModal1 = ({
           )}
         </div>
 
-        <DialogFooter className="gap-2 sm:justify-end mt-4">
+        <DialogFooter className="mt-4 gap-2 sm:justify-end">
           <Button
             variant="outline"
             onClick={handleOpenRequestFlow}

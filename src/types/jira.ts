@@ -63,31 +63,31 @@ export type JiraIssuePriority =
   | 'Low'
   | 'Lowest';
 
-export interface JiraIssueParams{
-  projectUuid:string;
-  logId:number;
-  summary:string;
-  description:string;
-  issueType:JiraIssueType;
-  priority:JiraIssuePriority;
+export interface JiraIssueParams {
+  projectUuid: string;
+  logId: number;
+  summary: string;
+  description: string;
+  issueType: JiraIssueType;
+  priority: JiraIssuePriority;
 }
 
-export interface JiraIssueCreator{
-  userId:number;
-  email:string;
-  name:string;
+export interface JiraIssueCreator {
+  userId: number;
+  email: string;
+  name: string;
 }
 
-export interface JiraIssueData{
-  issueKey:string;
-  jiraUrl:string;
-  createdBy:JiraIssueCreator;
+export interface JiraIssueData {
+  issueKey: string;
+  jiraUrl: string;
+  createdBy: JiraIssueCreator;
 }
 
-export interface JiraIssueResponse{
-  code:string;
-  message:string;
-  status:number;
-  timestamp:string;
-  data:JiraIssueData;
+export interface JiraIssueResponse {
+  code: string;
+  message: string;
+  status: number;
+  timestamp: string;
+  data: JiraIssueData;
 }
