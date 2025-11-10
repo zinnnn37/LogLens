@@ -69,9 +69,9 @@ export interface DashboardApiStatsData {
 // 요청 파라미터
 export interface DashboardTopErrorsParams {
   projectUuid: string;
-  startTime?: string; 
-  endTime?: string; 
-  limit?: number; 
+  startTime?: string;
+  endTime?: string;
+  limit?: number;
 }
 
 // 영향을 받은 컴포넌트 정보
@@ -86,24 +86,24 @@ export interface ErrorStats {
   exceptionType: string;
   message: string;
   count: number;
-  percentage: number; 
-  firstOccurrence: string; 
-  lastOccurrence: string; 
-  stackTrace: string; 
-  components: ErrorComponent[]; 
+  percentage: number;
+  firstOccurrence: string;
+  lastOccurrence: string;
+  stackTrace: string;
+  components: ErrorComponent[];
 }
 
 // 에러 통계 요약 정보
 export interface ErrorStatsSummary {
-  totalErrors: number; 
-  uniqueErrorTypes: number; 
-  top10Percentage: number; 
+  totalErrors: number;
+  uniqueErrorTypes: number;
+  top10Percentage: number;
 }
 
 // 자주 발생하는 에러 전체 응답 데이터
 export interface DashboardTopErrorsData {
   projectUuid: string;
-  period: DashboardPeriod; 
+  period: DashboardPeriod;
   errors: ErrorStats[];
   summary: ErrorStatsSummary;
 }

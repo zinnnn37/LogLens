@@ -33,12 +33,16 @@ const DashboardPage = () => {
   const [statsError, setStatsError] = useState(false);
 
   // 3. 자주 발생하는 에러 상태 추가
-  const [topErrors, setTopErrors] = useState<DashboardTopErrorsData | null>(null);
+  const [topErrors, setTopErrors] = useState<DashboardTopErrorsData | null>(
+    null,
+  );
   const [topErrorsLoading, setTopErrorsLoading] = useState(true);
   const [topErrorsError, setTopErrorsError] = useState(false);
 
   useEffect(() => {
-    if (!projectUuid) {return;}
+    if (!projectUuid) {
+      return;
+    }
 
     // --- 1. 통계 개요 조회 ---
     const fetchOverview = async () => {
@@ -62,7 +66,10 @@ const DashboardPage = () => {
       setTopErrorsError(false);
       try {
         // 기본값으로 10개 조회
-        const response = await getDashboardTopErrors({ projectUuid, limit: 10 });
+        const response = await getDashboardTopErrors({
+          projectUuid,
+          limit: 10,
+        });
         setTopErrors(response);
       } catch (e) {
         console.error('자주 발생하는 에러 조회 실패:', e);
