@@ -22,7 +22,7 @@ public class LogMetricsScheduler {
 
     /**
      * 로그 메트릭 집계 스케줄러
-     * 5분마다 실행(0'30", 10'30", 20'30", ...)
+     * 10분마다 실행(0'30", 10'30", 20'30", ...)
      */
     @Scheduled(cron = LogMetricsConstants.AGGREGATION_CRON)
     public void aggregateLogMetrics() {
