@@ -166,10 +166,6 @@ public class DashboardServiceImpl implements DashboardService {
         // 2. 전체 컴포넌트 및 의존성 그래프 조회
         List<Component> allProjectComponents = componentService.getProjectComponents(projectId);
 
-        Set<Integer> allComponentIds = allProjectComponents.stream()
-                .map(Component::getId)
-                .collect(Collectors.toSet());
-
         List<DependencyGraph> allDependencies = allProjectComponents.stream()
                 .flatMap(component -> dependencyGraphService
                         .findAllDependenciesByComponentId(component.getId())
@@ -178,46 +174,113 @@ public class DashboardServiceImpl implements DashboardService {
                 .toList();
 
         log.debug("{} 전체 그래프 조회: components={}, edges={}",
-                LOG_PREFIX, allComponentIds.size(), allDependencies.size());
+                LOG_PREFIX, allProjectComponents.size(), allDependencies.size());
 
-        // 3. 컴포넌트 정보 Map 생성
+        // 3. componentId와 연결된 모든 컴포넌트 ID 찾기 (BFS)
+        Set<Integer> connectedComponentIds = findConnectedComponents(componentId, allDependencies);
+
+        log.debug("{} 연결된 컴포넌트 ID 목록: {}", LOG_PREFIX, connectedComponentIds);
+
+        // 4. 연결된 컴포넌트들만 필터링
         Map<Integer, Component> componentMap = allProjectComponents.stream()
+                .filter(component -> connectedComponentIds.contains(component.getId()))
                 .collect(Collectors.toMap(Component::getId, component -> component));
 
-        // 4. Backend 메트릭 정보 조회 (DB에서)
-        Map<Integer, ComponentMetrics> metricsMap = backendMetricsService
-                .getMetricsByComponentIds(new ArrayList<>(allComponentIds));
+        // 5. 연결된 컴포넌트들의 의존성만 필터링 (서브그래프)
+        List<DependencyGraph> connectedDependencies = allDependencies.stream()
+                .filter(dep -> connectedComponentIds.contains(dep.getTo())
+                        && connectedComponentIds.contains(dep.getFrom()))
+                .toList();
 
-        // 5. ComponentInfo 리스트 생성
+        log.debug("{} 필터링된 그래프: components={}, edges={}",
+                LOG_PREFIX, connectedComponentIds.size(), connectedDependencies.size());
+
+        // 6. Backend 메트릭 정보 조회 (연결된 컴포넌트들만)
+        Map<Integer, ComponentMetrics> metricsMap = backendMetricsService
+                .getMetricsByComponentIds(new ArrayList<>(connectedComponentIds));
+
+        // 7. ComponentInfo 리스트 생성
         List<ComponentInfo> componentInfos = ComponentInfo.fromMaps(
-                allComponentIds,
+                connectedComponentIds,
                 componentMap,
                 metricsMap
         );
 
-        // 6. 그래프 생성
-        DependencyGraphResponse graph = DependencyGraphResponse.from(allDependencies);
+        // 8. 서브그래프 생성
+        DependencyGraphResponse graph = DependencyGraphResponse.from(connectedDependencies);
 
-        List<ComponentInfo> connectedComponents = filterConnectedComponents(componentInfos, graph);
+        // 9. Backend 메트릭 요약 생성
+        GraphMetricsSummary graphSummary = calculateGraphMetricsSummary(componentInfos);
 
-        // 7. Backend 메트릭 요약 생성
-        GraphMetricsSummary graphSummary =
-                calculateGraphMetricsSummary(connectedComponents);
-
-        // 8. Frontend 메트릭 조회 (DB에서)
+        // 10. Frontend 메트릭 조회 (프로젝트 전체)
         FrontendMetricsSummary frontendMetrics =
                 frontendMetricsService.getFrontendMetricsByProjectId(projectId);
 
-        log.debug("{} 컴포넌트 의존성 조회 완료: componentId={}, totalComponents={}, connectedComponents={}, edges={}, frontendTraces={}",
-                LOG_PREFIX, componentId, componentInfos.size(), connectedComponents.size(), graph.edges().size(), frontendMetrics.totalTraces());
+        log.debug("{} 컴포넌트 의존성 조회 완료: componentId={}, connectedComponents={}, edges={}, frontendTraces={}",
+                LOG_PREFIX, componentId, componentInfos.size(), graph.edges().size(), frontendMetrics.totalTraces());
 
-        // 9. 응답 생성 (Frontend 메트릭 포함)
+        // 11. 응답 생성
         return new ComponentDependencyResponse(
-                connectedComponents,
+                componentInfos,
                 graph,
                 graphSummary,
-                frontendMetrics  // ✅ Frontend 메트릭 추가
+                frontendMetrics
         );
+    }
+
+    /**
+     * BFS를 사용하여 주어진 componentId와 연결된 모든 컴포넌트 ID를 찾습니다.
+     * 양방향 탐색 (source → target, target → source)
+     */
+    private Set<Integer> findConnectedComponents(
+            Integer startComponentId,
+            List<DependencyGraph> allDependencies) {
+
+        Set<Integer> connected = new HashSet<>();
+        Queue<Integer> queue = new LinkedList<>();
+
+        queue.offer(startComponentId);
+        connected.add(startComponentId);
+
+        // 양방향 인접 리스트 생성
+        Map<Integer, Set<Integer>> adjacencyMap = buildAdjacencyMap(allDependencies);
+
+        while (!queue.isEmpty()) {
+            Integer currentId = queue.poll();
+
+            // 현재 노드와 연결된 모든 이웃 노드 탐색
+            Set<Integer> neighbors = adjacencyMap.getOrDefault(currentId, Collections.emptySet());
+
+            for (Integer neighborId : neighbors) {
+                if (!connected.contains(neighborId)) {
+                    connected.add(neighborId);
+                    queue.offer(neighborId);
+                }
+            }
+        }
+
+        return connected;
+    }
+
+    /**
+     * 양방향 인접 리스트 생성
+     * A → B 관계가 있으면, A의 이웃에 B를 추가하고, B의 이웃에도 A를 추가
+     */
+    private Map<Integer, Set<Integer>> buildAdjacencyMap(List<DependencyGraph> dependencies) {
+        Map<Integer, Set<Integer>> adjacencyMap = new HashMap<>();
+
+        for (DependencyGraph dep : dependencies) {
+            Integer source = dep.getTo();
+            Integer target = dep.getFrom();
+
+            // source → target
+            adjacencyMap.computeIfAbsent(source, k -> new HashSet<>()).add(target);
+
+            // target → source (양방향)
+            adjacencyMap.computeIfAbsent(target, k -> new HashSet<>()).add(source);
+        }
+
+        return adjacencyMap;
     }
 
     /**

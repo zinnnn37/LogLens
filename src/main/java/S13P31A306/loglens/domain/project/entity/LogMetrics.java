@@ -55,5 +55,4 @@ public class LogMetrics extends BaseTimeEntity {
         this.aggregatedAt = aggregatedAt;
     }
 
-
 }
