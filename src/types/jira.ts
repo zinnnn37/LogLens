@@ -53,6 +53,15 @@ export interface JiraConnectResponse {
   data: JiraConnectData;
 }
 
+// Jira 연결 상태 조회 응답
+export interface JiraConnectionStatusData {
+  exists: boolean;
+  projectUuid: string;
+  connectionId: number;
+  jiraProjectKey: string;
+}
+
+
 // 지라 이슈 생성
 
 export type JiraIssueType = 'Bug' | 'Task' | 'Story' | 'Epic';

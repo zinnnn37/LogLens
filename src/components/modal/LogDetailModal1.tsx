@@ -11,9 +11,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, ScanSearch } from 'lucide-react';
+import { Loader2, ScanSearch, Link2 } from 'lucide-react'; // Link2 아이콘 추가
 import { analyzeLogs } from '@/services/logService';
+import { getJiraConnectionStatus } from '@/services/jiraService'; // Jira 서비스 추가
 import type { LogData, LogAnalysisData } from '@/types/log';
+import type { JiraConnectionStatusData } from '@/types/jira';
 
 const InfoSection = ({
   title,
@@ -108,6 +110,7 @@ export interface LogDetailModalProps {
   onOpenChange: (open: boolean) => void;
   log: LogData | null;
   onGoToNextPage: () => void;
+  onOpenJiraConnect: () => void;
 }
 
 const LogDetailModal1 = ({
@@ -115,41 +118,66 @@ const LogDetailModal1 = ({
   onOpenChange,
   log,
   onGoToNextPage,
+  onOpenJiraConnect,
 }: LogDetailModalProps) => {
   const { projectUuid } = useParams<{ projectUuid: string }>();
   const [analysis, setAnalysis] = useState<LogAnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isJiraConnected, setIsJiraConnected] = useState(false); // 💡 Jira 연동 상태
 
   useEffect(() => {
     if (open && log && projectUuid) {
-      const fetchAnalysis = async () => {
+      const fetchData = async () => {
         setIsLoading(true);
         setAnalysis(null);
         setError(null);
+        if (log.logLevel !== 'ERROR') {
+          setIsJiraConnected(false);
+        }
 
         try {
-          const params = {
+          // 로그 분석 API 호출
+          const analysisPromise = analyzeLogs({
             logId: log.logId,
             projectUuid: projectUuid,
-          };
-          const response = await analyzeLogs(params);
-          setAnalysis(response.analysis);
+          });
+
+          // Jira 연동 상태 확인 (ERROR 레벨일 때만)
+          let jiraStatusPromise: Promise<JiraConnectionStatusData | null> =
+            Promise.resolve(null);
+          if (log.logLevel === 'ERROR') {
+            jiraStatusPromise = getJiraConnectionStatus(projectUuid);
+          }
+
+          // 두 API 병렬 호출
+          const [analysisResponse, jiraStatusResponse] = await Promise.all([
+            analysisPromise,
+            jiraStatusPromise,
+          ]);
+
+          setAnalysis(analysisResponse.analysis);
+
+          // Jira 연동 상태 업데이트
+          if (jiraStatusResponse) {
+            setIsJiraConnected(jiraStatusResponse.exists);
+          }
         } catch (e) {
-          console.error('로그 분석 API 실패:', e);
-          setError('AI 분석 데이터를 불러오는 데 실패했습니다.');
+          console.error('API 호출 실패:', e);
+          setError('데이터를 불러오는 데 실패했습니다.');
         } finally {
           setIsLoading(false);
         }
       };
 
-      fetchAnalysis();
+      fetchData();
     }
 
     if (!open) {
       setAnalysis(null);
       setIsLoading(false);
       setError(null);
+      setIsJiraConnected(false);
     }
   }, [open, log, projectUuid]);
 
@@ -230,6 +258,7 @@ const LogDetailModal1 = ({
                         remarkPlugins={[remarkGfm]}
                         components={markdownStyles}
                       >
+                        {/* snake_case 주의: analysis.error_cause가 맞다면 그대로 유지 */}
                         {analysis.error_cause}
                       </ReactMarkdown>
                     </div>
@@ -261,15 +290,28 @@ const LogDetailModal1 = ({
             요청 흐름 보기
           </Button>
 
-          {isErrorLevel && (
-            <Button
-              onClick={onGoToNextPage}
-              disabled={isLoading || !analysis}
-              className="bg-[#0052CC] hover:bg-[#0747A6]"
-            >
-              Jira 티켓 발행
-            </Button>
-          )}
+          {/* Jira 버튼 분기 처리 */}
+          {isErrorLevel &&
+            (isJiraConnected ? (
+              // 연동됨 -> 티켓 발행 버튼
+              <Button
+                onClick={onGoToNextPage}
+                disabled={isLoading || !analysis}
+                className="bg-[#0052CC] hover:bg-[#0747A6]"
+              >
+                Jira 티켓 발행
+              </Button>
+            ) : (
+              // 연동 안 됨 -> 연동하기 버튼
+              <Button
+                onClick={onOpenJiraConnect}
+                variant="outline"
+                className="gap-2 border-[#0052CC] text-[#0052CC] hover:bg-[#DEEBFF]"
+              >
+                <Link2 className="h-4 w-4" />
+                Jira 연동하기
+              </Button>
+            ))}
         </DialogFooter>
       </DialogContent>
     </Dialog>

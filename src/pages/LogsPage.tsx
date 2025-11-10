@@ -24,6 +24,7 @@ import LogDetailModal1 from '@/components/modal/LogDetailModal1';
 import LogDetailModal2, {
   type JiraTicketFormData,
 } from '@/components/modal/LogDetailModal2';
+import JiraIntegrationModal from '@/components/modal/JiraIntegrationModal'; // Jira 모달 import
 import {
   Tooltip,
   TooltipContent,
@@ -41,6 +42,12 @@ const LogsPage = () => {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
 
   const [criteria, setCriteria] = useState<SearchCriteria | null>(null);
+
+  // 모달 상태 관리
+  const [selectedLog, setSelectedLog] = useState<LogData | null>(null);
+  const [isLogDetailModalOpen, setIsLogDetailModalOpen] = useState(false);
+  const [modalPage, setModalPage] = useState<'page1' | 'page2'>('page1');
+  const [isJiraConnectModalOpen, setIsJiraConnectModalOpen] = useState(false); // Jira 연동 모달 상태
 
   const fetchLogs = useCallback(
     async (isInitial: boolean, searchCriteria: SearchCriteria | null) => {
@@ -244,26 +251,29 @@ const LogsPage = () => {
     });
   };
 
-  const [selectedLog, setSelectedLog] = useState<LogData | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalPage, setModalPage] = useState<'page1' | 'page2'>('page1');
-
-  // 디테일 모달
-
+  // 디테일 모달 열기
   const handleRowClick = useCallback((log: LogData) => {
     setSelectedLog(log);
-    setIsModalOpen(true);
+    setIsLogDetailModalOpen(true);
     setModalPage('page1');
   }, []);
 
   /**
-   * 모달 닫기/열기 상태 변경 시
+   * 로그 상세 모달 닫기/열기 상태 변경
    */
-  const handleModalOpenChange = (open: boolean) => {
-    setIsModalOpen(open);
+  const handleLogDetailModalOpenChange = (open: boolean) => {
+    setIsLogDetailModalOpen(open);
     if (!open) {
       setModalPage('page1');
     }
+  };
+
+  /**
+   * Jira 연동 모달 열기 (로그 상세 모달은 닫음)
+   */
+  const handleOpenJiraConnect = () => {
+    setIsLogDetailModalOpen(false);
+    setIsJiraConnectModalOpen(true);
   };
 
   /**
@@ -281,7 +291,7 @@ const LogsPage = () => {
   };
 
   /**
-   * 발행하기 버튼
+   * Jira 티켓 발행 버튼 (API 연동됨)
    */
   const handleSubmitJira = async (formData: JiraTicketFormData) => {
     if (!projectUuid || !selectedLog?.logId) {
@@ -297,7 +307,7 @@ const LogsPage = () => {
       });
 
       toast.success('Jira 이슈가 성공적으로 발행되었습니다!');
-      setIsModalOpen(false);
+      setIsLogDetailModalOpen(false); // 모달 닫기
     } catch (error) {
       console.error('Jira 이슈 발행 실패:', error);
       toast.error('Jira 이슈 발행에 실패했습니다. 잠시 후 다시 시도해주세요.');
@@ -337,22 +347,24 @@ const LogsPage = () => {
           />
         </div>
 
-        {/* 로그 상세 정보 모달 */}
-        {/* 1페이지 모달 렌더링 */}
+        {/* 로그 상세 정보 모달 (1페이지) */}
         {modalPage === 'page1' && (
           <LogDetailModal1
-            open={isModalOpen}
-            onOpenChange={handleModalOpenChange}
+            open={isLogDetailModalOpen}
+            onOpenChange={handleLogDetailModalOpenChange}
             log={selectedLog}
             onGoToNextPage={handleGoToNextPage}
+            onOpenJiraConnect={handleOpenJiraConnect} // Jira 연동 모달 열기 핸들러 전달
           />
         )}
 
-        {/* 2페이지 모달 렌더링 */}
+        {/* 로그 상세 정보 모달 (2페이지 - Jira 발행) */}
         {modalPage === 'page2' && selectedLog && (
-          <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
+          <Dialog
+            open={isLogDetailModalOpen}
+            onOpenChange={handleLogDetailModalOpenChange}
+          >
             <DialogContent className="sm:max-w-3xl">
-              {/* log 데이터가 null이 아닐 때만 렌더링 */}
               <LogDetailModal2
                 log={selectedLog}
                 onGoBack={handleGoBack}
@@ -360,6 +372,15 @@ const LogsPage = () => {
               />
             </DialogContent>
           </Dialog>
+        )}
+
+        {/* Jira 연동 모달 */}
+        {projectUuid && (
+          <JiraIntegrationModal
+            open={isJiraConnectModalOpen}
+            onOpenChange={setIsJiraConnectModalOpen}
+            projectUuid={projectUuid}
+          />
         )}
 
         {/* CSV 다운버튼 */}
@@ -373,7 +394,6 @@ const LogsPage = () => {
               <Download className="h-6 w-6" />
             </Button>
           </TooltipTrigger>
-          {/* Tooltip 내용 */}
           <TooltipContent className="bg-gray-800 text-white shadow-md">
             로그 데이터 CSV 파일 다운로드
           </TooltipContent>
