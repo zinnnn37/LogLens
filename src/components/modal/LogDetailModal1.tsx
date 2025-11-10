@@ -11,11 +11,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, ScanSearch, Link2 } from 'lucide-react'; // Link2 아이콘 추가
+import { Loader2, ScanSearch, Link2, Wand2 } from 'lucide-react';
 import { analyzeLogs } from '@/services/logService';
-import { getJiraConnectionStatus } from '@/services/jiraService'; // Jira 서비스 추가
+import { getJiraConnectionStatus } from '@/services/jiraService';
 import type { LogData, LogAnalysisData } from '@/types/log';
-import type { JiraConnectionStatusData } from '@/types/jira';
 
 const InfoSection = ({
   title,
@@ -47,7 +46,6 @@ const InfoRow = ({
   </div>
 );
 
-// react-markdown 컴포넌트 스타일
 const markdownStyles: Components = {
   ul: ({ node, ...props }) => (
     <ul className="list-disc space-y-1 pl-5" {...props} />
@@ -121,63 +119,37 @@ const LogDetailModal1 = ({
   onOpenJiraConnect,
 }: LogDetailModalProps) => {
   const { projectUuid } = useParams<{ projectUuid: string }>();
+
   const [analysis, setAnalysis] = useState<LogAnalysisData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isJiraConnected, setIsJiraConnected] = useState(false); // 💡 Jira 연동 상태
+
+  const [isJiraConnected, setIsJiraConnected] = useState(false);
+  const [isJiraLoading, setIsJiraLoading] = useState(false);
 
   useEffect(() => {
-    if (open && log && projectUuid) {
-      const fetchData = async () => {
-        setIsLoading(true);
-        setAnalysis(null);
-        setError(null);
-        if (log.logLevel !== 'ERROR') {
-          setIsJiraConnected(false);
-        }
-
-        try {
-          // 로그 분석 API 호출
-          const analysisPromise = analyzeLogs({
-            logId: log.logId,
-            projectUuid: projectUuid,
-          });
-
-          // Jira 연동 상태 확인 (ERROR 레벨일 때만)
-          let jiraStatusPromise: Promise<JiraConnectionStatusData | null> =
-            Promise.resolve(null);
-          if (log.logLevel === 'ERROR') {
-            jiraStatusPromise = getJiraConnectionStatus(projectUuid);
-          }
-
-          // 두 API 병렬 호출
-          const [analysisResponse, jiraStatusResponse] = await Promise.all([
-            analysisPromise,
-            jiraStatusPromise,
-          ]);
-
-          setAnalysis(analysisResponse.analysis);
-
-          // Jira 연동 상태 업데이트
-          if (jiraStatusResponse) {
-            setIsJiraConnected(jiraStatusResponse.exists);
-          }
-        } catch (e) {
-          console.error('API 호출 실패:', e);
-          setError('데이터를 불러오는 데 실패했습니다.');
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      fetchData();
-    }
-
     if (!open) {
       setAnalysis(null);
-      setIsLoading(false);
+      setIsAnalysisLoading(false);
       setError(null);
       setIsJiraConnected(false);
+      setIsJiraLoading(false);
+      return;
+    }
+
+    if (log?.logLevel === 'ERROR' && projectUuid) {
+      setIsJiraLoading(true);
+      getJiraConnectionStatus(projectUuid)
+        .then((response) => {
+          setIsJiraConnected(response.exists);
+        })
+        .catch((e) => {
+          console.error('Jira 연동 상태 확인 실패:', e);
+          setIsJiraConnected(false);
+        })
+        .finally(() => {
+          setIsJiraLoading(false);
+        });
     }
   }, [open, log, projectUuid]);
 
@@ -186,6 +158,29 @@ const LogDetailModal1 = ({
   }
 
   const isErrorLevel = log.logLevel === 'ERROR';
+
+  const handleAnalyzeClick = async () => {
+    if (!projectUuid || !log) {
+      return;
+    }
+
+    setIsAnalysisLoading(true);
+    setAnalysis(null);
+    setError(null);
+
+    try {
+      const response = await analyzeLogs({
+        logId: log.logId,
+        projectUuid: projectUuid,
+      });
+      setAnalysis(response.analysis);
+    } catch (e) {
+      console.error('로그 분석 API 실패:', e);
+      setError('AI 분석 데이터를 불러오는 데 실패했습니다.');
+    } finally {
+      setIsAnalysisLoading(false);
+    }
+  };
 
   const handleOpenRequestFlow = () => {
     if (!projectUuid || !log.traceId) {
@@ -220,7 +215,16 @@ const LogDetailModal1 = ({
             <InfoRow label="Layer" value={log.layer} />
           </InfoSection>
 
-          {isLoading && (
+          {!analysis && !isAnalysisLoading && !error && (
+            <InfoSection title="AI 로그 분석">
+              <Button onClick={handleAnalyzeClick} className="gap-2">
+                <Wand2 className="h-4 w-4" />
+                AI 분석 실행하기
+              </Button>
+            </InfoSection>
+          )}
+
+          {isAnalysisLoading && (
             <InfoSection title="AI 분석 중...">
               <div className="flex h-20 items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -234,10 +238,18 @@ const LogDetailModal1 = ({
           {error && (
             <InfoSection title="분석 실패">
               <p className="text-sm text-red-500">{error}</p>
+              <Button
+                onClick={handleAnalyzeClick}
+                className="gap-2 mt-4"
+                variant="outline"
+              >
+                <Wand2 className="h-4 w-4" />
+                재시도
+              </Button>
             </InfoSection>
           )}
 
-          {analysis && !isLoading && (
+          {analysis && !isAnalysisLoading && (
             <>
               <InfoSection title="로그 요약">
                 <div className="text-sm leading-relaxed text-gray-800">
@@ -258,7 +270,6 @@ const LogDetailModal1 = ({
                         remarkPlugins={[remarkGfm]}
                         components={markdownStyles}
                       >
-                        {/* snake_case 주의: analysis.error_cause가 맞다면 그대로 유지 */}
                         {analysis.error_cause}
                       </ReactMarkdown>
                     </div>
@@ -290,19 +301,20 @@ const LogDetailModal1 = ({
             요청 흐름 보기
           </Button>
 
-          {/* Jira 버튼 분기 처리 */}
           {isErrorLevel &&
-            (isJiraConnected ? (
-              // 연동됨 -> 티켓 발행 버튼
+            (isJiraLoading ? (
+              <Button disabled variant="outline" className="gap-2 opacity-70">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                확인 중...
+              </Button>
+            ) : isJiraConnected ? (
               <Button
                 onClick={onGoToNextPage}
-                disabled={isLoading || !analysis}
                 className="bg-[#0052CC] hover:bg-[#0747A6]"
               >
                 Jira 티켓 발행
               </Button>
             ) : (
-              // 연동 안 됨 -> 연동하기 버튼
               <Button
                 onClick={onOpenJiraConnect}
                 variant="outline"
