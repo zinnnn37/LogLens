@@ -3,15 +3,15 @@ import { useParams } from 'react-router-dom';
 import ChatMessage, { type Message } from '@/components/ChatMessage';
 import InitialMessages from '@/components/InitialMessages';
 import ChatInput from '@/components/ChatInput';
+import { API_PATH } from '@/constants/api-path';
+import { useAuthStore } from '@/stores/authStore';
 
 const ChatbotPage = () => {
   const { projectUuid } = useParams<{ projectUuid: string }>();
-
-  // TODO: projectUuid를 사용해서 프로젝트별 채팅 기록 관리
-  console.log('Current project UUID:', projectUuid);
+  const { accessToken } = useAuthStore();
 
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 메시지 추가 시 자동 스크롤
@@ -20,32 +20,170 @@ const ChatbotPage = () => {
   }, [messages]);
 
   const handleSendMessage = async (content: string) => {
+    if (!content.trim()) {
+      return;
+    }
+
     // 사용자 메시지 추가
     const userMessage: Message = { role: 'user', content };
     setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
+    setIsStreaming(true);
 
     try {
-      // TODO: 실제 API 호출로 교체
-      // 임시 응답
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 대화 히스토리 생성 (현재 메시지 제외)
+      const chatHistory = messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+      }));
 
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content:
-          '죄송합니다. 아직 AI 응답 기능이 구현되지 않았습니다.\n실제 API 연동이 필요합니다.',
-      };
+      // API 요청
+      const baseUrl = import.meta.env.VITE_API_AI_URL;
+      const url = `${baseUrl}${API_PATH.CHATBOT_STREAM}`;
 
-      setMessages(prev => [...prev, assistantMessage]);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          question: content,
+          project_uuid: projectUuid || 'testproject',
+          chat_history: chatHistory,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`서버 응답 오류: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('응답을 읽을 수 없습니다.');
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullText = '';
+      let hasStartedResponse = false;
+
+      // SSE 스트리밍 처리
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) {
+            continue;
+          }
+
+          const data = line.slice(6);
+
+          // 완료 시그널
+          if (data.trim() === '[DONE]') {
+            setIsStreaming(false);
+            if (hasStartedResponse) {
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  isComplete: true,
+                };
+                return updated;
+              });
+            }
+            continue;
+          }
+
+          // 에러 시그널
+          if (data.trim() === '[ERROR]') {
+            continue;
+          }
+
+          // JSON 에러 메시지 체크
+          if (data.trim().startsWith('{')) {
+            try {
+              const parsed = JSON.parse(data.trim());
+              if (parsed.error) {
+                throw new Error(parsed.error);
+              }
+            } catch (e) {
+              if (e instanceof SyntaxError) {
+                continue;
+              }
+              throw e;
+            }
+            continue;
+          }
+
+          // 데이터 처리
+          if (data.length === 0) {
+            // 빈 줄: 줄바꿈 추가
+            console.log('빈 줄 감지');
+            fullText += '\n\n';
+          } else {
+            // 일반 텍스트
+            console.log('텍스트:', JSON.stringify(data));
+            fullText += data;
+          }
+
+          // 화면 업데이트
+          if (!hasStartedResponse && fullText.trim().length > 0) {
+            hasStartedResponse = true;
+            setMessages(prev => [
+              ...prev,
+              { role: 'assistant', content: fullText, isComplete: false },
+            ]);
+          } else if (hasStartedResponse) {
+            setMessages(prev => {
+              const updated = [...prev];
+              updated[updated.length - 1] = {
+                role: 'assistant',
+                content: fullText,
+                isComplete: false,
+              };
+              return updated;
+            });
+          }
+        }
+      }
     } catch (error) {
-      console.error('메시지 전송 실패:', error);
-      const errorMessage: Message = {
-        role: 'assistant',
-        content: '메시지 전송 중 오류가 발생했습니다. 다시 시도해주세요.',
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      console.error('챗봇 오류:', error);
+
+      // 에러 메시지 표시
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content:
+            error instanceof Error
+              ? `오류: ${error.message}`
+              : '메시지 전송 중 오류가 발생했습니다.',
+        },
+      ]);
     } finally {
-      setIsLoading(false);
+      setIsStreaming(false);
+      // 스트리밍이 끝났으면 마지막 메시지를 완료 상태로 변경
+      setMessages(prev => {
+        const updated = [...prev];
+        if (
+          updated.length > 0 &&
+          updated[updated.length - 1].role === 'assistant'
+        ) {
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            isComplete: true,
+          };
+        }
+        return updated;
+      });
     }
   };
 
@@ -55,29 +193,32 @@ const ChatbotPage = () => {
 
   return (
     <div className="flex h-full flex-col gap-4">
-      {/* 채팅 기록 영역 - 네모 박스 */}
+      {/* 채팅 영역 */}
       <div className="flex-1 overflow-hidden rounded-lg bg-sky-50 p-4">
         <div className="h-full overflow-y-auto">
           {messages.length === 0 ? (
             <InitialMessages onQuestionClick={handleQuestionClick} />
           ) : (
-            <div className="flex flex-col">
+            <div className="flex flex-col gap-4">
               {messages.map((message, index) => (
                 <ChatMessage key={index} message={message} />
               ))}
-              {isLoading && (
-                <div className="flex gap-3 p-4">
-                  <div className="bg-primary/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-                    <div className="bg-primary h-5 w-5 animate-pulse rounded-full" />
+
+              {/* 로딩 표시 - 응답 대기 중일 때만 */}
+              {isStreaming &&
+                messages[messages.length - 1]?.role !== 'assistant' && (
+                  <div className="flex gap-3 px-4">
+                    <div className="bg-primary/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
+                      <div className="bg-primary h-2 w-2 animate-pulse rounded-full" />
+                    </div>
+                    <div className="text-muted-foreground flex items-center text-sm">
+                      답변 생성 중...
+                    </div>
                   </div>
-                  <div className="bg-muted rounded-lg px-4 py-2">
-                    <p className="text-muted-foreground text-sm">
-                      답변을 생성하고 있습니다...
-                    </p>
-                  </div>
-                </div>
-              )}
-              {!isLoading && (
+                )}
+
+              {/* 추천 질문 */}
+              {!isStreaming && (
                 <div className="mt-4">
                   <InitialMessages
                     onQuestionClick={handleQuestionClick}
@@ -85,15 +226,16 @@ const ChatbotPage = () => {
                   />
                 </div>
               )}
+
               <div ref={messagesEndRef} />
             </div>
           )}
         </div>
       </div>
 
-      {/* 입력 영역 - 박스 아래 */}
+      {/* 입력 영역 */}
       <div className="shrink-0">
-        <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
+        <ChatInput onSendMessage={handleSendMessage} disabled={isStreaming} />
       </div>
     </div>
   );

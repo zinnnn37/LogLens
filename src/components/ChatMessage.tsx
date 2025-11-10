@@ -1,11 +1,13 @@
 import { Bot, User } from 'lucide-react';
 import clsx from 'clsx';
+import MarkdownContent from './MarkdownContent';
 
 export type MessageRole = 'user' | 'assistant';
 
 export interface Message {
   role: MessageRole;
   content: string;
+  isComplete?: boolean; // 스트리밍 완료 여부
 }
 
 interface ChatMessageProps {
@@ -14,6 +16,7 @@ interface ChatMessageProps {
 
 const ChatMessage = ({ message }: ChatMessageProps) => {
   const isUser = message.role === 'user';
+  const shouldRenderMarkdown = !isUser && message.isComplete;
 
   return (
     <div
@@ -36,9 +39,13 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
             : 'text-foreground bg-white',
         )}
       >
-        <p className="font-yisunsin text-sm leading-relaxed whitespace-pre-wrap">
-          {message.content}
-        </p>
+        {shouldRenderMarkdown ? (
+          <MarkdownContent content={message.content} />
+        ) : (
+          <p className="font-yisunsin text-sm leading-relaxed whitespace-pre-wrap">
+            {message.content}
+          </p>
+        )}
       </div>
 
       {isUser && (
