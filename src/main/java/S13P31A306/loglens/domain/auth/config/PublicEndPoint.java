@@ -27,6 +27,9 @@ public enum PublicEndPoint {
     // Maven Repository
     MAVEN_REPO("/maven-repo/**"),
 
+    // npm Library files
+    NPM_LIBRARY("/static/libs/**"),
+
     // Component test
     COMPONENT("/api/components/**"),
     DEPENDENCY("/api/dependencies/**"),

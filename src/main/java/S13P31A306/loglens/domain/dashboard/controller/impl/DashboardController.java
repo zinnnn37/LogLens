@@ -2,9 +2,10 @@ package S13P31A306.loglens.domain.dashboard.controller.impl;
 
 import S13P31A306.loglens.domain.dashboard.constants.DashboardSuccessCode;
 import S13P31A306.loglens.domain.dashboard.controller.DashboardApi;
-import S13P31A306.loglens.domain.dashboard.dto.response.ComponentDependencyResponse;
-import S13P31A306.loglens.domain.dashboard.dto.response.ProjectComponentsResponse;
+import S13P31A306.loglens.domain.dashboard.dto.response.*;
+import S13P31A306.loglens.domain.dashboard.service.ApiEndpointService;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
+import S13P31A306.loglens.domain.dashboard.service.TopFrequentErrorsService;
 import S13P31A306.loglens.global.annotation.ValidUuid;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
@@ -21,43 +22,68 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class DashboardController implements DashboardApi {
 
+    private static final String LOG_PREFIX = "[DashboardController]";
+
     private final DashboardService dashboardService;
+    private final TopFrequentErrorsService topFrequentErrorsService;
+    private final ApiEndpointService apiEndpointService;
 
     /**
      * 통계 개요 조회
      */
     @GetMapping("/statistics/overview")
     public ResponseEntity<? extends BaseResponse> getStatisticsOverview(
-            @RequestParam Integer projectId,
+            @ValidUuid @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
-        return null;
+        log.info("{} 대시보드 통계 api 호출", LOG_PREFIX);
+
+        DashboardOverviewResponse response = dashboardService.getStatisticsOverview(projectUuid, startTime, endTime);
+        return ApiResponseFactory.success(
+                DashboardSuccessCode.OVERVIEW_RETRIEVED,
+                response
+        );
     }
 
     /**
      * 자주 발생하는 에러 Top 10 조회
      */
-    @GetMapping("/statistics/top")
+    @Override
+    @GetMapping("/errors/top")
     public ResponseEntity<? extends BaseResponse> getTopFrequentErrors(
-            @RequestParam Integer projectId,
+            @ValidUuid @RequestParam String projectUuid,
             @RequestParam(defaultValue = "10") Integer limit,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
-        return null;
+        log.info("{} 자주 발생하는 에러 TOP {} api 호출", LOG_PREFIX, limit);
+
+        TopFrequentErrorsResponse response = topFrequentErrorsService.getTopFrequentErrors(projectUuid, startTime, endTime, limit);
+        return ApiResponseFactory.success(
+                DashboardSuccessCode.FREQUENT_ERROR_RETRIEVED,
+                response
+        );
     }
 
     /**
      * API 호출 통계 조회
      */
+    @Override
     @GetMapping("/statistics/api-calls")
     public ResponseEntity<? extends BaseResponse> getApiCallStatistics(
-            @RequestParam Integer projectId,
+            @ValidUuid @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
-            @RequestParam(required = false) String endTime
+            @RequestParam(required = false) String endTime,
+            @RequestParam(required = false) Integer limit
     ) {
-        return null;
+        log.info("{} API 통계 {}개 호출", LOG_PREFIX, limit);
+
+        ApiEndpointResponse response = apiEndpointService.getApiEndpointStatistics(projectUuid, startTime, endTime, limit);
+        return ApiResponseFactory.success(
+                DashboardSuccessCode.API_STATISTICS_RETRIEVED,
+                response
+        );
     }
 
     /**
@@ -65,7 +91,7 @@ public class DashboardController implements DashboardApi {
      */
     @GetMapping("/statistics/logs/heatmap")
     public ResponseEntity<? extends BaseResponse> getLogHeatmap(
-            @RequestParam Integer projectId,
+            @ValidUuid @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime
     ) {
@@ -73,25 +99,16 @@ public class DashboardController implements DashboardApi {
     }
 
     /**
-     * 의존성 아키텍처 전체 구조 조회
-     */
-    @GetMapping("/dashboards/dependencies/architecture")
-    public ResponseEntity<? extends BaseResponse> getDependencyArchitecture(
-            @RequestParam Integer projectId
-    ) {
-        return null;
-    }
-
-    /**
      * 의존성 컴포넌트 목록 조회
      */
-    @GetMapping("/dashboards/dependencies/components")
-    public ResponseEntity<? extends BaseResponse> getDependencyComponents(
-            @RequestParam Integer projectId,
-            @RequestParam(required = false) String layer,
-            @RequestParam(required = false) String componentType
+    @GetMapping("/dashboards/dependencies/architecture")
+    public ResponseEntity<? extends BaseResponse> getDatabaseComponents(
+            @ValidUuid @RequestParam String projectUuid,
+            @AuthenticationPrincipal UserDetails userDetails
     ) {
-        return null;
+        DatabaseComponentResponse response = dashboardService.getDatabaseComponents(projectUuid, userDetails);
+
+        return ApiResponseFactory.success(DashboardSuccessCode.DATABASES_RETRIEVED, response);
     }
 
     /**
@@ -144,7 +161,7 @@ public class DashboardController implements DashboardApi {
      */
     @GetMapping("/alerts")
     public ResponseEntity<? extends BaseResponse> getAlertFeed(
-            @RequestParam Integer projectId,
+            @RequestParam String projectUuid,
             @RequestParam(required = false) String severity, // "critical", "warning", "info"
             @RequestParam(required = false) Boolean isRead,
             @RequestParam(defaultValue = "0") Integer page,
@@ -153,4 +170,5 @@ public class DashboardController implements DashboardApi {
         // PageResponse<AlertResponse> response = dashboardService.getAlertFeed(projectId, severity, isRead, page, size);
         return null;
     }
+
 }

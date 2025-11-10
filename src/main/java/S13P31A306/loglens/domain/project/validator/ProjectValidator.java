@@ -44,10 +44,26 @@ public class ProjectValidator {
      * @throws BusinessException 프로젝트가 존재하지 않는 경우
      */
     public Project validateProjectExists(String projectUuid) {
-        log.debug("{} 프로젝트 존재 검증: uuid={}", LOG_PREFIX, projectUuid);
+        log.debug("{} 프로젝트 존재 여부 검증: projectUuid={}", LOG_PREFIX, projectUuid);
         return projectRepository.findByProjectUuid(projectUuid)
                 .orElseThrow(() -> {
                     log.warn("{} 프로젝트 없음: uuid={}", LOG_PREFIX, projectUuid);
+                    return new BusinessException(PROJECT_NOT_FOUND);
+                });
+    }
+
+    /**
+     * 프로젝트 ID로 프로젝트 존재 여부 검증
+     *
+     * @param projectId 프로젝트 UUID
+     * @return Project 조회된 프로젝트 엔티티
+     * @throws BusinessException 프로젝트가 존재하지 않는 경우
+     */
+    public Project validateProjectExists(Integer projectId) {
+        log.debug("{} 프로젝트 존재 여부 검증: projectId={}", LOG_PREFIX, projectId);
+        return projectRepository.findById(projectId)
+                .orElseThrow(() -> {
+                    log.warn("{} 프로젝트 없음: uuid={}", LOG_PREFIX, projectId);
                     return new BusinessException(PROJECT_NOT_FOUND);
                 });
     }
@@ -128,17 +144,6 @@ public class ProjectValidator {
             log.warn("{} 자기 자신 삭제 시도: userId={}", LOG_PREFIX, userId);
             throw new BusinessException(CANNOT_DELETE_SELF);
         }
-    }
-
-    /**
-     * 특정 사용자가 프로젝트 멤버인지 확인
-     *
-     * @param projectId 프로젝트 ID
-     * @param userId    사용자 ID
-     * @return true: 멤버, false: 비멤버
-     */
-    public boolean isProjectMember(Integer projectId, Integer userId) {
-        return projectMemberRepository.existsByProjectIdAndUserId(projectId, userId);
     }
 
     public void validateProjectAccess(final Project project, final String email) {

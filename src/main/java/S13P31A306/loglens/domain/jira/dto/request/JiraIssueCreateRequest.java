@@ -12,8 +12,8 @@ public record JiraIssueCreateRequest(
         String projectUuid,
 
         @NotNull(message = "LOG_ID_REQUIRED")
-        @Schema(description = "로그 ID", example = "12345")
-        Integer logId,
+        @Schema(description = "로그 ID (OpenSearch log_id 필드의 고유 식별자)", example = "1234567890")
+        Long logId,
 
         @NotBlank(message = "SUMMARY_REQUIRED")
         @Size(min = 1, max = 255, message = "SUMMARY_LENGTH_INVALID")
