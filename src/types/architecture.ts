@@ -34,3 +34,14 @@ export interface ArchitectureResponse {
   data: ArchitectureData;
   timestamp: string;
 }
+
+// 아키텍처 의존성 조회 응답 (DB 정보만)
+export interface ArchitectureDependenciesResponse {
+  code: string;
+  message: string;
+  status: number;
+  data: {
+    databases: string[];
+  };
+  timestamp: string;
+}

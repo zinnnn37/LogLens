@@ -104,14 +104,17 @@ export const getComponentDependencies = async (
 
   // 중심 컴포넌트 찾기
   const centerComponent = data.components.find(c => c.id === componentId);
-  if (!centerComponent) {
-    throw new Error('Center component not found');
-  }
 
-  console.log('=== API 응답 데이터 ===');
-  console.log('컴포넌트 수:', data.components.length);
-  console.log('엣지 수:', data.graph.edges.length);
-  console.log('엣지:', data.graph.edges);
+  if (!centerComponent) {
+    console.error(
+      'Center component not found in response. Component ID:',
+      componentId,
+    );
+    console.error('Available components:', data.components);
+    throw new Error(
+      `Center component not found (ID: ${componentId}). API returned ${data.components.length} components but the requested component was not included.`,
+    );
+  }
 
   // 간단하게 변환: GraphNode와 GraphEdge만 생성 (metrics 포함)
   const nodes: GraphNode[] = data.components.map(comp => ({
