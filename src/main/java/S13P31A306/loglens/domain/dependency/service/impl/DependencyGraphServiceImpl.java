@@ -5,7 +5,9 @@ import S13P31A306.loglens.domain.component.repository.ComponentRepository;
 import S13P31A306.loglens.domain.dependency.dto.request.DependencyGraphBatchRequest;
 import S13P31A306.loglens.domain.dependency.dto.request.DependencyRelationRequest;
 import S13P31A306.loglens.domain.dependency.entity.DependencyGraph;
+import S13P31A306.loglens.domain.dependency.entity.ProjectDatabase;
 import S13P31A306.loglens.domain.dependency.repository.DependencyGraphRepository;
+import S13P31A306.loglens.domain.dependency.repository.ProjectDatabaseRepository;
 import S13P31A306.loglens.domain.dependency.service.DependencyGraphService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -27,6 +30,7 @@ public class DependencyGraphServiceImpl implements DependencyGraphService {
 
     private final DependencyGraphRepository dependencyGraphRepository;
     private final ComponentRepository componentRepository;
+    private final ProjectDatabaseRepository projectDatabaseRepository;
 
     @Override
     @Transactional
@@ -68,6 +72,8 @@ public class DependencyGraphServiceImpl implements DependencyGraphService {
             }
         }
 
+        if (!Objects.isNull(request.databases()) && !request.databases().isEmpty()) saveDatabases(request.databases(), projectId);
+
         log.info("✅ 의존성 관계 저장 완료: {} 개 저장, {} 개 스킵 (projectId={})",
                 savedCount, skippedCount, projectId);
     }
@@ -80,5 +86,25 @@ public class DependencyGraphServiceImpl implements DependencyGraphService {
         List<DependencyGraph> upstreamEdges = dependencyGraphRepository.findByTo(componentId);
 
         return Stream.concat(downstreamEdges.stream(), upstreamEdges.stream()).toList();
+    }
+
+    private void saveDatabases(List<String> databases, Integer projectId) {
+        log.info("💾 데이터베이스 정보 저장 시작");
+
+        // 기존 데이터베이스 정보 삭제
+        projectDatabaseRepository.deleteByProjectId(projectId);
+        log.info("  - 기존 데이터베이스 정보 삭제 완료");
+
+        // 새 데이터베이스 정보 저장
+        List<ProjectDatabase> dbEntities = databases.stream()
+                .distinct()
+                .map(dbType -> ProjectDatabase.builder()
+                        .projectId(projectId)
+                        .databaseType(dbType)
+                        .build())
+                .toList();
+
+        projectDatabaseRepository.saveAll(dbEntities);
+        log.info("✅ 데이터베이스 정보 {} 개 저장 완료: {}", dbEntities.size(), databases);
     }
 }
