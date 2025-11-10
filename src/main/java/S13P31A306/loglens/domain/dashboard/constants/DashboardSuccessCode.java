@@ -17,7 +17,8 @@ public enum DashboardSuccessCode implements SuccessCode {
     HEATMAP_RETRIEVED("DSB200-5", "히트맵을 성공적으로 조회했습니다.", HttpStatus.OK.value()),
     NOTIFICATION_FEED_RETRIEVED("DS200-6", "알림 피드를 성공적으로 조회했습니다.", HttpStatus.OK.value()),
     COMPONENTS_RETRIEVED("DASH200-7", "컴포넌트 목록을 성공적으로 조회했습니다.", HttpStatus.OK.value()),
-    COMPONENT_DEPENDENCY_RETRIEVED("DASH200-8", "컴포넌트 의존성 목록을 성공적으로 조회했습니다.", HttpStatus.OK.value());
+    COMPONENT_DEPENDENCY_RETRIEVED("DASH200-8", "컴포넌트 의존성 목록을 성공적으로 조회했습니다.", HttpStatus.OK.value()),
+    DATABASES_RETRIEVED("DASH200-9", "데이터베이스 목록을 성공적으로 조회했습니다.", HttpStatus.OK.value());
 
     private final String code;
     private final String message;

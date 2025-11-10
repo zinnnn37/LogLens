@@ -764,16 +764,6 @@ public interface DashboardApi {
     );
 
     /**
-     * 의존성 아키텍처 전체 구조 조회
-     *
-     * @param projectUuid 프로젝트 UUID
-     * @return 컴포넌트 노드와 간선 정보
-     */
-    ResponseEntity<? extends BaseResponse> getDependencyArchitecture(
-            @ValidUuid @RequestParam String projectUuid
-    );
-
-    /**
      * 트레이스 플로우 조회
      *
      * @param traceId 트레이스 ID
@@ -1153,6 +1143,72 @@ public interface DashboardApi {
     )
     ResponseEntity<? extends BaseResponse> getComponentDependencies(
             @PathVariable Integer componentId,
+            @ValidUuid @RequestParam String projectUuid,
+            @AuthenticationPrincipal UserDetails userDetails
+    );
+
+    @Operation(
+            summary = "데이터베이스 컴포넌트 목록 조회",
+            description = "프로젝트에서 사용하는 데이터베이스 목록을 조회합니다.",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            parameters = {
+                    @Parameter(in = ParameterIn.QUERY, name = "projectUuid", description = "프로젝트 UUID", required = true, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "데이터베이스 목록 조회 성공",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = DatabaseComponentResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "DatabasesRetrieved",
+                                            summary = "데이터베이스 목록 조회 성공 예시",
+                                            value = """
+                                                    {
+                                                       "code": "DASH200-9",
+                                                       "message": "데이터베이스 목록을 성공적으로 조회했습니다.",
+                                                       "status": 200,
+                                                       "data": {
+                                                         "databases": [
+                                                           "MySQL",
+                                                           "PostgreSQL",
+                                                           "H2"
+                                                         ]
+                                                       },
+                                                       "timestamp": "2025-11-05T08:09:11.291Z"
+                                                    }
+                                                    """
+                                    )
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "잘못된 UUID 형식",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "접근 권한 없음",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "프로젝트를 찾을 수 없음",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    ResponseEntity<? extends BaseResponse> getDatabaseComponents(
             @ValidUuid @RequestParam String projectUuid,
             @AuthenticationPrincipal UserDetails userDetails
     );

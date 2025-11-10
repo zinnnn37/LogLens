@@ -2,7 +2,7 @@ package S13P31A306.loglens.domain.dashboard.service.impl;
 
 import S13P31A306.loglens.domain.component.entity.Component;
 import S13P31A306.loglens.domain.component.entity.ComponentMetrics;
-import S13P31A306.loglens.domain.component.service.ComponentMetricsService;
+import S13P31A306.loglens.domain.component.service.BackendMetricsService;
 import S13P31A306.loglens.domain.component.service.ComponentService;
 import S13P31A306.loglens.domain.component.service.FrontendMetricsService;
 import S13P31A306.loglens.domain.dashboard.dto.FrontendMetricsSummary;
@@ -14,16 +14,15 @@ import S13P31A306.loglens.domain.dashboard.service.DashboardService;
 import S13P31A306.loglens.domain.dashboard.validator.DashboardValidator;
 import S13P31A306.loglens.domain.dependency.dto.response.DependencyGraphResponse;
 import S13P31A306.loglens.domain.dependency.entity.DependencyGraph;
+import S13P31A306.loglens.domain.dependency.entity.ProjectDatabase;
+import S13P31A306.loglens.domain.dependency.repository.ProjectDatabaseRepository;
 import S13P31A306.loglens.domain.dependency.service.DependencyGraphService;
 import S13P31A306.loglens.domain.project.entity.LogMetrics;
 import S13P31A306.loglens.domain.project.repository.LogMetricsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.opensearch.client.opensearch.OpenSearchClient;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.userdetails.UserDetails;
-import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
-import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
@@ -43,9 +42,10 @@ public class DashboardServiceImpl implements DashboardService {
     private static final String LOG_PREFIX = "[DashboardService]";
 
     private final ComponentService componentService;
-    private final ComponentMetricsService componentMetricsService;
+    private final BackendMetricsService backendMetricsService;
     private final FrontendMetricsService frontendMetricsService;
     private final DependencyGraphService dependencyGraphService;
+    private final ProjectDatabaseRepository projectDatabaseRepository;
     private final LogMetricsRepository logMetricsRepository;
     private final DashboardValidator validator;
     private final DashboardMapper mapper;
@@ -125,6 +125,20 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     @Override
+    public DatabaseComponentResponse getDatabaseComponents(String projectUuid, UserDetails userDetails) {
+        Integer projectId = validator.validateProjectAccess(projectUuid, userDetails);
+        List<ProjectDatabase> databases = projectDatabaseRepository.findByProjectId(projectId);
+
+        List<String> databaseTypes = databases.stream()
+                .map(ProjectDatabase::getDatabaseType)
+                .distinct()
+                .sorted()
+                .toList();
+
+        return new DatabaseComponentResponse(databaseTypes);
+    }
+
+    @Override
     public ProjectComponentsResponse getProjectComponents(
             final String projectUuid,
             final UserDetails userDetails
@@ -171,7 +185,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .collect(Collectors.toMap(Component::getId, component -> component));
 
         // 4. Backend 메트릭 정보 조회 (DB에서)
-        Map<Integer, ComponentMetrics> metricsMap = componentMetricsService
+        Map<Integer, ComponentMetrics> metricsMap = backendMetricsService
                 .getMetricsByComponentIds(new ArrayList<>(allComponentIds));
 
         // 5. ComponentInfo 리스트 생성

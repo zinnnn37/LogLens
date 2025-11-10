@@ -2,7 +2,7 @@ package S13P31A306.loglens.domain.component.service.impl;
 
 import S13P31A306.loglens.domain.component.entity.ComponentMetrics;
 import S13P31A306.loglens.domain.component.repository.ComponentMetricsRepository;
-import S13P31A306.loglens.domain.component.service.ComponentMetricsService;
+import S13P31A306.loglens.domain.component.service.BackendMetricsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class ComponentMetricsServiceImpl implements ComponentMetricsService {
+public class BackendMetricsServiceImpl implements BackendMetricsService {
 
     private static final String LOG_PREFIX = "[ComponentMetricsService]";
     private final ComponentMetricsRepository componentMetricsRepository;
