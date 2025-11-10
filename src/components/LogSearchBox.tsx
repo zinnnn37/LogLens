@@ -4,6 +4,7 @@ import { Search } from 'lucide-react';
 import clsx from 'clsx';
 import LogResultsTable, { type LogRow } from '@/components/LogResultsTable';
 import { DUMMY_LOGS } from '@/mocks/dummyLogs';
+import type { LogData } from '@/types/log';
 
 export interface LogSearchBoxProps {
   title?: string;
@@ -14,6 +15,9 @@ export interface LogSearchBoxProps {
   loading?: boolean;
   className?: string;
   buttonLabel?: string;
+  // API 검색 결과를 외부에서 받을 수 있도록
+  searchResults?: LogData[];
+  showResults?: boolean;
 }
 
 const LogSearchBox = ({
@@ -25,10 +29,18 @@ const LogSearchBox = ({
   loading = false,
   buttonLabel = '검색',
   className,
+  searchResults,
+  showResults: externalShowResults,
 }: LogSearchBoxProps) => {
   const [inner, setInner] = useState(value ?? '');
   const [rows, setRows] = useState<LogRow[]>([]);
-  const [showResults, setShowResults] = useState(false);
+  const [internalShowResults, setInternalShowResults] = useState(false);
+
+  // API 검색 결과가 있으면 사용, 없으면 내부 상태 사용
+  const showResults =
+    externalShowResults !== undefined
+      ? externalShowResults
+      : internalShowResults;
 
   // controlled/uncontrolled 겸용
   useEffect(() => {
@@ -36,6 +48,20 @@ const LogSearchBox = ({
       setInner(value);
     }
   }, [value]);
+
+  // API 검색 결과를 LogRow 형식으로 변환
+  useEffect(() => {
+    if (searchResults) {
+      const convertedRows: LogRow[] = searchResults.map(log => ({
+        id: log.traceId,
+        level: log.logLevel,
+        layer: log.sourceType,
+        message: log.message,
+        date: log.timestamp,
+      }));
+      setRows(convertedRows);
+    }
+  }, [searchResults]);
 
   const handleInput = (val: string) => {
     if (value === undefined) {
@@ -49,10 +75,15 @@ const LogSearchBox = ({
     const q = inner.trim();
     onSubmit?.(q);
 
+    // API 검색 결과를 사용하는 경우 내부 필터링 건너뜀
+    if (searchResults !== undefined) {
+      return;
+    }
+
     if (!q) {
       // 검색어가 비어 있으면 결과 숨김
       setRows([]);
-      setShowResults(false);
+      setInternalShowResults(false);
       return;
     }
 
@@ -61,7 +92,7 @@ const LogSearchBox = ({
     const filtered = DUMMY_LOGS.filter(r => r.id.toLowerCase().includes(lower));
 
     setRows(filtered);
-    setShowResults(true);
+    setInternalShowResults(true);
   };
 
   return (
