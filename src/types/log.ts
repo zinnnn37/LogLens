@@ -17,6 +17,7 @@ export interface LogSearchParams {
 
 export interface LogData {
   logId: number;
+  projectUuid: string;
   traceId: string;
   timestamp: string; // ISO 8601 date-time
   logLevel: 'WARN' | 'ERROR' | 'INFO';
@@ -25,6 +26,14 @@ export interface LogData {
   layer: string;
   logger: string;
   comment: string | null;
+  requesterIp: string | null;
+  serviceName: string | null;
+  className: string | null;
+  methodName: string | null;
+  threadName: string | null;
+  stackTrace: string | null;
+  componentName: string | null;
+  duration: number | null;
 }
 
 /**
@@ -58,6 +67,27 @@ export interface LogSummary {
 export interface TraceIdSearchResponse {
   traceId: string;
   summary: LogSummary;
+  logs: LogData[];
+}
+
+/**
+ * TraceId 기반 로그 조회 파라미터
+ */
+export interface TraceLogsParams {
+  traceId: string;
+  projectUuid: string;
+}
+
+/**
+ * TraceId 기반 로그 조회 응답
+ */
+export interface TraceLogsResponse {
+  traceId: string;
+  projectUuid: string;
+  request: LogData;
+  response: LogData;
+  duration: number;
+  status: string;
   logs: LogData[];
 }
 

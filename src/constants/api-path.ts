@@ -66,6 +66,9 @@ export const API_PATH = {
   // 로그 상세 조회(분석 포함)
   LOGS_DETAIL: (logId: number) => `/api/logs/${logId}`,
 
+  // TraceId 기반 로그 조회
+  TRACE_LOGS: (traceId: string) => `/api/traces/${traceId}/logs`,
+
   // 챗봇 스트리밍 API
   CHATBOT_STREAM: '/api/v2/chatbot/ask/stream',
 
