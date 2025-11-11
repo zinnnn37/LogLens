@@ -449,15 +449,39 @@ function transform_log(tag, timestamp, record)
                 new_record["log_details"]["database"] = record["database"]
             end
 
-            -- SQL 쿼리를 message에 저장
-            if record["query"] and record["query"] ~= "" then
-                -- 앞뒤 공백 제거
-                local clean_query = string.gsub(record["query"], "^%s+", "")
-                clean_query = string.gsub(clean_query, "%s+$", "")
+            local full_log = record["log"]
+            local sql_query = nil
 
-                if clean_query ~= "" and not string.match(clean_query, "^SET timestamp=") and not string.match(clean_query, "^use ") then
-                    new_record["message"] = clean_query
+            if full_log and type(full_log) == "string" then
+                -- SET timestamp 이후부터 다음 # 또는 끝까지 추출
+                sql_query = string.match(full_log, "SET timestamp=%d+;%s*([^#]+)")
+
+                if sql_query then
+                    -- 여러 줄을 한 줄로 정리
+                    sql_query = string.gsub(sql_query, "%s+", " ")
+                    sql_query = string.gsub(sql_query, "^%s+", "")
+                    sql_query = string.gsub(sql_query, "%s+$", "")
                 end
+            end
+
+            -- 2. 원본에서 추출 실패하면 query 필드 사용
+            if not sql_query or sql_query == "" then
+                if record["query"] and record["query"] ~= "" then
+                    sql_query = tostring(record["query"])
+                    sql_query = string.gsub(sql_query, "^%s+", "")
+                    sql_query = string.gsub(sql_query, "%s+$", "")
+                end
+            end
+
+            -- 3. SET timestamp, use 문 제외
+            if sql_query and sql_query ~= "" then
+                if not string.match(sql_query, "^SET timestamp=") and not string.match(sql_query, "^use ") then
+                    new_record["message"] = sql_query
+                else
+                    new_record["message"] = "MySQL Slow Query"
+                end
+            else
+                new_record["message"] = "MySQL Slow Query"
             end
         end
     end
