@@ -404,13 +404,14 @@ async def ask_chatbot_v2_stream(
                 # 답변을 단어 단위로 스트리밍 (타이핑 효과)
                 import asyncio
                 words = answer.split(" ")
+                newline_escape = '\\n'
                 for i, word in enumerate(words):
                     if i == 0:
                         # 첫 단어: "분석 중..." 덮어쓰기
-                        yield f"data: {word.replace(chr(10), '\\n')}\n\n"
+                        yield f"data: {word.replace(chr(10), newline_escape)}\n\n"
                     else:
                         # 공백 포함
-                        yield f"data:  {word.replace(chr(10), '\\n')}\n\n"
+                        yield f"data:  {word.replace(chr(10), newline_escape)}\n\n"
                     await asyncio.sleep(0.02)  # 20ms 딜레이
 
                 yield "data: [DONE]\n\n"
