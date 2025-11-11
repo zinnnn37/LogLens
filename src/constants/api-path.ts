@@ -66,6 +66,10 @@ export const API_PATH = {
   // 로그 상세 조회(분석 포함)
   LOGS_DETAIL: (logId: number) => `/api/logs/${logId}`,
 
+  // 실시간 로그 스트리밍(SSE)
+  LOGS_STREAM: '/api/logs/stream',
+
+
   // 챗봇 스트리밍 API
   CHATBOT_STREAM: '/api/v1/chatbot/ask/stream',
 
