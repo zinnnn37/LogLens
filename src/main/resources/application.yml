@@ -5,7 +5,8 @@ spring:
   application:
     name: loglens
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
+#    active: ${SPRING_PROFILES_ACTIVE:dev}
+    active: dev
 
   # ===================================================================
   # 데이터 소스 설정 (DataSource Configuration)
