@@ -295,3 +295,149 @@ async def search_logs_by_similarity(
 
     except Exception as e:
         return f"유사도 검색 중 오류 발생: {str(e)}"
+
+
+@tool
+async def search_logs_advanced(
+    project_uuid: str,
+    start_time: Optional[str] = None,
+    end_time: Optional[str] = None,
+    service_name: Optional[str] = None,
+    level: Optional[str] = None,
+    keyword: Optional[str] = None,
+    limit: int = 50
+) -> str:
+    """
+    고급 로그 검색 (커스텀 시간 범위 + 다중 필터)
+
+    특정 날짜/시간 범위 지정, 여러 조건 동시 필터링 가능
+
+    Args:
+        project_uuid: 프로젝트 UUID (언더스코어 형식)
+        start_time: 시작 시간 (ISO 8601 형식: "2025-11-05T14:00:00" 또는 "2025-11-05")
+        end_time: 종료 시간 (ISO 8601 형식)
+        service_name: 서비스 이름 (선택)
+        level: 로그 레벨 (ERROR, WARN, INFO 등, 선택)
+        keyword: 검색 키워드 (message 필드, 선택)
+        limit: 최대 결과 수 (기본 50)
+
+    Returns:
+        검색 결과 요약 (시간 범위 + 조건 + 결과)
+
+    Examples:
+        - "2025-11-05 14:00부터 16:00까지 payment-service 에러 검색"
+        - "어제 오후 2시~4시 사이 DatabaseTimeout 로그"
+    """
+    try:
+        from datetime import datetime, timezone
+        from app.db.opensearch import get_opensearch_client
+
+        client = get_opensearch_client()
+        index_name = f"logs_{project_uuid}"
+
+        # 쿼리 구성
+        must_conditions = []
+
+        # 시간 범위
+        if start_time or end_time:
+            time_range = {}
+            if start_time:
+                # ISO 8601 파싱
+                if 'T' not in start_time:
+                    start_time += 'T00:00:00'
+                time_range['gte'] = start_time
+            if end_time:
+                if 'T' not in end_time:
+                    end_time += 'T23:59:59'
+                time_range['lte'] = end_time
+
+            must_conditions.append({
+                "range": {
+                    "timestamp": time_range
+                }
+            })
+
+        # 서비스 필터
+        if service_name:
+            must_conditions.append({
+                "term": {"service_name.keyword": service_name}
+            })
+
+        # 레벨 필터
+        if level:
+            must_conditions.append({
+                "term": {"level.keyword": level.upper()}
+            })
+
+        # 키워드 검색
+        if keyword:
+            must_conditions.append({
+                "match": {"message": keyword}
+            })
+
+        # 쿼리 실행
+        query = {
+            "bool": {
+                "must": must_conditions if must_conditions else [{"match_all": {}}]
+            }
+        }
+
+        response = client.search(
+            index=index_name,
+            body={
+                "query": query,
+                "sort": [{"timestamp": "desc"}],
+                "size": limit
+            }
+        )
+
+        hits = response['hits']['hits']
+        total_count = response['hits']['total']['value']
+
+        if total_count == 0:
+            conditions_desc = []
+            if start_time: conditions_desc.append(f"시작: {start_time}")
+            if end_time: conditions_desc.append(f"종료: {end_time}")
+            if service_name: conditions_desc.append(f"서비스: {service_name}")
+            if level: conditions_desc.append(f"레벨: {level}")
+            if keyword: conditions_desc.append(f"키워드: {keyword}")
+
+            return f"=== 고급 검색 결과 ===\n\n조건: {', '.join(conditions_desc) if conditions_desc else '전체'}\n\n검색 결과가 없습니다."
+
+        # 결과 포맷팅
+        summary_lines = ["=== 고급 로그 검색 결과 ===", ""]
+
+        # 검색 조건 요약
+        conditions = []
+        if start_time: conditions.append(f"📅 시작: {start_time}")
+        if end_time: conditions.append(f"📅 종료: {end_time}")
+        if service_name: conditions.append(f"🔧 서비스: {service_name}")
+        if level: conditions.append(f"📊 레벨: {level}")
+        if keyword: conditions.append(f"🔍 키워드: {keyword}")
+
+        summary_lines.append("**검색 조건:**")
+        summary_lines.extend([f"- {cond}" for cond in conditions])
+        summary_lines.append("")
+        summary_lines.append(f"**결과:** 총 {total_count}건 중 상위 {len(hits)}건 표시")
+        summary_lines.append("")
+
+        # 로그 목록
+        for i, hit in enumerate(hits, 1):
+            source = hit['_source']
+            log_id = hit.get('_id')
+            timestamp = source.get('timestamp', 'N/A')
+            level_val = source.get('level', 'INFO')
+            service = source.get('service_name', 'unknown')
+            message = source.get('message', '')[:200]
+
+            summary_lines.append(f"{i}. [{level_val}] {timestamp}")
+            summary_lines.append(f"   🔧 {service}")
+            summary_lines.append(f"   💬 {message}")
+            if log_id:
+                summary_lines.append(f"   (log_id: {log_id})")
+            summary_lines.append("")
+
+        return "\n".join(summary_lines)
+
+    except Exception as e:
+        return f"고급 검색 중 오류 발생: {str(e)}"

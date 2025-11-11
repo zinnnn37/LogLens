@@ -424,7 +424,7 @@ async def get_service_health_status(
 @tool
 async def get_error_frequency_ranking(
     project_uuid: str,
-    time_hours: int = 168,  # 기본 7일
+    time_hours: int = 24,  # 기본 24시간 (다른 도구들과 통일)
     limit: int = 10,
     service_name: Optional[str] = None
 ) -> str:
@@ -438,7 +438,7 @@ async def get_error_frequency_ranking(
     - "동일한 에러가 여러 서비스에서 발생하나요?"
 
     입력 파라미터 (JSON 형식):
-        time_hours: 분석 시간 범위 (시간 단위, 기본 168시간=7일)
+        time_hours: 분석 시간 범위 (시간 단위, 기본 24시간)
         limit: 조회할 에러 타입 개수 (기본 10개)
         service_name: 서비스 이름 필터 (선택)
 
@@ -939,3 +939,166 @@ async def get_affected_users_count(
 
     except Exception as e:
         return f"사용자 영향도 분석 중 오류 발생: {str(e)}"
+
+
+@tool
+async def detect_anomalies(
+    project_uuid: str,
+    metric: str = "error_rate",
+    time_hours: int = 168,
+    sensitivity: float = 2.0
+) -> str:
+    """
+    통계 기반 이상치 탐지 (평소보다 비정상적인 패턴 감지)
+
+    과거 데이터의 평균과 표준편차를 기준으로 현재 값이 이상한지 판단
+
+    Args:
+        project_uuid: 프로젝트 UUID
+        metric: 측정 지표 (error_rate|traffic|latency)
+        time_hours: 분석 기간 (기본 7일)
+        sensitivity: 민감도 (표준편차 배수, 기본 2.0)
+            - 2.0 = ±2σ 벗어나면 이상 (95%)
+            - 3.0 = ±3σ 벗어나면 이상 (99.7%, 더 엄격)
+
+    Returns:
+        이상치 탐지 결과 + 정상 범위 + 현재 값
+
+    Examples:
+        - "평소보다 에러가 많나요?"
+        - "트래픽이 비정상적으로 급증했나요?"
+    """
+    try:
+        from app.db.opensearch import get_opensearch_client
+        from datetime import datetime, timedelta
+        import statistics
+
+        client = get_opensearch_client()
+        index_name = f"logs_{project_uuid}"
+
+        now = datetime.now()
+        start_time = now - timedelta(hours=time_hours)
+
+        summary_lines = [f"=== 이상 탐지 분석 ({metric}) ===", ""]
+
+        # 시간대별 데이터 수집 (1시간 단위)
+        interval = "1h"
+        response = client.search(
+            index=index_name,
+            body={
+                "size": 0,
+                "query": {
+                    "range": {
+                        "timestamp": {
+                            "gte": start_time.isoformat(),
+                            "lte": now.isoformat()
+                        }
+                    }
+                },
+                "aggs": {
+                    "time_buckets": {
+                        "date_histogram": {
+                            "field": "timestamp",
+                            "fixed_interval": interval
+                        },
+                        "aggs": {
+                            "error_count": {
+                                "filter": {"term": {"level.keyword": "ERROR"}}
+                            }
+                        }
+                    }
+                }
+            }
+        )
+
+        buckets = response['aggregations']['time_buckets']['buckets']
+
+        if len(buckets) < 10:
+            return "분석할 데이터가 부족합니다 (최소 10시간 필요)."
+
+        # 메트릭별 값 계산
+        values = []
+        timestamps = []
+
+        for bucket in buckets:
+            timestamp = bucket['key_as_string']
+            total_count = bucket['doc_count']
+            error_count = bucket['error_count']['doc_count']
+
+            if metric == "error_rate":
+                value = (error_count / total_count * 100) if total_count > 0 else 0.0
+            elif metric == "traffic":
+                value = total_count
+            elif metric == "latency":
+                # latency는 별도 aggregation 필요 (여기서는 단순화)
+                value = 0.0  # 실제 구현 시 avg 사용
+            else:
+                return f"지원하지 않는 metric: {metric}"
+
+            values.append(value)
+            timestamps.append(timestamp)
+
+        if len(values) < 10:
+            return "데이터 포인트가 부족합니다."
+
+        # 통계 계산
+        mean_value = statistics.mean(values)
+        stdev_value = statistics.stdev(values) if len(values) > 1 else 0.0
+
+        # 정상 범위 계산 (평균 ± sensitivity×표준편차)
+        upper_threshold = mean_value + (sensitivity * stdev_value)
+        lower_threshold = max(0, mean_value - (sensitivity * stdev_value))
+
+        # 현재 값 (최근 1시간)
+        current_value = values[-1] if values else 0.0
+        current_time = timestamps[-1] if timestamps else "N/A"
+
+        # 이상 여부 판단
+        is_anomaly = current_value > upper_threshold or current_value < lower_threshold
+        anomaly_type = ""
+        if current_value > upper_threshold:
+            anomaly_type = "급증 (상한 초과)"
+        elif current_value < lower_threshold:
+            anomaly_type = "급감 (하한 미달)"
+
+        # 결과 요약
+        summary_lines.append(f"**분석 기간:** {time_hours}시간 ({len(buckets)}개 데이터 포인트)")
+        summary_lines.append(f"**측정 지표:** {metric}")
+        summary_lines.append(f"**민감도:** ±{sensitivity}σ (표준편차)")
+        summary_lines.append("")
+
+        summary_lines.append("**📊 통계 정보:**")
+        unit = "%" if metric == "error_rate" else "건"
+        summary_lines.append(f"- 평균값: **{mean_value:.2f}{unit}**")
+        summary_lines.append(f"- 표준편차: {stdev_value:.2f}{unit}")
+        summary_lines.append(f"- 정상 범위: **{lower_threshold:.2f} ~ {upper_threshold:.2f}{unit}**")
+        summary_lines.append("")
+
+        summary_lines.append("**🔍 현재 상태:**")
+        summary_lines.append(f"- 시간: {current_time}")
+        summary_lines.append(f"- 현재 값: **{current_value:.2f}{unit}**")
+        summary_lines.append("")
+
+        if is_anomaly:
+            summary_lines.append(f"**🚨 이상 탐지: {anomaly_type}**")
+            deviation = abs(current_value - mean_value) / stdev_value if stdev_value > 0 else 0
+            summary_lines.append(f"- 평균 대비 {deviation:.1f}σ 벗어남")
+            summary_lines.append(f"- 평균 대비 {abs(current_value - mean_value):.2f}{unit} 차이")
+            summary_lines.append("")
+            summary_lines.append("**💡 권장 조치:**")
+            if current_value > upper_threshold:
+                summary_lines.append("1. 최근 배포나 설정 변경 확인")
+                summary_lines.append("2. 서비스 로그 상세 분석")
+                summary_lines.append("3. 알림 설정 및 모니터링 강화")
+            else:
+                summary_lines.append("1. 데이터 수집 정상 작동 확인")
+                summary_lines.append("2. 트래픽 유입 경로 점검")
+        else:
+            summary_lines.append("**✅ 정상 범위 내**")
+            summary_lines.append(f"- 평균 대비 정상적인 수준입니다")
+            summary_lines.append(f"- 현재 값은 정상 범위 ({lower_threshold:.2f} ~ {upper_threshold:.2f}{unit}) 안에 있습니다")
+
+        return "\n".join(summary_lines)
+
+    except Exception as e:
+        return f"이상 탐지 분석 중 오류 발생: {str(e)}"

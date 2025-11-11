@@ -370,7 +370,7 @@ async def get_recent_errors(
         service_filter_str = f" (서비스: {service_name})" if service_name else ""
         summary_lines = [
             f"=== 최근 에러 로그 (최근 {time_hours}시간){service_filter_str} ===",
-            f"총 {total_count}건의 에러 발생, 상위 {len(hits)}건 표시",
+            f"상위 {len(hits)}건 표시",  # "총 X건" 제거 - LLM 혼란 방지
             ""
         ]
 
@@ -387,7 +387,7 @@ async def get_recent_errors(
 
         for i, (hit, severity) in enumerate(errors_with_severity, 1):
             source = hit["_source"]
-            msg = source.get("message", "")[:400]
+            msg = source.get("message", "")[:200]  # 400 → 200자로 축소 (컨텍스트 부담 감소)
             timestamp_str = source.get("timestamp", "")[:19]
             service = source.get("service_name", "unknown")
             log_id = source.get("log_id", "")
@@ -449,13 +449,13 @@ async def get_recent_errors(
             # 메시지
             summary_lines.append(f"   💬 {msg}...")
 
-            # AI 분석 결과 (있는 경우)
+            # AI 분석 결과 (있는 경우) - 축소하여 컨텍스트 부담 감소
             if ai_summary:
-                summary_lines.append(f"   🤖 AI 분석: {ai_summary[:200]}")
+                summary_lines.append(f"   🤖 AI: {ai_summary[:100]}")  # 200 → 100자
             if ai_cause:
-                summary_lines.append(f"   📌 원인: {ai_cause[:150]}")
+                summary_lines.append(f"   📌 원인: {ai_cause[:80]}")  # 150 → 80자
             if ai_solution:
-                summary_lines.append(f"   💡 해결책: {ai_solution[:150]}")
+                summary_lines.append(f"   💡 해결: {ai_solution[:80]}")  # 150 → 80자
 
             # 스택 트레이스 여부
             if has_stack:
@@ -471,3 +471,268 @@ async def get_recent_errors(
 
     except Exception as e:
         return f"에러 로그 조회 중 오류 발생: {str(e)}"
+
+
+@tool
+async def correlate_logs(
+    project_uuid: str,
+    log_id: int,
+    correlation_type: str = "trace",
+    time_window_minutes: int = 5,
+    limit: int = 20
+) -> str:
+    """
+    특정 로그와 연관된 다른 로그들을 찾아 상관관계 분석
+
+    Args:
+        project_uuid: 프로젝트 UUID
+        log_id: 기준 로그 ID
+        correlation_type: 상관관계 유형 (trace|error_type|time_window)
+            - trace: 같은 trace_id를 가진 로그들 (분산 추적)
+            - error_type: 같은 에러 타입 발생 로그들
+            - time_window: 시간대 기반 (±N분 이내)
+        time_window_minutes: time_window 사용 시 시간 범위 (기본 5분)
+        limit: 최대 결과 수
+
+    Returns:
+        연관 로그 목록 및 분석
+
+    Examples:
+        - "이 NullPointerException의 근본 원인은?"
+        - "log_id 12345와 연관된 로그 추적"
+    """
+    try:
+        from app.db.opensearch import get_opensearch_client
+        from datetime import datetime, timedelta
+
+        client = get_opensearch_client()
+        index_name = f"logs_{project_uuid}"
+
+        # 1. 기준 로그 조회
+        try:
+            base_log = client.get(index=index_name, id=str(log_id))
+            base_source = base_log['_source']
+        except Exception:
+            return f"로그 ID {log_id}를 찾을 수 없습니다."
+
+        summary_lines = [f"=== 로그 상관관계 분석 (log_id: {log_id}) ===", ""]
+
+        # 기준 로그 정보
+        base_timestamp = base_source.get('timestamp')
+        base_service = base_source.get('service_name', 'unknown')
+        base_level = base_source.get('level', 'INFO')
+        base_message = base_source.get('message', '')[:150]
+
+        summary_lines.append("**기준 로그:**")
+        summary_lines.append(f"- 시간: {base_timestamp}")
+        summary_lines.append(f"- 서비스: {base_service}")
+        summary_lines.append(f"- 레벨: {base_level}")
+        summary_lines.append(f"- 메시지: {base_message}")
+        summary_lines.append("")
+
+        # 2. 상관관계 타입별 검색
+        query = None
+
+        if correlation_type == "trace":
+            # trace_id 기반
+            trace_id = base_source.get('log_details', {}).get('trace_id') or base_source.get('trace_id')
+            if not trace_id:
+                return f"기준 로그에 trace_id가 없습니다. 다른 correlation_type을 사용하세요."
+
+            query = {
+                "bool": {
+                    "must": [
+                        {"term": {"log_details.trace_id.keyword": trace_id}}
+                    ],
+                    "must_not": [
+                        {"term": {"_id": str(log_id)}}  # 자기 자신 제외
+                    ]
+                }
+            }
+            summary_lines.append(f"**상관관계 유형:** trace_id 추적 ({trace_id})")
+
+        elif correlation_type == "error_type":
+            # 같은 에러 타입
+            error_type = base_source.get('log_details', {}).get('error_type') or \
+                        base_source.get('error_type') or \
+                        base_message.split(':')[0] if ':' in base_message else None
+
+            if not error_type:
+                return "기준 로그에서 에러 타입을 추출할 수 없습니다."
+
+            query = {
+                "bool": {
+                    "should": [
+                        {"match": {"message": error_type}},
+                        {"term": {"log_details.error_type.keyword": error_type}}
+                    ],
+                    "minimum_should_match": 1,
+                    "must_not": [
+                        {"term": {"_id": str(log_id)}}
+                    ]
+                }
+            }
+            summary_lines.append(f"**상관관계 유형:** 같은 에러 타입 ({error_type})")
+
+        elif correlation_type == "time_window":
+            # 시간대 기반 (±N분)
+            if not base_timestamp:
+                return "기준 로그에 timestamp가 없습니다."
+
+            base_dt = datetime.fromisoformat(base_timestamp.replace('Z', '+00:00'))
+            start_time = base_dt - timedelta(minutes=time_window_minutes)
+            end_time = base_dt + timedelta(minutes=time_window_minutes)
+
+            query = {
+                "bool": {
+                    "must": [
+                        {
+                            "range": {
+                                "timestamp": {
+                                    "gte": start_time.isoformat(),
+                                    "lte": end_time.isoformat()
+                                }
+                            }
+                        }
+                    ],
+                    "must_not": [
+                        {"term": {"_id": str(log_id)}}
+                    ]
+                }
+            }
+            summary_lines.append(f"**상관관계 유형:** 시간 범위 (±{time_window_minutes}분)")
+
+        else:
+            return f"지원하지 않는 correlation_type: {correlation_type}"
+
+        # 3. 검색 실행
+        response = client.search(
+            index=index_name,
+            body={
+                "query": query,
+                "sort": [{"timestamp": "asc"}],
+                "size": limit
+            }
+        )
+
+        hits = response['hits']['hits']
+        total = response['hits']['total']['value']
+
+        if total == 0:
+            summary_lines.append("")
+            summary_lines.append("연관된 로그를 찾지 못했습니다.")
+            return "\n".join(summary_lines)
+
+        summary_lines.append(f"**발견:** 총 {total}건 중 {len(hits)}건 표시")
+        summary_lines.append("")
+
+        # 4. 연관 로그 목록
+        summary_lines.append("**연관 로그 목록 (시간순):**")
+        summary_lines.append("")
+
+        for i, hit in enumerate(hits, 1):
+            source = hit['_source']
+            related_id = hit.get('_id')
+            timestamp = source.get('timestamp', 'N/A')
+            level = source.get('level', 'INFO')
+            service = source.get('service_name', 'unknown')
+            message = source.get('message', '')[:200]
+
+            summary_lines.append(f"{i}. [{level}] {timestamp}")
+            summary_lines.append(f"   🔧 {service}")
+            summary_lines.append(f"   💬 {message}")
+            summary_lines.append(f"   (log_id: {related_id})")
+            summary_lines.append("")
+
+        # 5. 인사이트
+        summary_lines.append("**💡 분석 인사이트:**")
+        if correlation_type == "trace":
+            summary_lines.append(f"- 이 요청은 {len(hits)+1}개 서비스를 거쳐 처리되었습니다")
+            summary_lines.append("- trace_id로 전체 호출 흐름을 추적할 수 있습니다")
+        elif correlation_type == "error_type":
+            summary_lines.append(f"- 같은 에러가 총 {total+1}건 발생했습니다")
+            summary_lines.append("- 재현 가능한 버그일 가능성이 높습니다")
+        elif correlation_type == "time_window":
+            summary_lines.append(f"- {time_window_minutes}분 이내 {total}건의 로그가 발생했습니다")
+            summary_lines.append("- 동시다발적 문제 또는 연쇄 장애 가능성이 있습니다")
+
+        return "\n".join(summary_lines)
+
+    except Exception as e:
+        return f"상관관계 분석 중 오류 발생: {str(e)}"
+
+
+@tool
+async def analyze_errors_unified(
+    project_uuid: str,
+    group_by: str = "severity",
+    sort_by: str = "severity",
+    time_hours: int = 24,
+    limit: int = 10,
+    service_name: Optional[str] = None
+) -> str:
+    """
+    통합 에러 분석 도구 (기존 3개 도구 통합)
+
+    하나의 도구로 다양한 에러 분석 수행 (심각도별/빈도별/API별)
+
+    Args:
+        project_uuid: 프로젝트 UUID
+        group_by: 그룹핑 기준
+            - severity: 심각도별 그룹핑 (CRITICAL > HIGH > MEDIUM)
+            - error_type: 에러 타입별 (NullPointerException 등)
+            - service: 서비스별
+            - api: API 엔드포인트별
+        sort_by: 정렬 기준
+            - severity: 심각도순 (CRITICAL 우선)
+            - frequency: 발생 빈도순
+            - time: 최근 발생 시간순
+        time_hours: 분석 기간 (기본 24시간)
+        limit: 최대 결과 수
+        service_name: 특정 서비스만 분석 (선택)
+
+    Returns:
+        그룹핑/정렬된 에러 분석 결과
+
+    Examples:
+        - "가장 심각한 에러" → group_by=severity, sort_by=severity
+        - "가장 자주 발생하는 에러" → group_by=error_type, sort_by=frequency
+        - "서비스별 에러 현황" → group_by=service
+        - "API별 에러율" → group_by=api
+    """
+    # 기존 도구 재사용
+    if group_by == "severity" and sort_by == "severity":
+        # get_recent_errors 로직
+        return await get_recent_errors.ainvoke({
+            "project_uuid": project_uuid,
+            "limit": limit,
+            "service_name": service_name,
+            "time_hours": time_hours
+        })
+    elif group_by == "error_type":
+        # get_error_frequency_ranking 로직
+        from app.tools.monitoring_tools import get_error_frequency_ranking
+        return await get_error_frequency_ranking.ainvoke({
+            "project_uuid": project_uuid,
+            "time_hours": time_hours,
+            "limit": limit,
+            "service_name": service_name
+        })
+    elif group_by == "api":
+        # get_api_error_rates 로직
+        from app.tools.monitoring_tools import get_api_error_rates
+        return await get_api_error_rates.ainvoke({
+            "project_uuid": project_uuid,
+            "time_hours": time_hours,
+            "limit": limit
+        })
+    elif group_by == "service":
+        # get_service_health_status 로직
+        from app.tools.monitoring_tools import get_service_health_status
+        return await get_service_health_status.ainvoke({
+            "project_uuid": project_uuid,
+            "time_hours": time_hours,
+            "service_name": service_name
+        })
+    else:
+        return f"⚠️ 지원하지 않는 조합: group_by={group_by}, sort_by={sort_by}\n\n지원되는 옵션:\n- group_by: severity|error_type|service|api\n- sort_by: severity|frequency|time"
