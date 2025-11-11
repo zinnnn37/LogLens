@@ -10,6 +10,8 @@ import type {
   LogDetailResponse,
   TraceLogsParams,
   TraceLogsResponse,
+  TraceFlowParams,
+  TraceFlowResponse,
 } from '@/types/log';
 
 /**
@@ -51,6 +53,23 @@ export const getTraceLogs = async (
   const url = API_PATH.TRACE_LOGS(traceId);
 
   const response = await apiClient.get<TraceLogsResponse>(url, {
+    projectUuid: projectUuid,
+  });
+
+  return response;
+};
+
+/**
+ * TraceId 기반 요청 흐름 조회 API 호출
+ */
+export const getTraceFlow = async (
+  params: TraceFlowParams,
+): Promise<TraceFlowResponse> => {
+  const { traceId, projectUuid } = params;
+
+  const url = API_PATH.TRACE_FLOW(traceId);
+
+  const response = await apiClient.get<TraceFlowResponse>(url, {
     projectUuid: projectUuid,
   });
 
