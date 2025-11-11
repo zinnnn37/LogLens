@@ -563,7 +563,7 @@ async def correlate_logs(
                 "bool": {
                     "should": [
                         {"match": {"message": error_type}},
-                        {"term": {"log_details.exception_type.keyword": error_type}}
+                        {"term": {"log_details.exception_type": error_type}}
                     ],
                     "minimum_should_match": 1,
                     "must_not": [

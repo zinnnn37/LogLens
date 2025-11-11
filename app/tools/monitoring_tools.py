@@ -478,7 +478,7 @@ async def get_error_frequency_ranking(
                 "aggs": {
                     "by_exception_type": {
                         "terms": {
-                            "field": "log_details.exception_type.keyword",
+                            "field": "log_details.exception_type",
                             "size": limit,
                             "order": {"_count": "desc"}
                         },
@@ -651,7 +651,7 @@ async def get_api_error_rates(
                 "aggs": {
                     "by_endpoint": {
                         "terms": {
-                            "field": "log_details.request_uri.keyword",
+                            "field": "log_details.request_uri",
                             "size": limit * 2,  # 필터링 후 limit개 남기기 위해 더 가져옴
                             "min_doc_count": min_requests
                         },
@@ -679,7 +679,7 @@ async def get_api_error_rates(
                             },
                             "by_http_method": {
                                 "terms": {
-                                    "field": "log_details.http_method.keyword",
+                                    "field": "log_details.http_method",
                                     "size": 5
                                 }
                             },

@@ -66,8 +66,7 @@ async def get_slowest_apis(
         {
             "bool": {
                 "should": [
-                    {"exists": {"field": "log_details.request_uri"}},
-                    {"exists": {"field": "log_details.request_uri.keyword"}}
+                    {"exists": {"field": "log_details.request_uri"}}
                 ],
                 "minimum_should_match": 1
             }
@@ -107,14 +106,14 @@ async def get_slowest_apis(
                                     String httpMethod = 'N/A';
                                     String requestUri = 'unknown';
 
-                                    if (doc.containsKey('log_details.http_method.keyword') &&
-                                        doc['log_details.http_method.keyword'].size() > 0) {
-                                        httpMethod = doc['log_details.http_method.keyword'].value;
+                                    if (doc.containsKey('log_details.http_method') &&
+                                        doc['log_details.http_method'].size() > 0) {
+                                        httpMethod = doc['log_details.http_method'].value;
                                     }
 
-                                    if (doc.containsKey('log_details.request_uri.keyword') &&
-                                        doc['log_details.request_uri.keyword'].size() > 0) {
-                                        requestUri = doc['log_details.request_uri.keyword'].value;
+                                    if (doc.containsKey('log_details.request_uri') &&
+                                        doc['log_details.request_uri'].size() > 0) {
+                                        requestUri = doc['log_details.request_uri'].value;
                                     }
 
                                     if (requestUri != 'unknown') {
@@ -200,7 +199,7 @@ async def get_slowest_apis(
                             },
                             "by_http_method": {
                                 "terms": {
-                                    "field": "log_details.http_method.keyword",
+                                    "field": "log_details.http_method",
                                     "size": 5,
                                     "missing": "N/A"  # 필드가 없으면 N/A로 표시
                                 }
@@ -343,7 +342,7 @@ async def get_traffic_by_time(
                             },
                             "by_service": {
                                 "terms": {
-                                    "field": "service_name.keyword",
+                                    "field": "service_name",
                                     "size": 5
                                 }
                             }

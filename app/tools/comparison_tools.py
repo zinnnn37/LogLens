@@ -81,7 +81,7 @@ async def compare_time_periods(
                             },
                             "by_service": {
                                 "terms": {
-                                    "field": "service_name.keyword",
+                                    "field": "service_name",
                                     "size": 10
                                 }
                             }
@@ -108,7 +108,7 @@ async def compare_time_periods(
                             },
                             "by_service": {
                                 "terms": {
-                                    "field": "service_name.keyword",
+                                    "field": "service_name",
                                     "size": 10
                                 }
                             }
@@ -342,7 +342,7 @@ async def detect_cascading_failures(
                         "aggs": {
                             "services_with_errors": {
                                 "terms": {
-                                    "field": "service_name.keyword",
+                                    "field": "service_name",
                                     "size": 20
                                 },
                                 "aggs": {
@@ -351,14 +351,14 @@ async def detect_cascading_failures(
                                     },
                                     "error_types": {
                                         "terms": {
-                                            "field": "log_details.exception_type.keyword",
+                                            "field": "log_details.exception_type",
                                             "size": 5
                                         }
                                     }
                                 }
                             },
                             "service_count": {
-                                "cardinality": {"field": "service_name.keyword"}
+                                "cardinality": {"field": "service_name"}
                             }
                         }
                     }

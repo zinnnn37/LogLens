@@ -90,7 +90,7 @@ async def analyze_deployment_impact(
                             },
                             "error_types": {
                                 "terms": {
-                                    "field": "log_details.exception_type.keyword",
+                                    "field": "log_details.exception_type",
                                     "size": 5
                                 }
                             }
@@ -120,7 +120,7 @@ async def analyze_deployment_impact(
                             },
                             "error_types": {
                                 "terms": {
-                                    "field": "log_details.exception_type.keyword",
+                                    "field": "log_details.exception_type",
                                     "size": 5
                                 }
                             }
