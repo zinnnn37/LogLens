@@ -62,7 +62,17 @@ async def get_slowest_apis(
                 "gte": start_time.isoformat() + "Z",
                 "lte": end_time.isoformat() + "Z"
             }
-        }}
+        }},
+        # 실제 HTTP API만 필터링 (Controller 레이어)
+        {
+            "bool": {
+                "should": [
+                    {"exists": {"field": "log_details.request_uri"}},
+                    {"exists": {"field": "log_details.request_uri.keyword"}}
+                ],
+                "minimum_should_match": 1
+            }
+        }
     ]
 
     if service_name:
@@ -93,17 +103,24 @@ async def get_slowest_apis(
                 "aggs": {
                     "by_api": {
                         "terms": {
-                            # request_uri가 없으면 class_name.method_name 조합 사용
+                            # HTTP 메서드 + request_uri 조합으로 API 식별
                             "script": {
                                 "source": """
+                                    String httpMethod = 'N/A';
+                                    String requestUri = 'unknown';
+
+                                    if (doc.containsKey('log_details.http_method.keyword') &&
+                                        doc['log_details.http_method.keyword'].size() > 0) {
+                                        httpMethod = doc['log_details.http_method.keyword'].value;
+                                    }
+
                                     if (doc.containsKey('log_details.request_uri.keyword') &&
                                         doc['log_details.request_uri.keyword'].size() > 0) {
-                                        return doc['log_details.request_uri.keyword'].value;
-                                    } else if (doc.containsKey('class_name') &&
-                                               doc['class_name'].size() > 0 &&
-                                               doc.containsKey('method_name') &&
-                                               doc['method_name'].size() > 0) {
-                                        return doc['class_name'].value + '.' + doc['method_name'].value;
+                                        requestUri = doc['log_details.request_uri.keyword'].value;
+                                    }
+
+                                    if (requestUri != 'unknown') {
+                                        return httpMethod + ' ' + requestUri;
                                     } else {
                                         return 'unknown';
                                     }
@@ -212,6 +229,9 @@ async def get_slowest_apis(
         buckets = results.get("aggregations", {}).get("by_api", {}).get("buckets", [])
         total_hits = results.get("hits", {}).get("total", {}).get("value", 0)
 
+        # 'unknown' API 제외 (request_uri가 없는 내부 메서드)
+        buckets = [b for b in buckets if b.get("key", "unknown") != "unknown"]
+
         if not buckets:
             return f"최근 {time_hours}시간 동안 응답 시간 데이터가 있는 API가 없습니다."
 
@@ -234,14 +254,8 @@ async def get_slowest_apis(
             p95 = percentiles.get("95.0", 0)
             p99 = percentiles.get("99.0", 0)
 
-            # HTTP 메서드 분포
-            http_methods = bucket.get("by_http_method", {}).get("buckets", [])
-            method_str = ", ".join([f"{m['key']}({m['doc_count']})" for m in http_methods[:3]])
-
             summary_lines.append(f"{i}. {api_path}")
             summary_lines.append(f"   📊 요청 수: {doc_count}건")
-            if method_str:
-                summary_lines.append(f"   🌐 HTTP 메서드: {method_str}")
             summary_lines.append(f"   ⏱️  평균 응답 시간: {avg_time:.0f}ms")
             summary_lines.append(f"   ⏱️  최대 응답 시간: {max_time:.0f}ms")
             summary_lines.append(f"   ⏱️  최소 응답 시간: {min_time:.0f}ms")
