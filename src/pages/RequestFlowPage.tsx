@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import LogSearchBox from '@/components/LogSearchBox';
 import FloatingChecklist from '@/components/FloatingChecklist';
-import { searchLogs } from '@/services/logService';
-import type { TraceIdSearchResponse } from '@/types/log';
+import { getTraceLogs } from '@/services/logService';
+import type { TraceLogsResponse } from '@/types/log';
 
 const RequestFlowPage = () => {
   const { projectUuid } = useParams<{ projectUuid: string }>();
@@ -15,9 +15,7 @@ const RequestFlowPage = () => {
   const [query, setQuery] = useState(initialTraceId ?? '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [traceData, setTraceData] = useState<TraceIdSearchResponse | null>(
-    null,
-  );
+  const [traceData, setTraceData] = useState<TraceLogsResponse | null>(null);
 
   const handleSearchSubmit = async (traceId: string) => {
     if (!projectUuid) {
@@ -35,18 +33,13 @@ const RequestFlowPage = () => {
     setTraceData(null);
 
     try {
-      const response = await searchLogs({
+      const response = await getTraceLogs({
         projectUuid,
         traceId: traceId.trim(),
       });
 
-      // TraceId 검색 응답인지 확인
-      if ('traceId' in response && 'summary' in response) {
-        setTraceData(response as TraceIdSearchResponse);
-        console.log('TraceId 검색 결과:', response);
-      } else {
-        setError('TraceId 검색 결과를 찾을 수 없습니다.');
-      }
+      setTraceData(response);
+      console.log('TraceId 검색 결과:', response);
     } catch (err) {
       console.error('TraceId 검색 에러:', err);
       setError('TraceId 검색에 실패했습니다. 다시 시도해주세요.');
@@ -87,25 +80,64 @@ const RequestFlowPage = () => {
               <div>
                 <p className="text-sm text-gray-500">전체 로그</p>
                 <p className="text-xl font-semibold text-gray-800">
-                  {traceData.summary.totalLogs}
+                  {traceData.logs.length}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">처리 시간</p>
                 <p className="text-xl font-semibold text-gray-800">
-                  {traceData.summary.durationMs}ms
+                  {traceData.duration}ms
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">상태</p>
+                <p
+                  className={`text-xl font-semibold ${traceData.status === 'SUCCESS' ? 'text-green-600' : 'text-red-600'}`}
+                >
+                  {traceData.status}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">에러</p>
                 <p className="text-xl font-semibold text-red-600">
-                  {traceData.summary.errorCount}
+                  {
+                    traceData.logs.filter(log => log.logLevel === 'ERROR')
+                      .length
+                  }
                 </p>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">경고</p>
-                <p className="text-xl font-semibold text-yellow-600">
-                  {traceData.summary.warnCount}
+            </div>
+
+            {/* Request/Response 정보 */}
+            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-lg bg-blue-50 p-4">
+                <h3 className="font-godoM mb-2 text-sm text-blue-900">
+                  Request
+                </h3>
+                <p className="text-xs text-gray-600">
+                  {traceData.request.message}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {new Date(traceData.request.timestamp).toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {traceData.request.componentName} -{' '}
+                  {traceData.request.methodName}
+                </p>
+              </div>
+              <div className="rounded-lg bg-green-50 p-4">
+                <h3 className="font-godoM mb-2 text-sm text-green-900">
+                  Response
+                </h3>
+                <p className="text-xs text-gray-600">
+                  {traceData.response.message}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {new Date(traceData.response.timestamp).toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {traceData.response.componentName} -{' '}
+                  {traceData.response.methodName}
                 </p>
               </div>
             </div>
