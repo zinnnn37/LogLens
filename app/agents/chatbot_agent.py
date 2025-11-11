@@ -14,6 +14,17 @@ from langchain_core.tools import Tool
 from app.tools.search_tools import search_logs_by_keyword, search_logs_by_similarity
 from app.tools.analysis_tools import get_log_statistics, get_recent_errors
 from app.tools.detail_tools import get_log_detail, get_logs_by_trace_id
+from app.tools.performance_tools import get_slowest_apis, get_traffic_by_time
+from app.tools.monitoring_tools import (
+    get_error_rate_trend,
+    get_service_health_status,
+    get_error_frequency_ranking,
+    get_api_error_rates,
+    get_affected_users_count
+)
+from app.tools.comparison_tools import compare_time_periods, detect_cascading_failures
+from app.tools.alert_tools import evaluate_alert_conditions, detect_resource_issues
+from app.tools.deployment_tools import analyze_deployment_impact
 from app.core.config import settings
 
 
@@ -63,6 +74,34 @@ TIME PARSING GUIDELINES:
 - "최근 1시간" or "1시간 동안" → time_hours = 1
 - "오늘" → time_hours = 24
 - Always extract time values accurately from user questions
+
+PERFORMANCE ANALYSIS GUIDELINES (IMPORTANT):
+- For "응답 시간이 가장 느린 API", "slowest API" questions: Use get_slowest_apis tool
+- For "트래픽이 가장 많은 시간대", "peak traffic time" questions: Use get_traffic_by_time tool
+- For "평균 응답 시간", "average response time" questions: Use get_slowest_apis with appropriate limit
+- get_slowest_apis returns: avg/max/min response times, P50/P95/P99 percentiles, request counts
+- get_traffic_by_time returns: hourly/interval-based traffic distribution, peak times, level distribution
+- Default time range for performance analysis: 168 hours (7 days) unless specified otherwise
+- Interval options for get_traffic_by_time: "1h" (hourly), "30m" (30 minutes), "1d" (daily)
+- When analyzing performance, always mention:
+  1. Time range analyzed
+  2. Total request count
+  3. Specific metrics (avg/max/P95)
+  4. Performance grade (빠름/보통/느림/매우 느림)
+- Example workflow: "응답 시간이 가장 느린 API는?" → get_slowest_apis(limit=5) → analyze results → Final Answer
+
+MONITORING & ALERTING GUIDELINES (NEW TOOLS - IMPORTANT):
+- For "에러율이 증가", "error rate trend" questions: Use get_error_rate_trend tool
+- For "서비스가 정상", "service health" questions: Use get_service_health_status tool
+- For "가장 자주 발생하는 에러", "most frequent error" questions: Use get_error_frequency_ranking tool
+- For "가장 에러가 많은 API", "API error rate" questions: Use get_api_error_rates tool
+- For "몇 명의 사용자가 영향", "affected users" questions: Use get_affected_users_count tool
+- For "오늘 vs 어제", "time period comparison" questions: Use compare_time_periods tool
+- For "연쇄 장애", "cascading failure" questions: Use detect_cascading_failures tool
+- For "알림이 필요한", "alert conditions" questions: Use evaluate_alert_conditions tool
+- For "메모리 부족", "리소스 이슈", "resource issues" questions: Use detect_resource_issues tool
+- For "배포 이후", "deployment impact" questions: Use analyze_deployment_impact tool
+- These tools provide comprehensive monitoring/alerting insights - prioritize them over generic tools for DevOps/SRE questions
 
 FORMATTING GUIDELINES FOR FINAL ANSWER:
 - For ANALYSIS questions (통계, 분석, 요약): Use structured markdown with ## headers, **bold** numbers, tables
@@ -264,6 +303,132 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
         params = {**kwargs, "project_uuid": project_uuid}
         return await get_logs_by_trace_id.ainvoke(params)
 
+    async def _get_slowest_apis_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in get_slowest_apis: {e}, input: {tool_input}")
+                # Continue with default parameters
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await get_slowest_apis.ainvoke(params)
+
+    async def _get_traffic_by_time_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in get_traffic_by_time: {e}, input: {tool_input}")
+                # Continue with default parameters
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await get_traffic_by_time.ainvoke(params)
+
+    # New monitoring tools wrappers
+    async def _get_error_rate_trend_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in get_error_rate_trend: {e}, input: {tool_input}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await get_error_rate_trend.ainvoke(params)
+
+    async def _get_service_health_status_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in get_service_health_status: {e}, input: {tool_input}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await get_service_health_status.ainvoke(params)
+
+    async def _get_error_frequency_ranking_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in get_error_frequency_ranking: {e}, input: {tool_input}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await get_error_frequency_ranking.ainvoke(params)
+
+    async def _get_api_error_rates_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in get_api_error_rates: {e}, input: {tool_input}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await get_api_error_rates.ainvoke(params)
+
+    async def _get_affected_users_count_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in get_affected_users_count: {e}, input: {tool_input}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await get_affected_users_count.ainvoke(params)
+
+    # Comparison tools wrappers
+    async def _compare_time_periods_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in compare_time_periods: {e}, input: {tool_input}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await compare_time_periods.ainvoke(params)
+
+    async def _detect_cascading_failures_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in detect_cascading_failures: {e}, input: {tool_input}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await detect_cascading_failures.ainvoke(params)
+
+    # Alert tools wrappers
+    async def _evaluate_alert_conditions_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in evaluate_alert_conditions: {e}, input: {tool_input}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await evaluate_alert_conditions.ainvoke(params)
+
+    async def _detect_resource_issues_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in detect_resource_issues: {e}, input: {tool_input}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await detect_resource_issues.ainvoke(params)
+
+    # Deployment tools wrapper
+    async def _analyze_deployment_impact_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in analyze_deployment_impact: {e}, input: {tool_input}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await analyze_deployment_impact.ainvoke(params)
+
     # Tool 목록 (wrapper 함수 사용)
     tools: List[Tool] = [
         Tool(
@@ -301,6 +466,82 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
             description=get_logs_by_trace_id.description,
             func=_dummy_func,
             coroutine=_get_logs_by_trace_id_wrapper
+        ),
+        Tool(
+            name="get_slowest_apis",
+            description=get_slowest_apis.description,
+            func=_dummy_func,
+            coroutine=_get_slowest_apis_wrapper
+        ),
+        Tool(
+            name="get_traffic_by_time",
+            description=get_traffic_by_time.description,
+            func=_dummy_func,
+            coroutine=_get_traffic_by_time_wrapper
+        ),
+        # New monitoring tools
+        Tool(
+            name="get_error_rate_trend",
+            description=get_error_rate_trend.description,
+            func=_dummy_func,
+            coroutine=_get_error_rate_trend_wrapper
+        ),
+        Tool(
+            name="get_service_health_status",
+            description=get_service_health_status.description,
+            func=_dummy_func,
+            coroutine=_get_service_health_status_wrapper
+        ),
+        Tool(
+            name="get_error_frequency_ranking",
+            description=get_error_frequency_ranking.description,
+            func=_dummy_func,
+            coroutine=_get_error_frequency_ranking_wrapper
+        ),
+        Tool(
+            name="get_api_error_rates",
+            description=get_api_error_rates.description,
+            func=_dummy_func,
+            coroutine=_get_api_error_rates_wrapper
+        ),
+        Tool(
+            name="get_affected_users_count",
+            description=get_affected_users_count.description,
+            func=_dummy_func,
+            coroutine=_get_affected_users_count_wrapper
+        ),
+        # Comparison tools
+        Tool(
+            name="compare_time_periods",
+            description=compare_time_periods.description,
+            func=_dummy_func,
+            coroutine=_compare_time_periods_wrapper
+        ),
+        Tool(
+            name="detect_cascading_failures",
+            description=detect_cascading_failures.description,
+            func=_dummy_func,
+            coroutine=_detect_cascading_failures_wrapper
+        ),
+        # Alert tools
+        Tool(
+            name="evaluate_alert_conditions",
+            description=evaluate_alert_conditions.description,
+            func=_dummy_func,
+            coroutine=_evaluate_alert_conditions_wrapper
+        ),
+        Tool(
+            name="detect_resource_issues",
+            description=detect_resource_issues.description,
+            func=_dummy_func,
+            coroutine=_detect_resource_issues_wrapper
+        ),
+        # Deployment tools
+        Tool(
+            name="analyze_deployment_impact",
+            description=analyze_deployment_impact.description,
+            func=_dummy_func,
+            coroutine=_analyze_deployment_impact_wrapper
         ),
     ]
 
