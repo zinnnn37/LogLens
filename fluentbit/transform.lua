@@ -370,5 +370,97 @@ function transform_log(tag, timestamp, record)
         new_record["log_details"]["stacktrace"] = stacktrace
     end
 
+    ----------------------------------------------------
+    -- 9️⃣ MySQL 인프라 로그 특화 처리
+    ----------------------------------------------------
+    if src == "INFRA" and new_record["component_name"] == "MySQL" then
+        -- MySQL Error Log 처리
+        if string.match(tostring(tag), "mysql%.error") then
+            new_record["logger"] = "MySQL-Error"
+
+            -- thread_id 저장
+            if record["thread_id"] then
+                new_record["thread_name"] = "mysql-thread-" .. record["thread_id"]
+            end
+
+            -- error_code 저장
+            if record["error_code"] then
+                if not new_record["log_details"] then
+                    new_record["log_details"] = {}
+                end
+                new_record["log_details"]["error_code"] = record["error_code"]
+            end
+
+            -- subsystem 정보
+            if record["subsystem"] then
+                new_record["component_name"] = "MySQL-" .. record["subsystem"]
+            end
+
+            -- level 매핑 (Warning -> WARN, System -> INFO, Error -> ERROR)
+            if record["level"] then
+                local mysql_level = record["level"]
+                if mysql_level == "Warning" then
+                    new_record["level"] = "WARN"
+                    new_record["log_level"] = "WARN"
+                elseif mysql_level == "System" then
+                    new_record["level"] = "INFO"
+                    new_record["log_level"] = "INFO"
+                elseif mysql_level == "Error" then
+                    new_record["level"] = "ERROR"
+                    new_record["log_level"] = "ERROR"
+                end
+            end
+
+            -- MySQL Slow Query Log 처리
+        elseif string.match(tostring(tag), "mysql%.slow") then
+            new_record["logger"] = "MySQL-SlowQuery"
+
+            new_record["requester_ip"] = nil
+
+            -- Query 성능 정보
+            local query_time = record["query_time"]
+            local lock_time = record["lock_time"]
+            local rows_sent = record["rows_sent"]
+            local rows_examined = record["rows_examined"]
+
+            if query_time then
+                new_record["duration"] = tonumber(query_time) * 1000  -- 초를 밀리초로
+            end
+
+            if not new_record["log_details"] then
+                new_record["log_details"] = {}
+            end
+
+            if query_time then
+                new_record["log_details"]["query_time"] = tonumber(query_time)
+            end
+            if lock_time then
+                new_record["log_details"]["lock_time"] = tonumber(lock_time)
+            end
+            if rows_sent then
+                new_record["log_details"]["rows_sent"] = tonumber(rows_sent)
+            end
+            if rows_examined then
+                new_record["log_details"]["rows_examined"] = tonumber(rows_examined)
+            end
+
+            -- 데이터베이스 이름
+            if record["database"] then
+                new_record["log_details"]["database"] = record["database"]
+            end
+
+            -- SQL 쿼리를 message에 저장
+            if record["query"] and record["query"] ~= "" then
+                -- 앞뒤 공백 제거
+                local clean_query = string.gsub(record["query"], "^%s+", "")
+                clean_query = string.gsub(clean_query, "%s+$", "")
+
+                if clean_query ~= "" and not string.match(clean_query, "^SET timestamp=") and not string.match(clean_query, "^use ") then
+                    new_record["message"] = clean_query
+                end
+            end
+        end
+    end
+
     return 1, timestamp, new_record
 end
