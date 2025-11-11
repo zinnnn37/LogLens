@@ -45,8 +45,18 @@ async def get_slowest_apis(
     start_time = end_time - timedelta(hours=time_hours)
 
     # Query 구성
+    # 평면 구조와 nested 구조 모두 지원 (execution_time, duration, log_details.execution_time)
     must_clauses = [
-        {"exists": {"field": "log_details.execution_time"}},
+        {
+            "bool": {
+                "should": [
+                    {"exists": {"field": "log_details.execution_time"}},
+                    {"exists": {"field": "execution_time"}},
+                    {"exists": {"field": "duration"}}
+                ],
+                "minimum_should_match": 1
+            }
+        },
         {"range": {
             "timestamp": {
                 "gte": start_time.isoformat() + "Z",
@@ -59,8 +69,16 @@ async def get_slowest_apis(
         must_clauses.append({"term": {"service_name": service_name}})
 
     if min_execution_time:
+        # 모든 execution_time 필드에 대해 필터 적용
         must_clauses.append({
-            "range": {"log_details.execution_time": {"gte": min_execution_time}}
+            "bool": {
+                "should": [
+                    {"range": {"log_details.execution_time": {"gte": min_execution_time}}},
+                    {"range": {"execution_time": {"gte": min_execution_time}}},
+                    {"range": {"duration": {"gte": min_execution_time}}}
+                ],
+                "minimum_should_match": 1
+            }
         })
 
     try:
@@ -75,30 +93,113 @@ async def get_slowest_apis(
                 "aggs": {
                     "by_api": {
                         "terms": {
-                            "field": "log_details.request_uri.keyword",
+                            # request_uri가 없으면 class_name.method_name 조합 사용
+                            "script": {
+                                "source": """
+                                    if (doc.containsKey('log_details.request_uri.keyword') &&
+                                        doc['log_details.request_uri.keyword'].size() > 0) {
+                                        return doc['log_details.request_uri.keyword'].value;
+                                    } else if (doc.containsKey('class_name') &&
+                                               doc['class_name'].size() > 0 &&
+                                               doc.containsKey('method_name') &&
+                                               doc['method_name'].size() > 0) {
+                                        return doc['class_name'].value + '.' + doc['method_name'].value;
+                                    } else {
+                                        return 'unknown';
+                                    }
+                                """
+                            },
                             "size": limit,
                             "order": {"avg_time": "desc"}  # 평균 시간 내림차순
                         },
                         "aggs": {
                             "avg_time": {
-                                "avg": {"field": "log_details.execution_time"}
+                                "avg": {
+                                    # 평면/nested 구조 모두 지원
+                                    "script": {
+                                        "source": """
+                                            if (doc.containsKey('log_details.execution_time') &&
+                                                doc['log_details.execution_time'].size() > 0) {
+                                                return doc['log_details.execution_time'].value;
+                                            } else if (doc.containsKey('execution_time') &&
+                                                       doc['execution_time'].size() > 0) {
+                                                return doc['execution_time'].value;
+                                            } else if (doc.containsKey('duration') &&
+                                                       doc['duration'].size() > 0) {
+                                                return doc['duration'].value;
+                                            } else {
+                                                return null;
+                                            }
+                                        """
+                                    }
+                                }
                             },
                             "max_time": {
-                                "max": {"field": "log_details.execution_time"}
+                                "max": {
+                                    "script": {
+                                        "source": """
+                                            if (doc.containsKey('log_details.execution_time') &&
+                                                doc['log_details.execution_time'].size() > 0) {
+                                                return doc['log_details.execution_time'].value;
+                                            } else if (doc.containsKey('execution_time') &&
+                                                       doc['execution_time'].size() > 0) {
+                                                return doc['execution_time'].value;
+                                            } else if (doc.containsKey('duration') &&
+                                                       doc['duration'].size() > 0) {
+                                                return doc['duration'].value;
+                                            } else {
+                                                return null;
+                                            }
+                                        """
+                                    }
+                                }
                             },
                             "min_time": {
-                                "min": {"field": "log_details.execution_time"}
+                                "min": {
+                                    "script": {
+                                        "source": """
+                                            if (doc.containsKey('log_details.execution_time') &&
+                                                doc['log_details.execution_time'].size() > 0) {
+                                                return doc['log_details.execution_time'].value;
+                                            } else if (doc.containsKey('execution_time') &&
+                                                       doc['execution_time'].size() > 0) {
+                                                return doc['execution_time'].value;
+                                            } else if (doc.containsKey('duration') &&
+                                                       doc['duration'].size() > 0) {
+                                                return doc['duration'].value;
+                                            } else {
+                                                return null;
+                                            }
+                                        """
+                                    }
+                                }
                             },
                             "percentiles": {
                                 "percentiles": {
-                                    "field": "log_details.execution_time",
+                                    "script": {
+                                        "source": """
+                                            if (doc.containsKey('log_details.execution_time') &&
+                                                doc['log_details.execution_time'].size() > 0) {
+                                                return doc['log_details.execution_time'].value;
+                                            } else if (doc.containsKey('execution_time') &&
+                                                       doc['execution_time'].size() > 0) {
+                                                return doc['execution_time'].value;
+                                            } else if (doc.containsKey('duration') &&
+                                                       doc['duration'].size() > 0) {
+                                                return doc['duration'].value;
+                                            } else {
+                                                return null;
+                                            }
+                                        """
+                                    },
                                     "percents": [50, 95, 99]
                                 }
                             },
                             "by_http_method": {
                                 "terms": {
                                     "field": "log_details.http_method.keyword",
-                                    "size": 5
+                                    "size": 5,
+                                    "missing": "N/A"  # 필드가 없으면 N/A로 표시
                                 }
                             }
                         }
