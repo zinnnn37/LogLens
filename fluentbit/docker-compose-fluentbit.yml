@@ -51,7 +51,7 @@ services:
     restart: unless-stopped               # 예기치 않은 중단 시 자동 재시작 (수동 중지 제외)
 
     networks:
-      - default
+      - loglens-network
 
     # ──────────────────────────────────────────────
     # ✅ 리소스 제한 (도커 엔진 수준의 컨테이너 자원 제어)
@@ -101,5 +101,5 @@ volumes:
     driver: local
 
 networks:
-  default:
+  loglens-network:
     driver: bridge
