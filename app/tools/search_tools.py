@@ -87,7 +87,19 @@ async def search_logs_by_keyword(
                 "query": query,
                 "size": 20,  # 최대 20개
                 "sort": [{"timestamp": "desc"}],
-                "_source": ["message", "level", "service_name", "timestamp", "log_id"]
+                "_source": [
+                    "message", "level", "service_name", "timestamp", "log_id",
+                    "layer", "component_name",
+                    # Nested fields
+                    "log_details.exception_type",
+                    "log_details.class_name",
+                    "log_details.method_name",
+                    "log_details.http_method",
+                    "log_details.request_uri",
+                    "log_details.response_status",
+                    # AI analysis (summary only for brevity)
+                    "ai_analysis.summary"
+                ]
             }
         )
 
@@ -121,9 +133,42 @@ async def search_logs_by_keyword(
             timestamp_str = source.get("timestamp", "")[:19]
             service = source.get("service_name", "unknown")
             log_id = source.get("log_id", "")
+            layer = source.get("layer", "")
+            component = source.get("component_name", "")
 
+            # log_details 접근
+            log_details = source.get("log_details", {})
+            class_name = log_details.get("class_name", "")
+            method_name = log_details.get("method_name", "")
+            http_method = log_details.get("http_method", "")
+            request_uri = log_details.get("request_uri", "")
+            response_status = log_details.get("response_status")
+
+            # AI 분석
+            ai_summary = source.get("ai_analysis", {}).get("summary", "")
+
+            # 기본 정보
             summary_lines.append(f"{i}. [{level_str}] {timestamp_str} | {service}")
+
+            # 위치 정보
+            if layer:
+                summary_lines.append(f"   Layer: {layer}")
+            if class_name and method_name:
+                summary_lines.append(f"   📍 {class_name}.{method_name}")
+
+            # HTTP 정보
+            if http_method and request_uri:
+                status_info = f" → {response_status}" if response_status else ""
+                summary_lines.append(f"   🌐 {http_method} {request_uri}{status_info}")
+
+            # 메시지
             summary_lines.append(f"   {msg}...")
+
+            # AI 분석 (있는 경우)
+            if ai_summary:
+                summary_lines.append(f"   🤖 {ai_summary[:150]}")
+
+            # log_id
             if log_id:
                 summary_lines.append(f"   (log_id: {log_id})")
 
@@ -201,15 +246,47 @@ async def search_logs_by_similarity(
             log_data = result.get("data", {})
             score = result.get("score", 0.0)
 
-            msg = log_data.get("message", "")[:100]
+            msg = log_data.get("message", "")[:200]
             level_str = log_data.get("level", "?")
             timestamp_str = log_data.get("timestamp", "")[:19]
             service = log_data.get("service_name", "unknown")
             log_id = log_data.get("log_id", "")
+            layer = log_data.get("layer", "")
 
+            # log_details 접근
+            log_details = log_data.get("log_details", {})
+            class_name = log_details.get("class_name", "")
+            method_name = log_details.get("method_name", "")
+            http_method = log_details.get("http_method", "")
+            request_uri = log_details.get("request_uri", "")
+            response_status = log_details.get("response_status")
+
+            # AI 분석
+            ai_summary = log_data.get("ai_analysis", {}).get("summary", "")
+
+            # 기본 정보
             summary_lines.append(f"{i}. [{level_str}] {timestamp_str} | 유사도: {score:.3f}")
             summary_lines.append(f"   서비스: {service}")
+
+            # 위치 정보
+            if layer:
+                summary_lines.append(f"   Layer: {layer}")
+            if class_name and method_name:
+                summary_lines.append(f"   📍 {class_name}.{method_name}")
+
+            # HTTP 정보
+            if http_method and request_uri:
+                status_info = f" → {response_status}" if response_status else ""
+                summary_lines.append(f"   🌐 {http_method} {request_uri}{status_info}")
+
+            # 메시지
             summary_lines.append(f"   메시지: {msg}...")
+
+            # AI 분석 (있는 경우)
+            if ai_summary:
+                summary_lines.append(f"   🤖 {ai_summary[:150]}")
+
+            # log_id
             if log_id:
                 summary_lines.append(f"   (log_id: {log_id})")
             summary_lines.append("")

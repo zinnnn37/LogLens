@@ -67,6 +67,14 @@ async def get_log_detail(
         summary_lines.append(f"🔧 서비스: {log.get('service_name', 'N/A')}")
         summary_lines.append(f"📝 소스: {log.get('source_type', 'N/A')}")
 
+        # 레이어/컴포넌트
+        layer = log.get("layer")
+        component = log.get("component_name")
+        if layer:
+            summary_lines.append(f"🏗️  레이어: {layer}")
+        if component:
+            summary_lines.append(f"🧩 컴포넌트: {component}")
+
         # Trace ID
         trace_id = log.get("trace_id")
         if trace_id:
@@ -74,39 +82,86 @@ async def get_log_detail(
 
         summary_lines.append("")
 
+        # log_details 상세 정보
+        log_details = log.get("log_details", {})
+        if log_details:
+            summary_lines.append("🔍 상세 정보:")
+
+            # 클래스/메서드
+            class_name = log_details.get("class_name")
+            method_name = log_details.get("method_name")
+            if class_name:
+                summary_lines.append(f"  📍 클래스: {class_name}")
+            if method_name:
+                summary_lines.append(f"  📍 메서드: {method_name}")
+
+            # 예외 타입
+            exception_type = log_details.get("exception_type")
+            if exception_type:
+                summary_lines.append(f"  ❌ 예외: {exception_type}")
+
+            # 실행 시간
+            execution_time = log_details.get("execution_time")
+            if execution_time:
+                summary_lines.append(f"  ⏱️  실행 시간: {execution_time}ms")
+
+            # HTTP 정보
+            http_method = log_details.get("http_method")
+            request_uri = log_details.get("request_uri")
+            response_status = log_details.get("response_status")
+            if http_method or request_uri:
+                http_info = f"{http_method or ''} {request_uri or ''}".strip()
+                if response_status:
+                    http_info += f" → {response_status}"
+                summary_lines.append(f"  🌐 HTTP: {http_info}")
+
+            summary_lines.append("")
+
         # 메시지
         message = log.get("message", "")
         summary_lines.append(f"💬 메시지:")
         summary_lines.append(f"{message}")
         summary_lines.append("")
 
-        # 예외 정보
-        exception_type = log.get("exception_type")
-        if exception_type:
-            summary_lines.append(f"❌ 예외 타입: {exception_type}")
+        # AI 분석 결과
+        ai_analysis = log.get("ai_analysis", {})
+        if ai_analysis and (ai_analysis.get("summary") or ai_analysis.get("error_cause")):
+            summary_lines.append("🤖 AI 분석:")
 
-        error_code = log.get("error_code")
-        if error_code:
-            summary_lines.append(f"🔢 에러 코드: {error_code}")
+            ai_summary = ai_analysis.get("summary")
+            if ai_summary:
+                summary_lines.append(f"  요약: {ai_summary}")
 
-        # 스택 트레이스
-        stack_trace = log.get("stack_trace")
-        if stack_trace:
+            ai_cause = ai_analysis.get("error_cause")
+            if ai_cause:
+                summary_lines.append(f"  📌 원인: {ai_cause}")
+
+            ai_solution = ai_analysis.get("solution")
+            if ai_solution:
+                summary_lines.append(f"  💡 해결책: {ai_solution}")
+
+            ai_tags = ai_analysis.get("tags")
+            if ai_tags:
+                summary_lines.append(f"  🏷️  태그: {', '.join(ai_tags)}")
+
+            analysis_type = ai_analysis.get("analysis_type")
+            if analysis_type:
+                summary_lines.append(f"  분석 타입: {analysis_type}")
+
+            analyzed_at = ai_analysis.get("analyzed_at")
+            if analyzed_at:
+                summary_lines.append(f"  분석 시간: {analyzed_at}")
+
             summary_lines.append("")
+
+        # 스택 트레이스 (두 곳 확인: 최상위 또는 log_details)
+        stack_trace = log.get("stacktrace") or log_details.get("stacktrace")
+        if stack_trace:
             summary_lines.append("📚 스택 트레이스:")
-            summary_lines.append(stack_trace[:1500])  # 최대 1500자
-            if len(stack_trace) > 500:
+            summary_lines.append(stack_trace[:2000])  # 최대 2000자
+            if len(stack_trace) > 2000:
                 summary_lines.append("... (생략)")
-
-        # 기타 메타데이터
-        summary_lines.append("")
-        summary_lines.append("📋 메타데이터:")
-
-        metadata_fields = ["http_method", "http_status", "http_path", "user_id", "session_id"]
-        for field in metadata_fields:
-            value = log.get(field)
-            if value:
-                summary_lines.append(f"  - {field}: {value}")
+            summary_lines.append("")
 
         return "\n".join(summary_lines)
 
@@ -154,7 +209,16 @@ async def get_logs_by_trace_id(
                 "sort": [{"timestamp": "asc"}],  # 시간순 (오름차순)
                 "_source": [
                     "log_id", "timestamp", "level", "service_name",
-                    "message", "exception_type", "http_status"
+                    "message", "layer", "component_name",
+                    # Nested fields
+                    "log_details.exception_type",
+                    "log_details.class_name",
+                    "log_details.method_name",
+                    "log_details.http_method",
+                    "log_details.request_uri",
+                    "log_details.response_status",
+                    # AI analysis (summary only)
+                    "ai_analysis.summary"
                 ]
             }
         )
@@ -193,19 +257,53 @@ async def get_logs_by_trace_id(
             service = source.get("service_name", "unknown")
             msg = source.get("message", "")[:300]
             log_id = source.get("log_id", "")
-            http_status = source.get("http_status")
-            exc_type = source.get("exception_type")
+            layer = source.get("layer", "")
+            component = source.get("component_name", "")
 
+            # log_details 접근
+            log_details = source.get("log_details", {})
+            exc_type = log_details.get("exception_type")
+            class_name = log_details.get("class_name")
+            method_name = log_details.get("method_name")
+            http_method = log_details.get("http_method")
+            request_uri = log_details.get("request_uri")
+            response_status = log_details.get("response_status")
+
+            # AI 분석
+            ai_summary = source.get("ai_analysis", {}).get("summary", "")
+
+            # 기본 정보
             summary_lines.append(f"{i}. {timestamp_str} | [{level}] {service}")
 
-            if http_status:
-                summary_lines.append(f"   HTTP {http_status}")
+            # 레이어/컴포넌트
+            if layer:
+                summary_lines.append(f"   Layer: {layer}")
+            if component:
+                summary_lines.append(f"   Component: {component}")
 
+            # 클래스/메서드
+            if class_name and method_name:
+                summary_lines.append(f"   📍 {class_name}.{method_name}")
+
+            # HTTP 정보
+            if http_method and request_uri:
+                status_info = f" → {response_status}" if response_status else ""
+                summary_lines.append(f"   🌐 {http_method} {request_uri}{status_info}")
+            elif response_status:
+                summary_lines.append(f"   📊 HTTP {response_status}")
+
+            # 예외
             if exc_type:
-                summary_lines.append(f"   예외: {exc_type}")
+                summary_lines.append(f"   ❌ 예외: {exc_type}")
 
+            # 메시지
             summary_lines.append(f"   메시지: {msg}...")
 
+            # AI 분석 (있는 경우)
+            if ai_summary:
+                summary_lines.append(f"   🤖 {ai_summary[:150]}")
+
+            # log_id
             if log_id:
                 summary_lines.append(f"   (log_id: {log_id})")
 

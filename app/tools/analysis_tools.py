@@ -3,11 +3,106 @@
 - 로그 통계, 최근 에러 분석
 """
 
-from typing import Optional
+import re
+from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 from langchain_core.tools import tool
 
 from app.core.opensearch import opensearch_client
+
+
+def extract_exception_type(source: Dict[str, Any]) -> str:
+    """
+    로그 데이터에서 예외 타입을 추출합니다.
+
+    우선순위:
+    1. log_details.exception_type (nested 필드)
+    2. ai_analysis.tags (AI가 분석한 태그)
+    3. message에서 정규식 추출
+    4. "Unknown" 반환
+    """
+    # 1. log_details.exception_type 우선
+    log_details = source.get("log_details", {})
+    exc_type = log_details.get("exception_type")
+    if exc_type and exc_type != "Unknown" and exc_type.strip():
+        return exc_type
+
+    # 2. AI 분석 태그에서 추출
+    ai_analysis = source.get("ai_analysis", {})
+    ai_tags = ai_analysis.get("tags", [])
+    if ai_tags:
+        for tag in ai_tags:
+            if "Exception" in tag or "Error" in tag or "Timeout" in tag:
+                return tag
+
+    # 3. message에서 정규식 추출
+    message = source.get("message", "")
+    patterns = [
+        r'([A-Z][a-zA-Z]*Exception)',
+        r'([A-Z][a-zA-Z]*Error)',
+        r'(DatabaseTimeout|ConnectionRefused|ConnectionPoolExhausted|PoolExhausted|Timeout)',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, message)
+        if match:
+            return match.group(1)
+
+    return "Unknown"
+
+
+def assess_severity(source: Dict[str, Any]) -> int:
+    """
+    에러 심각도를 평가합니다.
+
+    Returns:
+        1: CRITICAL (최고 심각도) - 즉시 조치 필요
+        2: HIGH (높음) - 긴급 조치 필요
+        3: MEDIUM (중간) - 우선 조치 필요
+        4: LOW (낮음) - 모니터링 필요
+        5: MINIMAL (최소) - 정보성
+    """
+    exc_type = extract_exception_type(source)
+    log_details = source.get("log_details", {})
+    response_status = log_details.get("response_status", 0)
+
+    # AI 분석이 있으면 우선 활용
+    ai_analysis = source.get("ai_analysis", {})
+    analysis_type = ai_analysis.get("analysis_type", "").upper()
+    if analysis_type == "CRITICAL":
+        return 1
+    elif analysis_type == "HIGH":
+        return 2
+    elif analysis_type == "MEDIUM":
+        return 3
+
+    # Database/Connection 에러 = CRITICAL (모든 사용자 영향)
+    critical_keywords = [
+        "Database", "Connection", "Pool", "Timeout",
+        "OutOfMemory", "StackOverflow", "Deadlock"
+    ]
+    if any(keyword in exc_type for keyword in critical_keywords):
+        return 1
+
+    # 5xx 에러 = HIGH (서버 오류)
+    if 500 <= response_status < 600:
+        return 2
+
+    # Security/Auth 에러 = HIGH (보안 위험)
+    security_keywords = ["Auth", "Security", "Unauthorized", "Token", "Permission"]
+    if any(keyword in exc_type for keyword in security_keywords):
+        return 2
+
+    # NullPointer, Runtime = MEDIUM (특정 기능 영향)
+    medium_keywords = ["NullPointer", "Runtime", "IllegalState", "IllegalArgument"]
+    if any(keyword in exc_type for keyword in medium_keywords):
+        return 3
+
+    # 4xx 에러 = LOW (클라이언트 오류)
+    if 400 <= response_status < 500:
+        return 4
+
+    # 기타 = MINIMAL
+    return 5
 
 
 @tool
@@ -229,8 +324,24 @@ async def get_recent_errors(
                 "size": limit,
                 "sort": [{"timestamp": "desc"}],
                 "_source": [
-                    "message", "level", "service_name", "timestamp",
-                    "log_id", "exception_type", "stack_trace"
+                    "message", "level", "service_name", "timestamp", "log_id",
+                    "stacktrace",  # 필드명 수정 (stack_trace -> stacktrace)
+                    "layer", "component_name",
+                    # Nested fields (log_details)
+                    "log_details.exception_type",
+                    "log_details.class_name",
+                    "log_details.method_name",
+                    "log_details.http_method",
+                    "log_details.request_uri",
+                    "log_details.response_status",
+                    "log_details.execution_time",
+                    "log_details.stacktrace",
+                    # AI analysis fields
+                    "ai_analysis.summary",
+                    "ai_analysis.error_cause",
+                    "ai_analysis.solution",
+                    "ai_analysis.tags",
+                    "ai_analysis.analysis_type"
                 ]
             }
         )
@@ -242,11 +353,18 @@ async def get_recent_errors(
             service_filter = f" (서비스: {service_name})" if service_name else ""
             return f"최근 {time_hours}시간 동안 ERROR 레벨 로그가 없습니다{service_filter}."
 
-        # 에러 타입별 카운트
+        # 에러 타입별 카운트 (헬퍼 함수 사용)
         error_types = {}
+        errors_with_severity = []  # (hit, severity) 튜플 리스트
         for hit in hits:
-            exc_type = hit["_source"].get("exception_type", "Unknown")
+            source = hit["_source"]
+            exc_type = extract_exception_type(source)
+            severity = assess_severity(source)
             error_types[exc_type] = error_types.get(exc_type, 0) + 1
+            errors_with_severity.append((hit, severity))
+
+        # 심각도순 정렬 (낮은 숫자 = 높은 심각도)
+        errors_with_severity.sort(key=lambda x: (x[1], x[0]["_source"].get("timestamp", "")), reverse=True)
 
         # 결과 포맷팅
         service_filter_str = f" (서비스: {service_name})" if service_name else ""
@@ -263,24 +381,90 @@ async def get_recent_errors(
                 summary_lines.append(f"  - {exc_type}: {count}건")
             summary_lines.append("")
 
-        # 상위 에러 목록
-        summary_lines.append("최근 에러 목록:")
-        for i, hit in enumerate(hits, 1):
+        # 상위 에러 목록 (심각도순)
+        summary_lines.append("최근 에러 목록 (심각도순):")
+        severity_labels = {1: "CRITICAL", 2: "HIGH", 3: "MEDIUM", 4: "LOW", 5: "MINIMAL"}
+
+        for i, (hit, severity) in enumerate(errors_with_severity, 1):
             source = hit["_source"]
             msg = source.get("message", "")[:400]
             timestamp_str = source.get("timestamp", "")[:19]
             service = source.get("service_name", "unknown")
             log_id = source.get("log_id", "")
-            exc_type = source.get("exception_type", "Unknown")
-            has_stack = bool(source.get("stack_trace"))
+            layer = source.get("layer", "")
+            component = source.get("component_name", "")
 
-            summary_lines.append(f"{i}. [{exc_type}] {timestamp_str}")
+            # 에러 타입 추출
+            exc_type = extract_exception_type(source)
+
+            # log_details 접근
+            log_details = source.get("log_details", {})
+            class_name = log_details.get("class_name", "")
+            method_name = log_details.get("method_name", "")
+            http_method = log_details.get("http_method", "")
+            request_uri = log_details.get("request_uri", "")
+            response_status = log_details.get("response_status")
+            execution_time = log_details.get("execution_time")
+
+            # 스택 트레이스 존재 여부
+            has_stack = bool(source.get("stacktrace") or log_details.get("stacktrace"))
+
+            # AI 분석 결과
+            ai_analysis = source.get("ai_analysis", {})
+            ai_summary = ai_analysis.get("summary", "")
+            ai_cause = ai_analysis.get("error_cause", "")
+            ai_solution = ai_analysis.get("solution", "")
+
+            # 기본 정보 출력
+            severity_label = severity_labels.get(severity, "UNKNOWN")
+            summary_lines.append(f"{i}. [{exc_type}] {timestamp_str} | 심각도: {severity_label}")
             summary_lines.append(f"   서비스: {service}")
-            summary_lines.append(f"   메시지: {msg}...")
+
+            # 레이어/컴포넌트
+            if layer or component:
+                loc_info = []
+                if layer:
+                    loc_info.append(f"Layer: {layer}")
+                if component:
+                    loc_info.append(f"Component: {component}")
+                summary_lines.append(f"   위치: {', '.join(loc_info)}")
+
+            # 클래스/메서드
+            if class_name and method_name:
+                summary_lines.append(f"   📍 {class_name}.{method_name}")
+            elif class_name:
+                summary_lines.append(f"   📍 {class_name}")
+
+            # HTTP 정보
+            if http_method and request_uri:
+                status_info = f" → {response_status}" if response_status else ""
+                summary_lines.append(f"   🌐 {http_method} {request_uri}{status_info}")
+            elif response_status:
+                summary_lines.append(f"   📊 HTTP {response_status}")
+
+            # 실행 시간
+            if execution_time:
+                summary_lines.append(f"   ⏱️  {execution_time}ms")
+
+            # 메시지
+            summary_lines.append(f"   💬 {msg}...")
+
+            # AI 분석 결과 (있는 경우)
+            if ai_summary:
+                summary_lines.append(f"   🤖 AI 분석: {ai_summary[:200]}")
+            if ai_cause:
+                summary_lines.append(f"   📌 원인: {ai_cause[:150]}")
+            if ai_solution:
+                summary_lines.append(f"   💡 해결책: {ai_solution[:150]}")
+
+            # 스택 트레이스 여부
             if has_stack:
-                summary_lines.append(f"   (스택 트레이스 있음)")
+                summary_lines.append(f"   📚 (스택 트레이스 있음)")
+
+            # log_id
             if log_id:
                 summary_lines.append(f"   (log_id: {log_id})")
+
             summary_lines.append("")
 
         return "\n".join(summary_lines)

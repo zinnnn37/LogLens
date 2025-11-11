@@ -401,18 +401,18 @@ async def ask_chatbot_v2_stream(
                 result = await agent_executor.ainvoke(agent_input)
                 answer = result.get("output", "")
 
-                # 답변을 단어 단위로 스트리밍 (타이핑 효과)
+                # 답변을 청크 단위로 스트리밍 (타이핑 효과)
+                # 한글이 음절 단위로 쪼개지는 것을 방지하기 위해 청크 단위로 전송
                 import asyncio
-                words = answer.split(" ")
+                chunk_size = 15  # 15자씩 전송 (한글 2-3자, 영문 단어 1-2개 정도)
                 newline_escape = '\\n'
-                for i, word in enumerate(words):
-                    if i == 0:
-                        # 첫 단어: "분석 중..." 덮어쓰기
-                        yield f"data: {word.replace(chr(10), newline_escape)}\n\n"
-                    else:
-                        # 공백 포함
-                        yield f"data:  {word.replace(chr(10), newline_escape)}\n\n"
-                    await asyncio.sleep(0.02)  # 20ms 딜레이
+
+                for i in range(0, len(answer), chunk_size):
+                    chunk = answer[i:i+chunk_size]
+                    # 줄바꿈 이스케이프
+                    escaped_chunk = chunk.replace("\n", newline_escape)
+                    yield f"data: {escaped_chunk}\n\n"
+                    await asyncio.sleep(0.05)  # 50ms 딜레이 (읽기 편한 속도)
 
                 yield "data: [DONE]\n\n"
 
