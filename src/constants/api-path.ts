@@ -67,7 +67,7 @@ export const API_PATH = {
   LOGS_DETAIL: (logId: number) => `/api/logs/${logId}`,
 
   // 챗봇 스트리밍 API
-  CHATBOT_STREAM: '/api/v1/chatbot/ask/stream',
+  CHATBOT_STREAM: '/api/v2/chatbot/ask/stream',
 
   // 아키텍처 의존성 조회 (DB 정보)
   ARCHITECTURE_DEPENDENCIES: '/api/dashboards/dependencies/architecture',
