@@ -102,3 +102,6 @@ export interface LogDetailResponse {
   similarLogId: number | null;
   similarityScore: number | null;
 }
+
+// 실시간 로그 스트리밍(SSE)
+export type LogStreamParams = LogSearchParams;
