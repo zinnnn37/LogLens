@@ -81,7 +81,8 @@ public class LogServiceImpl implements LogService {
                 .build();
 
         log.info("{} Trace ID로 로그 조회 완료: 로그 수={}, 전체 로그 수={}",
-                LOG_PREFIX, logResponses.size(), result.summary().getTotalLogs());
+                LOG_PREFIX, logResponses.size(),
+                Objects.nonNull(result.summary()) ? result.summary().getTotalLogs() : 0);
 
         return response;
     }
@@ -100,6 +101,9 @@ public class LogServiceImpl implements LogService {
         log.debug("{} OpenSearch에서 Trace ID로 로그 조회: projectUuid={}, traceId={}", LOG_PREFIX, projectUuid,
                 request.getTraceId());
         TraceLogSearchResult result = logRepository.findByTraceId(projectUuid, request);
+        if (Objects.isNull(result) || Objects.isNull(result.logs())) {
+            return new TraceLogSearchResult(Collections.emptyList(), null);
+        }
         log.debug("{} OpenSearch 조회 완료: 로그 개수={}", LOG_PREFIX, result.logs().size());
         return result;
     }
