@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * AiServiceClient 테스트
+ * AI 서비스의 GET /api/v2/logs/{log_id}/analysis 엔드포인트를 테스트합니다.
  */
 class AiServiceClientTest {
 

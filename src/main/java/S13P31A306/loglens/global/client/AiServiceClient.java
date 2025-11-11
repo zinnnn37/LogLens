@@ -21,7 +21,7 @@ import java.time.Duration;
 public class AiServiceClient {
 
     private static final String LOG_PREFIX = "[AiServiceClient]";
-    private static final String AI_API_V1_LOGS_PATH = "/api/v1/logs";
+    private static final String AI_API_V2_LOGS_PATH = "/api/v2/logs";
 
     private final WebClient.Builder webClientBuilder;
 
@@ -33,7 +33,7 @@ public class AiServiceClient {
 
     /**
      * 로그 AI 분석 요청
-     * AI 서비스의 GET /api/v1/logs/{log_id}/analysis 엔드포인트를 호출합니다.
+     * AI 서비스의 GET /api/v2/logs/{log_id}/analysis 엔드포인트를 호출합니다.
      *
      * @param logId       분석할 로그 ID
      * @param projectUuid 프로젝트 UUID (멀티테넌시)
@@ -47,7 +47,7 @@ public class AiServiceClient {
 
             AiAnalysisResponse response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path(AI_API_V1_LOGS_PATH + "/{log_id}/analysis")
+                            .path(AI_API_V2_LOGS_PATH + "/{log_id}/analysis")
                             .queryParam("project_uuid", projectUuid)
                             .build(logId))
                     .retrieve()
