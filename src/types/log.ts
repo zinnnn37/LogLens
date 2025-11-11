@@ -91,6 +91,74 @@ export interface TraceLogsResponse {
   logs: LogData[];
 }
 
+/**
+ * TraceId 기반 요청 흐름 조회 파라미터
+ */
+export interface TraceFlowParams {
+  traceId: string;
+  projectUuid: string;
+}
+
+/**
+ * 요청 흐름 타임라인 항목
+ */
+export interface TimelineItem {
+  sequence: number;
+  componentId: number;
+  componentName: string;
+  layer: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  logs: LogData[];
+}
+
+/**
+ * 요청 흐름 컴포넌트 정보
+ */
+export interface FlowComponent {
+  id: number;
+  name: string;
+  layer: string;
+}
+
+/**
+ * 요청 흐름 그래프 간선
+ */
+export interface FlowEdge {
+  from: number;
+  to: number;
+}
+
+/**
+ * 요청 흐름 그래프
+ */
+export interface FlowGraph {
+  edges: FlowEdge[];
+}
+
+/**
+ * 요청 흐름 요약 정보
+ */
+export interface FlowSummary {
+  totalDuration: number;
+  status: string;
+  startTime: string;
+  endTime: string;
+}
+
+/**
+ * TraceId 기반 요청 흐름 조회 응답
+ */
+export interface TraceFlowResponse {
+  traceId: string;
+  projectUuid: string;
+  summary: FlowSummary;
+  timeline: TimelineItem[];
+  components: FlowComponent[];
+  graph: FlowGraph;
+}
+
 // 로그 상세 조회
 export interface LogDetailParams {
   logId: number;
