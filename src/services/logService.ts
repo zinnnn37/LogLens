@@ -60,11 +60,12 @@ export const connectLogStream = (
   });
 
   searchParams.append('token', accessToken);
+  searchParams.append('size', '50'); // 디폴트로 50 추가
 
   // 전체 URL 생성
   const url = `${import.meta.env.VITE_API_BASE_URL}${API_PATH.LOGS_STREAM}?${searchParams.toString()}`;
 
   return new EventSourcePolyfill(url, {
-    heartbeatTimeout: 3600000, 
+    heartbeatTimeout: 3600000,
   });
 };
