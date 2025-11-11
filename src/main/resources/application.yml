@@ -48,17 +48,18 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
   shutdown: graceful
-  # Tomcat 스레드 풀 설정 추가
+  # Tomcat 스레드 풀 설정
   tomcat:
     threads:
       max: 200              # 최대 워커 스레드 수
       min-spare: 10         # 최소 유휴 스레드 수
     max-connections: 10000  # 최대 동시 연결 수
     accept-count: 100       # 대기 큐 크기
-    connection-timeout: 20000 # 연결 타임아웃 (밀리초)
+    connection-timeout: 20000 # 연결 타임아웃 (20초)
     # ALB와의 연결 안정성을 위한 Keep-Alive 설정
-    keep-alive-timeout: 75000  # 75초 (ALB idle timeout 60초보다 길게 설정)
-    max-keep-alive-requests: -1  # 무제한 (L7 로드밸런서 사용 시 권장)
+    # ALB idle timeout: 60초, HTTP 클라이언트 keep-alive: 3600초
+    keep-alive-timeout: 65000  # 65초 (ALB idle timeout 60초보다 약간 길게)
+    max-keep-alive-requests: -1  # 무제한 (SSE 연결 유지를 위해 필요)
 
 # ===================================================================
 # 로깅 설정 (Logging Configuration)
@@ -129,4 +130,6 @@ ai:
 sse:
   scheduler:
     pool-size: 50                  # SSE 스케줄러 스레드 풀 크기 (동시 50개 연결 지원)
-  timeout: 300000                  # SSE 연결 타임아웃 (5분, 밀리초)
+  timeout: 3600000                 # SSE 연결 타임아웃 (60분, 밀리초)
+    # ALB idle timeout(60초)보다 충분히 길게 설정
+  # heartbeat(5초 주기)로 연결 유지

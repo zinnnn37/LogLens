@@ -27,6 +27,8 @@ import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,6 +41,7 @@ public class LogServiceImpl implements LogService {
 
     private static final String LOG_PREFIX = "[LogService]";
     private static final long POLLING_INTERVAL = 5; // 5초
+    private static final int MAX_IDLE_POLLS = 3; // 빈 응답 3회 후 폴링 주기 감소 시작
 
     private final LogRepository logRepository;
     private final LogMapper logMapper;
@@ -237,17 +240,27 @@ public class LogServiceImpl implements LogService {
 
         SseEmitter emitter = new SseEmitter(sseTimeout);
 
-        // 마지막으로 전송한 로그의 timestamp를 추적하기 위한 변수
-        LocalDateTime[] lastTimestamp = {request.getStartTime()};
+        // AtomicReference를 사용하여 thread-safe하게 변수 관리
+        AtomicReference<LocalDateTime> lastTimestamp = new AtomicReference<>(request.getStartTime());
+        AtomicReference<ScheduledFuture<?>> scheduledFutureHolder = new AtomicReference<>();
+        AtomicInteger emptyPollCount = new AtomicInteger(0); // 빈 응답 카운터 (OpenSearch 부하 관리용)
 
-        // 스케줄러를 저장하여 연결 종료 시 취소할 수 있도록 함
-        // final 배열로 감싸서 람다 내부에서 참조 가능하게 함
-        ScheduledFuture<?>[] scheduledFutureHolder = new ScheduledFuture<?>[1];
-
-        scheduledFutureHolder[0] = sseScheduler.scheduleAtFixedRate(() -> {
+        scheduledFutureHolder.set(sseScheduler.scheduleAtFixedRate(() -> {
             try {
+                // OpenSearch 부하 관리: 빈 응답이 일정 횟수 이상이면 스킵
+                int emptyCount = emptyPollCount.get();
+                if (emptyCount >= MAX_IDLE_POLLS && emptyCount % 2 != 0) {
+                    // 3회 이상 빈 응답 후, 홀수 번째는 스킵하여 폴링 주기를 실질적으로 2배로 늘림
+                    emptyPollCount.incrementAndGet();
+                    emitter.send(SseEmitter.event()
+                            .name("heartbeat")
+                            .data("No new logs"));
+                    log.debug("{} OpenSearch 부하 감소를 위한 폴링 스킵 (emptyCount: {})", LOG_PREFIX, emptyCount);
+                    return;
+                }
+
                 // 검색 조건 복사 및 시작 시간 업데이트
-                LogSearchRequest pollingRequest = createPollingRequest(request, lastTimestamp[0]);
+                LogSearchRequest pollingRequest = createPollingRequest(request, lastTimestamp.get());
 
                 // 새로운 로그 조회
                 LogSearchResult result = searchLogs(pollingRequest.getProjectUuid(), pollingRequest);
@@ -260,54 +273,54 @@ public class LogServiceImpl implements LogService {
                             .name("log-update")
                             .data(logResponses));
 
-                    // 마지막 timestamp 업데이트
+                    // 마지막 timestamp 업데이트 (중복 방지를 위해 1 나노초 추가)
                     if (!logResponses.isEmpty()) {
-                        lastTimestamp[0] = logResponses.getLast().getTimestamp();
+                        LocalDateTime lastLogTime = logResponses.getLast().getTimestamp();
+                        lastTimestamp.set(lastLogTime.plusNanos(1));
                     }
+
+                    // 빈 응답 카운터 리셋
+                    emptyPollCount.set(0);
 
                     log.debug("{} 새로운 로그 전송: 개수={}", LOG_PREFIX, logResponses.size());
                 } else {
-                    // 새 로그가 없으면 heartbeat 전송
+                    // 빈 응답 카운터 증가
+                    emptyPollCount.incrementAndGet();
+
+                    // heartbeat 전송 (연결 유지)
                     emitter.send(SseEmitter.event()
                             .name("heartbeat")
                             .data("No new logs"));
-                    log.debug("{} Heartbeat 전송", LOG_PREFIX);
+                    log.debug("{} Heartbeat 전송 (빈 응답 카운트: {})", LOG_PREFIX, emptyPollCount.get());
                 }
             } catch (Exception e) {
-                // IOException은 클라이언트 연결 끊김으로 정상적인 상황
+                // 모든 예외에서 스케줄러 정리 (메모리 누수 방지)
+                cleanupScheduler(scheduledFutureHolder.get());
+
                 if (e instanceof java.io.IOException) {
                     log.debug("{} 클라이언트 연결 종료됨", LOG_PREFIX);
-                    if (Objects.nonNull(scheduledFutureHolder[0])) {
-                        scheduledFutureHolder[0].cancel(true);
-                    }
                     emitter.complete();
                 } else {
                     log.error("{} 로그 스트리밍 중 오류 발생", LOG_PREFIX, e);
                     emitter.completeWithError(e);
                 }
             }
-        }, 0, POLLING_INTERVAL, TimeUnit.SECONDS);
+        }, 0, POLLING_INTERVAL, TimeUnit.SECONDS));
 
         // 연결 종료 시 스케줄러 정리
         emitter.onCompletion(() -> {
-            if (Objects.nonNull(scheduledFutureHolder[0])) {
-                scheduledFutureHolder[0].cancel(true);
-            }
+            cleanupScheduler(scheduledFutureHolder.get());
             log.info("{} SSE 연결 정상 종료: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
         });
 
         emitter.onTimeout(() -> {
-            if (Objects.nonNull(scheduledFutureHolder[0])) {
-                scheduledFutureHolder[0].cancel(true);
-            }
+            cleanupScheduler(scheduledFutureHolder.get());
             log.info("{} SSE 연결 타임아웃: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
             emitter.complete();
         });
 
         emitter.onError((e) -> {
-            if (Objects.nonNull(scheduledFutureHolder[0])) {
-                scheduledFutureHolder[0].cancel(true);
-            }
+            cleanupScheduler(scheduledFutureHolder.get());
             // IOException은 클라이언트가 연결을 끊은 정상적인 상황
             if (e instanceof java.io.IOException) {
                 log.debug("{} SSE 클라이언트 연결 종료: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
@@ -317,6 +330,15 @@ public class LogServiceImpl implements LogService {
         });
 
         return emitter;
+    }
+
+    /**
+     * 스케줄러 정리 헬퍼 메서드 (중복 코드 제거)
+     */
+    private void cleanupScheduler(ScheduledFuture<?> future) {
+        if (Objects.nonNull(future) && !future.isCancelled()) {
+            future.cancel(true);
+        }
     }
 
     /**
