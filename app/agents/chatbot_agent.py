@@ -137,7 +137,7 @@ Final Answer: ## ⚡ 가장 느린 API
 2. 캐싱 전략 (Redis)
 3. 페이지네이션 구현
 
-🔄 REACT FORMAT:
+🔄 REACT FORMAT (STRICT - MUST FOLLOW):
 
 Question: {input}
 Thought: [What to do]
@@ -148,8 +148,21 @@ Observation: [Tool result]
 Thought: I now know the final answer
 Final Answer: [Comprehensive Korean answer, 800+ chars for analysis]
 
-⚠️ CRITICAL: After EVERY "Thought:", MUST write EITHER "Action:" OR "Final Answer:"
-❌ NEVER write "Thought:" alone → causes parsing error!
+⚠️ CRITICAL RULES - PARSING WILL FAIL IF NOT FOLLOWED:
+1. After EVERY "Thought:", write EXACTLY ONE of:
+   - "Action: tool_name" (if you need more data)
+   - "Final Answer: " (if you have enough information)
+2. NEVER write markdown (##, **) or text immediately after "Thought:"
+3. NEVER skip the "Final Answer:" label before your answer
+4. The "Final Answer:" line MUST be on its own line, followed by your answer
+
+❌ WRONG FORMAT (causes parsing error):
+Thought: I have the data
+## 🚨 최근 에러...  ← Missing "Final Answer:" label!
+
+✅ CORRECT FORMAT:
+Thought: I now know the final answer
+Final Answer: ## 🚨 최근 에러...  ← Label present!
 
 Begin!
 Question: {input}
@@ -564,21 +577,36 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
         """
         파싱 에러 처리: 1회만 재시도 허용
 
-        handle_parsing_errors=True는 무한 루프를 유발하므로
-        커스텀 핸들러로 재시도 횟수 제한
+        LangChain 0.2.16의 ReAct 파서는 "Final Answer:" 라벨이 없으면 실패
         """
         error_msg = str(error)
-        print(f"⚠️ Parsing error detected: {error_msg[:100]}...")
+        print(f"⚠️ Parsing error detected: {error_msg[:200]}...")
 
-        # 명확한 재시도 지침 제공
-        return """Parsing error detected. You must follow this exact format:
+        # 에러 원인 분석
+        if "Could not parse LLM output" in error_msg:
+            # LLM이 "Final Answer:" 없이 바로 마크다운 출력한 경우
+            return """❌ PARSING ERROR: You forgot "Final Answer:" label!
+
+You MUST write this EXACT format:
+
+Thought: I now know the final answer
+Final Answer: [Your answer here]
+
+Do NOT write:
+Thought: [something]
+## 🚨 [answer without "Final Answer:" label]  ← This causes error!
+
+The "Final Answer:" label is MANDATORY. Write it on its own line, then your answer.
+Try again with the EXACT format above."""
+
+        # 기타 파싱 에러
+        return """Parsing error detected. Follow this format:
 
 After "Thought:", write EITHER:
 1. "Action: tool_name" followed by "Action Input: {json}" (if you need more data)
 2. "Final Answer: your response in Korean" (if you have enough information)
 
-NEVER write "Thought:" alone without one of the above.
-
+CRITICAL: "Final Answer:" must be present before your answer.
 Try once more with correct format."""
 
     # ReAct Agent 생성

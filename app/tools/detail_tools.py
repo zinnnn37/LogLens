@@ -194,9 +194,9 @@ async def get_logs_by_trace_id(
     # 인덱스 패턴 (UUID의 하이픈을 언더스코어로 변환)
     index_pattern = f"{project_uuid.replace('-', '_')}_*"
 
-    # Query 구성
+    # Query 구성 (EC2: trace_id는 text + keyword 멀티필드이므로 .keyword 사용)
     query = {
-        "term": {"trace_id": trace_id}
+        "term": {"trace_id.keyword": trace_id}
     }
 
     try:

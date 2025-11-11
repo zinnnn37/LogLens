@@ -129,17 +129,17 @@ class ChatbotServiceV2:
         """
         answer_length = len(answer)
 
-        # 유형별 최소 길이 요구사항
+        # 유형별 최소 길이 요구사항 (완화됨 - 파싱 성공이 우선)
         min_lengths = {
-            'error_analysis': 1000,        # 에러 분석은 가장 상세해야 함
-            'performance_analysis': 900,   # 성능 분석도 상세
-            'monitoring': 800,             # 모니터링/통계
-            'comparison': 800,             # 비교 분석
-            'deployment': 900,             # 배포 영향 분석
-            'search': 400,                 # 검색 결과
-            'simple': 300                  # 간단한 질문
+            'error_analysis': 800,        # 1000 → 800 (완화)
+            'performance_analysis': 700,   # 900 → 700 (완화)
+            'monitoring': 600,             # 800 → 600 (완화)
+            'comparison': 600,             # 800 → 600 (완화)
+            'deployment': 700,             # 900 → 700 (완화)
+            'search': 300,                 # 400 → 300 (완화)
+            'simple': 200                  # 300 → 200 (완화)
         }
-        min_length = min_lengths.get(query_type, 300)
+        min_length = min_lengths.get(query_type, 200)
 
         # 구조 체크
         has_headers = bool(re.search(r'^#{1,3}\s', answer, re.MULTILINE))

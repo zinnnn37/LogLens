@@ -51,7 +51,6 @@ async def get_slowest_apis(
             "bool": {
                 "should": [
                     {"exists": {"field": "log_details.execution_time"}},
-                    {"exists": {"field": "execution_time"}},
                     {"exists": {"field": "duration"}}
                 ],
                 "minimum_should_match": 1
@@ -84,7 +83,6 @@ async def get_slowest_apis(
             "bool": {
                 "should": [
                     {"range": {"log_details.execution_time": {"gte": min_execution_time}}},
-                    {"range": {"execution_time": {"gte": min_execution_time}}},
                     {"range": {"duration": {"gte": min_execution_time}}}
                 ],
                 "minimum_should_match": 1
@@ -138,9 +136,6 @@ async def get_slowest_apis(
                                             if (doc.containsKey('log_details.execution_time') &&
                                                 doc['log_details.execution_time'].size() > 0) {
                                                 return doc['log_details.execution_time'].value;
-                                            } else if (doc.containsKey('execution_time') &&
-                                                       doc['execution_time'].size() > 0) {
-                                                return doc['execution_time'].value;
                                             } else if (doc.containsKey('duration') &&
                                                        doc['duration'].size() > 0) {
                                                 return doc['duration'].value;
@@ -158,9 +153,6 @@ async def get_slowest_apis(
                                             if (doc.containsKey('log_details.execution_time') &&
                                                 doc['log_details.execution_time'].size() > 0) {
                                                 return doc['log_details.execution_time'].value;
-                                            } else if (doc.containsKey('execution_time') &&
-                                                       doc['execution_time'].size() > 0) {
-                                                return doc['execution_time'].value;
                                             } else if (doc.containsKey('duration') &&
                                                        doc['duration'].size() > 0) {
                                                 return doc['duration'].value;
@@ -178,9 +170,6 @@ async def get_slowest_apis(
                                             if (doc.containsKey('log_details.execution_time') &&
                                                 doc['log_details.execution_time'].size() > 0) {
                                                 return doc['log_details.execution_time'].value;
-                                            } else if (doc.containsKey('execution_time') &&
-                                                       doc['execution_time'].size() > 0) {
-                                                return doc['execution_time'].value;
                                             } else if (doc.containsKey('duration') &&
                                                        doc['duration'].size() > 0) {
                                                 return doc['duration'].value;
@@ -198,9 +187,6 @@ async def get_slowest_apis(
                                             if (doc.containsKey('log_details.execution_time') &&
                                                 doc['log_details.execution_time'].size() > 0) {
                                                 return doc['log_details.execution_time'].value;
-                                            } else if (doc.containsKey('execution_time') &&
-                                                       doc['execution_time'].size() > 0) {
-                                                return doc['execution_time'].value;
                                             } else if (doc.containsKey('duration') &&
                                                        doc['duration'].size() > 0) {
                                                 return doc['duration'].value;
@@ -351,7 +337,7 @@ async def get_traffic_by_time(
                         "aggs": {
                             "by_level": {
                                 "terms": {
-                                    "field": "level.keyword",
+                                    "field": "level",
                                     "size": 10
                                 }
                             },

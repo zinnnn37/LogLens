@@ -534,15 +534,15 @@ async def correlate_logs(
         query = None
 
         if correlation_type == "trace":
-            # trace_id 기반
-            trace_id = base_source.get('log_details', {}).get('trace_id') or base_source.get('trace_id')
+            # trace_id 기반 (EC2: top-level field)
+            trace_id = base_source.get('trace_id')
             if not trace_id:
                 return f"기준 로그에 trace_id가 없습니다. 다른 correlation_type을 사용하세요."
 
             query = {
                 "bool": {
                     "must": [
-                        {"term": {"log_details.trace_id.keyword": trace_id}}
+                        {"term": {"trace_id.keyword": trace_id}}
                     ],
                     "must_not": [
                         {"term": {"_id": str(log_id)}}  # 자기 자신 제외
@@ -552,9 +552,8 @@ async def correlate_logs(
             summary_lines.append(f"**상관관계 유형:** trace_id 추적 ({trace_id})")
 
         elif correlation_type == "error_type":
-            # 같은 에러 타입
-            error_type = base_source.get('log_details', {}).get('error_type') or \
-                        base_source.get('error_type') or \
+            # 같은 에러 타입 (EC2: log_details.exception_type)
+            error_type = base_source.get('log_details', {}).get('exception_type') or \
                         base_message.split(':')[0] if ':' in base_message else None
 
             if not error_type:
@@ -564,7 +563,7 @@ async def correlate_logs(
                 "bool": {
                     "should": [
                         {"match": {"message": error_type}},
-                        {"term": {"log_details.error_type.keyword": error_type}}
+                        {"term": {"log_details.exception_type.keyword": error_type}}
                     ],
                     "minimum_should_match": 1,
                     "must_not": [

@@ -242,7 +242,7 @@ async def get_service_health_status(
                 "aggs": {
                     "by_service": {
                         "terms": {
-                            "field": "service_name.keyword",
+                            "field": "service_name",
                             "size": 50
                         },
                         "aggs": {
@@ -491,7 +491,7 @@ async def get_error_frequency_ranking(
                             },
                             "affected_services": {
                                 "terms": {
-                                    "field": "service_name.keyword",
+                                    "field": "service_name",
                                     "size": 10
                                 }
                             },
@@ -685,7 +685,7 @@ async def get_api_error_rates(
                             },
                             "by_service": {
                                 "terms": {
-                                    "field": "service_name.keyword",
+                                    "field": "service_name",
                                     "size": 5
                                 }
                             }
@@ -830,24 +830,24 @@ async def get_affected_users_count(
                 "query": {"bool": {"must": must_clauses}},
                 "aggs": {
                     "total_unique_users": {
-                        "cardinality": {"field": "requester_ip.keyword"}
+                        "cardinality": {"field": "requester_ip"}
                     },
                     "users_with_errors": {
                         "filter": {"term": {"level": "ERROR"}},
                         "aggs": {
                             "unique_error_users": {
-                                "cardinality": {"field": "requester_ip.keyword"}
+                                "cardinality": {"field": "requester_ip"}
                             },
                             "top_affected_users": {
                                 "terms": {
-                                    "field": "requester_ip.keyword",
+                                    "field": "requester_ip",
                                     "size": 10,
                                     "order": {"_count": "desc"}
                                 },
                                 "aggs": {
                                     "error_types": {
                                         "terms": {
-                                            "field": "log_details.exception_type.keyword",
+                                            "field": "log_details.exception_type",
                                             "size": 5
                                         }
                                     }
