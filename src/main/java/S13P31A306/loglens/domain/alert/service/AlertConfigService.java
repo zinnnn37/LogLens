@@ -21,11 +21,11 @@ public interface AlertConfigService {
     /**
      * 알림 설정 조회
      *
-     * @param projectId 프로젝트 ID
-     * @param userId    사용자 ID
+     * @param projectUuid 프로젝트 UUID
+     * @param userId      사용자 ID
      * @return 알림 설정 (없으면 null)
      */
-    AlertConfigResponse getAlertConfig(Integer projectId, Integer userId);
+    AlertConfigResponse getAlertConfig(String projectUuid, Integer userId);
 
     /**
      * 알림 설정 수정

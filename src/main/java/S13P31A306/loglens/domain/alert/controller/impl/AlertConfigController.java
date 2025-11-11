@@ -41,9 +41,9 @@ public class AlertConfigController implements AlertConfigApi {
     @GetMapping
     @Override
     public ResponseEntity<? extends BaseResponse> getAlertConfig(
-            @RequestParam Integer projectId) {
+            @RequestParam String projectUuid) {
         Integer userId = authHelper.getCurrentUserId();
-        AlertConfigResponse response = alertConfigService.getAlertConfig(projectId, userId);
+        AlertConfigResponse response = alertConfigService.getAlertConfig(projectUuid, userId);
         return ApiResponseFactory.success(ALERT_CONFIG_RETRIEVED, response);
     }
 

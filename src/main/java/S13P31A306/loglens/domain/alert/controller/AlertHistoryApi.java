@@ -29,7 +29,7 @@ public interface AlertHistoryApi {
             security = @SecurityRequirement(name = SwaggerMessages.BEARER_AUTH)
     )
     ResponseEntity<? extends BaseResponse> getAlertHistories(
-            @RequestParam Integer projectId,
+            @RequestParam String projectUuid,
             @RequestParam(required = false) String resolvedYN);
 
     @Operation(
@@ -46,7 +46,7 @@ public interface AlertHistoryApi {
             security = @SecurityRequirement(name = SwaggerMessages.BEARER_AUTH)
     )
     ResponseEntity<? extends BaseResponse> getUnreadCount(
-            @RequestParam Integer projectId);
+            @RequestParam String projectUuid);
 
     @Operation(
             summary = "실시간 알림 스트리밍",
@@ -55,5 +55,5 @@ public interface AlertHistoryApi {
     )
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     SseEmitter streamAlerts(
-            @RequestParam Integer projectId);
+            @RequestParam String projectUuid);
 }

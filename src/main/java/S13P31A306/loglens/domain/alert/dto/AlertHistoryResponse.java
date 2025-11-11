@@ -13,19 +13,19 @@ public record AlertHistoryResponse(
         LocalDateTime alertTime,
         String resolvedYN,
         String logReference,
-        Integer projectId
+        String projectUuid
 ) {
     /**
      * AlertHistory 엔티티로부터 생성
      */
-    public static AlertHistoryResponse from(AlertHistory alertHistory) {
+    public static AlertHistoryResponse from(AlertHistory alertHistory, String projectUuid) {
         return new AlertHistoryResponse(
                 alertHistory.getId(),
                 alertHistory.getAlertMessage(),
                 alertHistory.getAlertTime(),
                 alertHistory.getResolvedYN(),
                 alertHistory.getLogReference(),
-                alertHistory.getProjectId()
+                projectUuid
         );
     }
 }

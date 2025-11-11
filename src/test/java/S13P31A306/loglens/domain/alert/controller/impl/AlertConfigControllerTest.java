@@ -56,6 +56,7 @@ class AlertConfigControllerTest {
 
     private static final Integer USER_ID = 1;
     private static final Integer PROJECT_ID = 1;
+    private static final String PROJECT_UUID = "test-project-uuid-1234";
 
     @BeforeEach
     void setUp() {
@@ -87,7 +88,7 @@ class AlertConfigControllerTest {
                     .andExpect(jsonPath("$.data.alertType").value("ERROR_THRESHOLD"))
                     .andExpect(jsonPath("$.data.thresholdValue").value(10))
                     .andExpect(jsonPath("$.data.activeYN").value("Y"))
-                    .andExpect(jsonPath("$.data.projectId").value(PROJECT_ID))
+                    .andExpect(jsonPath("$.data.projectUuid").value(PROJECT_UUID))
                     .andExpect(jsonPath("$.data.projectName").value("Test Project"));
 
             verify(alertConfigService).createAlertConfig(any(AlertConfigCreateRequest.class), eq(USER_ID));
@@ -199,37 +200,37 @@ class AlertConfigControllerTest {
             // given
             AlertConfigResponse response = createResponse();
 
-            given(alertConfigService.getAlertConfig(eq(PROJECT_ID), eq(USER_ID)))
+            given(alertConfigService.getAlertConfig(eq(PROJECT_UUID), eq(USER_ID)))
                     .willReturn(response);
 
             // when & then
             mockMvc.perform(get("/api/alerts/config")
-                            .param("projectId", String.valueOf(PROJECT_ID)))
+                            .param("projectUuid", PROJECT_UUID))
                     .andDo(print())
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(ALERT_CONFIG_RETRIEVED.getCode()))
                     .andExpect(jsonPath("$.data.id").value(1))
                     .andExpect(jsonPath("$.data.projectName").value("Test Project"));
 
-            verify(alertConfigService).getAlertConfig(eq(PROJECT_ID), eq(USER_ID));
+            verify(alertConfigService).getAlertConfig(eq(PROJECT_UUID), eq(USER_ID));
         }
 
         @Test
         @DisplayName("GET_/api/alerts/config_설정_없음_시_data는_null")
         void GET_설정_없음_시_data는_null() throws Exception {
             // given
-            given(alertConfigService.getAlertConfig(eq(PROJECT_ID), eq(USER_ID)))
+            given(alertConfigService.getAlertConfig(eq(PROJECT_UUID), eq(USER_ID)))
                     .willReturn(null);
 
             // when & then
             mockMvc.perform(get("/api/alerts/config")
-                            .param("projectId", String.valueOf(PROJECT_ID)))
+                            .param("projectUuid", PROJECT_UUID))
                     .andDo(print())
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(ALERT_CONFIG_RETRIEVED.getCode()))
                     .andExpect(jsonPath("$.data").doesNotExist());
 
-            verify(alertConfigService).getAlertConfig(eq(PROJECT_ID), eq(USER_ID));
+            verify(alertConfigService).getAlertConfig(eq(PROJECT_UUID), eq(USER_ID));
         }
 
         @Test
@@ -254,7 +255,7 @@ class AlertConfigControllerTest {
             AlertConfigUpdateRequest request = new AlertConfigUpdateRequest(
                     1, AlertType.LATENCY, 100, "N");
             AlertConfigResponse response = new AlertConfigResponse(
-                    1, AlertType.LATENCY, 100, "N", PROJECT_ID, "Test Project", null, null);
+                    1, AlertType.LATENCY, 100, "N", PROJECT_UUID, "Test Project", null, null);
 
             given(alertConfigService.updateAlertConfig(any(AlertConfigUpdateRequest.class), eq(USER_ID)))
                     .willReturn(response);
@@ -317,7 +318,7 @@ class AlertConfigControllerTest {
 
     private AlertConfigCreateRequest createValidRequest() {
         return new AlertConfigCreateRequest(
-                PROJECT_ID,
+                PROJECT_UUID,
                 AlertType.ERROR_THRESHOLD,
                 10,
                 "Y"
@@ -330,7 +331,7 @@ class AlertConfigControllerTest {
                 AlertType.ERROR_THRESHOLD,
                 10,
                 "Y",
-                PROJECT_ID,
+                PROJECT_UUID,
                 "Test Project",
                 null,
                 null

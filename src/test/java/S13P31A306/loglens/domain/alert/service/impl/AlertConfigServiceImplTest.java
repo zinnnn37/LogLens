@@ -10,6 +10,7 @@ import S13P31A306.loglens.domain.alert.repository.AlertConfigRepository;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
+import S13P31A306.loglens.domain.project.service.ProjectService;
 import S13P31A306.loglens.global.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -48,8 +49,12 @@ class AlertConfigServiceImplTest {
     @Mock
     private ProjectMemberRepository projectMemberRepository;
 
+    @Mock
+    private ProjectService projectService;
+
     private static final Integer USER_ID = 1;
     private static final Integer PROJECT_ID = 1;
+    private static final String PROJECT_UUID = "test-project-uuid-1234";
     private static final String PROJECT_NAME = "Test Project";
 
     @BeforeEach
@@ -57,7 +62,8 @@ class AlertConfigServiceImplTest {
         alertConfigService = new AlertConfigServiceImpl(
                 alertConfigRepository,
                 projectRepository,
-                projectMemberRepository
+                projectMemberRepository,
+                projectService
         );
     }
 
@@ -73,6 +79,7 @@ class AlertConfigServiceImplTest {
             Project project = createProject();
             AlertConfig savedConfig = createAlertConfig();
 
+            given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertConfigRepository.existsByProjectId(PROJECT_ID)).willReturn(false);
@@ -87,9 +94,10 @@ class AlertConfigServiceImplTest {
             assertThat(response.alertType()).isEqualTo(AlertType.ERROR_THRESHOLD);
             assertThat(response.thresholdValue()).isEqualTo(10);
             assertThat(response.activeYN()).isEqualTo("Y");
-            assertThat(response.projectId()).isEqualTo(PROJECT_ID);
+            assertThat(response.projectUuid()).isEqualTo(PROJECT_UUID);
             assertThat(response.projectName()).isEqualTo(PROJECT_NAME);
 
+            verify(projectService).getProjectIdByUuid(PROJECT_UUID);
             verify(projectRepository).findById(PROJECT_ID);
             verify(projectMemberRepository).existsByProjectIdAndUserId(PROJECT_ID, USER_ID);
             verify(alertConfigRepository).existsByProjectId(PROJECT_ID);
@@ -101,6 +109,7 @@ class AlertConfigServiceImplTest {
         void 프로젝트가_없으면_PROJECT_NOT_FOUND_예외를_발생시킨다() {
             // given
             AlertConfigCreateRequest request = createValidRequest();
+            given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.empty());
 
             // when & then
@@ -108,6 +117,7 @@ class AlertConfigServiceImplTest {
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", PROJECT_NOT_FOUND);
 
+            verify(projectService).getProjectIdByUuid(PROJECT_UUID);
             verify(projectRepository).findById(PROJECT_ID);
             verify(projectMemberRepository, never()).existsByProjectIdAndUserId(anyInt(), anyInt());
             verify(alertConfigRepository, never()).save(any());
@@ -120,6 +130,7 @@ class AlertConfigServiceImplTest {
             AlertConfigCreateRequest request = createValidRequest();
             Project project = createProject();
 
+            given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(false);
 
@@ -128,6 +139,7 @@ class AlertConfigServiceImplTest {
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", FORBIDDEN);
 
+            verify(projectService).getProjectIdByUuid(PROJECT_UUID);
             verify(projectRepository).findById(PROJECT_ID);
             verify(projectMemberRepository).existsByProjectIdAndUserId(PROJECT_ID, USER_ID);
             verify(alertConfigRepository, never()).save(any());
@@ -140,6 +152,7 @@ class AlertConfigServiceImplTest {
             AlertConfigCreateRequest request = createValidRequest();
             Project project = createProject();
 
+            given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertConfigRepository.existsByProjectId(PROJECT_ID)).willReturn(true);
@@ -158,9 +171,10 @@ class AlertConfigServiceImplTest {
         void activeYN이_Y또는_N이_아니면_INVALID_ACTIVE_YN_예외를_발생시킨다() {
             // given
             AlertConfigCreateRequest request = new AlertConfigCreateRequest(
-                    PROJECT_ID, AlertType.ERROR_THRESHOLD, 10, "X");
+                    PROJECT_UUID, AlertType.ERROR_THRESHOLD, 10, "X");
             Project project = createProject();
 
+            given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertConfigRepository.existsByProjectId(PROJECT_ID)).willReturn(false);
@@ -185,18 +199,20 @@ class AlertConfigServiceImplTest {
             Project project = createProject();
             AlertConfig alertConfig = createAlertConfig();
 
+            given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertConfigRepository.findByProjectId(PROJECT_ID)).willReturn(Optional.of(alertConfig));
 
             // when
-            AlertConfigResponse response = alertConfigService.getAlertConfig(PROJECT_ID, USER_ID);
+            AlertConfigResponse response = alertConfigService.getAlertConfig(PROJECT_UUID, USER_ID);
 
             // then
             assertThat(response).isNotNull();
             assertThat(response.id()).isEqualTo(1);
             assertThat(response.projectName()).isEqualTo(PROJECT_NAME);
 
+            verify(projectService).getProjectIdByUuid(PROJECT_UUID);
             verify(projectRepository).findById(PROJECT_ID);
             verify(alertConfigRepository).findByProjectId(PROJECT_ID);
         }
@@ -207,12 +223,13 @@ class AlertConfigServiceImplTest {
             // given
             Project project = createProject();
 
+            given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertConfigRepository.findByProjectId(PROJECT_ID)).willReturn(Optional.empty());
 
             // when
-            AlertConfigResponse response = alertConfigService.getAlertConfig(PROJECT_ID, USER_ID);
+            AlertConfigResponse response = alertConfigService.getAlertConfig(PROJECT_UUID, USER_ID);
 
             // then
             assertThat(response).isNull();
@@ -224,10 +241,11 @@ class AlertConfigServiceImplTest {
         @DisplayName("프로젝트가_없으면_PROJECT_NOT_FOUND_예외를_발생시킨다")
         void 프로젝트가_없으면_PROJECT_NOT_FOUND_예외를_발생시킨다() {
             // given
+            given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> alertConfigService.getAlertConfig(PROJECT_ID, USER_ID))
+            assertThatThrownBy(() -> alertConfigService.getAlertConfig(PROJECT_UUID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", PROJECT_NOT_FOUND);
 
@@ -240,11 +258,12 @@ class AlertConfigServiceImplTest {
             // given
             Project project = createProject();
 
+            given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(false);
 
             // when & then
-            assertThatThrownBy(() -> alertConfigService.getAlertConfig(PROJECT_ID, USER_ID))
+            assertThatThrownBy(() -> alertConfigService.getAlertConfig(PROJECT_UUID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", FORBIDDEN);
 
@@ -379,7 +398,7 @@ class AlertConfigServiceImplTest {
 
     private AlertConfigCreateRequest createValidRequest() {
         return new AlertConfigCreateRequest(
-                PROJECT_ID,
+                PROJECT_UUID,
                 AlertType.ERROR_THRESHOLD,
                 10,
                 "Y"
@@ -398,6 +417,7 @@ class AlertConfigServiceImplTest {
 
     private Project createProject() {
         return Project.builder()
+                .projectUuid(PROJECT_UUID)
                 .projectName(PROJECT_NAME)
                 .build();
     }

@@ -10,6 +10,7 @@ import S13P31A306.loglens.domain.alert.service.AlertConfigService;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
+import S13P31A306.loglens.domain.project.service.ProjectService;
 import S13P31A306.loglens.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,25 +35,28 @@ public class AlertConfigServiceImpl implements AlertConfigService {
     private final AlertConfigRepository alertConfigRepository;
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final ProjectService projectService;
 
     @Override
     @Transactional
     public AlertConfigResponse createAlertConfig(AlertConfigCreateRequest request, Integer userId) {
-        log.info("{} 알림 설정 생성 시작: projectId={}", LOG_PREFIX, request.projectId());
+        log.info("{} 알림 설정 생성 시작: projectUuid={}", LOG_PREFIX, request.projectUuid());
 
-        // 1. 프로젝트 존재 여부 확인
-        Project project = projectRepository.findById(request.projectId())
+        // 1. UUID → ID 변환 및 프로젝트 존재 여부 확인
+        Integer projectId = projectService.getProjectIdByUuid(request.projectUuid());
+
+        Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> {
-                    log.warn("{} 프로젝트 없음: projectId={}", LOG_PREFIX, request.projectId());
+                    log.warn("{} 프로젝트 없음: projectId={}", LOG_PREFIX, projectId);
                     return new BusinessException(PROJECT_NOT_FOUND);
                 });
 
         // 2. 사용자의 프로젝트 접근 권한 확인
-        validateProjectAccess(request.projectId(), userId);
+        validateProjectAccess(projectId, userId);
 
         // 3. 기존 알림 설정 중복 확인
-        if (alertConfigRepository.existsByProjectId(request.projectId())) {
-            log.warn("{} 이미 알림 설정 존재: projectId={}", LOG_PREFIX, request.projectId());
+        if (alertConfigRepository.existsByProjectId(projectId)) {
+            log.warn("{} 이미 알림 설정 존재: projectId={}", LOG_PREFIX, projectId);
             throw new BusinessException(AlertErrorCode.ALERT_CONFIG_ALREADY_EXISTS);
         }
 
@@ -64,21 +68,23 @@ public class AlertConfigServiceImpl implements AlertConfigService {
                 .alertType(request.alertType())
                 .thresholdValue(request.thresholdValue())
                 .activeYN(request.activeYN())
-                .projectId(request.projectId())
+                .projectId(projectId)
                 .build();
 
         AlertConfig saved = alertConfigRepository.save(alertConfig);
 
         log.info("{} 알림 설정이 생성되었습니다: id={}", LOG_PREFIX, saved.getId());
 
-        return AlertConfigResponse.from(saved, project.getProjectName());
+        return AlertConfigResponse.from(saved, project.getProjectName(), project.getProjectUuid());
     }
 
     @Override
-    public AlertConfigResponse getAlertConfig(Integer projectId, Integer userId) {
-        log.info("{} 알림 설정 조회 시작: projectId={}", LOG_PREFIX, projectId);
+    public AlertConfigResponse getAlertConfig(String projectUuid, Integer userId) {
+        log.info("{} 알림 설정 조회 시작: projectUuid={}", LOG_PREFIX, projectUuid);
 
-        // 1. 프로젝트 존재 여부 확인
+        // 1. UUID → ID 변환 및 프로젝트 존재 여부 확인
+        Integer projectId = projectService.getProjectIdByUuid(projectUuid);
+
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> {
                     log.warn("{} 프로젝트 없음: projectId={}", LOG_PREFIX, projectId);
@@ -90,7 +96,7 @@ public class AlertConfigServiceImpl implements AlertConfigService {
 
         // 3. 알림 설정 조회 (없으면 null 반환)
         return alertConfigRepository.findByProjectId(projectId)
-                .map(alertConfig -> AlertConfigResponse.from(alertConfig, project.getProjectName()))
+                .map(alertConfig -> AlertConfigResponse.from(alertConfig, project.getProjectName(), project.getProjectUuid()))
                 .orElse(null);
     }
 
@@ -126,7 +132,7 @@ public class AlertConfigServiceImpl implements AlertConfigService {
 
         log.info("{} 알림 설정이 수정되었습니다: id={}", LOG_PREFIX, alertConfig.getId());
 
-        return AlertConfigResponse.from(alertConfig, project.getProjectName());
+        return AlertConfigResponse.from(alertConfig, project.getProjectName(), project.getProjectUuid());
     }
 
     /**

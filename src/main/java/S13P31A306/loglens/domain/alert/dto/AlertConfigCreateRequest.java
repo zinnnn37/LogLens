@@ -9,8 +9,8 @@ import jakarta.validation.constraints.NotNull;
  * 알림 설정 생성 요청 DTO
  */
 public record AlertConfigCreateRequest(
-        @NotNull(message = "프로젝트 ID는 필수입니다.")
-        Integer projectId,
+        @NotNull(message = "프로젝트 UUID는 필수입니다.")
+        String projectUuid,
 
         @NotNull(message = "알림 타입은 필수입니다.")
         AlertType alertType,

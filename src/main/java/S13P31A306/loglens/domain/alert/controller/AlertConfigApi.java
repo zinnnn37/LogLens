@@ -37,7 +37,7 @@ public interface AlertConfigApi {
             security = @SecurityRequirement(name = SwaggerMessages.BEARER_AUTH)
     )
     ResponseEntity<? extends BaseResponse> getAlertConfig(
-            @RequestParam Integer projectId);
+            @RequestParam String projectUuid);
 
     @Operation(
             summary = "알림 설정 수정",

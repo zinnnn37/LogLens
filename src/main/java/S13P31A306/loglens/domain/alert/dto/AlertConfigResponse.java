@@ -13,7 +13,7 @@ public record AlertConfigResponse(
         AlertType alertType,
         Integer thresholdValue,
         String activeYN,
-        Integer projectId,
+        String projectUuid,
         String projectName,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -21,13 +21,13 @@ public record AlertConfigResponse(
     /**
      * AlertConfig 엔티티로부터 생성
      */
-    public static AlertConfigResponse from(AlertConfig alertConfig, String projectName) {
+    public static AlertConfigResponse from(AlertConfig alertConfig, String projectName, String projectUuid) {
         return new AlertConfigResponse(
                 alertConfig.getId(),
                 alertConfig.getAlertType(),
                 alertConfig.getThresholdValue(),
                 alertConfig.getActiveYN(),
-                alertConfig.getProjectId(),
+                projectUuid,
                 projectName,
                 null, // createdAt은 BaseTimeEntity가 아니므로 null
                 null  // updatedAt은 BaseTimeEntity가 아니므로 null

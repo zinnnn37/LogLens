@@ -5,10 +5,11 @@ import S13P31A306.loglens.domain.alert.entity.AlertHistory;
 import S13P31A306.loglens.domain.alert.exception.AlertErrorCode;
 import S13P31A306.loglens.domain.alert.repository.AlertHistoryRepository;
 import S13P31A306.loglens.domain.alert.service.AlertHistoryService;
+import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
+import S13P31A306.loglens.domain.project.service.ProjectService;
 import S13P31A306.loglens.global.exception.BusinessException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -31,7 +32,6 @@ import static S13P31A306.loglens.global.constants.GlobalErrorCode.FORBIDDEN;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AlertHistoryServiceImpl implements AlertHistoryService {
 
@@ -41,18 +41,32 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
     private final AlertHistoryRepository alertHistoryRepository;
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
-
-    @Qualifier("sseScheduler")
+    private final ProjectService projectService;
     private final ScheduledExecutorService sseScheduler;
-
-    @Qualifier("sseTimeout")
     private final long sseTimeout;
 
-    @Override
-    public List<AlertHistoryResponse> getAlertHistories(Integer projectId, Integer userId, String resolvedYN) {
-        log.info("{} 알림 이력 조회 시작: projectId={}, resolvedYN={}", LOG_PREFIX, projectId, resolvedYN);
+    public AlertHistoryServiceImpl(
+            AlertHistoryRepository alertHistoryRepository,
+            ProjectRepository projectRepository,
+            ProjectMemberRepository projectMemberRepository,
+            ProjectService projectService,
+            @Qualifier("sseScheduler") ScheduledExecutorService sseScheduler,
+            @Qualifier("sseTimeout") long sseTimeout) {
+        this.alertHistoryRepository = alertHistoryRepository;
+        this.projectRepository = projectRepository;
+        this.projectMemberRepository = projectMemberRepository;
+        this.projectService = projectService;
+        this.sseScheduler = sseScheduler;
+        this.sseTimeout = sseTimeout;
+    }
 
-        // 1. 프로젝트 존재 여부 확인
+    @Override
+    public List<AlertHistoryResponse> getAlertHistories(String projectUuid, Integer userId, String resolvedYN) {
+        log.info("{} 알림 이력 조회 시작: projectUuid={}, resolvedYN={}", LOG_PREFIX, projectUuid, resolvedYN);
+
+        // 1. UUID → ID 변환 및 프로젝트 존재 여부 확인
+        Integer projectId = projectService.getProjectIdByUuid(projectUuid);
+
         projectRepository.findById(projectId)
                 .orElseThrow(() -> {
                     log.warn("{} 프로젝트 없음: projectId={}", LOG_PREFIX, projectId);
@@ -75,7 +89,7 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
         log.info("{} 알림 이력 조회 완료: count={}", LOG_PREFIX, histories.size());
 
         return histories.stream()
-                .map(AlertHistoryResponse::from)
+                .map(h -> AlertHistoryResponse.from(h, projectUuid))
                 .collect(Collectors.toList());
     }
 
@@ -94,7 +108,11 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
         // 2. 사용자의 프로젝트 접근 권한 확인
         validateProjectAccess(alertHistory.getProjectId(), userId);
 
-        // 3. 읽음 처리 (멱등성 보장 - 이미 읽은 경우에도 정상 처리)
+        // 3. 프로젝트 UUID 조회
+        Project project = projectRepository.findById(alertHistory.getProjectId())
+                .orElseThrow(() -> new BusinessException(PROJECT_NOT_FOUND));
+
+        // 4. 읽음 처리 (멱등성 보장 - 이미 읽은 경우에도 정상 처리)
         if (!"Y".equals(alertHistory.getResolvedYN())) {
             alertHistory.markAsRead();
             log.info("{} 알림이 읽음 처리되었습니다: alertId={}", LOG_PREFIX, alertId);
@@ -102,14 +120,16 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
             log.info("{} 이미 읽은 알림입니다: alertId={}", LOG_PREFIX, alertId);
         }
 
-        return AlertHistoryResponse.from(alertHistory);
+        return AlertHistoryResponse.from(alertHistory, project.getProjectUuid());
     }
 
     @Override
-    public long getUnreadCount(Integer projectId, Integer userId) {
-        log.info("{} 읽지 않은 알림 개수 조회: projectId={}", LOG_PREFIX, projectId);
+    public long getUnreadCount(String projectUuid, Integer userId) {
+        log.info("{} 읽지 않은 알림 개수 조회: projectUuid={}", LOG_PREFIX, projectUuid);
 
-        // 1. 프로젝트 존재 여부 확인
+        // 1. UUID → ID 변환 및 프로젝트 존재 여부 확인
+        Integer projectId = projectService.getProjectIdByUuid(projectUuid);
+
         projectRepository.findById(projectId)
                 .orElseThrow(() -> {
                     log.warn("{} 프로젝트 없음: projectId={}", LOG_PREFIX, projectId);
@@ -128,10 +148,12 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
     }
 
     @Override
-    public SseEmitter streamAlerts(Integer projectId, Integer userId) {
-        log.info("{} 실시간 알림 스트리밍 시작: projectId={}, userId={}", LOG_PREFIX, projectId, userId);
+    public SseEmitter streamAlerts(String projectUuid, Integer userId) {
+        log.info("{} 실시간 알림 스트리밍 시작: projectUuid={}, userId={}", LOG_PREFIX, projectUuid, userId);
 
-        // 1. 프로젝트 존재 여부 확인
+        // 1. UUID → ID 변환 및 프로젝트 존재 여부 확인
+        Integer projectId = projectService.getProjectIdByUuid(projectUuid);
+
         projectRepository.findById(projectId)
                 .orElseThrow(() -> {
                     log.warn("{} 프로젝트 없음: projectId={}", LOG_PREFIX, projectId);
@@ -158,7 +180,7 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
 
                 if (!newAlerts.isEmpty()) {
                     List<AlertHistoryResponse> responses = newAlerts.stream()
-                            .map(AlertHistoryResponse::from)
+                            .map(h -> AlertHistoryResponse.from(h, projectUuid))
                             .collect(Collectors.toList());
 
                     // SSE로 데이터 전송
@@ -197,14 +219,14 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
             if (Objects.nonNull(scheduledFutureHolder[0])) {
                 scheduledFutureHolder[0].cancel(true);
             }
-            log.info("{} SSE 연결 정상 종료: projectId={}", LOG_PREFIX, projectId);
+            log.info("{} SSE 연결 정상 종료: projectUuid={}", LOG_PREFIX, projectUuid);
         });
 
         emitter.onTimeout(() -> {
             if (Objects.nonNull(scheduledFutureHolder[0])) {
                 scheduledFutureHolder[0].cancel(true);
             }
-            log.info("{} SSE 연결 타임아웃: projectId={}", LOG_PREFIX, projectId);
+            log.info("{} SSE 연결 타임아웃: projectUuid={}", LOG_PREFIX, projectUuid);
             emitter.complete();
         });
 
@@ -214,9 +236,9 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
             }
             // IOException은 클라이언트가 연결을 끊은 정상적인 상황
             if (e instanceof java.io.IOException) {
-                log.debug("{} SSE 클라이언트 연결 종료: projectId={}", LOG_PREFIX, projectId);
+                log.debug("{} SSE 클라이언트 연결 종료: projectUuid={}", LOG_PREFIX, projectUuid);
             } else {
-                log.error("{} SSE 연결 오류: projectId={}", LOG_PREFIX, projectId, e);
+                log.error("{} SSE 연결 오류: projectUuid={}", LOG_PREFIX, projectUuid, e);
             }
         });
 

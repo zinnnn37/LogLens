@@ -13,12 +13,12 @@ public interface AlertHistoryService {
     /**
      * 알림 이력 조회
      *
-     * @param projectId  프로젝트 ID
-     * @param userId     사용자 ID
-     * @param resolvedYN 읽음 여부 필터 (null이면 전체 조회)
+     * @param projectUuid 프로젝트 UUID
+     * @param userId      사용자 ID
+     * @param resolvedYN  읽음 여부 필터 (null이면 전체 조회)
      * @return 알림 이력 목록
      */
-    List<AlertHistoryResponse> getAlertHistories(Integer projectId, Integer userId, String resolvedYN);
+    List<AlertHistoryResponse> getAlertHistories(String projectUuid, Integer userId, String resolvedYN);
 
     /**
      * 알림 읽음 처리
@@ -32,19 +32,19 @@ public interface AlertHistoryService {
     /**
      * 읽지 않은 알림 개수 조회
      *
-     * @param projectId 프로젝트 ID
-     * @param userId    사용자 ID
+     * @param projectUuid 프로젝트 UUID
+     * @param userId      사용자 ID
      * @return 읽지 않은 알림 개수
      */
-    long getUnreadCount(Integer projectId, Integer userId);
+    long getUnreadCount(String projectUuid, Integer userId);
 
     /**
      * 실시간 알림 스트리밍
      * SSE를 통해 새로운 알림을 실시간으로 전송합니다.
      *
-     * @param projectId 프로젝트 ID
-     * @param userId    사용자 ID
+     * @param projectUuid 프로젝트 UUID
+     * @param userId      사용자 ID
      * @return SseEmitter
      */
-    SseEmitter streamAlerts(Integer projectId, Integer userId);
+    SseEmitter streamAlerts(String projectUuid, Integer userId);
 }

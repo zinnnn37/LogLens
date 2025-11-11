@@ -59,6 +59,7 @@ class AlertHistoryControllerTest {
 
     private static final Integer USER_ID = 1;
     private static final Integer PROJECT_ID = 1;
+    private static final String PROJECT_UUID = "test-project-uuid-1234";
     private static final Integer ALERT_ID = 1;
 
     @BeforeEach
@@ -79,12 +80,12 @@ class AlertHistoryControllerTest {
                     createAlertHistoryResponse(2, "Y")
             );
 
-            given(alertHistoryService.getAlertHistories(eq(PROJECT_ID), eq(USER_ID), eq(null)))
+            given(alertHistoryService.getAlertHistories(eq(PROJECT_UUID), eq(USER_ID), eq(null)))
                     .willReturn(responses);
 
             // when & then
             mockMvc.perform(get("/api/alerts/histories")
-                            .param("projectId", String.valueOf(PROJECT_ID)))
+                            .param("projectUuid", PROJECT_UUID))
                     .andDo(print())
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(ALERT_HISTORIES_RETRIEVED.getCode()))
@@ -95,7 +96,7 @@ class AlertHistoryControllerTest {
                     .andExpect(jsonPath("$.data[1].id").value(2))
                     .andExpect(jsonPath("$.data[1].resolvedYN").value("Y"));
 
-            verify(alertHistoryService).getAlertHistories(eq(PROJECT_ID), eq(USER_ID), eq(null));
+            verify(alertHistoryService).getAlertHistories(eq(PROJECT_UUID), eq(USER_ID), eq(null));
         }
 
         @Test
@@ -106,12 +107,12 @@ class AlertHistoryControllerTest {
                     createAlertHistoryResponse(1, "N")
             );
 
-            given(alertHistoryService.getAlertHistories(eq(PROJECT_ID), eq(USER_ID), eq("N")))
+            given(alertHistoryService.getAlertHistories(eq(PROJECT_UUID), eq(USER_ID), eq("N")))
                     .willReturn(responses);
 
             // when & then
             mockMvc.perform(get("/api/alerts/histories")
-                            .param("projectId", String.valueOf(PROJECT_ID))
+                            .param("projectUuid", PROJECT_UUID)
                             .param("resolvedYN", "N"))
                     .andDo(print())
                     .andExpect(status().isOk())
@@ -119,19 +120,19 @@ class AlertHistoryControllerTest {
                     .andExpect(jsonPath("$.data.length()").value(1))
                     .andExpect(jsonPath("$.data[0].resolvedYN").value("N"));
 
-            verify(alertHistoryService).getAlertHistories(eq(PROJECT_ID), eq(USER_ID), eq("N"));
+            verify(alertHistoryService).getAlertHistories(eq(PROJECT_UUID), eq(USER_ID), eq("N"));
         }
 
         @Test
         @DisplayName("GET_/api/alerts/histories_빈_목록_반환_성공")
         void GET_빈_목록_반환_성공() throws Exception {
             // given
-            given(alertHistoryService.getAlertHistories(eq(PROJECT_ID), eq(USER_ID), eq(null)))
+            given(alertHistoryService.getAlertHistories(eq(PROJECT_UUID), eq(USER_ID), eq(null)))
                     .willReturn(Collections.emptyList());
 
             // when & then
             mockMvc.perform(get("/api/alerts/histories")
-                            .param("projectId", String.valueOf(PROJECT_ID)))
+                            .param("projectUuid", PROJECT_UUID))
                     .andDo(print())
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(ALERT_HISTORIES_RETRIEVED.getCode()))
@@ -143,12 +144,12 @@ class AlertHistoryControllerTest {
         @DisplayName("GET_/api/alerts/histories_권한_없음_시_403_에러")
         void GET_권한_없음_시_403_에러() throws Exception {
             // given
-            given(alertHistoryService.getAlertHistories(eq(PROJECT_ID), eq(USER_ID), eq(null)))
+            given(alertHistoryService.getAlertHistories(eq(PROJECT_UUID), eq(USER_ID), eq(null)))
                     .willThrow(new BusinessException(FORBIDDEN));
 
             // when & then
             mockMvc.perform(get("/api/alerts/histories")
-                            .param("projectId", String.valueOf(PROJECT_ID)))
+                            .param("projectUuid", PROJECT_UUID))
                     .andDo(print())
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.code").value("G403"));
@@ -235,48 +236,48 @@ class AlertHistoryControllerTest {
         @DisplayName("GET_/api/alerts/unread-count_개수_조회_성공")
         void GET_개수_조회_성공() throws Exception {
             // given
-            given(alertHistoryService.getUnreadCount(eq(PROJECT_ID), eq(USER_ID)))
+            given(alertHistoryService.getUnreadCount(eq(PROJECT_UUID), eq(USER_ID)))
                     .willReturn(5L);
 
             // when & then
             mockMvc.perform(get("/api/alerts/unread-count")
-                            .param("projectId", String.valueOf(PROJECT_ID)))
+                            .param("projectUuid", PROJECT_UUID))
                     .andDo(print())
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(ALERT_UNREAD_COUNT_RETRIEVED.getCode()))
                     .andExpect(jsonPath("$.data.unreadCount").value(5));
 
-            verify(alertHistoryService).getUnreadCount(eq(PROJECT_ID), eq(USER_ID));
+            verify(alertHistoryService).getUnreadCount(eq(PROJECT_UUID), eq(USER_ID));
         }
 
         @Test
         @DisplayName("GET_/api/alerts/unread-count_0개_반환_성공")
         void GET_0개_반환_성공() throws Exception {
             // given
-            given(alertHistoryService.getUnreadCount(eq(PROJECT_ID), eq(USER_ID)))
+            given(alertHistoryService.getUnreadCount(eq(PROJECT_UUID), eq(USER_ID)))
                     .willReturn(0L);
 
             // when & then
             mockMvc.perform(get("/api/alerts/unread-count")
-                            .param("projectId", String.valueOf(PROJECT_ID)))
+                            .param("projectUuid", PROJECT_UUID))
                     .andDo(print())
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(ALERT_UNREAD_COUNT_RETRIEVED.getCode()))
                     .andExpect(jsonPath("$.data.unreadCount").value(0));
 
-            verify(alertHistoryService).getUnreadCount(eq(PROJECT_ID), eq(USER_ID));
+            verify(alertHistoryService).getUnreadCount(eq(PROJECT_UUID), eq(USER_ID));
         }
 
         @Test
         @DisplayName("GET_/api/alerts/unread-count_권한_없음_시_403_에러")
         void GET_권한_없음_시_403_에러() throws Exception {
             // given
-            given(alertHistoryService.getUnreadCount(eq(PROJECT_ID), eq(USER_ID)))
+            given(alertHistoryService.getUnreadCount(eq(PROJECT_UUID), eq(USER_ID)))
                     .willThrow(new BusinessException(FORBIDDEN));
 
             // when & then
             mockMvc.perform(get("/api/alerts/unread-count")
-                            .param("projectId", String.valueOf(PROJECT_ID)))
+                            .param("projectUuid", PROJECT_UUID))
                     .andDo(print())
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.code").value("G403"));
@@ -291,31 +292,31 @@ class AlertHistoryControllerTest {
         @DisplayName("GET_/api/alerts/stream_SSE_연결_생성_성공")
         void GET_SSE_연결_생성_성공() throws Exception {
             // given
-            given(alertHistoryService.streamAlerts(eq(PROJECT_ID), eq(USER_ID)))
+            given(alertHistoryService.streamAlerts(eq(PROJECT_UUID), eq(USER_ID)))
                     .willReturn(new SseEmitter(300000L));
 
             // when & then
             // SSE는 비동기 응답이므로 Content-Type은 데이터 전송 시점에 설정됨
             // 연결 생성 시점에는 status와 async 시작 여부만 확인
             mockMvc.perform(get("/api/alerts/stream")
-                            .param("projectId", String.valueOf(PROJECT_ID)))
+                            .param("projectUuid", PROJECT_UUID))
                     .andDo(print())
                     .andExpect(status().isOk())
                     .andExpect(request().asyncStarted());
 
-            verify(alertHistoryService).streamAlerts(eq(PROJECT_ID), eq(USER_ID));
+            verify(alertHistoryService).streamAlerts(eq(PROJECT_UUID), eq(USER_ID));
         }
 
         @Test
         @DisplayName("GET_/api/alerts/stream_프로젝트_없음_404_에러")
         void GET_프로젝트_없음_404_에러() throws Exception {
             // given
-            given(alertHistoryService.streamAlerts(eq(PROJECT_ID), eq(USER_ID)))
+            given(alertHistoryService.streamAlerts(eq(PROJECT_UUID), eq(USER_ID)))
                     .willThrow(new BusinessException(PROJECT_NOT_FOUND));
 
             // when & then
             mockMvc.perform(get("/api/alerts/stream")
-                            .param("projectId", String.valueOf(PROJECT_ID)))
+                            .param("projectUuid", PROJECT_UUID))
                     .andDo(print())
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value(PROJECT_NOT_FOUND.getCode()));
@@ -325,12 +326,12 @@ class AlertHistoryControllerTest {
         @DisplayName("GET_/api/alerts/stream_권한_없음_403_에러")
         void GET_권한_없음_403_에러() throws Exception {
             // given
-            given(alertHistoryService.streamAlerts(eq(PROJECT_ID), eq(USER_ID)))
+            given(alertHistoryService.streamAlerts(eq(PROJECT_UUID), eq(USER_ID)))
                     .willThrow(new BusinessException(FORBIDDEN));
 
             // when & then
             mockMvc.perform(get("/api/alerts/stream")
-                            .param("projectId", String.valueOf(PROJECT_ID)))
+                            .param("projectUuid", PROJECT_UUID))
                     .andDo(print())
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.code").value("G403"));
@@ -356,7 +357,7 @@ class AlertHistoryControllerTest {
                 LocalDateTime.now(),
                 resolvedYN,
                 "{\"logId\": " + id + "}",
-                PROJECT_ID
+                PROJECT_UUID
         );
     }
 }

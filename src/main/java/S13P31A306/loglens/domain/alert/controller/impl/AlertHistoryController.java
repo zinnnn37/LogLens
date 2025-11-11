@@ -33,11 +33,11 @@ public class AlertHistoryController implements AlertHistoryApi {
     @GetMapping("/histories")
     @Override
     public ResponseEntity<? extends BaseResponse> getAlertHistories(
-            @RequestParam Integer projectId,
+            @RequestParam String projectUuid,
             @RequestParam(required = false) String resolvedYN) {
         Integer userId = authHelper.getCurrentUserId();
         List<AlertHistoryResponse> responses = alertHistoryService
-                .getAlertHistories(projectId, userId, resolvedYN);
+                .getAlertHistories(projectUuid, userId, resolvedYN);
         return ApiResponseFactory.success(ALERT_HISTORIES_RETRIEVED, responses);
     }
 
@@ -53,16 +53,16 @@ public class AlertHistoryController implements AlertHistoryApi {
     @GetMapping("/unread-count")
     @Override
     public ResponseEntity<? extends BaseResponse> getUnreadCount(
-            @RequestParam Integer projectId) {
+            @RequestParam String projectUuid) {
         Integer userId = authHelper.getCurrentUserId();
-        long count = alertHistoryService.getUnreadCount(projectId, userId);
+        long count = alertHistoryService.getUnreadCount(projectUuid, userId);
         return ApiResponseFactory.success(ALERT_UNREAD_COUNT_RETRIEVED, Map.of("unreadCount", count));
     }
 
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Override
-    public SseEmitter streamAlerts(@RequestParam Integer projectId) {
+    public SseEmitter streamAlerts(@RequestParam String projectUuid) {
         Integer userId = authHelper.getCurrentUserId();
-        return alertHistoryService.streamAlerts(projectId, userId);
+        return alertHistoryService.streamAlerts(projectUuid, userId);
     }
 }
