@@ -16,7 +16,8 @@ interface ChatMessageProps {
 
 const ChatMessage = ({ message }: ChatMessageProps) => {
   const isUser = message.role === 'user';
-  const shouldRenderMarkdown = !isUser; // assistant 메시지는 항상 마크다운 렌더링
+  // 스트리밍 완료된 assistant 메시지만 마크다운 렌더링
+  const shouldRenderMarkdown = !isUser && message.isComplete !== false;
 
   return (
     <div
