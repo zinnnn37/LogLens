@@ -1,29 +1,29 @@
 package S13P31A306.loglens.domain.project.service.impl;
 
+import static S13P31A306.loglens.domain.project.constants.LogMetricsConstants.AGGREGATION_INTERVAL_MINUTES;
+
 import S13P31A306.loglens.domain.project.entity.LogMetrics;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.LogMetricsRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import S13P31A306.loglens.domain.project.service.LogMetricsBatchService;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.opensearch.client.json.JsonData;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.aggregations.Aggregation;
 import org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.SearchResponse;
-import org.opensearch.client.json.JsonData;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-
-import static S13P31A306.loglens.domain.project.constants.LogMetricsConstants.AGGREGATION_INTERVAL_MINUTES;
 
 @Slf4j
 @Service
@@ -39,7 +39,6 @@ public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
     private final OpenSearchClient openSearchClient;
 
     @Override
-    @Transactional
     public void aggregateAllProjects() {
         log.info("{} 전체 프로젝트 로그 메트릭 집계 시작", LOG_PREFIX);
 
@@ -51,7 +50,7 @@ public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
 
         for (Project project : projects) {
             try {
-                aggregateProjectMetrics(project, aggregatedAt);
+                aggregateProjectMetricsInNewTransaction(project, aggregatedAt);
                 successCount++;
             } catch (Exception e) {
                 failCount++;
@@ -63,12 +62,13 @@ public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
     }
 
     /**
-     * 특정 프로젝트의 로그 메트릭 집계
+     * 특정 프로젝트의 로그 메트릭 집계 (새 트랜잭션) OpenSearch 호출과 DB 저장을 분리하여 커넥션 점유 시간 최소화
      *
-     * @param project 집계 대상 프로젝트
+     * @param project      집계 대상 프로젝트
      * @param aggregatedAt 집계 시간
      */
-    private void aggregateProjectMetrics(Project project, LocalDateTime aggregatedAt) throws Exception {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void aggregateProjectMetricsInNewTransaction(Project project, LocalDateTime aggregatedAt) throws Exception {
         // 중복 집계 방지
         if (logMetricsRepository.existsByProjectIdAndAggregatedAt(project.getId(), aggregatedAt)) {
             log.info("{} 프로젝트 {} - 이미 집계된 데이터 존재", LOG_PREFIX, project.getProjectUuid());
@@ -78,14 +78,14 @@ public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
         // 최근 10분간 데이터 조회
         LocalDateTime startTime = aggregatedAt.minusMinutes(AGGREGATION_INTERVAL_MINUTES);
 
-        // OpenSearch 쿼리 실행
+        // OpenSearch 쿼리 실행 (트랜잭션 외부 I/O이지만 REQUIRES_NEW로 각 프로젝트마다 독립 트랜잭션)
         SearchResponse<Void> response = executeOpenSearchQuery(project.getProjectUuid(), startTime, aggregatedAt);
 
         // 집계 결과 추출
         Map<String, Long> logLevelCounts = extractLogLevelCounts(response);
         Integer avgResponseTime = extractAvgResponseTime(response);
 
-        // LogMetrics 저장
+        // LogMetrics 저장 (트랜잭션 내)
         LogMetrics metrics = LogMetrics.builder()
                 .project(project)
                 .totalLogs(logLevelCounts.values().stream().mapToInt(Long::intValue).sum())
@@ -105,8 +105,8 @@ public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
      * OpenSearch 쿼리 실행
      *
      * @param projectUuid 프로젝트 UUID
-     * @param startTime 조회 시작 시간
-     * @param endTime 조회 종료 시간
+     * @param startTime   조회 시작 시간
+     * @param endTime     조회 종료 시간
      * @return SearchResponse OpenSearch 응답
      */
     private SearchResponse<Void> executeOpenSearchQuery(
