@@ -5,7 +5,7 @@ spring:
   application:
     name: loglens
   profiles:
-#    active: ${SPRING_PROFILES_ACTIVE:dev}
+    #    active: ${SPRING_PROFILES_ACTIVE:dev}
     active: dev
 
   # ===================================================================
@@ -13,11 +13,13 @@ spring:
   # ===================================================================
   datasource:
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 5
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
+      maximum-pool-size: 50          # 151 중 일부만 사용 (여유 있음)
+      minimum-idle: 10               # idle 커넥션 조금 더 확보
+      connection-timeout: 10000      # 10초 내 커넥션 못 얻으면 예외 발생
+      idle-timeout: 600000           # 유휴 커넥션 10분 유지
+      max-lifetime: 1700000          # 28분 20초 (MySQL wait_timeout보다 짧게)
+      validation-timeout: 5000       # 커넥션 검증 대기 5초
+      keepalive-time: 300000         # 5분마다 ping으로 커넥션 생존 확인
 
   # ===================================================================
   # JPA 및 Hibernate 설정 (JPA & Hibernate Configuration)
@@ -132,5 +134,5 @@ sse:
   scheduler:
     pool-size: 50                  # SSE 스케줄러 스레드 풀 크기 (동시 50개 연결 지원)
   timeout: 3600000                 # SSE 연결 타임아웃 (60분, 밀리초)
-    # ALB idle timeout(60초)보다 충분히 길게 설정
+  # ALB idle timeout(60초)보다 충분히 길게 설정
   # heartbeat(5초 주기)로 연결 유지
