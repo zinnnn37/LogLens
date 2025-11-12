@@ -20,6 +20,7 @@ spring:
       max-lifetime: 1700000          # 28분 20초 (MySQL wait_timeout보다 짧게)
       validation-timeout: 5000       # 커넥션 검증 대기 5초
       keepalive-time: 300000         # 5분마다 ping으로 커넥션 생존 확인
+      leak-detection-threshold: 10000  # 10초 이상 반환 안 되면 로그 출력
 
   # ===================================================================
   # JPA 및 Hibernate 설정 (JPA & Hibernate Configuration)
