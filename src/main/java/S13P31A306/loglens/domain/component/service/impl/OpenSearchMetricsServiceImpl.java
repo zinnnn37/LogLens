@@ -57,10 +57,14 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
             return metricsMap;
 
         } catch (IOException e) {
-            log.error("{} OpenSearch 조회 실패: projectUuid={}", LOG_PREFIX, projectUuid, e);
+            log.error("{} OpenSearch 조회 실패 - 커넥션 풀 상태 확인 필요: projectUuid={}, errorType={}, message={}",
+                    LOG_PREFIX, projectUuid, e.getClass().getSimpleName(), e.getMessage());
+            log.debug("{} OpenSearch IOException 상세 스택:", LOG_PREFIX, e);
             return new HashMap<>();
         } catch (Exception e) {
-            log.error("{} 예상치 못한 오류 발생: projectUuid={}", LOG_PREFIX, projectUuid, e);
+            log.error("{} 예상치 못한 오류 발생: projectUuid={}, errorType={}, message={}",
+                    LOG_PREFIX, projectUuid, e.getClass().getSimpleName(), e.getMessage());
+            log.debug("{} 예상치 못한 오류 상세 스택:", LOG_PREFIX, e);
             return new HashMap<>();
         }
     }
@@ -82,12 +86,14 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
             return metricsData;
 
         } catch (IOException e) {
-            log.error("{} OpenSearch 조회 실패: projectUuid={}, component={}",
-                    LOG_PREFIX, projectUuid, componentName, e);
+            log.error("{} OpenSearch 조회 실패 - 커넥션 풀 상태 확인 필요: projectUuid={}, component={}, errorType={}, message={}",
+                    LOG_PREFIX, projectUuid, componentName, e.getClass().getSimpleName(), e.getMessage());
+            log.debug("{} OpenSearch IOException 상세 스택:", LOG_PREFIX, e);
             return MetricsData.empty();
         } catch (Exception e) {
-            log.error("{} 예상치 못한 오류 발생: projectUuid={}, component={}",
-                    LOG_PREFIX, projectUuid, componentName, e);
+            log.error("{} 예상치 못한 오류 발생: projectUuid={}, component={}, errorType={}, message={}",
+                    LOG_PREFIX, projectUuid, componentName, e.getClass().getSimpleName(), e.getMessage());
+            log.debug("{} 예상치 못한 오류 상세 스택:", LOG_PREFIX, e);
             return MetricsData.empty();
         }
     }
@@ -108,10 +114,14 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
             return summary;
 
         } catch (IOException e) {
-            log.error("{} Frontend 메트릭 조회 실패: projectUuid={}", LOG_PREFIX, projectUuid, e);
+            log.error("{} ⚠️ Frontend 메트릭 조회 실패 - 커넥션 풀 상태 확인 필요: projectUuid={}, errorType={}, message={}",
+                    LOG_PREFIX, projectUuid, e.getClass().getSimpleName(), e.getMessage());
+            log.debug("{} OpenSearch IOException 상세 스택:", LOG_PREFIX, e);
             return FrontendMetricsSummary.empty();
         } catch (Exception e) {
-            log.error("{} Frontend 메트릭 예상치 못한 오류: projectUuid={}", LOG_PREFIX, projectUuid, e);
+            log.error("{} ⚠️ Frontend 메트릭 예상치 못한 오류: projectUuid={}, errorType={}, message={}",
+                    LOG_PREFIX, projectUuid, e.getClass().getSimpleName(), e.getMessage());
+            log.debug("{} 예상치 못한 오류 상세 스택:", LOG_PREFIX, e);
             return FrontendMetricsSummary.empty();
         }
     }
