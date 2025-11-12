@@ -325,11 +325,6 @@ pipeline {
                             --actions Type=forward,TargetGroupArn="\$TG_ARN" \\
                             --region \${AWS_REGION}
                         
-                        aws elbv2 modify-rule \\
-                            --rule-arn "\${DEFAULT_RULE_ARN}" \\
-                            --actions Type=forward,TargetGroupArn="\$TG_ARN" \\
-                            --region \${AWS_REGION}
-                        
                         if [ \$? -eq 0 ]; then
                             echo "✅ Traffic switched to ${env.DEPLOY_TARGET} successfully"
                             echo "ℹ️  Rule now forwards to: \$TG_NAME"
