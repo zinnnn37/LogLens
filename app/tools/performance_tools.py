@@ -51,6 +51,7 @@ async def get_slowest_apis(
             "bool": {
                 "should": [
                     {"exists": {"field": "log_details.execution_time"}},
+                    {"exists": {"field": "execution_time"}},  # 평면 구조 지원
                     {"exists": {"field": "duration"}}
                 ],
                 "minimum_should_match": 1
@@ -61,16 +62,9 @@ async def get_slowest_apis(
                 "gte": start_time.isoformat() + "Z",
                 "lte": end_time.isoformat() + "Z"
             }
-        }},
-        # 실제 HTTP API만 필터링 (Controller 레이어)
-        {
-            "bool": {
-                "should": [
-                    {"exists": {"field": "log_details.request_uri"}}
-                ],
-                "minimum_should_match": 1
-            }
-        }
+        }}
+        # 주의: HTTP API 필수 필터 제거 (데이터 수집 범위 확대)
+        # request_uri가 없는 로그도 포함하여 더 많은 데이터 분석
     ]
 
     if service_name:
@@ -82,6 +76,7 @@ async def get_slowest_apis(
             "bool": {
                 "should": [
                     {"range": {"log_details.execution_time": {"gte": min_execution_time}}},
+                    {"range": {"execution_time": {"gte": min_execution_time}}},  # 평면 구조
                     {"range": {"duration": {"gte": min_execution_time}}}
                 ],
                 "minimum_should_match": 1
@@ -100,24 +95,43 @@ async def get_slowest_apis(
                 "aggs": {
                     "by_api": {
                         "terms": {
-                            # HTTP 메서드 + request_uri 조합으로 API 식별
+                            # HTTP 메서드 + request_uri 조합으로 API 식별 (폴백: class_name.method_name)
                             "script": {
                                 "source": """
                                     String httpMethod = 'N/A';
                                     String requestUri = 'unknown';
+                                    String className = null;
+                                    String methodName = null;
 
+                                    // HTTP 메서드 추출
                                     if (doc.containsKey('log_details.http_method') &&
                                         doc['log_details.http_method'].size() > 0) {
                                         httpMethod = doc['log_details.http_method'].value;
                                     }
 
+                                    // Request URI 추출
                                     if (doc.containsKey('log_details.request_uri') &&
                                         doc['log_details.request_uri'].size() > 0) {
                                         requestUri = doc['log_details.request_uri'].value;
                                     }
 
+                                    // Request URI가 있으면 HTTP API로 식별
                                     if (requestUri != 'unknown') {
                                         return httpMethod + ' ' + requestUri;
+                                    }
+
+                                    // 없으면 class_name.method_name으로 폴백
+                                    if (doc.containsKey('class_name') && doc['class_name'].size() > 0) {
+                                        className = doc['class_name'].value;
+                                    }
+                                    if (doc.containsKey('method_name') && doc['method_name'].size() > 0) {
+                                        methodName = doc['method_name'].value;
+                                    }
+
+                                    if (className != null && methodName != null) {
+                                        return className + '.' + methodName;
+                                    } else if (className != null) {
+                                        return className;
                                     } else {
                                         return 'unknown';
                                     }
@@ -135,6 +149,9 @@ async def get_slowest_apis(
                                             if (doc.containsKey('log_details.execution_time') &&
                                                 doc['log_details.execution_time'].size() > 0) {
                                                 return doc['log_details.execution_time'].value;
+                                            } else if (doc.containsKey('execution_time') &&
+                                                       doc['execution_time'].size() > 0) {
+                                                return doc['execution_time'].value;
                                             } else if (doc.containsKey('duration') &&
                                                        doc['duration'].size() > 0) {
                                                 return doc['duration'].value;
@@ -152,6 +169,9 @@ async def get_slowest_apis(
                                             if (doc.containsKey('log_details.execution_time') &&
                                                 doc['log_details.execution_time'].size() > 0) {
                                                 return doc['log_details.execution_time'].value;
+                                            } else if (doc.containsKey('execution_time') &&
+                                                       doc['execution_time'].size() > 0) {
+                                                return doc['execution_time'].value;
                                             } else if (doc.containsKey('duration') &&
                                                        doc['duration'].size() > 0) {
                                                 return doc['duration'].value;
@@ -169,6 +189,9 @@ async def get_slowest_apis(
                                             if (doc.containsKey('log_details.execution_time') &&
                                                 doc['log_details.execution_time'].size() > 0) {
                                                 return doc['log_details.execution_time'].value;
+                                            } else if (doc.containsKey('execution_time') &&
+                                                       doc['execution_time'].size() > 0) {
+                                                return doc['execution_time'].value;
                                             } else if (doc.containsKey('duration') &&
                                                        doc['duration'].size() > 0) {
                                                 return doc['duration'].value;
@@ -186,6 +209,9 @@ async def get_slowest_apis(
                                             if (doc.containsKey('log_details.execution_time') &&
                                                 doc['log_details.execution_time'].size() > 0) {
                                                 return doc['log_details.execution_time'].value;
+                                            } else if (doc.containsKey('execution_time') &&
+                                                       doc['execution_time'].size() > 0) {
+                                                return doc['execution_time'].value;
                                             } else if (doc.containsKey('duration') &&
                                                        doc['duration'].size() > 0) {
                                                 return doc['duration'].value;
@@ -218,7 +244,17 @@ async def get_slowest_apis(
         buckets = [b for b in buckets if b.get("key", "unknown") != "unknown"]
 
         if not buckets:
-            return f"최근 {time_hours}시간 동안 응답 시간 데이터가 있는 API가 없습니다."
+            return (
+                f"최근 {time_hours}시간 동안 응답 시간 데이터가 있는 API가 없습니다.\n\n"
+                f"디버깅 정보:\n"
+                f"- 검색 인덱스: {index_pattern}\n"
+                f"- 시간 범위: {start_time.isoformat()[:19]} ~ {end_time.isoformat()[:19]} (UTC)\n"
+                f"- 총 매칭 문서 수: {total_hits}건\n"
+                f"- 확인 사항:\n"
+                f"  1. 로그에 execution_time 또는 duration 필드가 있는지 확인\n"
+                f"  2. 로그가 해당 시간 범위 내에 있는지 확인\n"
+                f"  3. OpenSearch 인덱스가 올바르게 생성되었는지 확인"
+            )
 
         # 결과 포맷팅
         summary_lines = [

@@ -138,26 +138,33 @@ class LogAnalysisService:
             text_to_embed = self._prepare_text_for_embedding(log_data)
             log_vector = await embedding_service.embed_query(text_to_embed)
 
-        similar_logs = await similarity_service.find_similar_logs(
-            log_vector=log_vector,
-            k=5,
-            filters={"ai_analysis": {"exists": True}},
-            project_uuid=project_uuid,
-        )
-
-        if similar_logs and similar_logs[0]["score"] >= self.threshold:
-            similar_log = similar_logs[0]
-            similar_analysis = similar_log["data"]["ai_analysis"]
-
-            await self._save_analysis(log_id, similar_analysis, project_uuid)
-
-            return LogAnalysisResponse(
-                log_id=log_id,
-                analysis=LogAnalysisResult(**similar_analysis),
-                from_cache=True,
-                similar_log_id=similar_log["log_id"],
-                similarity_score=similar_log["score"],
+        # Try similarity search with error handling for index mapping issues
+        try:
+            similar_logs = await similarity_service.find_similar_logs(
+                log_vector=log_vector,
+                k=5,
+                filters={"ai_analysis": {"exists": True}},
+                project_uuid=project_uuid,
             )
+
+            if similar_logs and similar_logs[0]["score"] >= self.threshold:
+                similar_log = similar_logs[0]
+                similar_analysis = similar_log["data"]["ai_analysis"]
+
+                await self._save_analysis(log_id, similar_analysis, project_uuid)
+
+                return LogAnalysisResponse(
+                    log_id=log_id,
+                    analysis=LogAnalysisResult(**similar_analysis),
+                    from_cache=True,
+                    similar_log_id=similar_log["log_id"],
+                    similarity_score=similar_log["score"],
+                )
+        except Exception as e:
+            # Handle KNN search failures (e.g., log_vector not knn_vector type)
+            print(f"⚠️  Similarity search failed: {e}")
+            print(f"   Skipping similarity cache and proceeding with LLM analysis...")
+            # Continue to LLM analysis (no return here)
 
         # Step 6: Analyze with LLM (with Korean validation)
         if related_logs:

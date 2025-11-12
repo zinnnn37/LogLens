@@ -8,7 +8,7 @@ set -e
 
 OPENSEARCH_HOST="${OPENSEARCH_HOST:-http://localhost:9200}"
 INDEX_TEMPLATE_NAME="logs-template"
-INDEX_PATTERN="*_2*_*"  # Matches {project_uuid}_{YYYY}_{MM} format (2000s)
+INDEX_PATTERN="*_20*_*"  # Matches {anything}_{YYYY}_{MM} format
 
 echo "🔍 OpenSearch 연결 확인: $OPENSEARCH_HOST"
 
@@ -62,7 +62,7 @@ curl -X PUT "$OPENSEARCH_HOST/_index_template/$INDEX_TEMPLATE_NAME" \
         },
         "timestamp": {
           "type": "date",
-          "format": "strict_date_optional_time||epoch_millis"
+          "format": "strict_date_optional_time||epoch_millis||yyyy-MM-dd HH:mm:ss.SSS"
         },
         "service_name": {
           "type": "keyword"
@@ -104,7 +104,13 @@ curl -X PUT "$OPENSEARCH_HOST/_index_template/$INDEX_TEMPLATE_NAME" \
           "type": "keyword"
         },
         "trace_id": {
-          "type": "keyword"
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
         },
         "requester_ip": {
           "type": "ip"
@@ -128,26 +134,37 @@ curl -X PUT "$OPENSEARCH_HOST/_index_template/$INDEX_TEMPLATE_NAME" \
               "type": "keyword"
             },
             "request_uri": {
-              "type": "keyword"
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
             },
             "request_headers": {
               "type": "object",
               "enabled": false
             },
             "request_body": {
-              "type": "text"
+              "type": "object",
+              "enabled": false
             },
             "response_status": {
               "type": "integer"
             },
             "response_body": {
-              "type": "text"
+              "type": "object",
+              "enabled": false
             },
             "class_name": {
               "type": "keyword"
             },
             "method_name": {
               "type": "keyword"
+            },
+            "stacktrace": {
+              "type": "text"
             },
             "additional_info": {
               "type": "object",
@@ -191,16 +208,18 @@ curl -X PUT "$OPENSEARCH_HOST/_index_template/$INDEX_TEMPLATE_NAME" \
           }
         },
         "indexed_at": {
-          "type": "date"
+          "type": "date",
+          "format": "strict_date_optional_time||epoch_millis||yyyy-MM-dd HH:mm:ss.SSS"
         },
         "@timestamp": {
-          "type": "date"
+          "type": "date",
+          "format": "strict_date_optional_time||epoch_millis||yyyy-MM-dd HH:mm:ss.SSS"
         }
       }
     }
   },
-  "priority": 100,
-  "version": 1
+  "priority": 200,
+  "version": 3
 }'
 
 echo ""
@@ -220,9 +239,3 @@ curl -s "$OPENSEARCH_HOST/_index_template/$INDEX_TEMPLATE_NAME" | jq '.index_tem
 
 echo ""
 echo "🎉 OpenSearch 인덱스 설정 완료!"
-echo "   - 템플릿 이름: $INDEX_TEMPLATE_NAME"
-echo "   - 인덱스 패턴: $INDEX_PATTERN"
-echo "   - 예시 인덱스: logs-2025.01, logs-2025.02, ..."
-echo ""
-echo "ℹ️  참고: log_vector(KNN 벡터) 필드는 제외되었습니다."
-echo "   필요시 별도로 KNN 플러그인 설치 후 추가할 수 있습니다."
