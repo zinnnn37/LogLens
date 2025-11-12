@@ -183,7 +183,7 @@ public class LogServiceImpl implements LogService {
                 .requesterIp(logEntity.getRequesterIp())
                 .duration(logEntity.getDuration())
                 .stackTrace(logEntity.getStackTrace())
-                .logDetails(logEntity.getLogDetails());
+                .logDetails(removeDuplicateFields(logEntity.getLogDetails()));
 
         // 3. AI 분석 결과 확인 및 처리
         AiAnalysisDto analysis = null;
@@ -339,6 +339,35 @@ public class LogServiceImpl implements LogService {
         if (Objects.nonNull(future) && !future.isCancelled()) {
             future.cancel(true);
         }
+    }
+
+    /**
+     * logDetails에서 data 레벨과 중복되는 필드 제거 중복 필드: execution_time (duration), stacktrace (stackTrace), class_name
+     * (className), method_name (methodName)
+     *
+     * @param logDetails 원본 logDetails Map
+     * @return 중복이 제거된 logDetails Map
+     */
+    private Map<String, Object> removeDuplicateFields(Map<String, Object> logDetails) {
+        if (Objects.isNull(logDetails) || logDetails.isEmpty()) {
+            return logDetails;
+        }
+
+        // 중복 필드 목록
+        List<String> duplicateFields = List.of(
+                "execution_time",  // duration과 중복
+                "stacktrace",      // stackTrace와 중복
+                "class_name",      // className과 중복
+                "method_name"      // methodName과 중복
+        );
+
+        // 중복 필드 제거한 새로운 Map 생성
+        return logDetails.entrySet().stream()
+                .filter(entry -> !duplicateFields.contains(entry.getKey()))
+                .collect(java.util.stream.Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue
+                ));
     }
 
     /**
