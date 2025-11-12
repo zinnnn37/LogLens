@@ -6,6 +6,7 @@ import S13P31A306.loglens.domain.alert.dto.AlertConfigUpdateRequest;
 import S13P31A306.loglens.domain.alert.entity.AlertConfig;
 import S13P31A306.loglens.domain.alert.entity.AlertType;
 import S13P31A306.loglens.domain.alert.exception.AlertErrorCode;
+import S13P31A306.loglens.domain.alert.mapper.AlertConfigMapper;
 import S13P31A306.loglens.domain.alert.repository.AlertConfigRepository;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
@@ -52,6 +53,9 @@ class AlertConfigServiceImplTest {
     @Mock
     private ProjectService projectService;
 
+    @Mock
+    private AlertConfigMapper alertConfigMapper;
+
     private static final Integer USER_ID = 1;
     private static final Integer PROJECT_ID = 1;
     private static final String PROJECT_UUID = "test-project-uuid-1234";
@@ -63,7 +67,8 @@ class AlertConfigServiceImplTest {
                 alertConfigRepository,
                 projectRepository,
                 projectMemberRepository,
-                projectService
+                projectService,
+                alertConfigMapper
         );
     }
 
@@ -78,12 +83,14 @@ class AlertConfigServiceImplTest {
             AlertConfigCreateRequest request = createValidRequest();
             Project project = createProject();
             AlertConfig savedConfig = createAlertConfig();
+            AlertConfigResponse expectedResponse = createResponse();
 
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertConfigRepository.existsByProjectId(PROJECT_ID)).willReturn(false);
             given(alertConfigRepository.save(any(AlertConfig.class))).willReturn(savedConfig);
+            given(alertConfigMapper.toResponse(savedConfig, PROJECT_NAME, PROJECT_UUID)).willReturn(expectedResponse);
 
             // when
             AlertConfigResponse response = alertConfigService.createAlertConfig(request, USER_ID);
@@ -102,6 +109,7 @@ class AlertConfigServiceImplTest {
             verify(projectMemberRepository).existsByProjectIdAndUserId(PROJECT_ID, USER_ID);
             verify(alertConfigRepository).existsByProjectId(PROJECT_ID);
             verify(alertConfigRepository).save(any(AlertConfig.class));
+            verify(alertConfigMapper).toResponse(savedConfig, PROJECT_NAME, PROJECT_UUID);
         }
 
         @Test
@@ -198,11 +206,13 @@ class AlertConfigServiceImplTest {
             // given
             Project project = createProject();
             AlertConfig alertConfig = createAlertConfig();
+            AlertConfigResponse expectedResponse = createResponse();
 
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertConfigRepository.findByProjectId(PROJECT_ID)).willReturn(Optional.of(alertConfig));
+            given(alertConfigMapper.toResponse(alertConfig, PROJECT_NAME, PROJECT_UUID)).willReturn(expectedResponse);
 
             // when
             AlertConfigResponse response = alertConfigService.getAlertConfig(PROJECT_UUID, USER_ID);
@@ -215,6 +225,7 @@ class AlertConfigServiceImplTest {
             verify(projectService).getProjectIdByUuid(PROJECT_UUID);
             verify(projectRepository).findById(PROJECT_ID);
             verify(alertConfigRepository).findByProjectId(PROJECT_ID);
+            verify(alertConfigMapper).toResponse(alertConfig, PROJECT_NAME, PROJECT_UUID);
         }
 
         @Test
@@ -283,10 +294,12 @@ class AlertConfigServiceImplTest {
                     1, AlertType.LATENCY, 100, "N");
             AlertConfig alertConfig = createAlertConfig();
             Project project = createProject();
+            AlertConfigResponse expectedResponse = createResponse();
 
             given(alertConfigRepository.findById(1)).willReturn(Optional.of(alertConfig));
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
+            given(alertConfigMapper.toResponse(alertConfig, PROJECT_NAME, PROJECT_UUID)).willReturn(expectedResponse);
 
             // when
             AlertConfigResponse response = alertConfigService.updateAlertConfig(request, USER_ID);
@@ -295,6 +308,7 @@ class AlertConfigServiceImplTest {
             assertThat(response).isNotNull();
             verify(alertConfigRepository).findById(1);
             verify(projectRepository).findById(PROJECT_ID);
+            verify(alertConfigMapper).toResponse(alertConfig, PROJECT_NAME, PROJECT_UUID);
         }
 
         @Test
@@ -420,5 +434,16 @@ class AlertConfigServiceImplTest {
                 .projectUuid(PROJECT_UUID)
                 .projectName(PROJECT_NAME)
                 .build();
+    }
+
+    private AlertConfigResponse createResponse() {
+        return new AlertConfigResponse(
+                1,
+                AlertType.ERROR_THRESHOLD,
+                10,
+                "Y",
+                PROJECT_UUID,
+                PROJECT_NAME
+        );
     }
 }

@@ -37,9 +37,11 @@ public class MetricsUpdateScheduler {
     private final OpenSearchMetricsService openSearchMetricsService;
 
     /**
-     * 메트릭 갱신 (매 10분마다 실행) cron: 초 분 시 일 월 요일 각 프로젝트마다 별도 트랜잭션으로 처리하여 커넥션 점유 시간 최소화
+     * 메트릭 갱신 (매 5분마다 실행)
+     * cron: 초 분 시 일 월 요일
      */
-    @Scheduled(cron = "0 */10 * * * *")
+    @Scheduled(cron = "0 */5 * * * *")
+    @Transactional
     public void updateMetrics() {
         log.info("{} ========== 메트릭 갱신 시작 ==========", LOG_PREFIX);
         long startTime = System.currentTimeMillis();
@@ -144,15 +146,15 @@ public class MetricsUpdateScheduler {
         FrontendMetrics metrics = FrontendMetrics.of(
                 projectId,
                 summary.totalTraces(),
-                summary.totalInfoLogs(),
-                summary.totalWarnLogs(),
-                summary.totalErrorLogs()
+                summary.totalInfo(),
+                summary.totalWarn(),
+                summary.totalError()
         );
 
         frontendMetricsRepository.save(metrics);
 
         log.debug("{} Frontend 메트릭 갱신 완료: projectId={}, traces={}, errors={}",
-                LOG_PREFIX, projectId, summary.totalTraces(), summary.totalErrorLogs());
+                LOG_PREFIX, projectId, summary.totalTraces(), summary.totalError());
     }
 
     /**

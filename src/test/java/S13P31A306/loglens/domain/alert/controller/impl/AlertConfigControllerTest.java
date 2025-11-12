@@ -255,7 +255,7 @@ class AlertConfigControllerTest {
             AlertConfigUpdateRequest request = new AlertConfigUpdateRequest(
                     1, AlertType.LATENCY, 100, "N");
             AlertConfigResponse response = new AlertConfigResponse(
-                    1, AlertType.LATENCY, 100, "N", PROJECT_UUID, "Test Project", null, null);
+                    1, AlertType.LATENCY, 100, "N", PROJECT_UUID, "Test Project");
 
             given(alertConfigService.updateAlertConfig(any(AlertConfigUpdateRequest.class), eq(USER_ID)))
                     .willReturn(response);
@@ -332,9 +332,7 @@ class AlertConfigControllerTest {
                 10,
                 "Y",
                 PROJECT_UUID,
-                "Test Project",
-                null,
-                null
+                "Test Project"
         );
     }
 }

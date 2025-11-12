@@ -3,6 +3,7 @@ package S13P31A306.loglens.domain.alert.service.impl;
 import S13P31A306.loglens.domain.alert.dto.AlertHistoryResponse;
 import S13P31A306.loglens.domain.alert.entity.AlertHistory;
 import S13P31A306.loglens.domain.alert.exception.AlertErrorCode;
+import S13P31A306.loglens.domain.alert.mapper.AlertHistoryMapper;
 import S13P31A306.loglens.domain.alert.repository.AlertHistoryRepository;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
@@ -62,6 +63,9 @@ class AlertHistoryServiceImplTest {
     @Mock
     private ScheduledFuture<?> scheduledFuture;
 
+    @Mock
+    private AlertHistoryMapper alertHistoryMapper;
+
     private static final Integer USER_ID = 1;
     private static final Integer PROJECT_ID = 1;
     private static final String PROJECT_UUID = "test-project-uuid-1234";
@@ -76,7 +80,8 @@ class AlertHistoryServiceImplTest {
                 projectMemberRepository,
                 projectService,
                 sseScheduler,
-                SSE_TIMEOUT
+                SSE_TIMEOUT,
+                alertHistoryMapper
         );
     }
 
@@ -93,12 +98,17 @@ class AlertHistoryServiceImplTest {
                     createAlertHistory(1, "N"),
                     createAlertHistory(2, "Y")
             );
+            List<AlertHistoryResponse> expectedResponses = Arrays.asList(
+                    createAlertHistoryResponse(1, "N"),
+                    createAlertHistoryResponse(2, "Y")
+            );
 
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertHistoryRepository.findByProjectIdOrderByAlertTimeDesc(PROJECT_ID))
                     .willReturn(histories);
+            given(alertHistoryMapper.toResponseList(histories, PROJECT_UUID)).willReturn(expectedResponses);
 
             // when
             List<AlertHistoryResponse> responses = alertHistoryService
@@ -112,6 +122,7 @@ class AlertHistoryServiceImplTest {
             verify(alertHistoryRepository).findByProjectIdOrderByAlertTimeDesc(PROJECT_ID);
             verify(alertHistoryRepository, never())
                     .findByProjectIdAndResolvedYNOrderByAlertTimeDesc(anyInt(), anyString());
+            verify(alertHistoryMapper).toResponseList(histories, PROJECT_UUID);
         }
 
         @Test
@@ -122,12 +133,16 @@ class AlertHistoryServiceImplTest {
             List<AlertHistory> unreadHistories = Collections.singletonList(
                     createAlertHistory(1, "N")
             );
+            List<AlertHistoryResponse> expectedResponses = Collections.singletonList(
+                    createAlertHistoryResponse(1, "N")
+            );
 
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertHistoryRepository.findByProjectIdAndResolvedYNOrderByAlertTimeDesc(PROJECT_ID, "N"))
                     .willReturn(unreadHistories);
+            given(alertHistoryMapper.toResponseList(unreadHistories, PROJECT_UUID)).willReturn(expectedResponses);
 
             // when
             List<AlertHistoryResponse> responses = alertHistoryService
@@ -140,6 +155,7 @@ class AlertHistoryServiceImplTest {
             verify(alertHistoryRepository)
                     .findByProjectIdAndResolvedYNOrderByAlertTimeDesc(PROJECT_ID, "N");
             verify(alertHistoryRepository, never()).findByProjectIdOrderByAlertTimeDesc(anyInt());
+            verify(alertHistoryMapper).toResponseList(unreadHistories, PROJECT_UUID);
         }
 
         @Test
@@ -150,12 +166,16 @@ class AlertHistoryServiceImplTest {
             List<AlertHistory> readHistories = Collections.singletonList(
                     createAlertHistory(2, "Y")
             );
+            List<AlertHistoryResponse> expectedResponses = Collections.singletonList(
+                    createAlertHistoryResponse(2, "Y")
+            );
 
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertHistoryRepository.findByProjectIdAndResolvedYNOrderByAlertTimeDesc(PROJECT_ID, "Y"))
                     .willReturn(readHistories);
+            given(alertHistoryMapper.toResponseList(readHistories, PROJECT_UUID)).willReturn(expectedResponses);
 
             // when
             List<AlertHistoryResponse> responses = alertHistoryService
@@ -167,6 +187,7 @@ class AlertHistoryServiceImplTest {
 
             verify(alertHistoryRepository)
                     .findByProjectIdAndResolvedYNOrderByAlertTimeDesc(PROJECT_ID, "Y");
+            verify(alertHistoryMapper).toResponseList(readHistories, PROJECT_UUID);
         }
 
         @Test
@@ -180,6 +201,8 @@ class AlertHistoryServiceImplTest {
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertHistoryRepository.findByProjectIdOrderByAlertTimeDesc(PROJECT_ID))
                     .willReturn(Collections.emptyList());
+            given(alertHistoryMapper.toResponseList(Collections.emptyList(), PROJECT_UUID))
+                    .willReturn(Collections.emptyList());
 
             // when
             List<AlertHistoryResponse> responses = alertHistoryService
@@ -189,6 +212,7 @@ class AlertHistoryServiceImplTest {
             assertThat(responses).isEmpty();
 
             verify(alertHistoryRepository).findByProjectIdOrderByAlertTimeDesc(PROJECT_ID);
+            verify(alertHistoryMapper).toResponseList(Collections.emptyList(), PROJECT_UUID);
         }
 
         @Test
@@ -235,10 +259,12 @@ class AlertHistoryServiceImplTest {
             // given
             AlertHistory alertHistory = createAlertHistory(ALERT_ID, "N");
             Project project = createProject();
+            AlertHistoryResponse expectedResponse = createAlertHistoryResponse(ALERT_ID, "Y");
 
             given(alertHistoryRepository.findById(ALERT_ID)).willReturn(Optional.of(alertHistory));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
+            given(alertHistoryMapper.toResponse(alertHistory, PROJECT_UUID)).willReturn(expectedResponse);
 
             // when
             AlertHistoryResponse response = alertHistoryService.markAsRead(ALERT_ID, USER_ID);
@@ -251,6 +277,7 @@ class AlertHistoryServiceImplTest {
             verify(alertHistoryRepository).findById(ALERT_ID);
             verify(projectMemberRepository).existsByProjectIdAndUserId(PROJECT_ID, USER_ID);
             verify(projectRepository).findById(PROJECT_ID);
+            verify(alertHistoryMapper).toResponse(alertHistory, PROJECT_UUID);
         }
 
         @Test
@@ -259,10 +286,12 @@ class AlertHistoryServiceImplTest {
             // given
             AlertHistory alertHistory = createAlertHistory(ALERT_ID, "Y");
             Project project = createProject();
+            AlertHistoryResponse expectedResponse = createAlertHistoryResponse(ALERT_ID, "Y");
 
             given(alertHistoryRepository.findById(ALERT_ID)).willReturn(Optional.of(alertHistory));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
+            given(alertHistoryMapper.toResponse(alertHistory, PROJECT_UUID)).willReturn(expectedResponse);
 
             // when
             AlertHistoryResponse response = alertHistoryService.markAsRead(ALERT_ID, USER_ID);
@@ -273,6 +302,7 @@ class AlertHistoryServiceImplTest {
 
             verify(alertHistoryRepository).findById(ALERT_ID);
             verify(projectRepository).findById(PROJECT_ID);
+            verify(alertHistoryMapper).toResponse(alertHistory, PROJECT_UUID);
         }
 
         @Test
@@ -459,12 +489,17 @@ class AlertHistoryServiceImplTest {
             AlertHistory alert1 = createAlertHistory(1, "N");
             AlertHistory alert2 = createAlertHistory(2, "N");
             List<AlertHistory> alerts = Arrays.asList(alert1, alert2);
+            List<AlertHistoryResponse> expectedResponses = Arrays.asList(
+                    createAlertHistoryResponse(1, "N"),
+                    createAlertHistoryResponse(2, "N")
+            );
 
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertHistoryRepository.findByProjectIdAndAlertTimeAfterOrderByAlertTimeDesc(
                     eq(PROJECT_ID), any(LocalDateTime.class))).willReturn(alerts);
+            given(alertHistoryMapper.toResponseList(alerts, PROJECT_UUID)).willReturn(expectedResponses);
 
             // 스케줄러가 즉시 실행되도록 설정
             doAnswer(invocation -> {
@@ -481,6 +516,7 @@ class AlertHistoryServiceImplTest {
             assertThat(result).isNotNull();
             verify(alertHistoryRepository).findByProjectIdAndAlertTimeAfterOrderByAlertTimeDesc(
                     eq(PROJECT_ID), any(LocalDateTime.class));
+            verify(alertHistoryMapper).toResponseList(alerts, PROJECT_UUID);
         }
 
         @Test
@@ -491,12 +527,17 @@ class AlertHistoryServiceImplTest {
             AlertHistory alert1 = createAlertHistory(1, "N");
             AlertHistory alert2 = createAlertHistory(2, "N");
             List<AlertHistory> alerts = Arrays.asList(alert1, alert2);
+            List<AlertHistoryResponse> expectedResponses = Arrays.asList(
+                    createAlertHistoryResponse(1, "N"),
+                    createAlertHistoryResponse(2, "N")
+            );
 
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertHistoryRepository.findByProjectIdAndAlertTimeAfterOrderByAlertTimeDesc(
                     eq(PROJECT_ID), any(LocalDateTime.class))).willReturn(alerts);
+            given(alertHistoryMapper.toResponseList(alerts, PROJECT_UUID)).willReturn(expectedResponses);
 
             doAnswer(invocation -> {
                 Runnable task = invocation.getArgument(0);
@@ -512,6 +553,7 @@ class AlertHistoryServiceImplTest {
             assertThat(result).isNotNull();
             verify(alertHistoryRepository).findByProjectIdAndAlertTimeAfterOrderByAlertTimeDesc(
                     eq(PROJECT_ID), any(LocalDateTime.class));
+            verify(alertHistoryMapper).toResponseList(alerts, PROJECT_UUID);
             // 참고: SseEmitter.send()는 실제 HTTP 연결이 필요하므로 단위 테스트에서 검증 불가
             // Repository 호출 및 데이터 조회 검증으로 대체
         }
@@ -721,5 +763,16 @@ class AlertHistoryServiceImplTest {
                 .projectUuid(PROJECT_UUID)
                 .projectName("Test Project")
                 .build();
+    }
+
+    private AlertHistoryResponse createAlertHistoryResponse(Integer id, String resolvedYN) {
+        return new AlertHistoryResponse(
+                id,
+                "에러 발생: " + id,
+                LocalDateTime.now(),
+                resolvedYN,
+                "{\"logId\": " + id + "}",
+                PROJECT_UUID
+        );
     }
 }
