@@ -145,15 +145,15 @@ public class MetricsUpdateScheduler {
         FrontendMetrics metrics = FrontendMetrics.of(
                 projectId,
                 summary.totalTraces(),
-                summary.totalInfoLogs(),
-                summary.totalWarnLogs(),
-                summary.totalErrorLogs()
+                summary.totalInfo(),
+                summary.totalWarn(),
+                summary.totalError()
         );
 
         frontendMetricsRepository.save(metrics);
 
         log.debug("{} Frontend 메트릭 갱신 완료: projectId={}, traces={}, errors={}",
-                LOG_PREFIX, projectId, summary.totalTraces(), summary.totalErrorLogs());
+                LOG_PREFIX, projectId, summary.totalTraces(), summary.totalError());
     }
 
     /**
