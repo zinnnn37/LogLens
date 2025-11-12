@@ -191,7 +191,7 @@ const RequestFlowPage = () => {
 
       {/* Flow Simulation*/}
       {flowData && (
-        <div className="mt-8">
+        <div className="mt-6">
           <FlowSimulation flowData={flowData} />
         </div>
       )}
