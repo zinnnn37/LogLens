@@ -2,13 +2,10 @@ package S13P31A306.loglens.domain.component.service.impl;
 
 import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.BY_COMPONENT;
 import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.ERROR_COUNT;
-import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.ERROR_LOGS;
 import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.ERROR_TRACES;
-import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.INFO_LOGS;
 import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.TOTAL_CALLS;
 import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.TOTAL_TRACES;
 import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.WARN_COUNT;
-import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.WARN_LOGS;
 import static S13P31A306.loglens.domain.component.constants.OpenSearchAggregation.Name.WARN_TRACES;
 
 import S13P31A306.loglens.domain.component.constants.LogLevel;
@@ -103,7 +100,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
             FrontendMetricsSummary summary = parseFrontendMetricsResponse(response);
 
             log.debug("{} Frontend 메트릭 조회 완료: projectUuid={}, traces={}, errors={}",
-                    LOG_PREFIX, projectUuid, summary.totalTraces(), summary.totalErrorLogs());
+                    LOG_PREFIX, projectUuid, summary.totalTraces(), summary.totalError());
 
             return summary;
 
@@ -162,7 +159,18 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
                                 )
                         )
                         .aggregations(WARN_TRACES, sub -> sub
-                                .filter(warnFilter)
+                                .filter(f -> f
+                                        .bool(b -> b
+                                                .must(m -> m.term(t -> t
+                                                        .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                                                        .value(v -> v.stringValue(LogLevel.WARN.getLevel()))
+                                                ))
+                                                .mustNot(mn -> mn.term(t -> t
+                                                        .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                                                        .value(v -> v.stringValue(LogLevel.ERROR.getLevel()))
+                                                ))
+                                        )
+                                )
                                 .aggregations(WARN_COUNT, subsub -> subsub
                                         .cardinality(c -> c.field(OpenSearchField.TRACE_ID.getFieldName()))
                                 )
@@ -239,7 +247,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
      * Frontend 메트릭 조회 쿼리 생성
      */
     private SearchRequest buildFrontendMetricsRequest(String projectUuid) {
-        Query boolQuery = Query.of(q -> q
+        Query baseQuery = Query.of(q -> q
                 .bool(b -> b
                         .filter(f -> f.term(t -> t
                                 .field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
@@ -252,36 +260,41 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
                 )
         );
 
-        Query infoFilter = Query.of(q -> q.term(t -> t
-                .field(OpenSearchField.LOG_LEVEL.getFieldName())
-                .value(v -> v.stringValue(LogLevel.INFO.getLevel()))
-        ));
-
-        Query warnFilter = Query.of(q -> q.term(t -> t
-                .field(OpenSearchField.LOG_LEVEL.getFieldName())
-                .value(v -> v.stringValue(LogLevel.WARN.getLevel()))
-        ));
-
-        Query errorFilter = Query.of(q -> q.term(t -> t
-                .field(OpenSearchField.LOG_LEVEL.getFieldName())
-                .value(v -> v.stringValue(LogLevel.ERROR.getLevel()))
-        ));
-
         return SearchRequest.of(s -> s
-                .index(getProjectIndexPattern(projectUuid))  // ✅ 수정: 프로젝트별 인덱스 패턴 사용
+                .index(getProjectIndexPattern(projectUuid))
                 .size(0)
-                .query(boolQuery)
-                .aggregations(TOTAL_TRACES, a -> a
+                .query(baseQuery)
+                // 전체 trace 수
+                .aggregations("total_traces", a -> a
                         .cardinality(c -> c.field(OpenSearchField.TRACE_ID.getFieldName()))
                 )
-                .aggregations(INFO_LOGS, a -> a
-                        .filter(infoFilter)
+                // ERROR가 있는 trace
+                .aggregations("error_traces", a -> a
+                        .filter(f -> f.term(t -> t
+                                .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                                .value(v -> v.stringValue(LogLevel.ERROR.getLevel()))
+                        ))
+                        .aggregations("count", sub -> sub
+                                .cardinality(c -> c.field(OpenSearchField.TRACE_ID.getFieldName()))
+                        )
                 )
-                .aggregations(WARN_LOGS, a -> a
-                        .filter(warnFilter)
-                )
-                .aggregations(ERROR_LOGS, a -> a
-                        .filter(errorFilter)
+                // WARN이 있는 trace (ERROR 제외)
+                .aggregations("warn_traces", a -> a
+                        .filter(f -> f
+                                .bool(b -> b
+                                        .must(m -> m.term(t -> t
+                                                .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                                                .value(v -> v.stringValue(LogLevel.WARN.getLevel()))
+                                        ))
+                                        .mustNot(mn -> mn.term(t -> t
+                                                .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                                                .value(v -> v.stringValue(LogLevel.ERROR.getLevel()))
+                                        ))
+                                )
+                        )
+                        .aggregations("count", sub -> sub
+                                .cardinality(c -> c.field(OpenSearchField.TRACE_ID.getFieldName()))
+                        )
                 )
         );
     }
@@ -341,11 +354,14 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
         Map<String, Aggregate> aggregations = response.aggregations();
 
         int totalTraces = extractCardinalityValue(aggregations, TOTAL_TRACES);
-        int infoLogs = extractFilterDocCount(aggregations, INFO_LOGS);
-        int warnLogs = extractFilterDocCount(aggregations, WARN_LOGS);
-        int errorLogs = extractFilterDocCount(aggregations, ERROR_LOGS);
+        int errorTraces = extractNestedCardinalityValue(aggregations, "error_traces", "count");
+        int warnTraces = extractNestedCardinalityValue(aggregations, "warn_traces", "count");
+        int infoTraces = totalTraces - errorTraces - warnTraces;
 
-        return FrontendMetricsSummary.of(totalTraces, infoLogs, warnLogs, errorLogs);
+        log.debug("{} Frontend 메트릭 파싱 완료: total={}, error={}, warn={}, info={}",
+                LOG_PREFIX, totalTraces, errorTraces, warnTraces, infoTraces);
+
+        return FrontendMetricsSummary.of(totalTraces, infoTraces, warnTraces, errorTraces);
     }
 
     /**
@@ -376,17 +392,5 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
 
         Map<String, Aggregate> subAggregations = filterAgg.filter().aggregations();
         return extractCardinalityValue(subAggregations, cardinalityAggName);
-    }
-
-    /**
-     * Filter aggregation의 docCount 추출
-     */
-    private int extractFilterDocCount(Map<String, Aggregate> aggregations, String filterAggName) {
-        Aggregate filterAgg = aggregations.get(filterAggName);
-        if (filterAgg != null && filterAgg.isFilter()) {
-            return (int) filterAgg.filter().docCount();
-        }
-        log.warn("{} {} filter aggregation을 찾을 수 없습니다", LOG_PREFIX, filterAggName);
-        return 0;
     }
 }
