@@ -275,11 +275,11 @@ const FlowSimulation = ({
         d3
           .forceLink<D3Node, D3Link>(links)
           .id(d => d.id)
-          .distance(190)
-          .strength(0.12),
+          .distance(350)
+          .strength(0.08),
       )
-      .force('charge', d3.forceManyBody().strength(-250))
-      .force('collide', d3.forceCollide().radius(100))
+      .force('charge', d3.forceManyBody().strength(-350))
+      .force('collide', d3.forceCollide().radius(130))
       .force('x', d3.forceX<D3Node>(d => laneX(d.layer)).strength(0.22))
       .force('y', d3.forceY(height / 2).strength(0.06));
 
@@ -312,7 +312,7 @@ const FlowSimulation = ({
     const textSel = nodeSel
       .append('text')
       .attr('text-anchor', 'middle')
-      .attr('dy', '-18')
+      .attr('dy', '-22')
       .style('fontWeight', 600)
       .style('fontSize', '13px')
       .style('fill', '#f1f5f9')
@@ -355,22 +355,22 @@ const FlowSimulation = ({
       .attr('stroke-width', 2.5)
       .attr('filter', 'url(#node-glow)');
 
-    // Layer 배지
+    // Layer 배지 (컴포넌트 이름과 적당한 간격)
     nodeSel
       .append('text')
       .attr('text-anchor', 'middle')
-      .attr('dy', '2')
+      .attr('dy', '-4')
       .style('fontSize', '10px')
       .style('fontWeight', 500)
       .style('fill', d => getLayerColor(d.layer).border)
       .style('opacity', 0.8)
       .text(d => d.layer);
 
-    // 메트릭 정보 (Duration, Calls)
+    // 메트릭 정보 (Duration, Calls) - Layer와 큰 간격
     nodeSel
       .append('text')
       .attr('text-anchor', 'middle')
-      .attr('dy', '18')
+      .attr('dy', '16')
       .style('fontSize', '9px')
       .style('fill', '#94a3b8')
       .text(d => `${d.totalDuration}ms · ${d.callCount} calls`);
@@ -520,7 +520,7 @@ const FlowSimulation = ({
       const logLevel = getStepLogLevel();
       const particleColor = getLogLevelColor(logLevel);
 
-      // particle(회색 라인 그대로 유지, 점만 이동)
+      // 간단한 사각형 particle
       const shootParticle = (
         edge: SVGPathElement,
         forward: boolean,
@@ -528,16 +528,19 @@ const FlowSimulation = ({
         ms = 900,
       ) => {
         const L = edge.getTotalLength();
-        const p = d3
+
+        // 사각형 particle 생성
+        const particle = d3
           .select(edge.parentNode as SVGGElement)
-          .append('circle')
-          .attr('r', 4)
+          .append('rect')
+          .attr('width', 16)
+          .attr('height', 10)
+          .attr('rx', 2)
           .attr('fill', color)
+          .attr('stroke', 'white')
+          .attr('stroke-width', 1)
           .attr('opacity', 0.95)
-          .style(
-            'filter',
-            `drop-shadow(0 0 8px ${color}) drop-shadow(0 0 12px ${color})`,
-          );
+          .style('filter', `drop-shadow(0 0 8px ${color})`);
 
         const t0 = performance.now();
         const loop = (now: number) => {
@@ -546,13 +549,25 @@ const FlowSimulation = ({
             return;
           }
           const t = Math.min(1, (now - t0) / (ms / speed));
-          const len = forward ? t * L : (1 - t) * L; // 방향 제어
-          const pt = edge.getPointAtLength(len);
-          p.attr('cx', pt.x).attr('cy', pt.y);
+          const len = forward ? t * L : (1 - t) * L;
+          const pt = edge.getPointAtLength(Math.max(0, Math.min(L, len)));
+
+          // 경로의 방향 계산
+          const nextLen = forward ? Math.min(L, len + 1) : Math.max(0, len - 1);
+          const nextPt = edge.getPointAtLength(nextLen);
+          const angle =
+            (Math.atan2(nextPt.y - pt.y, nextPt.x - pt.x) * 180) / Math.PI;
+
+          // 사각형 위치 및 회전 업데이트
+          particle
+            .attr('x', pt.x - 8)
+            .attr('y', pt.y - 5)
+            .attr('transform', `rotate(${angle}, ${pt.x}, ${pt.y})`);
+
           if (t < 1) {
             requestAnimationFrame(loop);
           } else {
-            p.remove();
+            particle.remove();
           }
         };
         requestAnimationFrame(loop);
