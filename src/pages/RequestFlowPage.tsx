@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import LogSearchBox from '@/components/LogSearchBox';
 import FloatingChecklist from '@/components/FloatingChecklist';
-import { getTraceLogs } from '@/services/logService';
-import type { TraceLogsResponse } from '@/types/log';
+import FlowSimulation from '@/components/FlowSimulation';
+import { getTraceLogs, getTraceFlow } from '@/services/logService';
+import type { TraceLogsResponse, TraceFlowResponse } from '@/types/log';
 
 const RequestFlowPage = () => {
   const { projectUuid } = useParams<{ projectUuid: string }>();
@@ -16,6 +17,9 @@ const RequestFlowPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [traceData, setTraceData] = useState<TraceLogsResponse | null>(null);
+  const [flowData, setFlowData] = useState<TraceFlowResponse | null>(null);
+
+  const flowSimulationRef = useRef<HTMLDivElement>(null);
 
   const handleSearchSubmit = async (traceId: string) => {
     if (!projectUuid) {
@@ -48,6 +52,39 @@ const RequestFlowPage = () => {
     }
   };
 
+  const handlePlayClick = async (traceId: string) => {
+    if (!projectUuid) {
+      setError('프로젝트 정보가 없습니다.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await getTraceFlow({
+        projectUuid,
+        traceId,
+      });
+
+      setFlowData(response);
+      console.log('TraceId 흐름 조회 결과:', response);
+
+      // FlowSimulation으로 스크롤
+      setTimeout(() => {
+        flowSimulationRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      }, 100);
+    } catch (err) {
+      console.error('TraceId 흐름 조회 에러:', err);
+      setError('요청 흐름 조회에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="">
       <h1 className="font-godoM pb-5 text-xl text-gray-700">
@@ -72,10 +109,27 @@ const RequestFlowPage = () => {
       {/* TraceId Summary 정보 */}
       {traceData && (
         <div className="mt-6">
-          <div className="rounded-lg bg-white p-6 shadow-sm">
-            <h2 className="font-godoM mb-4 text-lg text-gray-800">
-              TraceId: {traceData.traceId}
-            </h2>
+          <div className="rounded-2xl bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-godoM text-lg text-gray-800">
+                TraceId: {traceData.traceId}
+              </h2>
+              <button
+                onClick={() => handlePlayClick(traceData.traceId)}
+                disabled={loading}
+                className="bg-secondary hover:bg-primary flex items-center gap-2 rounded-lg px-4 py-2 text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                title="요청 흐름 시뮬레이션 재생"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                </svg>
+                <span className="font-semibold">시뮬레이션 재생</span>
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               <div>
                 <p className="text-sm text-gray-500">전체 로그</p>
@@ -142,6 +196,13 @@ const RequestFlowPage = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Flow Simulation*/}
+      {flowData && (
+        <div ref={flowSimulationRef} className="mt-6">
+          <FlowSimulation flowData={flowData} />
         </div>
       )}
 
