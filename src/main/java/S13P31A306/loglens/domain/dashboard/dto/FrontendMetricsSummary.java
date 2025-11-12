@@ -30,13 +30,13 @@ public record FrontendMetricsSummary(
             Integer totalErrorLogs
     ) {
         // 에러율 계산 (소수점 2자리)
-        double errorRate = calculateErrorRate(totalTraces, totalErrorLogs);
+        double errorRate = calculateErrorRate(totalInfoLogs+totalWarnLogs+totalErrorLogs, totalErrorLogs);
 
         return new FrontendMetricsSummary(
                 totalTraces != null ? totalTraces : 0,
-                totalInfoLogs != null ? totalInfoLogs : 0,
-                totalWarnLogs != null ? totalWarnLogs : 0,
-                totalErrorLogs != null ? totalErrorLogs : 0,
+                totalInfoLogs,
+                totalWarnLogs,
+                totalErrorLogs,
                 errorRate
         );
     }
