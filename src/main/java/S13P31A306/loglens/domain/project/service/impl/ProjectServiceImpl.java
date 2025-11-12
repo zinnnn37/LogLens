@@ -80,6 +80,7 @@ public class ProjectServiceImpl implements ProjectService {
 
             return projectMapper.toCreateResponse(savedProject);
         } catch (DataIntegrityViolationException e) {
+            // TODO: 추후 projectUuid 추가 됐을 때 UNIQUE면 분기 필요
             log.info("{} 중복된 프로젝트 이름입니다: {}", LOG_PREFIX, request.projectName());
             throw new BusinessException(PROJECT_NAME_DUPLICATED);
         }

@@ -1,8 +1,6 @@
 package S13P31A306.loglens.domain.log.validator;
 
 import S13P31A306.loglens.domain.log.constants.LogErrorCode;
-import S13P31A306.loglens.domain.log.constants.SortDirection;
-import S13P31A306.loglens.domain.log.constants.SortField;
 import S13P31A306.loglens.domain.log.dto.request.LogSearchRequest;
 import S13P31A306.loglens.domain.log.entity.LogLevel;
 import S13P31A306.loglens.domain.log.entity.SourceType;
@@ -148,19 +146,12 @@ public class LogValidator {
     private void validateSort(String sort) {
         log.debug("{} 정렬 옵션 검증: {}", LOG_PREFIX, sort);
         String[] sortParams = sort.split(",");
-        if (sortParams.length != 2) {
+        if (sortParams.length != 2
+                || !"TIMESTAMP".equalsIgnoreCase(sortParams[0])
+                || (!"ASC".equalsIgnoreCase(sortParams[1]) && !"DESC".equalsIgnoreCase(sortParams[1]))) {
             log.warn("{} 유효하지 않은 정렬 옵션: {}", LOG_PREFIX, sort);
             throw new BusinessException(LogErrorCode.INVALID_SORT);
         }
-
-        SortField sortField = SortField.fromString(sortParams[0]);
-        SortDirection sortDirection = SortDirection.fromString(sortParams[1]);
-
-        if (Objects.isNull(sortField) || Objects.isNull(sortDirection)) {
-            log.warn("{} 유효하지 않은 정렬 옵션: {}", LOG_PREFIX, sort);
-            throw new BusinessException(LogErrorCode.INVALID_SORT);
-        }
-
         log.debug("{} 정렬 옵션 검증 완료", LOG_PREFIX);
     }
 }

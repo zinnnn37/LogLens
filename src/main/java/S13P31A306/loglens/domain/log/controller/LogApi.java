@@ -13,12 +13,9 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.constraints.NotNull;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @ApiInternalServerError
 @ApiUnauthorizedError
@@ -171,94 +168,4 @@ public interface LogApi {
             }
     )
     ResponseEntity<? extends BaseResponse> getLogs(@ParameterObject @ModelAttribute LogSearchRequest request);
-
-    @Operation(
-            summary = "로그 상세 조회 (AI 분석 포함)",
-            description = """
-                    특정 로그의 상세 정보를 조회하고, AI 분석 결과를 포함합니다.
-                    - OpenSearch에 AI 분석 결과가 저장되어 있으면 해당 결과를 반환합니다.
-                    - AI 분석 결과가 없으면 AI 서비스를 호출하여 새로 분석합니다.
-                    - AI 서비스 호출이 실패해도 로그 기본 정보는 반환됩니다 (analysis 필드가 null).
-                    """,
-            parameters = {
-                    @Parameter(in = ParameterIn.HEADER, name = "Authorization", description = "Bearer {access_token}", required = true, schema = @Schema(type = "string")),
-                    @Parameter(in = ParameterIn.PATH, name = "logId", description = "로그 ID", required = true, schema = @Schema(type = "integer", format = "int64")),
-                    @Parameter(in = ParameterIn.QUERY, name = "projectUuid", description = "프로젝트 UUID", required = true, schema = @Schema(type = "string"))
-            },
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "로그 상세 조회 성공",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    examples = @ExampleObject(
-                                            name = "LogDetailSuccess",
-                                            summary = "로그 상세 조회 성공 (AI 분석 포함)",
-                                            value = """
-                                                    {
-                                                      "code": "LG200-4",
-                                                      "message": "로그 상세 정보를 성공적으로 조회했습니다.",
-                                                      "status": 200,
-                                                      "timestamp": "2025-11-07T15:00:00Z",
-                                                      "data": {
-                                                        "logId": 1234567890,
-                                                        "traceId": "trace-abc-123",
-                                                        "logLevel": "ERROR",
-                                                        "sourceType": "BE",
-                                                        "message": "NullPointerException occurred in UserService",
-                                                        "timestamp": "2024-01-15T10:30:45.123Z",
-                                                        "logger": "com.example.UserService",
-                                                        "layer": "Service",
-                                                        "comment": null,
-                                                        "serviceName": "loglens-api",
-                                                        "className": "com.example.UserServiceImpl",
-                                                        "methodName": "getUserById",
-                                                        "threadName": "http-nio-8080-exec-5",
-                                                        "requesterIp": "192.168.1.100",
-                                                        "duration": 1250,
-                                                        "stackTrace": "java.lang.NullPointerException\\n\\tat com.example.UserServiceImpl.getUserById(UserServiceImpl.java:42)",
-                                                        "logDetails": {"userId": "123", "action": "getUser"},
-                                                        "analysis": {
-                                                          "summary": "사용자 ID 조회 중 NULL 참조 에러가 발생했습니다.",
-                                                          "errorCause": "사용자가 존재하지 않는 경우 NULL 체크 없이 메서드를 호출하여 발생했습니다.",
-                                                          "solution": "1. [우선순위: 높음] 사용자 조회 전 NULL 체크 추가\\n2. [우선순위: 중간] Optional 사용 고려",
-                                                          "tags": ["NULL_POINTER", "USER_SERVICE", "ERROR"],
-                                                          "analysisType": "TRACE_BASED",
-                                                          "targetType": "LOG",
-                                                          "analyzedAt": "2025-11-07T15:00:45.123Z"
-                                                        },
-                                                        "fromCache": true,
-                                                        "similarLogId": 1234567800,
-                                                        "similarityScore": 0.92
-                                                      }
-                                                    }
-                                                    """
-                                    )
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "404",
-                            description = "로그를 찾을 수 없음",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ErrorResponse.class),
-                                    examples = @ExampleObject(
-                                            name = "LogNotFound",
-                                            value = """
-                                                    {
-                                                      "code": "LG404-01",
-                                                      "message": "로그를 찾을 수 없습니다.",
-                                                      "status": 404,
-                                                      "timestamp": "2025-11-07T15:01:00Z"
-                                                    }
-                                                    """
-                                    )
-                            )
-                    )
-            }
-    )
-    ResponseEntity<? extends BaseResponse> getLogDetail(
-            @PathVariable @NotNull Long logId,
-            @RequestParam @NotNull String projectUuid
-    );
 }
