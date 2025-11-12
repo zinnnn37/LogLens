@@ -1,6 +1,13 @@
 import type { ComponentProps } from 'react';
 import { NavLink, useParams } from 'react-router-dom';
-import { History, Bot, Workflow, Blocks, ChartColumnBig } from 'lucide-react';
+import {
+  History,
+  Bot,
+  Workflow,
+  Blocks,
+  ChartColumnBig,
+  Bell, 
+} from 'lucide-react';
 import clsx from 'clsx';
 import { createProjectPath } from '@/router/route-path';
 
@@ -74,10 +81,17 @@ const Header = ({ className, ...props }: HeaderProps) => {
     return null;
   }
 
+  const hasNewNotification = true;
+
+  const handleOpenNotification = () => {
+    
+   
+  };
+
   return (
     <header
       className={clsx(
-        'bg-card flex h-16 items-center justify-end border-b px-6',
+        'bg-card flex h-16 items-center justify-end gap-6 border-b px-6',
         className,
       )}
       {...props}
@@ -91,6 +105,21 @@ const Header = ({ className, ...props }: HeaderProps) => {
           ))}
         </ul>
       </nav>
+
+      <div className="relative">
+        <button
+          type="button"
+          onClick={handleOpenNotification}
+          className="hover:text-secondary text-gray-600 transition-colors"
+          aria-label="알림 열기"
+        >
+          <Bell className="h-5 w-5" />
+          {/* 새 알림이 있을 경우 */}
+          {hasNewNotification && (
+            <span className="absolute -top-1 -right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-card" />
+          )}
+        </button>
+      </div>
     </header>
   );
 };
