@@ -3,6 +3,7 @@ package S13P31A306.loglens.domain.alert.service.impl;
 import S13P31A306.loglens.domain.alert.dto.AlertHistoryResponse;
 import S13P31A306.loglens.domain.alert.entity.AlertHistory;
 import S13P31A306.loglens.domain.alert.exception.AlertErrorCode;
+import S13P31A306.loglens.domain.alert.mapper.AlertHistoryMapper;
 import S13P31A306.loglens.domain.alert.repository.AlertHistoryRepository;
 import S13P31A306.loglens.domain.alert.service.AlertHistoryService;
 import S13P31A306.loglens.domain.project.entity.Project;
@@ -44,6 +45,7 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
     private final ProjectService projectService;
     private final ScheduledExecutorService sseScheduler;
     private final long sseTimeout;
+    private final AlertHistoryMapper alertHistoryMapper;
 
     public AlertHistoryServiceImpl(
             AlertHistoryRepository alertHistoryRepository,
@@ -51,13 +53,15 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
             ProjectMemberRepository projectMemberRepository,
             ProjectService projectService,
             @Qualifier("sseScheduler") ScheduledExecutorService sseScheduler,
-            @Qualifier("sseTimeout") long sseTimeout) {
+            @Qualifier("sseTimeout") long sseTimeout,
+            AlertHistoryMapper alertHistoryMapper) {
         this.alertHistoryRepository = alertHistoryRepository;
         this.projectRepository = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.projectService = projectService;
         this.sseScheduler = sseScheduler;
         this.sseTimeout = sseTimeout;
+        this.alertHistoryMapper = alertHistoryMapper;
     }
 
     @Override
@@ -88,9 +92,7 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
 
         log.info("{} 알림 이력 조회 완료: count={}", LOG_PREFIX, histories.size());
 
-        return histories.stream()
-                .map(h -> AlertHistoryResponse.from(h, projectUuid))
-                .collect(Collectors.toList());
+        return alertHistoryMapper.toResponseList(histories, projectUuid);
     }
 
     @Override
@@ -120,7 +122,7 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
             log.info("{} 이미 읽은 알림입니다: alertId={}", LOG_PREFIX, alertId);
         }
 
-        return AlertHistoryResponse.from(alertHistory, project.getProjectUuid());
+        return alertHistoryMapper.toResponse(alertHistory, project.getProjectUuid());
     }
 
     @Override
@@ -179,9 +181,7 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
                         .findByProjectIdAndAlertTimeAfterOrderByAlertTimeDesc(projectId, lastTimestamp[0]);
 
                 if (!newAlerts.isEmpty()) {
-                    List<AlertHistoryResponse> responses = newAlerts.stream()
-                            .map(h -> AlertHistoryResponse.from(h, projectUuid))
-                            .collect(Collectors.toList());
+                    List<AlertHistoryResponse> responses = alertHistoryMapper.toResponseList(newAlerts, projectUuid);
 
                     // SSE로 데이터 전송
                     emitter.send(SseEmitter.event()

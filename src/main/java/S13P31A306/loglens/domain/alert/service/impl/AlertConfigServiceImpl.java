@@ -5,6 +5,7 @@ import S13P31A306.loglens.domain.alert.dto.AlertConfigResponse;
 import S13P31A306.loglens.domain.alert.dto.AlertConfigUpdateRequest;
 import S13P31A306.loglens.domain.alert.entity.AlertConfig;
 import S13P31A306.loglens.domain.alert.exception.AlertErrorCode;
+import S13P31A306.loglens.domain.alert.mapper.AlertConfigMapper;
 import S13P31A306.loglens.domain.alert.repository.AlertConfigRepository;
 import S13P31A306.loglens.domain.alert.service.AlertConfigService;
 import S13P31A306.loglens.domain.project.entity.Project;
@@ -36,6 +37,7 @@ public class AlertConfigServiceImpl implements AlertConfigService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectService projectService;
+    private final AlertConfigMapper alertConfigMapper;
 
     @Override
     @Transactional
@@ -75,7 +77,7 @@ public class AlertConfigServiceImpl implements AlertConfigService {
 
         log.info("{} 알림 설정이 생성되었습니다: id={}", LOG_PREFIX, saved.getId());
 
-        return AlertConfigResponse.from(saved, project.getProjectName(), project.getProjectUuid());
+        return alertConfigMapper.toResponse(saved, project.getProjectName(), project.getProjectUuid());
     }
 
     @Override
@@ -96,7 +98,7 @@ public class AlertConfigServiceImpl implements AlertConfigService {
 
         // 3. 알림 설정 조회 (없으면 null 반환)
         return alertConfigRepository.findByProjectId(projectId)
-                .map(alertConfig -> AlertConfigResponse.from(alertConfig, project.getProjectName(), project.getProjectUuid()))
+                .map(alertConfig -> alertConfigMapper.toResponse(alertConfig, project.getProjectName(), project.getProjectUuid()))
                 .orElse(null);
     }
 
@@ -132,7 +134,7 @@ public class AlertConfigServiceImpl implements AlertConfigService {
 
         log.info("{} 알림 설정이 수정되었습니다: id={}", LOG_PREFIX, alertConfig.getId());
 
-        return AlertConfigResponse.from(alertConfig, project.getProjectName(), project.getProjectUuid());
+        return alertConfigMapper.toResponse(alertConfig, project.getProjectName(), project.getProjectUuid());
     }
 
     /**
