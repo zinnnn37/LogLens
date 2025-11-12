@@ -17,7 +17,7 @@ interface FlowData {
     startTime: string;
     endTime: string;
     duration: number;
-    logs: { logLevel: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | string }[];
+    logs: { logLevel: 'INFO' | 'WARN' | 'ERROR' | string }[];
   }[];
   components: { id: number; name: string; layer: string }[];
   graph: { edges: { from: number; to: number }[] };
@@ -35,22 +35,85 @@ interface D3Node extends d3.SimulationNodeDatum {
   id: number;
   name: string;
   layer: string;
+  totalDuration: number;
+  callCount: number;
+  errorCount: number;
+  warnCount: number;
+  infoCount: number;
 }
 interface D3Link extends d3.SimulationLinkDatum<D3Node> {
   source: number | D3Node;
   target: number | D3Node;
 }
 
+// SVG 노드에 저장할 데이터 타입
+interface SVGNodeWithData extends SVGSVGElement {
+  __linkSel__?: d3.Selection<
+    SVGPathElement | d3.BaseType,
+    D3Link,
+    SVGGElement,
+    unknown
+  >;
+}
+
+// Edge 데이터 타입
+interface EdgeData {
+  source: D3Node;
+  target: D3Node;
+}
+
+// Edge 엘리먼트 타입
+interface EdgeElement extends SVGPathElement {
+  __data__: EdgeData;
+}
+
 const getLayerColor = (layer: string) => {
   switch (layer.toUpperCase()) {
     case 'CONTROLLER':
-      return { glow: 'rgba(96,165,250,.22)' };
+      return {
+        glow: 'rgba(96,165,250,.22)',
+        border: '#3b82f6',
+        accent: '#3b82f6',
+        bg: '#1e293b',
+        shadow: 'rgba(59, 130, 246, 0.3)',
+      };
     case 'SERVICE':
-      return { glow: 'rgba(52,211,153,.22)' };
+      return {
+        glow: 'rgba(52,211,153,.22)',
+        border: '#10b981',
+        accent: '#10b981',
+        bg: '#1e293b',
+        shadow: 'rgba(16, 185, 129, 0.3)',
+      };
     case 'REPOSITORY':
-      return { glow: 'rgba(167,139,250,.22)' };
+      return {
+        glow: 'rgba(167,139,250,.22)',
+        border: '#a855f7',
+        accent: '#a855f7',
+        bg: '#1e293b',
+        shadow: 'rgba(168, 85, 247, 0.3)',
+      };
     default:
-      return { glow: 'rgba(148,163,184,.18)' };
+      return {
+        glow: 'rgba(148,163,184,.18)',
+        border: '#94a3b8',
+        accent: '#94a3b8',
+        bg: '#1e293b',
+        shadow: 'rgba(148, 163, 184, 0.3)',
+      };
+  }
+};
+
+const getLogLevelColor = (logLevel: string) => {
+  switch (logLevel.toUpperCase()) {
+    case 'ERROR':
+      return '#ef4444'; // red
+    case 'WARN':
+      return '#f59e0b'; // amber
+    case 'INFO':
+      return '#3b82f6'; // blue
+    default:
+      return '#3b82f6'; // default blue
   }
 };
 
@@ -109,12 +172,59 @@ const FlowSimulation = ({
         }),
     );
 
-    // 노드
-    const nodes: D3Node[] = components.map(c => ({
-      id: c.id,
-      name: c.name,
-      layer: c.layer ?? 'UNKNOWN',
-    }));
+    // 노드 - timeline 데이터 집계
+    const nodeMetrics = new Map<
+      number,
+      {
+        totalDuration: number;
+        callCount: number;
+        errorCount: number;
+        warnCount: number;
+        infoCount: number;
+      }
+    >();
+
+    // timeline에서 각 컴포넌트별 메트릭 계산
+    timeline.forEach(t => {
+      const existing = nodeMetrics.get(t.componentId) || {
+        totalDuration: 0,
+        callCount: 0,
+        errorCount: 0,
+        warnCount: 0,
+        infoCount: 0,
+      };
+
+      existing.totalDuration += t.duration;
+      existing.callCount += 1;
+
+      t.logs.forEach(log => {
+        if (log.logLevel === 'ERROR') {
+          existing.errorCount += 1;
+        } else if (log.logLevel === 'WARN') {
+          existing.warnCount += 1;
+        } else if (log.logLevel === 'INFO') {
+          existing.infoCount += 1;
+        }
+      });
+
+      nodeMetrics.set(t.componentId, existing);
+    });
+
+    const nodes: D3Node[] = components.map(c => {
+      const metrics = nodeMetrics.get(c.id) || {
+        totalDuration: 0,
+        callCount: 0,
+        errorCount: 0,
+        warnCount: 0,
+        infoCount: 0,
+      };
+      return {
+        id: c.id,
+        name: c.name,
+        layer: c.layer ?? 'UNKNOWN',
+        ...metrics,
+      };
+    });
     const nodeIds = new Set(nodes.map(n => n.id));
 
     // 무방향 키
@@ -168,26 +278,10 @@ const FlowSimulation = ({
           .distance(190)
           .strength(0.12),
       )
-      .force('charge', d3.forceManyBody().strength(-220))
-      .force('collide', d3.forceCollide().radius(46))
+      .force('charge', d3.forceManyBody().strength(-250))
+      .force('collide', d3.forceCollide().radius(100))
       .force('x', d3.forceX<D3Node>(d => laneX(d.layer)).strength(0.22))
       .force('y', d3.forceY(height / 2).strength(0.06));
-
-    // 레이어 배경 (아주 옅게)
-    const lanes = [
-      { x: width * 0.22, key: 'CONTROLLER' },
-      { x: width * 0.5, key: 'SERVICE' },
-      { x: width * 0.78, key: 'REPOSITORY' },
-    ];
-    g.append('g')
-      .selectAll('rect')
-      .data(lanes)
-      .join('rect')
-      .attr('x', d => d.x - 200)
-      .attr('y', 40)
-      .attr('width', 400)
-      .attr('height', height - 80)
-      .attr('fill', '#0f172a06');
 
     // 링크 (요청: 모든 간선은 얇은 회색 기본선, 화살표/강조 없음)
     const linkG = g.append('g').attr('class', 'links');
@@ -209,28 +303,98 @@ const FlowSimulation = ({
       .join('g')
       .style('cursor', 'pointer');
 
+    const minNodeWidth = 180;
+    const nodeHeight = 100;
+    const borderRadius = 10;
+    const horizontalPadding = 20;
+
+    // 컴포넌트 이름 텍스트 (상단)
+    const textSel = nodeSel
+      .append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', '-18')
+      .style('fontWeight', 600)
+      .style('fontSize', '13px')
+      .style('fill', '#f1f5f9')
+      .text(d => d.name);
+
+    // 각 노드의 텍스트 너비를 측정하여 저장
+    const nodeWidths = new Map<number, number>();
+    textSel.each(function (d) {
+      const textWidth = (this as SVGTextElement).getComputedTextLength();
+      const calculatedWidth = Math.max(
+        minNodeWidth,
+        textWidth + horizontalPadding * 2,
+      );
+      nodeWidths.set(d.id, calculatedWidth);
+    });
+
+    // 외곽 glow (사각형) - 동적 너비
     nodeSel
-      .append('circle')
-      .attr('r', 50)
+      .insert('rect', 'text')
+      .attr('class', 'glow-rect')
+      .attr('x', d => -(nodeWidths.get(d.id) ?? minNodeWidth) / 2 - 4)
+      .attr('y', -nodeHeight / 2 - 4)
+      .attr('width', d => (nodeWidths.get(d.id) ?? minNodeWidth) + 8)
+      .attr('height', nodeHeight + 8)
+      .attr('rx', borderRadius + 2)
       .attr('fill', d => getLayerColor(d.layer).glow)
       .attr('opacity', 0.18);
 
+    // 메인 사각형 배경 (다크 테마) - 동적 너비
     nodeSel
-      .append('circle')
-      .attr('r', 42)
-      .attr('fill', '#0b122012')
-      .attr('stroke', '#64748b')
-      .attr('stroke-width', 2.2)
+      .insert('rect', 'text')
+      .attr('class', 'main-rect')
+      .attr('x', d => -(nodeWidths.get(d.id) ?? minNodeWidth) / 2)
+      .attr('y', -nodeHeight / 2)
+      .attr('width', d => nodeWidths.get(d.id) ?? minNodeWidth)
+      .attr('height', nodeHeight)
+      .attr('rx', borderRadius)
+      .attr('fill', d => getLayerColor(d.layer).bg)
+      .attr('stroke', d => getLayerColor(d.layer).border)
+      .attr('stroke-width', 2.5)
       .attr('filter', 'url(#node-glow)');
 
+    // Layer 배지
     nodeSel
       .append('text')
       .attr('text-anchor', 'middle')
-      .attr('dy', '0.35em')
-      .style('fontWeight', 600)
-      .style('fontSize', '11px')
-      .style('fill', '#0f172a')
-      .text(d => d.name);
+      .attr('dy', '2')
+      .style('fontSize', '10px')
+      .style('fontWeight', 500)
+      .style('fill', d => getLayerColor(d.layer).border)
+      .style('opacity', 0.8)
+      .text(d => d.layer);
+
+    // 메트릭 정보 (Duration, Calls)
+    nodeSel
+      .append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', '18')
+      .style('fontSize', '9px')
+      .style('fill', '#94a3b8')
+      .text(d => `${d.totalDuration}ms · ${d.callCount} calls`);
+
+    // 로그 레벨 카운트 (에러/경고만 표시)
+    nodeSel
+      .append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', '32')
+      .style('fontSize', '9px')
+      .style('fill', '#94a3b8')
+      .text(d => {
+        const parts = [];
+        if (d.errorCount > 0) {
+          parts.push(`❌ ${d.errorCount}`);
+        }
+        if (d.warnCount > 0) {
+          parts.push(`⚠️ ${d.warnCount}`);
+        }
+        if (parts.length === 0) {
+          return '✓ No issues';
+        }
+        return parts.join(' ');
+      });
 
     // 드래그
     const drag = d3
@@ -269,14 +433,21 @@ const FlowSimulation = ({
     };
 
     sim.on('tick', () => {
-      linkSel.attr('d', (l: any) =>
-        qcurve(l.source.x, l.source.y, l.target.x, l.target.y),
-      );
+      linkSel.attr('d', (l: D3Link) => {
+        const source = l.source as D3Node;
+        const target = l.target as D3Node;
+        return qcurve(
+          source.x ?? 0,
+          source.y ?? 0,
+          target.x ?? 0,
+          target.y ?? 0,
+        );
+      });
       nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
     });
 
     // 저장: 애니메이션에서 사용
-    (svg.node() as unknown as Record<string, unknown>).__linkSel__ = linkSel;
+    (svg.node() as SVGNodeWithData).__linkSel__ = linkSel;
 
     return () => {
       sim.stop();
@@ -299,48 +470,74 @@ const FlowSimulation = ({
 
     // 현재 노드만 살짝 강조(outer glow만)
     const cur = timeline[seq];
-    svg.selectAll('.nodes g circle:first-of-type').attr('opacity', 0.18);
+    svg.selectAll('.nodes g rect:first-of-type').attr('opacity', 0.18);
     svg
-      .selectAll('.nodes g')
-      .filter((d: any) => d.id === cur.componentId)
-      .select('circle:first-of-type')
+      .selectAll<SVGGElement, D3Node>('.nodes g')
+      .filter(d => d.id === cur.componentId)
+      .select('rect:first-of-type')
       .transition()
       .duration(180 / speed)
       .attr('opacity', 0.32);
 
     // 링크 selection
-    const linkSel: d3.Selection<SVGPathElement, any, any, any> = (
-      svg.node() as unknown as Record<string, unknown>
-    ).__linkSel__ as d3.Selection<SVGPathElement, any, any, any>;
+    const linkSel = (svg.node() as SVGNodeWithData).__linkSel__;
+    if (!linkSel) {
+      return;
+    }
 
     // 한 스텝 ahead가 있다면 해당 간선 위로 particle 이동
     if (seq < timeline.length - 1) {
       const nxt = timeline[seq + 1];
 
       // 무방향 매칭: (a,b) 또는 (b,a)
-      const edgeSel = linkSel.filter((d: any) => {
-        const sid = typeof d.source === 'object' ? d.source.id : d.source;
-        const tid = typeof d.target === 'object' ? d.target.id : d.target;
+      const edgeSel = linkSel.filter((d: D3Link) => {
+        const source = d.source as D3Node;
+        const target = d.target as D3Node;
+        const sid = typeof source === 'object' ? source.id : source;
+        const tid = typeof target === 'object' ? target.id : target;
         return (
           (sid === cur.componentId && tid === nxt.componentId) ||
           (sid === nxt.componentId && tid === cur.componentId)
         );
       });
 
+      // 현재 스텝의 로그 레벨 결정 (가장 심각한 레벨 선택)
+      const getStepLogLevel = () => {
+        if (!cur.logs || cur.logs.length === 0) {
+          return 'INFO';
+        }
+        const hasError = cur.logs.some(log => log.logLevel === 'ERROR');
+        const hasWarn = cur.logs.some(log => log.logLevel === 'WARN');
+        if (hasError) {
+          return 'ERROR';
+        }
+        if (hasWarn) {
+          return 'WARN';
+        }
+        return 'INFO';
+      };
+
+      const logLevel = getStepLogLevel();
+      const particleColor = getLogLevelColor(logLevel);
+
       // particle(회색 라인 그대로 유지, 점만 이동)
       const shootParticle = (
         edge: SVGPathElement,
         forward: boolean,
+        color: string,
         ms = 900,
       ) => {
         const L = edge.getTotalLength();
         const p = d3
           .select(edge.parentNode as SVGGElement)
           .append('circle')
-          .attr('r', 3)
-          .attr('fill', '#0ea5e9') // 파란 점 (시인성)
+          .attr('r', 4)
+          .attr('fill', color)
           .attr('opacity', 0.95)
-          .style('filter', 'drop-shadow(0 0 6px rgba(14,165,233,.9))');
+          .style(
+            'filter',
+            `drop-shadow(0 0 8px ${color}) drop-shadow(0 0 12px ${color})`,
+          );
 
         const t0 = performance.now();
         const loop = (now: number) => {
@@ -361,28 +558,23 @@ const FlowSimulation = ({
         requestAnimationFrame(loop);
       };
 
-      edgeSel.nodes().forEach((edge: any) => {
+      edgeSel.nodes().forEach(edge => {
+        if (!edge || !(edge instanceof SVGPathElement)) {
+          return;
+        }
+        const edgeElement = edge as EdgeElement;
         // 방향 판단: 저장된 path는 (minId -> maxId)
-        const sid = (edge.__data__.source as any).id ?? edge.__data__.source;
-        const tid = (edge.__data__.target as any).id ?? edge.__data__.target;
+        const source = edgeElement.__data__.source;
+        const target = edgeElement.__data__.target;
+        const sid = source.id;
+        const tid = target.id;
         const forward =
           sid <= tid
             ? cur.componentId <= nxt.componentId
             : cur.componentId >= nxt.componentId;
 
-        // 여러 발 쏴서 흐름감↑
-        setTimeout(
-          () => shootParticle(edge as SVGPathElement, forward, 900),
-          30,
-        );
-        setTimeout(
-          () => shootParticle(edge as SVGPathElement, forward, 900),
-          140,
-        );
-        setTimeout(
-          () => shootParticle(edge as SVGPathElement, forward, 900),
-          250,
-        );
+        // 1개의 particle만 발사 (로그 레벨에 따른 색상)
+        shootParticle(edgeElement, forward, particleColor, 900);
       });
     }
 
@@ -403,7 +595,7 @@ const FlowSimulation = ({
   if (!flowData?.timeline?.length || !flowData?.components?.length) {
     return (
       <div className="rounded-2xl border bg-white p-8 text-center text-gray-500">
-        흐름 데이터를 불러오지 못했습니다.
+        흐름 데이터가 존재하지 않습니다.
       </div>
     );
   }
@@ -412,13 +604,21 @@ const FlowSimulation = ({
   const toggle = () => setPaused(p => !p);
 
   return (
-    <div className="rounded-2xl border bg-white shadow">
+    <div className="overflow-hidden rounded-2xl border bg-white shadow">
       <div className="flex items-center justify-between border-b bg-slate-950 px-4 py-3">
         <div className="text-white">
           <div className="text-base font-semibold">요청 흐름 시뮬레이션</div>
           <div className="text-xs text-slate-300">
-            Step {Math.min(seq + 1, flowData.timeline.length)} /{' '}
-            {flowData.timeline.length}
+            {seq === 0 ? (
+              <>시작: {flowData.timeline[0].componentName}</>
+            ) : seq < flowData.timeline.length ? (
+              <>
+                이동 {seq} / {flowData.timeline.length - 1} →{' '}
+                {flowData.timeline[seq].componentName}
+              </>
+            ) : (
+              <>완료</>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -436,7 +636,7 @@ const FlowSimulation = ({
           </button>
         </div>
       </div>
-      <div className="relative h-[680px] bg-gradient-to-b from-slate-50 to-indigo-50/30">
+      <div className="relative h-[680px] bg-white">
         <svg
           ref={svgRef}
           viewBox={`0 0 ${width} ${height}`}
