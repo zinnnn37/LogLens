@@ -38,6 +38,12 @@ const ChatbotPage = () => {
 
       // API 요청
       const baseUrl = import.meta.env.VITE_API_AI_URL;
+      if (!baseUrl) {
+        throw new Error(
+          'AI API URL이 설정되지 않았습니다. .env 파일을 확인해주세요.',
+        );
+      }
+
       const url = `${baseUrl}${API_PATH.CHATBOT_STREAM}`;
 
       const response = await fetch(url, {
@@ -52,10 +58,20 @@ const ChatbotPage = () => {
           project_uuid: projectUuid || 'testproject',
           chat_history: chatHistory,
         }),
+      }).catch(err => {
+        // 네트워크 에러를 더 자세히 표시
+        console.error('네트워크 요청 실패:', err);
+        throw new Error(
+          `네트워크 연결 실패: AI 서버(${baseUrl})에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.`,
+        );
       });
 
       if (!response.ok) {
-        throw new Error(`서버 응답 오류: ${response.status}`);
+        const errorText = await response.text();
+        console.error('서버 응답 에러:', response.status, errorText);
+        throw new Error(
+          `서버 응답 오류 (${response.status}): ${errorText || '알 수 없는 오류'}`,
+        );
       }
 
       const reader = response.body?.getReader();
@@ -128,8 +144,14 @@ const ChatbotPage = () => {
           // 데이터 처리 - 각 청크를 누적
           fullText += data;
 
-          // \n을 실제 줄바꿈으로 변환
-          const displayText = fullText.replace(/\\n/g, '\n');
+          // 이스케이프된 문자들을 실제 문자로 변환
+          const displayText = fullText
+            .replace(/\\n/g, '\n')
+            .replace(/\\\*/g, '*')
+            .replace(/\\_/g, '_')
+            .replace(/\\`/g, '`')
+            .replace(/\\\[/g, '[')
+            .replace(/\\\]/g, ']');
 
           // 화면 업데이트 (누적 텍스트 표시)
           if (!hasStartedResponse && displayText.trim().length > 0) {

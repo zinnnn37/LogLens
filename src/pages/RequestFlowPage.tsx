@@ -1,9 +1,9 @@
-// src/pages/RequestFlowPage.tsx
-
 import { useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import LogSearchBox from '@/components/LogSearchBox';
 import FloatingChecklist from '@/components/FloatingChecklist';
+import { getTraceLogs } from '@/services/logService';
+import type { TraceLogsResponse } from '@/types/log';
 
 const RequestFlowPage = () => {
   const { projectUuid } = useParams<{ projectUuid: string }>();
@@ -13,12 +13,39 @@ const RequestFlowPage = () => {
   const initialTraceId = searchParams.get('traceId');
 
   const [query, setQuery] = useState(initialTraceId ?? '');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [traceData, setTraceData] = useState<TraceLogsResponse | null>(null);
 
-  // TODO: projectUuid를 사용해서 실제 프로젝트 요청 흐름 데이터 가져오기
-  console.log('Current project UUID:', projectUuid);
+  const handleSearchSubmit = async (traceId: string) => {
+    if (!projectUuid) {
+      setError('프로젝트 정보가 없습니다.');
+      return;
+    }
 
-  const handleSearchSubmit = (traceId: string) => {
-    console.log('submit:', traceId);
+    if (!traceId.trim()) {
+      setError('TraceId를 입력해주세요.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setTraceData(null);
+
+    try {
+      const response = await getTraceLogs({
+        projectUuid,
+        traceId: traceId.trim(),
+      });
+
+      setTraceData(response);
+      console.log('TraceId 검색 결과:', response);
+    } catch (err) {
+      console.error('TraceId 검색 에러:', err);
+      setError('TraceId 검색에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -30,7 +57,94 @@ const RequestFlowPage = () => {
         value={query}
         onChange={setQuery}
         onSubmit={handleSearchSubmit}
+        loading={loading}
+        searchResults={traceData?.logs}
+        showResults={Boolean(traceData)}
       />
+
+      {/* 에러 메시지 */}
+      {error && (
+        <div className="mt-4 rounded-lg bg-red-50 p-4 text-red-700">
+          {error}
+        </div>
+      )}
+
+      {/* TraceId Summary 정보 */}
+      {traceData && (
+        <div className="mt-6">
+          <div className="rounded-lg bg-white p-6 shadow-sm">
+            <h2 className="font-godoM mb-4 text-lg text-gray-800">
+              TraceId: {traceData.traceId}
+            </h2>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              <div>
+                <p className="text-sm text-gray-500">전체 로그</p>
+                <p className="text-xl font-semibold text-gray-800">
+                  {traceData.logs.length}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">처리 시간</p>
+                <p className="text-xl font-semibold text-gray-800">
+                  {traceData.duration}ms
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">상태</p>
+                <p
+                  className={`text-xl font-semibold ${traceData.status === 'SUCCESS' ? 'text-green-600' : 'text-red-600'}`}
+                >
+                  {traceData.status}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">에러</p>
+                <p className="text-xl font-semibold text-red-600">
+                  {
+                    traceData.logs.filter(log => log.logLevel === 'ERROR')
+                      .length
+                  }
+                </p>
+              </div>
+            </div>
+
+            {/* Request/Response 정보 */}
+            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-lg bg-blue-50 p-4">
+                <h3 className="font-godoM mb-2 text-sm text-blue-900">
+                  Request
+                </h3>
+                <p className="text-xs text-gray-600">
+                  {traceData.request.message}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {new Date(traceData.request.timestamp).toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {traceData.request.componentName} -{' '}
+                  {traceData.request.methodName}
+                </p>
+              </div>
+              <div className="rounded-lg bg-green-50 p-4">
+                <h3 className="font-godoM mb-2 text-sm text-green-900">
+                  Response
+                </h3>
+                <p className="text-xs text-gray-600">
+                  {traceData.response.message}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {new Date(traceData.response.timestamp).toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {traceData.response.componentName} -{' '}
+                  {traceData.response.methodName}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <FloatingChecklist />
     </div>
   );
