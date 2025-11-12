@@ -54,6 +54,9 @@ public class LogServiceImpl implements LogService {
     public LogPageResponse getLogs(LogSearchRequest request) {
         log.info("{} 로그 목록 조회 시작: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
 
+        // 기본값 설정
+        applyDefaults(request);
+
         LogSearchResult result = searchLogs(request.getProjectUuid(), request);
         List<LogResponse> logResponses = mapToLogResponses(result);
         PaginationResponse pagination = createPaginationResponse(result);
@@ -73,6 +76,9 @@ public class LogServiceImpl implements LogService {
     public TraceLogResponse getLogsByTraceId(LogSearchRequest request) {
         log.info("{} Trace ID로 로그 조회 시작: projectUuid={}, traceId={}",
                 LOG_PREFIX, request.getProjectUuid(), request.getTraceId());
+
+        // 기본값 설정
+        applyDefaults(request);
 
         TraceLogSearchResult result = searchLogsByTraceId(request.getProjectUuid(), request);
         List<LogResponse> logResponses = mapToLogResponses(result);
@@ -338,6 +344,20 @@ public class LogServiceImpl implements LogService {
     private void cleanupScheduler(ScheduledFuture<?> future) {
         if (Objects.nonNull(future) && !future.isCancelled()) {
             future.cancel(true);
+        }
+    }
+
+    /**
+     * LogSearchRequest에 기본값 적용
+     *
+     * @param request 로그 검색 요청
+     */
+    private void applyDefaults(LogSearchRequest request) {
+        if (Objects.isNull(request.getSize())) {
+            request.setSize(100);
+        }
+        if (Objects.isNull(request.getSort()) || request.getSort().isBlank()) {
+            request.setSort("TIMESTAMP,DESC");
         }
     }
 

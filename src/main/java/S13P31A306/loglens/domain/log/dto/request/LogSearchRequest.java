@@ -4,7 +4,6 @@ import S13P31A306.loglens.global.annotation.Sensitive;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import java.util.List;
-
 import lombok.Builder;
 import lombok.Data;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -21,7 +20,7 @@ public class LogSearchRequest {
     private String cursor;
 
     @Schema(description = "페이지 크기", example = "50", defaultValue = "100")
-    private Integer size = 100;
+    private Integer size;
 
     @Schema(description = "검색 시작 시간", example = "2025-11-01T00:00:00")
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
@@ -44,5 +43,5 @@ public class LogSearchRequest {
     private String traceId;
 
     @Schema(description = "정렬 옵션 (필드,방향)", example = "TIMESTAMP,DESC", defaultValue = "TIMESTAMP,DESC")
-    private String sort = "TIMESTAMP,DESC";
+    private String sort;
 }
