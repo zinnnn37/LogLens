@@ -72,6 +72,9 @@ export const API_PATH = {
   // TraceId 기반 요청 흐름 조회
   TRACE_FLOW: (traceId: string) => `/api/traces/${traceId}/flow`,
 
+  // 실시간 로그 스트리밍(SSE)
+  LOGS_STREAM: '/api/logs/stream',
+
   // 챗봇 스트리밍 API
   CHATBOT_STREAM: '/api/v2/chatbot/ask/stream',
 

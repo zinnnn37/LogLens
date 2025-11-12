@@ -1,7 +1,7 @@
 // src/pages/LogsPage.tsx
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { searchLogs } from '@/services/logService';
+import { useState, useCallback, useEffect } from 'react';
+import { searchLogs, connectLogStream } from '@/services/logService'; // connectLogStream 추가
 import { createJiraIssue } from '@/services/jiraService';
 import type { LogData, LogSearchParams } from '@/types/log';
 
@@ -24,17 +24,20 @@ import LogDetailModal1 from '@/components/modal/LogDetailModal1';
 import LogDetailModal2, {
   type JiraTicketFormData,
 } from '@/components/modal/LogDetailModal2';
-import JiraIntegrationModal from '@/components/modal/JiraIntegrationModal'; // Jira 모달 import
+import JiraIntegrationModal from '@/components/modal/JiraIntegrationModal';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useAuthStore } from '@/stores/authStore';
 
 const LogsPage = () => {
   const { projectUuid: uuidFromParams } = useParams<{ projectUuid: string }>();
   const projectUuid = uuidFromParams;
+
+  const { accessToken } = useAuthStore();
 
   const [logs, setLogs] = useState<LogData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -47,7 +50,7 @@ const LogsPage = () => {
   const [selectedLog, setSelectedLog] = useState<LogData | null>(null);
   const [isLogDetailModalOpen, setIsLogDetailModalOpen] = useState(false);
   const [modalPage, setModalPage] = useState<'page1' | 'page2'>('page1');
-  const [isJiraConnectModalOpen, setIsJiraConnectModalOpen] = useState(false); // Jira 연동 모달 상태
+  const [isJiraConnectModalOpen, setIsJiraConnectModalOpen] = useState(false);
 
   const fetchLogs = useCallback(
     async (isInitial: boolean, searchCriteria: SearchCriteria | null) => {
@@ -109,63 +112,79 @@ const LogsPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectUuid]);
 
-  // --- 5초 자동 갱신 (Polling) 로직 ---
-  const savedCriteria = useRef(criteria);
+  // --- 실시간 로그 스트리밍 (SSE) ---
   useEffect(() => {
-    savedCriteria.current = criteria;
-  }, [criteria]);
+    console.log('SSE useEffect 실행. 현재 accessToken:', accessToken);
 
-  /* // 5초 자동 갱신 (서버 부하로 임시 주석 처리)
-  useEffect(() => {
-    const tick = async () => {
-      if (loading || !projectUuid) {
-        return;
-      }
+    if (!projectUuid || !accessToken) {
+      console.warn('SSE 연결 중단. 이유:', {
+        projectUuid: Boolean(projectUuid),
+        accessToken: Boolean(accessToken),
+      });
+      return;
+    }
 
-      const currentCriteria = savedCriteria.current;
-      const params: LogSearchParams = {
-        projectUuid,
-        cursor: undefined,
-        size: 50,
-        logLevel: currentCriteria?.logLevel?.length
-          ? currentCriteria.logLevel
-          : undefined,
-        sourceType: currentCriteria?.sourceType?.length
-          ? currentCriteria.sourceType
-          : undefined,
-        traceId: currentCriteria?.traceId || undefined,
-        keyword: currentCriteria?.keyword || undefined,
-        startTime: currentCriteria?.startTime || undefined,
-        endTime: currentCriteria?.endTime || undefined,
-        sort: currentCriteria?.sort || 'TIMESTAMP,DESC',
-      };
+    // 현재 검색 조건으로 SSE 파라미터 설정
+    const streamParams: LogSearchParams = {
+      projectUuid,
+      logLevel: criteria?.logLevel?.length ? criteria.logLevel : undefined,
+      sourceType: criteria?.sourceType?.length
+        ? criteria.sourceType
+        : undefined,
+      traceId: criteria?.traceId || undefined,
+      keyword: criteria?.keyword || undefined,
+    };
 
+    console.log('SSE 연결 시작...', streamParams);
+    const eventSource = connectLogStream(streamParams, accessToken);
+
+    // 연결 성공
+    eventSource.onopen = () => {
+      console.log('실시간 로그 스트리밍 연결 성공 🟢');
+    };
+
+    // 로그 업데이트 이벤트 수신
+    eventSource.addEventListener('log-update', (event: MessageEvent) => {
       try {
-        const response = await searchLogs(params);
-        if ('pagination' in response) {
-          const newLogs = response.logs;
-
+        const newLogs: LogData[] = JSON.parse(event.data);
+        if (Array.isArray(newLogs) && newLogs.length > 0) {
           setLogs(prevLogs => {
-            const existingLogIds = new Set(prevLogs.map(log => log.logId));
-            const actuallyNewLogs = newLogs.filter(
-              log => !existingLogIds.has(log.logId),
+            // 중복 제거
+            const existingIds = new Set(prevLogs.map(log => log.logId));
+            const uniqueNewLogs = newLogs.filter(
+              log => !existingIds.has(log.logId),
             );
 
-            if (actuallyNewLogs.length === 0) {
+            if (uniqueNewLogs.length === 0) {
               return prevLogs;
             }
-            return [...actuallyNewLogs, ...prevLogs];
+
+            console.log(`새로운 로그 ${uniqueNewLogs.length}건 수신`);
+            return [...uniqueNewLogs, ...prevLogs];
           });
         }
       } catch (error) {
-        console.error('5초 갱신 실패 (무시함):', error);
+        console.error('SSE 로그 파싱 에러:', error);
       }
+    });
+
+    // 하트비트
+    eventSource.addEventListener('heartbeat', () => {
+      // console.log('💗'); // 너무 자주 찍히면 주석 처리
+    });
+
+    // 에러 발생 시
+    eventSource.onerror = err => {
+      console.error('SSE 연결 에러 🔴', err);
+      eventSource.close();
     };
 
-    const intervalId = setInterval(tick, 5000);
-    return () => clearInterval(intervalId);
-  }, [loading, projectUuid]);
-  */
+    // 연결 끊기
+    return () => {
+      console.log('SSE 연결 종료');
+      eventSource.close();
+    };
+  }, [projectUuid, criteria, accessToken]);
 
   // 검색핸들러
   const handleSearch = (newCriteria: SearchCriteria) => {
@@ -354,7 +373,7 @@ const LogsPage = () => {
             onOpenChange={handleLogDetailModalOpenChange}
             log={selectedLog}
             onGoToNextPage={handleGoToNextPage}
-            onOpenJiraConnect={handleOpenJiraConnect} // Jira 연동 모달 열기 핸들러 전달
+            onOpenJiraConnect={handleOpenJiraConnect}
           />
         )}
 
