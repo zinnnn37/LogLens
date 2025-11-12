@@ -31,13 +31,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useAuthStore } from '@/stores/authStore'; 
+import { useAuthStore } from '@/stores/authStore';
 
 const LogsPage = () => {
   const { projectUuid: uuidFromParams } = useParams<{ projectUuid: string }>();
   const projectUuid = uuidFromParams;
 
-  const { accessToken } = useAuthStore(); 
+  const { accessToken } = useAuthStore();
 
   const [logs, setLogs] = useState<LogData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -85,12 +85,12 @@ const LogsPage = () => {
 
         if ('pagination' in response) {
           const newLogs = response.logs;
-          setLogs((prev) => (isInitial ? newLogs : [...prev, ...newLogs]));
+          setLogs(prev => (isInitial ? newLogs : [...prev, ...newLogs]));
           setCursor(response.pagination.nextCursor || undefined);
           setHasMore(response.pagination.hasNext);
         } else if ('summary' in response) {
           const newLogs = response.logs;
-          setLogs((prev) => (isInitial ? newLogs : [...prev, ...newLogs]));
+          setLogs(prev => (isInitial ? newLogs : [...prev, ...newLogs]));
           setCursor(undefined);
           setHasMore(false);
         }
@@ -101,7 +101,7 @@ const LogsPage = () => {
         setLoading(false);
       }
     },
-    [projectUuid, cursor, hasMore, loading]
+    [projectUuid, cursor, hasMore, loading],
   );
 
   // --- 최초 로드 ---
@@ -148,14 +148,16 @@ const LogsPage = () => {
       try {
         const newLogs: LogData[] = JSON.parse(event.data);
         if (Array.isArray(newLogs) && newLogs.length > 0) {
-          setLogs((prevLogs) => {
-            // 중복 제거 
-            const existingIds = new Set(prevLogs.map((log) => log.logId));
+          setLogs(prevLogs => {
+            // 중복 제거
+            const existingIds = new Set(prevLogs.map(log => log.logId));
             const uniqueNewLogs = newLogs.filter(
-              (log) => !existingIds.has(log.logId)
+              log => !existingIds.has(log.logId),
             );
 
-            if (uniqueNewLogs.length === 0) { return prevLogs; }
+            if (uniqueNewLogs.length === 0) {
+              return prevLogs;
+            }
 
             console.log(`새로운 로그 ${uniqueNewLogs.length}건 수신`);
             return [...uniqueNewLogs, ...prevLogs];
@@ -166,13 +168,13 @@ const LogsPage = () => {
       }
     });
 
-    // 하트비트 
+    // 하트비트
     eventSource.addEventListener('heartbeat', () => {
       // console.log('💗'); // 너무 자주 찍히면 주석 처리
     });
 
     // 에러 발생 시
-    eventSource.onerror = (err) => {
+    eventSource.onerror = err => {
       console.error('SSE 연결 에러 🔴', err);
       eventSource.close();
     };
@@ -182,7 +184,7 @@ const LogsPage = () => {
       console.log('SSE 연결 종료');
       eventSource.close();
     };
-  }, [projectUuid, criteria, accessToken]); 
+  }, [projectUuid, criteria, accessToken]);
 
   // 검색핸들러
   const handleSearch = (newCriteria: SearchCriteria) => {
@@ -230,7 +232,7 @@ const LogsPage = () => {
       'comment',
     ];
 
-    const csvRows = logs.map((log) => {
+    const csvRows = logs.map(log => {
       return [
         escapeCSV(log.timestamp),
         escapeCSV(log.logLevel),

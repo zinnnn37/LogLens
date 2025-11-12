@@ -72,7 +72,6 @@ export const API_PATH = {
   // 실시간 로그 스트리밍(SSE)
   LOGS_STREAM: '/api/logs/stream',
 
-
   // 챗봇 스트리밍 API
   CHATBOT_STREAM: '/api/v2/chatbot/ask/stream',
 
