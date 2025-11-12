@@ -109,10 +109,9 @@ async def get_slowest_apis(
                                         httpMethod = doc['log_details.http_method'].value;
                                     }
 
-                                    // Request URI 추출
-                                    if (doc.containsKey('log_details.request_uri') &&
-                                        doc['log_details.request_uri'].size() > 0) {
-                                        requestUri = doc['log_details.request_uri'].value;
+                                    // Request URI 추출 (.keyword 서브필드 사용)
+                                    if (doc['log_details.request_uri.keyword'].size() > 0) {
+                                        requestUri = doc['log_details.request_uri.keyword'].value;
                                     }
 
                                     // Request URI가 있으면 HTTP API로 식별
