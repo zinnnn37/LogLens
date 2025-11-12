@@ -324,7 +324,14 @@ pipeline {
                             --rule-arn "\${ALB_RULE_ARN}" \\
                             --actions Type=forward,TargetGroupArn="\$TG_ARN" \\
                             --region \${AWS_REGION}
+                        
+                        DEFAULT_RULE_ARN="arn:aws:elasticloadbalancing:ap-northeast-2:686879300464:listener-rule/app/loglens-elb/91ea62cc66d4f049/11a526d8f621ab82/757533629d696596"
 
+                        aws elbv2 modify-rule \\
+                            --rule-arn "\${DEFAULT_RULE_ARN}" \\
+                            --actions Type=forward,TargetGroupArn="\$TG_ARN" \\
+                            --region \${AWS_REGION}
+                        
                         if [ \$? -eq 0 ]; then
                             echo "✅ Traffic switched to ${env.DEPLOY_TARGET} successfully"
                             echo "ℹ️  Rule now forwards to: \$TG_NAME"
