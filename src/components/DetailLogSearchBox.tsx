@@ -332,7 +332,7 @@ const DetailLogSearchBox = ({ onSearch }: DetailLogSearchBoxProps) => {
       {/* 검색 버튼 */}
       <Button
         onClick={handleSearch}
-        className="bg-blue-600 text-white hover:bg-blue-500"
+        className="bg-primary text-white hover:bg-blue-500"
       >
         검색
       </Button>
