@@ -40,15 +40,16 @@ public class JiraIntegrationServiceImpl implements JiraIntegrationService {
     private final JiraMapper jiraMapper;
     private final EncryptionUtils encryptionUtils;
 
+    //@formatter:off
     /**
      * Jira 연동 설정
-     * 현재 인증된 사용자의 정보를 사용합니다.
+     * 외부 API 호출을 트랜잭션 밖에서 수행하여 DB 커넥션 점유 시간 최소화
      *
      * @param request 연동 요청 DTO
      * @return JiraConnectResponse 연동 응답 DTO
      */
+    //@formatter:on
     @Override
-    @Transactional
     public JiraConnectResponse connect(JiraConnectRequest request) {
         // 현재 인증된 사용자 ID 조회
         Integer userId = authenticationHelper.getCurrentUserId();
@@ -67,7 +68,7 @@ public class JiraIntegrationServiceImpl implements JiraIntegrationService {
         jiraValidator.validateDuplicateConnection(project.getId());
         log.debug("{} ✅ 중복 연동 체크 완료", LOG_PREFIX);
 
-        // 4. Jira API 연결 테스트
+        // 4. Jira API 연결 테스트 (트랜잭션 외부에서 실행)
         boolean connected = jiraApiClient.testConnection(
                 request.jiraUrl(),
                 request.jiraEmail(),
@@ -81,28 +82,37 @@ public class JiraIntegrationServiceImpl implements JiraIntegrationService {
         }
         log.info("{} ✅ Jira 연결 테스트 성공", LOG_PREFIX);
 
-        // 5. API 토큰 암호화
+        // 5. API 토큰 암호화 (트랜잭션 외부에서 실행)
         String encryptedToken = encryptionUtils.encrypt(request.jiraApiToken());
         log.debug("{} 💾 API 토큰 암호화 완료", LOG_PREFIX);
 
-        // 6. 연동 정보 저장
+        // 6. 연동 정보 저장 (트랜잭션 내에서 DB 작업만 수행)
+        JiraConnectResponse response = saveConnectionInTransaction(request, project, encryptedToken);
+
+        log.info("{} 🎉 Jira 연동 설정 완료: projectUuid={}", LOG_PREFIX, request.projectUuid());
+        return response;
+    }
+
+    /**
+     * Jira 연동 정보 저장 (트랜잭션) DB 저장 작업만 트랜잭션으로 처리
+     */
+    @Transactional
+    protected JiraConnectResponse saveConnectionInTransaction(
+            JiraConnectRequest request,
+            Project project,
+            String encryptedToken) {
         JiraConnection connection = jiraMapper.toEntity(request, project.getId(), encryptedToken);
         JiraConnection saved = jiraConnectionRepository.save(connection);
         log.info("{} ✅ Jira 연동 저장 완료: connectionId={}, projectId={}",
                 LOG_PREFIX, saved.getId(), saved.getProjectId());
 
-        // 7. 응답 생성
-        JiraConnectResponse response = jiraMapper.toConnectResponse(saved, request.projectUuid());
-        log.info("{} 🎉 Jira 연동 설정 완료: projectUuid={}", LOG_PREFIX, request.projectUuid());
-
-        return response;
+        return jiraMapper.toConnectResponse(saved, request.projectUuid());
     }
 
     /**
-     * Jira 연동 상태 조회
-     * 특정 프로젝트의 Jira 연동 상태를 조회합니다.
+     * Jira 연동 상태 조회 특정 프로젝트의 Jira 연동 상태를 조회합니다.
      *
-     * @param projectId 프로젝트 ID
+     * @param projectUuid 프로젝트 UUID
      * @return JiraConnectionStatusResponse 연동 상태 응답 DTO
      */
     @Override
