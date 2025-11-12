@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import LogSearchBox from '@/components/LogSearchBox';
 import FloatingChecklist from '@/components/FloatingChecklist';
@@ -18,6 +18,8 @@ const RequestFlowPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [traceData, setTraceData] = useState<TraceLogsResponse | null>(null);
   const [flowData, setFlowData] = useState<TraceFlowResponse | null>(null);
+
+  const flowSimulationRef = useRef<HTMLDivElement>(null);
 
   const handleSearchSubmit = async (traceId: string) => {
     if (!projectUuid) {
@@ -67,6 +69,14 @@ const RequestFlowPage = () => {
 
       setFlowData(response);
       console.log('TraceId 흐름 조회 결과:', response);
+
+      // FlowSimulation으로 스크롤
+      setTimeout(() => {
+        flowSimulationRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      }, 100);
     } catch (err) {
       console.error('TraceId 흐름 조회 에러:', err);
       setError('요청 흐름 조회에 실패했습니다. 다시 시도해주세요.');
@@ -191,7 +201,7 @@ const RequestFlowPage = () => {
 
       {/* Flow Simulation*/}
       {flowData && (
-        <div className="mt-6">
+        <div ref={flowSimulationRef} className="mt-6">
           <FlowSimulation flowData={flowData} />
         </div>
       )}
