@@ -244,62 +244,70 @@ function transform_log(tag, timestamp, record)
     if type(exec_time) == "string" then
         exec_time = tonumber(exec_time)
     end
-    new_record["duration"] = exec_time
+    -- 0 이하 값은 nil로 처리
+    if exec_time and type(exec_time) == "number" and exec_time > 0 then
+        new_record["duration"] = exec_time
+    else
+        new_record["duration"] = nil
+    end
 
     local log_details = {}
     local has_details = false
 
     -- execution_time (long)
-    if exec_time then
-        log_details["execution_time"] = exec_time
+    if new_record["duration"] then
+        log_details["execution_time"] = new_record["duration"]
         has_details = true
     end
 
-    -- request 정보
+    -- request 정보 - 원본 객체 전체 저장
     if record["request"] and type(record["request"]) == "table" then
         local req = record["request"]
 
-        -- http_method (keyword)
-        log_details["http_method"] = req["method"] or (req["http"] and req["http"]["method"])
+        -- http_method: req.http.method를 우선 사용 (HTTP 요청 메서드)
+        if req["http"] and req["http"]["method"] then
+            log_details["http_method"] = req["http"]["method"]
+        end
 
-        -- request_uri (text)
-        log_details["request_uri"] = req["endpoint"] or (req["http"] and req["http"]["endpoint"])
+        -- request_uri: req.http.endpoint를 우선 사용
+        if req["http"] and req["http"]["endpoint"] then
+            log_details["request_uri"] = req["http"]["endpoint"]
+        end
 
-        -- request_headers (flattened) - headers가 있으면
+        -- request_headers (flattened)
         if req["headers"] and type(req["headers"]) == "table" then
             log_details["request_headers"] = req["headers"]
         end
 
-        if req then
-            if req["parameters"] and type(req["parameters"]) == "table" then
-                log_details["request_body"] = req["parameters"]
-            else
-                log_details["request_body"] = req
-            end
-        end
+        -- request 객체 전체를 request_body에 저장
+        log_details["request_body"] = req
 
         has_details = true
     end
 
-    -- response 정보
+    -- response 정보 - 원본 객체 전체 저장
     if record["response"] and type(record["response"]) == "table" then
         local res = record["response"]
 
-        -- response_status (integer)
-        log_details["response_status"] = tonumber(res["statusCode"] or (res["http"] and res["http"]["statusCode"]))
-
-        -- response_body (flattened)
-        if res then
-            log_details["response_body"] = res
+        -- response_status: res.http.statusCode만 사용
+        if res["http"] and res["http"]["statusCode"] then
+            log_details["response_status"] = tonumber(res["http"]["statusCode"])
         end
+
+        -- response 객체 전체를 response_body에 저장
+        log_details["response_body"] = res
 
         has_details = true
     end
 
     -- exception 정보
     if record["exception"] then
-        -- exception_type (keyword)
-        log_details["exception_type"] = tostring(record["exception"])
+        -- exception이 table이면 type 필드 추출
+        if type(record["exception"]) == "table" then
+            log_details["exception_type"] = record["exception"]["type"]
+        else
+            log_details["exception_type"] = tostring(record["exception"])
+        end
         has_details = true
     end
 
@@ -313,29 +321,7 @@ function transform_log(tag, timestamp, record)
         has_details = true
     end
 
-    -- additional_info (flattened) - 기타 추가 정보
-    local additional_info = {}
-    local has_additional = false
-
-    -- 원본 request/response 객체를 additional_info에 보관
-    if record["request"] and type(record["request"]) == "table" then
-        additional_info["full_request"] = record["request"]
-        has_additional = true
-    end
-    if record["response"] and type(record["response"]) == "table" then
-        additional_info["full_response"] = record["response"]
-        has_additional = true
-    end
-    if record["exception"] and type(record["exception"]) == "table" then
-        additional_info["full_exception"] = record["exception"]
-        has_additional = true
-    end
-
-    if has_additional then
-        log_details["additional_info"] = additional_info
-        has_details = true
-    end
-
+    -- log_details가 비어있지 않으면 저장
     if has_details then
         new_record["log_details"] = log_details
     end
@@ -357,6 +343,11 @@ function transform_log(tag, timestamp, record)
         if not requester_ip and req["http"] and type(req["http"]) == "table" then
             requester_ip = req["http"]["ip"] or req["http"]["client_ip"]
         end
+    end
+
+    -- IPv6 localhost를 IPv4로 변환
+    if requester_ip == "0:0:0:0:0:0:0:1" or requester_ip == "::1" then
+        requester_ip = "127.0.0.1"
     end
 
     new_record["requester_ip"] = requester_ip or nil
