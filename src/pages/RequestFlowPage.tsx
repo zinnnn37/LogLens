@@ -99,18 +99,22 @@ const RequestFlowPage = () => {
       {/* TraceId Summary 정보 */}
       {traceData && (
         <div className="mt-6">
-          <div className="rounded-lg bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
+          <div className="rounded-2xl bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
               <h2 className="font-godoM text-lg text-gray-800">
                 TraceId: {traceData.traceId}
               </h2>
               <button
                 onClick={() => handlePlayClick(traceData.traceId)}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="bg-secondary hover:bg-primary flex items-center gap-2 rounded-lg px-4 py-2 text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 title="요청 흐름 시뮬레이션 재생"
               >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <svg
+                  className="h-5 w-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
                   <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
                 </svg>
                 <span className="font-semibold">시뮬레이션 재생</span>
@@ -185,9 +189,11 @@ const RequestFlowPage = () => {
         </div>
       )}
 
-      {/* Flow Simulation - 인라인으로 표시 */}
+      {/* Flow Simulation*/}
       {flowData && (
-        <FlowSimulation flowData={flowData} />
+        <div className="mt-8">
+          <FlowSimulation flowData={flowData} />
+        </div>
       )}
 
       <FloatingChecklist />
