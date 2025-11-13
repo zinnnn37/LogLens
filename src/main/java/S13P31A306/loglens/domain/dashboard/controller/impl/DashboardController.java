@@ -88,6 +88,23 @@ public class DashboardController implements DashboardApi {
         );
     }
 
+    @Override
+    public ResponseEntity<? extends BaseResponse> getHeatmap(
+            @ValidUuid @RequestParam String projectUuid,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime,
+            @RequestParam(required = false) String logLevel
+    ) {
+        log.info("{} 히트맵 통계 호출: projectUuid={}", LOG_PREFIX, projectUuid);
+
+        HeatmapResponse response = heatmapService.getLogHeatmap(projectUuid, startTime, endTime, logLevel);
+
+        return ApiResponseFactory.success(
+                DashboardSuccessCode.HEATMAP_RETRIEVED,
+                response
+        );
+    }
+
     /**
      * 로그 히트맵 조회
      */
