@@ -32,10 +32,7 @@ class AiServiceClientTest {
         String baseUrl = mockWebServer.url("/").toString();
         WebClient.Builder webClientBuilder = WebClient.builder();
 
-        aiServiceClient = new AiServiceClient(webClientBuilder);
-        // Reflection을 통해 private 필드 설정
-        setField(aiServiceClient, "aiServiceBaseUrl", baseUrl);
-        setField(aiServiceClient, "timeout", 30000);
+        aiServiceClient = new AiServiceClient(webClientBuilder, baseUrl, 30000);
     }
 
     @AfterEach
@@ -177,18 +174,5 @@ class AiServiceClientTest {
 
         // then
         assertThat(response).isNull();
-    }
-
-    /**
-     * Reflection을 사용하여 private 필드 값 설정
-     */
-    private void setField(Object target, String fieldName, Object value) {
-        try {
-            var field = target.getClass().getDeclaredField(fieldName);
-            field.setAccessible(true);
-            field.set(target, value);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to set field: " + fieldName, e);
-        }
     }
 }
