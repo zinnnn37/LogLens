@@ -40,6 +40,10 @@ export const API_PATH = {
   // 자주 발생하는 에러 TOP N 조회
   STATISTICS_ERROS_TOP: '/api/errors/top',
 
+  // 히트맵
+  STATISTICS_HEATMAP: '/api/statistics/logs/heatmap',
+
+
   // 프로젝트 삭제
   DELETE_PROJECT: (projectUuid: string) => `/api/projects/${projectUuid}`,
 
