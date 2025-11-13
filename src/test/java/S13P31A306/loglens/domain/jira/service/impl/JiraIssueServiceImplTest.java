@@ -78,7 +78,7 @@ class JiraIssueServiceImplTest {
             Integer userId = 1;
             Integer projectId = 1;
             String projectUuid = "550e8400-e29b-41d4-a716-446655440000";
-            Long logId = 100L;
+            Integer logId = 100;
             String summary = "Test Issue";
             String description = "Test Description";
 
@@ -198,7 +198,7 @@ class JiraIssueServiceImplTest {
             String projectUuid = "550e8400-e29b-41d4-a716-446655440000";
             JiraIssueCreateRequest request = new JiraIssueCreateRequest(
                     projectUuid,
-                    100L,
+                    100,
                     "Test Issue",
                     "Test Description",
                     "Bug",
@@ -241,7 +241,7 @@ class JiraIssueServiceImplTest {
             Integer userId = 1;
             Integer projectId = 1;
             String projectUuid = "550e8400-e29b-41d4-a716-446655440000";
-            Long logId = 100L;
+            Integer logId = 100;
             JiraIssueCreateRequest request = new JiraIssueCreateRequest(
                     projectUuid,
                     logId,
@@ -288,7 +288,7 @@ class JiraIssueServiceImplTest {
             Integer userId = 1;
             Integer projectId = 1;
             String projectUuid = "550e8400-e29b-41d4-a716-446655440000";
-            Long logId = 100L;
+            Integer logId = 100;
             JiraIssueCreateRequest request = new JiraIssueCreateRequest(
                     projectUuid,
                     logId,
@@ -338,7 +338,7 @@ class JiraIssueServiceImplTest {
             Integer userId = 1;
             Integer projectId = 1;
             String projectUuid = "550e8400-e29b-41d4-a716-446655440000";
-            Long logId = 100L;
+            Integer logId = 100;
             JiraIssueCreateRequest request = new JiraIssueCreateRequest(
                     projectUuid,
                     logId,

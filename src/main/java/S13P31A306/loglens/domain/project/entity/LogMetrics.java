@@ -37,6 +37,9 @@ public class LogMetrics extends BaseTimeEntity {
     @Column(name = "info_logs", nullable = false, columnDefinition = "INT DEFAULT 0")
     private Integer infoLogs;
 
+    @Column(name = "sum_response_time", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private Long sumResponseTime;
+
     @Column(name = "avg_response_time", nullable = false, columnDefinition = "INT DEFAULT 0")
     private Integer avgResponseTime;
 
@@ -44,13 +47,15 @@ public class LogMetrics extends BaseTimeEntity {
     private LocalDateTime aggregatedAt;
 
     @Builder
-    public LogMetrics(Project project, Integer totalLogs, Integer errorLogs,
-                      Integer warnLogs, Integer infoLogs, Integer avgResponseTime, LocalDateTime aggregatedAt) {
+    public LogMetrics(Integer id, Project project, Integer totalLogs, Integer errorLogs,
+                      Integer warnLogs, Integer infoLogs, Long sumResponseTime, Integer avgResponseTime, LocalDateTime aggregatedAt) {
+        this.id = id;
         this.project = project;
         this.totalLogs = totalLogs;
         this.errorLogs = errorLogs;
         this.warnLogs = warnLogs;
         this.infoLogs = infoLogs;
+        this.sumResponseTime = sumResponseTime;
         this.avgResponseTime = avgResponseTime;
         this.aggregatedAt = aggregatedAt;
     }
