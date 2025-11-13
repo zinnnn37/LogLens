@@ -3,7 +3,7 @@ package S13P31A306.loglens.domain.log.dto.request;
 import S13P31A306.loglens.global.annotation.Sensitive;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
-
+import java.util.Objects;
 import lombok.Builder;
 import lombok.Data;
 
@@ -23,7 +23,7 @@ public class LogStreamRequest {
     private String projectUuid;
 
     @Schema(description = "페이지 크기", example = "50", defaultValue = "100")
-    private Integer size = 100;
+    private Integer size;
 
     @Schema(description = "로그 레벨 필터", example = "[\"ERROR\", \"WARN\"]")
     private List<String> logLevel;
@@ -35,12 +35,12 @@ public class LogStreamRequest {
     private String keyword;
 
     /**
-     * LogStreamRequest를 LogSearchRequest로 변환 SSE 스트리밍에 필요한 필드만 설정하고 sort는 TIMESTAMP,DESC로 고정
+     * LogStreamRequest를 LogSearchRequest로 변환 SSE 스트리밍에 필요한 필드만 설정하고 sort는 TIMESTAMP,DESC로 고정 size가 null이면 기본값 100 적용
      */
     public LogSearchRequest toLogSearchRequest() {
         return LogSearchRequest.builder()
                 .projectUuid(this.projectUuid)
-                .size(this.size)
+                .size(Objects.nonNull(this.size) ? this.size : 100)
                 .logLevel(this.logLevel)
                 .sourceType(this.sourceType)
                 .keyword(this.keyword)

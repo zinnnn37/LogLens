@@ -8,16 +8,23 @@ import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Data;
 
+//@formatter:off
+/**
+ * 로그 목록 조회용 응답 DTO
+ * OpenSearch 실제 데이터 구조를 기반으로 한 간단한 로그 정보
+ *
+ * LogDetailResponse와의 차이점:
+ * - 목록 조회에 필요한 핵심 필드만 포함
+ * - comment, stackTrace, logDetails, AI 분석 관련 필드는 제외 (상세 조회 시에만 제공)
+ */
+//@formatter:on
 @Data
 @Builder
 public class LogResponse {
-    @Schema(description = "로그 ID (고유 식별자)", example = "1234567890")
+    @Schema(description = "로그 ID (고유 식별자)", example = "4275513421")
     private Long logId;
 
-    @Schema(description = "프로젝트 UUID", example = "a1b2c3d4-e5f6-7890-1234-567890abcdef")
-    private String projectUuid;
-
-    @Schema(description = "Trace ID", example = "trace-abc-123")
+    @Schema(description = "Trace ID", example = "6beef638-92dd-4c42-9657-5ed08579cd92")
     private String traceId;
 
     @Schema(description = "로그 레벨", example = "ERROR")
@@ -26,43 +33,31 @@ public class LogResponse {
     @Schema(description = "소스 타입", example = "BE")
     private SourceType sourceType;
 
-    @Schema(description = "로그 메시지", example = "NullPointerException occurred in UserService")
+    @Schema(description = "로그 메시지", example = "Request received: existsByEmail")
     private String message;
 
-    @Schema(description = "로그 발생 시간", example = "2024-01-15T10:30:45.123Z")
+    @Schema(description = "로그 발생 시간", example = "2025-11-12T20:14:08.090Z")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private LocalDateTime timestamp;
 
-    @Schema(description = "로거 이름", example = "com.example.UserService")
+    @Schema(description = "로거 이름 (패키지 포함 전체 클래스명)", example = "com.example.demo.domain.user.repository.UserJpaRepository")
     private String logger;
 
-    @Schema(description = "레이어 정보", example = "Service")
+    @Schema(description = "레이어 정보", example = "Repository")
     private String layer;
 
-    @Schema(description = "사용자 코멘트", example = "이 에러는 무시해도 됨")
-    private String comment;
-
-    @Schema(description = "요청자 IP", example = "192.168.1.1")
-    private String requesterIp;
-
-    @Schema(description = "서비스 이름", example = "user-service")
+    @Schema(description = "서비스 이름", example = "Loglens")
     private String serviceName;
 
-    @Schema(description = "클래스 이름", example = "UserService")
-    private String className;
-
-    @Schema(description = "메서드 이름", example = "getUser")
+    @Schema(description = "메서드 이름", example = "existsByEmail", nullable = true)
     private String methodName;
 
-    @Schema(description = "스레드 이름", example = "http-nio-8080-exec-1")
+    @Schema(description = "스레드 이름", example = "http-nio-8081-exec-4")
     private String threadName;
 
-    @Schema(description = "스택 트레이스", example = "java.lang.NullPointerException: ...")
-    private String stackTrace;
+    @Schema(description = "요청자 IP", example = "127.0.0.1")
+    private String requesterIp;
 
-    @Schema(description = "컴포넌트 이름", example = "database")
-    private String componentName;
-
-    @Schema(description = "처리 시간 (ms)", example = "150")
+    @Schema(description = "처리 시간 (밀리초)", example = "2", nullable = true)
     private Integer duration;
 }

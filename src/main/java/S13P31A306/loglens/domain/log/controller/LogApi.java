@@ -54,27 +54,46 @@ public interface LogApi {
                                                               "code": "LG200-2",
                                                               "message": "로그 목록을 성공적으로 조회했습니다.",
                                                               "status": 200,
-                                                              "timestamp": "2025-11-03T15:00:00Z",
                                                               "data": {
                                                                 "logs": [
                                                                   {
-                                                                    "logId": "abc123xyz789",
-                                                                    "traceId": "trace-abc-123",
-                                                                    "logLevel": "ERROR",
+                                                                    "logId": 2108310292,
+                                                                    "traceId": "6beef638-92dd-4c42-9657-5ed08579cd92",
+                                                                    "logLevel": "INFO",
                                                                     "sourceType": "BE",
-                                                                    "message": "NullPointerException occurred in UserService",
-                                                                    "timestamp": "2024-01-15T10:30:45.123Z",
-                                                                    "logger": "com.example.UserService",
-                                                                    "layer": "Service",
-                                                                    "comment": null
+                                                                    "message": "Response completed: doFilter",
+                                                                    "timestamp": "2025-11-12T20:14:08.109Z",
+                                                                    "logger": "com.example.demo.global.filter.CorsFilter",
+                                                                    "layer": "Other",
+                                                                    "serviceName": "Loglens",
+                                                                    "methodName": "doFilter",
+                                                                    "threadName": "http-nio-8081-exec-4",
+                                                                    "requesterIp": "127.0.0.1",
+                                                                    "duration": 26
+                                                                  },
+                                                                  {
+                                                                    "logId": 2066677263,
+                                                                    "traceId": "6beef638-92dd-4c42-9657-5ed08579cd92",
+                                                                    "logLevel": "INFO",
+                                                                    "sourceType": "BE",
+                                                                    "message": "사용자가 생성되었습니다",
+                                                                    "timestamp": "2025-11-12T20:14:08.108Z",
+                                                                    "logger": "com.example.demo.domain.user.controller.UserController",
+                                                                    "layer": "Controller",
+                                                                    "serviceName": "Loglens",
+                                                                    "methodName": null,
+                                                                    "threadName": "http-nio-8081-exec-4",
+                                                                    "requesterIp": "127.0.0.1",
+                                                                    "duration": 21
                                                                   }
                                                                 ],
                                                                 "pagination": {
-                                                                  "nextCursor": "eyJzb3J0IjpbMTcwNTMxMjgwMDAwMCwiYWJjMTIzIl19",
+                                                                  "nextCursor": "WzE3NjI5Nzg0NDgxMDgsIjk3NDBjNGM1NzI1NDZkODA0ZmI3MGY0MTY0MDIwMDU0NjQ3NDc0NzdlN2NmZTFhYmY1NzQ0M2UwMjk1MzExM2QiXQ==",
                                                                   "hasNext": true,
-                                                                  "size": 1
+                                                                  "size": 2
                                                                 }
-                                                              }
+                                                              },
+                                                              "timestamp": "2025-11-13T01:33:07.861Z"
                                                             }
                                                             """
                                             ),
@@ -87,32 +106,36 @@ public interface LogApi {
                                                               "code": "LG200-3",
                                                               "message": "TraceID로 로그를 성공적으로 조회했습니다.",
                                                               "status": 200,
-                                                              "timestamp": "2025-11-03T15:01:00Z",
                                                               "data": {
-                                                                "traceId": "trace-abc-123",
+                                                                "traceId": "6beef638-92dd-4c42-9657-5ed08579cd92",
                                                                 "summary": {
-                                                                  "totalLogs": 5,
-                                                                  "durationMs": 123,
-                                                                  "startTime": "2024-01-15T10:30:45.000Z",
-                                                                  "endTime": "2024-01-15T10:30:45.123Z",
-                                                                  "errorCount": 1,
-                                                                  "warnCount": 2,
-                                                                  "infoCount": 2
+                                                                  "totalLogs": 14,
+                                                                  "durationMs": 26,
+                                                                  "startTime": "2025-11-12T20:14:08.083Z",
+                                                                  "endTime": "2025-11-12T20:14:08.109Z",
+                                                                  "errorCount": 0,
+                                                                  "warnCount": 0,
+                                                                  "infoCount": 14
                                                                 },
                                                                 "logs": [
                                                                   {
-                                                                    "logId": "abc123xyz789",
-                                                                    "traceId": "trace-abc-123",
-                                                                    "logLevel": "ERROR",
+                                                                    "logId": 4243171600,
+                                                                    "traceId": "6beef638-92dd-4c42-9657-5ed08579cd92",
+                                                                    "logLevel": "INFO",
                                                                     "sourceType": "BE",
-                                                                    "message": "NullPointerException occurred in UserService",
-                                                                    "timestamp": "2024-01-15T10:30:45.123Z",
-                                                                    "logger": "com.example.UserService",
-                                                                    "layer": "Service",
-                                                                    "comment": null
+                                                                    "message": "Request received: doFilter",
+                                                                    "timestamp": "2025-11-12T20:14:08.083Z",
+                                                                    "logger": "com.example.demo.global.filter.CorsFilter",
+                                                                    "layer": "Other",
+                                                                    "serviceName": "Loglens",
+                                                                    "methodName": "doFilter",
+                                                                    "threadName": "http-nio-8081-exec-4",
+                                                                    "requesterIp": "127.0.0.1",
+                                                                    "duration": null
                                                                   }
                                                                 ]
-                                                              }
+                                                              },
+                                                              "timestamp": "2025-11-13T01:33:34.461Z"
                                                             }
                                                             """
                                             )
@@ -131,7 +154,7 @@ public interface LogApi {
                                                     value = """
                                                             {
                                                               "code": "LG400-09",
-                                                              "message": "projectId는 필수입니다.",
+                                                              "message": "projectUuid는 필수입니다.",
                                                               "status": 400,
                                                               "timestamp": "2025-11-03T15:02:00Z"
                                                             }
@@ -184,7 +207,7 @@ public interface LogApi {
                     """,
             parameters = {
                     @Parameter(in = ParameterIn.HEADER, name = "Authorization", description = "Bearer {access_token}", required = true, schema = @Schema(type = "string")),
-                    @Parameter(in = ParameterIn.PATH, name = "logId", description = "로그 ID", required = true, schema = @Schema(type = "integer", format = "int64"), example = "4274323622"),
+                    @Parameter(in = ParameterIn.PATH, name = "logId", description = "로그 ID", required = true, schema = @Schema(type = "integer", format = "int64"), example = "2845913357"),
                     @Parameter(in = ParameterIn.QUERY, name = "projectUuid", description = "프로젝트 UUID", required = true, schema = @Schema(type = "string"), example = "9911573f-8a1d-3b96-98b4-5a0def93513b")
             },
             responses = {
@@ -201,25 +224,33 @@ public interface LogApi {
                                                       "code": "LG200-4",
                                                       "message": "로그 상세 정보를 성공적으로 조회했습니다.",
                                                       "status": 200,
-                                                      "timestamp": "2025-11-07T15:00:00Z",
                                                       "data": {
-                                                        "logId": 1234567890,
-                                                        "traceId": "trace-abc-123",
-                                                        "logLevel": "ERROR",
+                                                        "logId": 2845913357,
+                                                        "traceId": "3bfd962b-4583-4d75-92b9-adffea8412cd",
+                                                        "logLevel": "INFO",
                                                         "sourceType": "BE",
-                                                        "message": "NullPointerException occurred in UserService",
-                                                        "timestamp": "2024-01-15T10:30:45.123Z",
-                                                        "logger": "com.example.UserService",
-                                                        "layer": "Service",
-                                                        "comment": null,
-                                                        "serviceName": "loglens-api",
-                                                        "className": "com.example.UserServiceImpl",
-                                                        "methodName": "getUserById",
-                                                        "threadName": "http-nio-8080-exec-5",
-                                                        "requesterIp": "192.168.1.100",
-                                                        "duration": 1250,
-                                                        "stackTrace": "java.lang.NullPointerException\\n\\tat com.example.UserServiceImpl.getUserById(UserServiceImpl.java:42)",
-                                                        "logDetails": {"userId": "123", "action": "getUser"},
+                                                        "message": "Response completed: findById",
+                                                        "timestamp": "2025-11-12T20:09:42.429Z",
+                                                        "logger": "com.example.demo.domain.user.repository.UserJpaRepository",
+                                                        "layer": "Repository",
+                                                        "comment": "thread: http-nio-8081-exec-2, app: demo, pid: 48519",
+                                                        "serviceName": "Loglens",
+                                                        "methodName": "findById",
+                                                        "threadName": "http-nio-8081-exec-2",
+                                                        "requesterIp": "127.0.0.1",
+                                                        "duration": 2,
+                                                        "logDetails": {
+                                                          "response_status": 200,
+                                                          "response_body": {
+                                                            "result": "Optional.empty",
+                                                            "method": "findById",
+                                                            "http": {
+                                                              "endpoint": "/users/1",
+                                                              "method": "DELETE",
+                                                              "statusCode": 200
+                                                            }
+                                                          }
+                                                        },
                                                         "analysis": {
                                                           "summary": "사용자 ID 조회 중 NULL 참조 에러가 발생했습니다.",
                                                           "errorCause": "사용자가 존재하지 않는 경우 NULL 체크 없이 메서드를 호출하여 발생했습니다.",
@@ -232,7 +263,8 @@ public interface LogApi {
                                                         "fromCache": true,
                                                         "similarLogId": 1234567800,
                                                         "similarityScore": 0.92
-                                                      }
+                                                      },
+                                                      "timestamp": "2025-11-13T01:28:00.933Z"
                                                     }
                                                     """
                                     )

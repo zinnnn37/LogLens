@@ -77,7 +77,6 @@ public class LogControllerTest {
                     .logger("com.example.UserService")
                     .layer("Service")
                     .serviceName("loglens-api")
-                    .className("com.example.UserServiceImpl")
                     .methodName("getUserById")
                     .analysis(analysis)
                     .fromCache(true)

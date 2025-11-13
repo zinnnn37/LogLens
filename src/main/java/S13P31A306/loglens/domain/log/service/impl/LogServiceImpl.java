@@ -54,6 +54,9 @@ public class LogServiceImpl implements LogService {
     public LogPageResponse getLogs(LogSearchRequest request) {
         log.info("{} 로그 목록 조회 시작: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
 
+        // 기본값 설정
+        applyDefaults(request);
+
         LogSearchResult result = searchLogs(request.getProjectUuid(), request);
         List<LogResponse> logResponses = mapToLogResponses(result);
         PaginationResponse pagination = createPaginationResponse(result);
@@ -73,6 +76,9 @@ public class LogServiceImpl implements LogService {
     public TraceLogResponse getLogsByTraceId(LogSearchRequest request) {
         log.info("{} Trace ID로 로그 조회 시작: projectUuid={}, traceId={}",
                 LOG_PREFIX, request.getProjectUuid(), request.getTraceId());
+
+        // 기본값 설정
+        applyDefaults(request);
 
         TraceLogSearchResult result = searchLogsByTraceId(request.getProjectUuid(), request);
         List<LogResponse> logResponses = mapToLogResponses(result);
@@ -177,13 +183,11 @@ public class LogServiceImpl implements LogService {
                 .layer(logEntity.getLayer())
                 .comment(logEntity.getComment())
                 .serviceName(logEntity.getServiceName())
-                .className(logEntity.getClassName())
                 .methodName(logEntity.getMethodName())
                 .threadName(logEntity.getThreadName())
                 .requesterIp(logEntity.getRequesterIp())
                 .duration(logEntity.getDuration())
-                .stackTrace(logEntity.getStackTrace())
-                .logDetails(logEntity.getLogDetails());
+                .logDetails(removeDuplicateFields(logEntity.getLogDetails()));
 
         // 3. AI 분석 결과 확인 및 처리
         AiAnalysisDto analysis = null;
@@ -339,6 +343,51 @@ public class LogServiceImpl implements LogService {
         if (Objects.nonNull(future) && !future.isCancelled()) {
             future.cancel(true);
         }
+    }
+
+    /**
+     * LogSearchRequest에 기본값 적용
+     *
+     * @param request 로그 검색 요청
+     */
+    private void applyDefaults(LogSearchRequest request) {
+        if (Objects.isNull(request.getSize())) {
+            request.setSize(100);
+        }
+        if (Objects.isNull(request.getSort()) || request.getSort().isBlank()) {
+            request.setSort("TIMESTAMP,DESC");
+        }
+    }
+
+    /**
+     * logDetails에서 data 레벨과 중복되는 필드 제거 중복 필드: execution_time (duration), stacktrace (stackTrace), class_name
+     * (className), method_name (methodName)
+     *
+     * @param logDetails 원본 logDetails Map
+     * @return 중복이 제거된 logDetails Map
+     */
+    private Map<String, Object> removeDuplicateFields(Map<String, Object> logDetails) {
+        if (Objects.isNull(logDetails) || logDetails.isEmpty()) {
+            return logDetails;
+        }
+
+        // 중복 필드 목록
+        List<String> duplicateFields = List.of(
+                "execution_time",  // duration과 중복
+                "stacktrace",      // stackTrace와 중복
+                "class_name",      // className과 중복
+                "method_name",      // methodName과 중복
+                "http_method",
+                "request_uri"
+        );
+
+        // 중복 필드 제거한 새로운 Map 생성
+        return logDetails.entrySet().stream()
+                .filter(entry -> !duplicateFields.contains(entry.getKey()))
+                .collect(java.util.stream.Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue
+                ));
     }
 
     /**
