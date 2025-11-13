@@ -70,6 +70,13 @@ public class LogValidator {
      */
     private void validateSize(Integer size) {
         log.debug("{} 페이지 크기 검증: {}", LOG_PREFIX, size);
+
+        // null check: size가 null이면 기본값(100)이 사용되므로 검증 통과
+        if (Objects.isNull(size)) {
+            log.debug("{} 페이지 크기가 null, 기본값 사용 예정", LOG_PREFIX);
+            return;
+        }
+
         if (size < MIN_SIZE || size > MAX_SIZE) {
             log.warn("{} 페이지 크기 유효성 실패: {}", LOG_PREFIX, size);
             throw new BusinessException(LogErrorCode.INVALID_SIZE);
