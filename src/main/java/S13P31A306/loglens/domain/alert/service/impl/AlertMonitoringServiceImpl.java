@@ -6,9 +6,8 @@ import S13P31A306.loglens.domain.alert.entity.AlertType;
 import S13P31A306.loglens.domain.alert.repository.AlertConfigRepository;
 import S13P31A306.loglens.domain.alert.repository.AlertHistoryRepository;
 import S13P31A306.loglens.domain.alert.service.AlertMonitoringService;
-import S13P31A306.loglens.domain.project.entity.LogMetrics;
+import S13P31A306.loglens.domain.log.repository.LogRepository;
 import S13P31A306.loglens.domain.project.entity.Project;
-import S13P31A306.loglens.domain.project.repository.LogMetricsRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,12 +30,12 @@ public class AlertMonitoringServiceImpl implements AlertMonitoringService {
 
     private static final String LOG_PREFIX = "[AlertMonitoringService]";
     private static final int DEDUP_WINDOW_MINUTES = 5; // 중복 방지 시간 (5분)
-    private static final int METRICS_FRESHNESS_MINUTES = 15; // 메트릭 유효성 시간 (15분)
+    private static final int ERROR_CHECK_WINDOW_MINUTES = 10; // ERROR 로그 체크 시간 범위 (10분)
 
     private final ProjectRepository projectRepository;
     private final AlertConfigRepository alertConfigRepository;
     private final AlertHistoryRepository alertHistoryRepository;
-    private final LogMetricsRepository logMetricsRepository;
+    private final LogRepository logRepository;
 
     @Override
     public void checkAndCreateAlerts() {
@@ -89,28 +88,28 @@ public class AlertMonitoringServiceImpl implements AlertMonitoringService {
             return false;
         }
 
-        // 2. 최신 LogMetrics 조회
-        Optional<LogMetrics> metricsOpt = logMetricsRepository
-                .findFirstByProjectIdOrderByAggregatedAtDesc(project.getId());
+        // 2. OpenSearch에서 최근 10분간 ERROR 로그 개수 직접 조회
+        LocalDateTime endTime = LocalDateTime.now();
+        LocalDateTime startTime = endTime.minusMinutes(ERROR_CHECK_WINDOW_MINUTES);
 
-        if (metricsOpt.isEmpty()) {
-            log.debug("{} LogMetrics 데이터 없음: projectId={}", LOG_PREFIX, project.getId());
+        long errorCount;
+        try {
+            errorCount = logRepository.countErrorLogsByProjectUuidAndTimeRange(
+                    project.getProjectUuid(),
+                    startTime,
+                    endTime
+            );
+            log.debug("{} ERROR 로그 개수 조회 완료: projectId={}, projectUuid={}, errorCount={}, 시간범위=[{} ~ {}]",
+                    LOG_PREFIX, project.getId(), project.getProjectUuid(), errorCount, startTime, endTime);
+        } catch (Exception e) {
+            log.error("{} ERROR 로그 개수 조회 실패: projectId={}, projectUuid={}",
+                    LOG_PREFIX, project.getId(), project.getProjectUuid(), e);
             return false;
         }
 
-        LogMetrics metrics = metricsOpt.get();
-
-        // 3. 메트릭이 너무 오래된 경우 (15분 이상) 스킵
-        LocalDateTime metricsAgeThreshold = LocalDateTime.now().minusMinutes(METRICS_FRESHNESS_MINUTES);
-        if (metrics.getAggregatedAt().isBefore(metricsAgeThreshold)) {
-            log.debug("{} 오래된 메트릭 데이터: projectId={}, aggregatedAt={}, threshold={}",
-                    LOG_PREFIX, project.getId(), metrics.getAggregatedAt(), metricsAgeThreshold);
-            return false;
-        }
-
-        // 4. 알림 타입별 처리 (Phase 1: ERROR_THRESHOLD만 구현)
+        // 3. 알림 타입별 처리 (Phase 1: ERROR_THRESHOLD만 구현)
         if (config.getAlertType() == AlertType.ERROR_THRESHOLD) {
-            return checkErrorThreshold(project, config, metrics);
+            return checkErrorThreshold(project, config, (int) errorCount, startTime, endTime);
         }
 
         // Phase 2, 3: LATENCY, ERROR_RATE는 추후 구현
@@ -122,8 +121,13 @@ public class AlertMonitoringServiceImpl implements AlertMonitoringService {
     /**
      * ERROR_THRESHOLD 타입 알림 체크
      */
-    private boolean checkErrorThreshold(Project project, AlertConfig config, LogMetrics metrics) {
-        int errorCount = metrics.getErrorLogs();
+    private boolean checkErrorThreshold(
+            Project project,
+            AlertConfig config,
+            int errorCount,
+            LocalDateTime startTime,
+            LocalDateTime endTime) {
+
         int threshold = config.getThresholdValue();
 
         log.debug("{} ERROR_THRESHOLD 체크: projectId={}, errorCount={}, threshold={}",
@@ -148,15 +152,20 @@ public class AlertMonitoringServiceImpl implements AlertMonitoringService {
         }
 
         // 알림 생성
-        createErrorThresholdAlert(project, config, metrics);
+        createErrorThresholdAlert(project, config, errorCount, startTime, endTime);
         return true;
     }
 
     /**
      * ERROR_THRESHOLD 타입 알림 생성 및 저장
      */
-    private void createErrorThresholdAlert(Project project, AlertConfig config, LogMetrics metrics) {
-        int errorCount = metrics.getErrorLogs();
+    private void createErrorThresholdAlert(
+            Project project,
+            AlertConfig config,
+            int errorCount,
+            LocalDateTime startTime,
+            LocalDateTime endTime) {
+
         int threshold = config.getThresholdValue();
 
         // 알림 메시지 생성
@@ -168,9 +177,9 @@ public class AlertMonitoringServiceImpl implements AlertMonitoringService {
         // logReference JSON 생성
         String logReference = String.format(
                 "{\"alertType\":\"ERROR_THRESHOLD\",\"errorCount\":%d,\"threshold\":%d," +
-                "\"totalLogs\":%d,\"period\":\"10min\",\"aggregatedAt\":\"%s\",\"projectUuid\":\"%s\"}",
-                errorCount, threshold, metrics.getTotalLogs(),
-                metrics.getAggregatedAt().toString(), project.getProjectUuid()
+                "\"period\":\"10min\",\"startTime\":\"%s\",\"endTime\":\"%s\",\"projectUuid\":\"%s\"}",
+                errorCount, threshold,
+                startTime.toString(), endTime.toString(), project.getProjectUuid()
         );
 
         // AlertHistory 엔티티 생성

@@ -5,9 +5,8 @@ import S13P31A306.loglens.domain.alert.entity.AlertConfig;
 import S13P31A306.loglens.domain.alert.entity.AlertHistory;
 import S13P31A306.loglens.domain.alert.repository.AlertConfigRepository;
 import S13P31A306.loglens.domain.alert.repository.AlertHistoryRepository;
-import S13P31A306.loglens.domain.project.entity.LogMetrics;
+import S13P31A306.loglens.domain.log.repository.LogRepository;
 import S13P31A306.loglens.domain.project.entity.Project;
-import S13P31A306.loglens.domain.project.repository.LogMetricsRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -26,6 +25,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
@@ -44,7 +44,7 @@ class AlertMonitoringServiceImplTest {
     private AlertHistoryRepository alertHistoryRepository;
 
     @Mock
-    private LogMetricsRepository logMetricsRepository;
+    private LogRepository logRepository;
 
     private static final Integer PROJECT_ID_1 = 1;
     private static final Integer PROJECT_ID_2 = 2;
@@ -60,7 +60,7 @@ class AlertMonitoringServiceImplTest {
                 projectRepository,
                 alertConfigRepository,
                 alertHistoryRepository,
-                logMetricsRepository
+                logRepository
         );
     }
 
@@ -150,8 +150,8 @@ class AlertMonitoringServiceImplTest {
 
             // then
             assertThat(result).isFalse();
-            verify(logMetricsRepository, never())
-                    .findFirstByProjectIdOrderByAggregatedAtDesc(any());
+            verify(logRepository, never())
+                    .countErrorLogsByProjectUuidAndTimeRange(any(), any(), any());
         }
 
         @Test
@@ -167,18 +167,19 @@ class AlertMonitoringServiceImplTest {
 
             // then
             assertThat(result).isFalse();
-            verify(logMetricsRepository, never())
-                    .findFirstByProjectIdOrderByAggregatedAtDesc(any());
+            verify(logRepository, never())
+                    .countErrorLogsByProjectUuidAndTimeRange(any(), any(), any());
         }
 
         @Test
-        void AlertConfig가_활성화_상태면_LogMetrics를_조회한다() {
+        void AlertConfig가_활성화_상태면_OpenSearch를_조회한다() {
             // given
             AlertConfig activeConfig = createAlertConfig(PROJECT_ID_1, "Y", ERROR_THRESHOLD);
             given(alertConfigRepository.findByProjectId(PROJECT_ID_1))
                     .willReturn(Optional.of(activeConfig));
-            given(logMetricsRepository.findFirstByProjectIdOrderByAggregatedAtDesc(PROJECT_ID_1))
-                    .willReturn(Optional.empty());
+            given(logRepository.countErrorLogsByProjectUuidAndTimeRange(
+                    eq(PROJECT_UUID_1), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(0L);
 
             // when
             boolean result = alertMonitoringService
@@ -186,8 +187,9 @@ class AlertMonitoringServiceImplTest {
 
             // then
             assertThat(result).isFalse();
-            verify(logMetricsRepository)
-                    .findFirstByProjectIdOrderByAggregatedAtDesc(PROJECT_ID_1);
+            verify(logRepository)
+                    .countErrorLogsByProjectUuidAndTimeRange(
+                            eq(PROJECT_UUID_1), any(LocalDateTime.class), any(LocalDateTime.class));
         }
 
         @Test
@@ -202,10 +204,9 @@ class AlertMonitoringServiceImplTest {
             given(alertConfigRepository.findByProjectId(PROJECT_ID_1))
                     .willReturn(Optional.of(latencyConfig));
 
-            LogMetrics metrics = createLogMetrics(PROJECT_ID_1, ERROR_COUNT_ABOVE,
-                    LocalDateTime.now().minusMinutes(5));
-            given(logMetricsRepository.findFirstByProjectIdOrderByAggregatedAtDesc(PROJECT_ID_1))
-                    .willReturn(Optional.of(metrics));
+            given(logRepository.countErrorLogsByProjectUuidAndTimeRange(
+                    eq(PROJECT_UUID_1), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn((long) ERROR_COUNT_ABOVE);
 
             // when
             boolean result = alertMonitoringService
@@ -218,7 +219,7 @@ class AlertMonitoringServiceImplTest {
     }
 
     @Nested
-    class LogMetricsValidationTest {
+    class ErrorCountQueryTest {
 
         private Project project;
         private AlertConfig config;
@@ -232,10 +233,11 @@ class AlertMonitoringServiceImplTest {
         }
 
         @Test
-        void LogMetrics가_없으면_false를_반환한다() {
+        void OpenSearch_조회_실패시_false를_반환한다() {
             // given
-            given(logMetricsRepository.findFirstByProjectIdOrderByAggregatedAtDesc(PROJECT_ID_1))
-                    .willReturn(Optional.empty());
+            given(logRepository.countErrorLogsByProjectUuidAndTimeRange(
+                    eq(PROJECT_UUID_1), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willThrow(new RuntimeException("OpenSearch connection failed"));
 
             // when
             boolean result = alertMonitoringService
@@ -247,29 +249,11 @@ class AlertMonitoringServiceImplTest {
         }
 
         @Test
-        void LogMetrics가_15분_이상_오래되면_false를_반환한다() {
+        void ERROR_개수가_조회되면_임계값_체크를_수행한다() {
             // given
-            LocalDateTime oldTime = LocalDateTime.now().minusMinutes(20);
-            LogMetrics oldMetrics = createLogMetrics(PROJECT_ID_1, ERROR_COUNT_ABOVE, oldTime);
-            given(logMetricsRepository.findFirstByProjectIdOrderByAggregatedAtDesc(PROJECT_ID_1))
-                    .willReturn(Optional.of(oldMetrics));
-
-            // when
-            boolean result = alertMonitoringService
-                    .checkProjectAlertsInNewTransaction(project);
-
-            // then
-            assertThat(result).isFalse();
-            verify(alertHistoryRepository, never()).save(any());
-        }
-
-        @Test
-        void LogMetrics가_유효하면_ERROR_THRESHOLD_체크를_수행한다() {
-            // given
-            LogMetrics validMetrics = createLogMetrics(PROJECT_ID_1, ERROR_COUNT_BELOW,
-                    LocalDateTime.now().minusMinutes(5));
-            given(logMetricsRepository.findFirstByProjectIdOrderByAggregatedAtDesc(PROJECT_ID_1))
-                    .willReturn(Optional.of(validMetrics));
+            given(logRepository.countErrorLogsByProjectUuidAndTimeRange(
+                    eq(PROJECT_UUID_1), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn((long) ERROR_COUNT_BELOW);
 
             // when
             boolean result = alertMonitoringService
@@ -298,10 +282,9 @@ class AlertMonitoringServiceImplTest {
         @Test
         void 에러_개수가_임계값_미만이면_false를_반환한다() {
             // given
-            LogMetrics metrics = createLogMetrics(PROJECT_ID_1, ERROR_COUNT_BELOW,
-                    LocalDateTime.now().minusMinutes(5));
-            given(logMetricsRepository.findFirstByProjectIdOrderByAggregatedAtDesc(PROJECT_ID_1))
-                    .willReturn(Optional.of(metrics));
+            given(logRepository.countErrorLogsByProjectUuidAndTimeRange(
+                    eq(PROJECT_UUID_1), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn((long) ERROR_COUNT_BELOW);
 
             // when
             boolean result = alertMonitoringService
@@ -317,10 +300,9 @@ class AlertMonitoringServiceImplTest {
         @Test
         void 에러_개수가_임계값_이상이면_중복_체크를_수행한다() {
             // given
-            LogMetrics metrics = createLogMetrics(PROJECT_ID_1, ERROR_COUNT_ABOVE,
-                    LocalDateTime.now().minusMinutes(5));
-            given(logMetricsRepository.findFirstByProjectIdOrderByAggregatedAtDesc(PROJECT_ID_1))
-                    .willReturn(Optional.of(metrics));
+            given(logRepository.countErrorLogsByProjectUuidAndTimeRange(
+                    eq(PROJECT_UUID_1), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn((long) ERROR_COUNT_ABOVE);
             given(alertHistoryRepository.findByProjectIdAndAlertTimeAfterOrderByAlertTimeDesc(
                     any(), any())).willReturn(Collections.emptyList());
 
@@ -337,10 +319,9 @@ class AlertMonitoringServiceImplTest {
         @Test
         void 최근_5분_이내_중복_알림이_있으면_false를_반환한다() {
             // given
-            LogMetrics metrics = createLogMetrics(PROJECT_ID_1, ERROR_COUNT_ABOVE,
-                    LocalDateTime.now().minusMinutes(5));
-            given(logMetricsRepository.findFirstByProjectIdOrderByAggregatedAtDesc(PROJECT_ID_1))
-                    .willReturn(Optional.of(metrics));
+            given(logRepository.countErrorLogsByProjectUuidAndTimeRange(
+                    eq(PROJECT_UUID_1), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn((long) ERROR_COUNT_ABOVE);
 
             AlertHistory recentAlert = createAlertHistory(PROJECT_ID_1,
                     LocalDateTime.now().minusMinutes(2));
@@ -359,10 +340,9 @@ class AlertMonitoringServiceImplTest {
         @Test
         void 최근_5분_이내_중복_알림이_없으면_AlertHistory를_생성하고_true를_반환한다() {
             // given
-            LogMetrics metrics = createLogMetrics(PROJECT_ID_1, ERROR_COUNT_ABOVE,
-                    LocalDateTime.now().minusMinutes(5));
-            given(logMetricsRepository.findFirstByProjectIdOrderByAggregatedAtDesc(PROJECT_ID_1))
-                    .willReturn(Optional.of(metrics));
+            given(logRepository.countErrorLogsByProjectUuidAndTimeRange(
+                    eq(PROJECT_UUID_1), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn((long) ERROR_COUNT_ABOVE);
             given(alertHistoryRepository.findByProjectIdAndAlertTimeAfterOrderByAlertTimeDesc(
                     any(), any())).willReturn(Collections.emptyList());
 
@@ -378,10 +358,9 @@ class AlertMonitoringServiceImplTest {
         @Test
         void 생성된_AlertHistory가_올바른_필드값을_가진다() {
             // given
-            LogMetrics metrics = createLogMetrics(PROJECT_ID_1, ERROR_COUNT_ABOVE,
-                    LocalDateTime.now().minusMinutes(5));
-            given(logMetricsRepository.findFirstByProjectIdOrderByAggregatedAtDesc(PROJECT_ID_1))
-                    .willReturn(Optional.of(metrics));
+            given(logRepository.countErrorLogsByProjectUuidAndTimeRange(
+                    eq(PROJECT_UUID_1), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn((long) ERROR_COUNT_ABOVE);
             given(alertHistoryRepository.findByProjectIdAndAlertTimeAfterOrderByAlertTimeDesc(
                     any(), any())).willReturn(Collections.emptyList());
 
@@ -402,6 +381,8 @@ class AlertMonitoringServiceImplTest {
             assertThat(saved.getLogReference()).contains(String.valueOf(ERROR_COUNT_ABOVE));
             assertThat(saved.getLogReference()).contains(String.valueOf(ERROR_THRESHOLD));
             assertThat(saved.getLogReference()).contains(PROJECT_UUID_1);
+            assertThat(saved.getLogReference()).contains("startTime");
+            assertThat(saved.getLogReference()).contains("endTime");
             assertThat(saved.getAlertTime()).isNotNull();
         }
     }
@@ -431,17 +412,6 @@ class AlertMonitoringServiceImplTest {
                 .alertType(AlertType.ERROR_THRESHOLD)
                 .thresholdValue(threshold)
                 .activeYN(activeYN)
-                .build();
-    }
-
-    private LogMetrics createLogMetrics(Integer projectId, int errorCount, LocalDateTime aggregatedAt) {
-        return LogMetrics.builder()
-                .totalLogs(100)
-                .errorLogs(errorCount)
-                .warnLogs(10)
-                .infoLogs(90 - errorCount)
-                .avgResponseTime(100)
-                .aggregatedAt(aggregatedAt)
                 .build();
     }
 
