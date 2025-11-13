@@ -47,4 +47,5 @@ public class HeatmapMetrics extends BaseTimeEntity {
 
     @Column(name = "aggregated_at", nullable = false)
     private LocalDateTime aggregatedAt;
+
 }
