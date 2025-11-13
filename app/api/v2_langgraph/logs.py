@@ -4,7 +4,7 @@ V2 LangGraph API - Log Analysis Endpoints
 LangGraph 기반 로그 분석 API (V2)
 """
 
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 
 from app.services.log_analysis_service_v2 import log_analysis_service_v2
@@ -14,13 +14,12 @@ from app.models.analysis import LogAnalysisResponse
 router = APIRouter(prefix="/v2-langgraph", tags=["Log Analysis V2 (LangGraph)"])
 
 
-@router.post("/logs/{log_id}/analysis", response_model=LogAnalysisResponse)
+@router.get("/logs/{log_id}/analysis", response_model=LogAnalysisResponse)
 async def analyze_log_v2(
     log_id: int,
-    project_uuid: str = Header(
+    project_uuid: str = Query(
         ...,
-        description="Project UUID for multi-tenancy",
-        convert_underscores=False  # BE가 보내는 project_uuid 헤더를 그대로 받음
+        description="Project UUID for multi-tenancy"
     ),
 ) -> LogAnalysisResponse:
     """
@@ -42,7 +41,7 @@ async def analyze_log_v2(
 
     **Args:**
     - log_id: 로그 ID (정수)
-    - project_uuid: 프로젝트 UUID (헤더)
+    - project_uuid: 프로젝트 UUID (쿼리 파라미터)
 
     **Returns:**
     - LogAnalysisResponse: 분석 결과
