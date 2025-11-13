@@ -17,22 +17,17 @@ export interface LogSearchParams {
 
 export interface LogData {
   logId: number;
-  projectUuid: string;
   traceId: string;
   timestamp: string; // ISO 8601 date-time
-  logLevel: 'WARN' | 'ERROR' | 'INFO';
+  logLevel: 'WARN' | 'ERROR' | 'INFO' | 'DEBUG';
   sourceType: 'FE' | 'BE' | 'INFRA';
   message: string;
   layer: string;
   logger: string;
-  comment: string | null;
-  requesterIp: string | null;
-  serviceName: string | null;
-  className: string | null;
+  requesterIp: string;
+  serviceName: string;
   methodName: string | null;
-  threadName: string | null;
-  stackTrace: string | null;
-  componentName: string | null;
+  threadName: string;
   duration: number | null;
 }
 
