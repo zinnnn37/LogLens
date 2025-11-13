@@ -1,4 +1,3 @@
-import { Play } from 'lucide-react';
 import { memo } from 'react';
 
 export interface LogRow {
@@ -117,16 +116,6 @@ const LogResultsTable = memo(
             </tbody>
           </table>
         </div>
-
-        {/* 우하단 액션 (원하면 제거해도 됨) */}
-        <button
-          type="button"
-          className="absolute right-7 bottom-5 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50"
-          title="Live tail (dummy)"
-          onClick={() => alert('Live tail (dummy)')}
-        >
-          <Play className="h-4 w-4" />
-        </button>
       </div>
     );
   },
