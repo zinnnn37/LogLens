@@ -15,7 +15,7 @@ services:
 
       # ✅ 로그 파일 경로 (입력)
       # 로컬 애플리케이션(Spring Boot 등)이 생성하는 로그를 읽기 전용으로 마운트
-      - ./logs:/logs:ro
+      - ../logs:/logs:ro
 
       # ✅ Fluent Bit 내부 상태 데이터베이스
       # 수집한 로그의 '읽은 위치(offset)' 등을 저장하여 재시작 시 중복 수집 방지
@@ -29,8 +29,10 @@ services:
       # ──────────────────────────────────────────────
       # ✅ 환경 변수 (로그 메타데이터)
       # PROJECT_UUID: 프로젝트 구분용 UUID (Kafka / OpenSearch 전송 시 식별자)
+      # PROJECT_NAME: 프로젝트 이름 (예: Loglens, Eatda)
       # ──────────────────────────────────────────────
-      PROJECT_UUID: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+      PROJECT_UUID: "9911573f-8a1d-3b96-98b4-5a0def93513b"
+      PROJECT_NAME: "Loglens"
 
     ports:
       # ──────────────────────────────────────────────
@@ -40,7 +42,16 @@ services:
       # ──────────────────────────────────────────────
       - "2020:2020"
 
+      # ──────────────────────────────────────────────
+      # ✅ Forward Protocol 수신 포트
+      # Docker logging driver가 로그를 전송하는 포트
+      # ──────────────────────────────────────────────
+      - "24224:24224"
+
     restart: unless-stopped               # 예기치 않은 중단 시 자동 재시작 (수동 중지 제외)
+
+    networks:
+      - loglens-network
 
     # ──────────────────────────────────────────────
     # ✅ 리소스 제한 (도커 엔진 수준의 컨테이너 자원 제어)
@@ -88,3 +99,7 @@ volumes:
     driver: local
   fluent-bit-backup:
     driver: local
+
+networks:
+  loglens-network:
+    driver: bridge
