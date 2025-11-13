@@ -36,4 +36,13 @@ public interface LogMetricsRepository extends JpaRepository<LogMetrics, Integer>
      */
     boolean existsByProjectIdAndAggregatedAt(int projectId, LocalDateTime aggregatedAt);
 
+    /**
+     * 특정 프로젝트의 가장 최근 집계 데이터를 조회
+     * 증분 집계 시 이전 누적 값을 가져오기 위해 사용
+     *
+     * @param projectId 프로젝트 ID
+     * @return 가장 최근 집계된 LogMetrics (존재하지 않으면 empty)
+     */
+    Optional<LogMetrics> findTopByProjectIdOrderByAggregatedAtDesc(Integer projectId);
+
 }

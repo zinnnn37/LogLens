@@ -22,6 +22,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static S13P31A306.loglens.domain.dashboard.constants.DashboardConstants.ERROR_DEFAULT_TIME_RANGE;
+import static S13P31A306.loglens.domain.dashboard.constants.DashboardConstants.ERROR_MAX_DEFAULT_RETRIEVAL_TIME;
+
 /**
  * 자주 발생하는 에러 조회 서비스 구현체
  */
@@ -76,7 +83,7 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
         LocalDateTime start = parsedStart != null ? parsedStart : end.minusDays(ERROR_DEFAULT_TIME_RANGE);
 
         // 4. 시간 범위 검증
-        dashboardValidator.validateTimeRange(start, end);
+        dashboardValidator.validateTimeRange(start, end, ERROR_MAX_DEFAULT_RETRIEVAL_TIME);
 
         // 5. OpenSearch: Top N 에러 집계
         List<ErrorAggregation> errorAggs =
