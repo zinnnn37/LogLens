@@ -1,5 +1,7 @@
 package S13P31A306.loglens.domain.dashboard.service.impl;
 
+import static S13P31A306.loglens.domain.dashboard.constants.DashboardConstants.ERROR_DEFAULT_TIME_RANGE;
+
 import S13P31A306.loglens.domain.component.entity.Component;
 import S13P31A306.loglens.domain.component.repository.ComponentRepository;
 import S13P31A306.loglens.domain.dashboard.dto.opensearch.ErrorAggregation;
@@ -8,6 +10,14 @@ import S13P31A306.loglens.domain.dashboard.dto.response.TopFrequentErrorsRespons
 import S13P31A306.loglens.domain.dashboard.service.TopFrequentErrorsQueryService;
 import S13P31A306.loglens.domain.dashboard.service.TopFrequentErrorsService;
 import S13P31A306.loglens.domain.dashboard.validator.DashboardValidator;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,9 +47,9 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
      * 자주 발생하는 에러 Top N 조회
      *
      * @param projectUuid 프로젝트 UUID
-     * @param startTime 조회 시작 시간 (ISO 8601, Optional)
-     * @param endTime 조회 종료 시간 (ISO 8601, Optional)
-     * @param limit 조회할 에러 개수 (1~50, 기본값 10)
+     * @param startTime   조회 시작 시간 (ISO 8601, Optional)
+     * @param endTime     조회 종료 시간 (ISO 8601, Optional)
+     * @param limit       조회할 에러 개수 (1~50, 기본값 10)
      * @return TopFrequentErrorsResponse
      */
     @Override
@@ -105,6 +115,8 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
         );
     }
 
+    //@formatter:off
+
     /**
      * 컴포넌트 매칭: logger 필드를 기반으로 MySQL components 테이블과 매칭
      * logger가 component의 package_name으로 시작하면 해당 컴포넌트로 매칭
@@ -113,6 +125,7 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
      * @param errorAggs 에러 집계 결과 리스트
      * @return logger → 컴포넌트 리스트 매핑
      */
+    //@formatter:on
     private Map<String, List<Component>> matchComponents(
             Integer projectId,
             List<ErrorAggregation> errorAggs) {
@@ -143,15 +156,18 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
         return loggerToComponents;
     }
 
+    //@formatter:off
+
     /**
      * ErrorInfo 리스트 생성
      * rank, percentage를 계산하고 컴포넌트 정보를 매칭하여 ErrorInfo 객체 생성
      *
-     * @param errorAggs 에러 집계 결과
-     * @param totalErrorCount 전체 에러 수
+     * @param errorAggs          에러 집계 결과
+     * @param totalErrorCount    전체 에러 수
      * @param loggerToComponents logger → 컴포넌트 매핑
      * @return ErrorInfo 리스트
      */
+    //@formatter:on
     private List<TopFrequentErrorsResponse.ErrorInfo> buildErrorInfos(
             List<ErrorAggregation> errorAggs,
             Integer totalErrorCount,
@@ -163,8 +179,8 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
         for (ErrorAggregation agg : errorAggs) {
             // percentage 계산 (소수점 1자리)
             float percentage = (float) (totalErrorCount > 0
-                                ? Math.round((agg.count() * 100.0 / totalErrorCount) * 10.0) / 10.0
-                                : 0.0);
+                    ? Math.round((agg.count() * 100.0 / totalErrorCount) * 10.0) / 10.0
+                    : 0.0);
 
             // 컴포넌트 매칭
             List<TopFrequentErrorsResponse.ErrorInfo.ComponentInfo> componentInfos =
@@ -190,6 +206,8 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
         return result;
     }
 
+    //@formatter:off
+
     /**
      * ErrorSummary 생성
      * 전체 에러 통계와 Top N 비율을 계산하여 Summary 객체 생성
@@ -198,6 +216,7 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
      * @param statistics 에러 통계
      * @return ErrorSummary
      */
+    //@formatter:on
     private TopFrequentErrorsResponse.ErrorSummary buildErrorSummary(
             List<TopFrequentErrorsResponse.ErrorInfo> errorInfos,
             ErrorStatistics statistics) {
@@ -208,8 +227,8 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
                 .sum();
 
         float topNPercentage = (float) (statistics.totalErrors() > 0
-                        ? Math.round((topNCount * 100.0 / statistics.totalErrors()) * 10.0) / 10.0
-                        : 0.0);
+                ? Math.round((topNCount * 100.0 / statistics.totalErrors()) * 10.0) / 10.0
+                : 0.0);
 
         return new TopFrequentErrorsResponse.ErrorSummary(
                 statistics.totalErrors(),

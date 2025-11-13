@@ -10,6 +10,7 @@ import S13P31A306.loglens.domain.log.entity.Log;
 import S13P31A306.loglens.domain.log.repository.LogRepository;
 import S13P31A306.loglens.global.constants.GlobalErrorCode;
 import S13P31A306.loglens.global.exception.BusinessException;
+import S13P31A306.loglens.global.utils.OpenSearchUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.time.Instant;
@@ -52,18 +53,6 @@ public class LogRepositoryImpl implements LogRepository {
     private static final String ID_FIELD = "_id";
     private static final int MAX_TRACE_LOGS = 1000;
 
-    /**
-     * 프로젝트별 인덱스 패턴을 반환
-     *
-     * @param projectUuid 프로젝트 UUID (하이픈 포함)
-     * @return "{projectUuid_with_underscores}-*" 형식의 인덱스 패턴
-     */
-    private String getProjectIndexPattern(String projectUuid) {
-        // Logstash에서 하이픈을 언더스코어로 변환하므로 동일하게 변환
-        String sanitizedUuid = projectUuid.replace("-", "_");
-        return sanitizedUuid + "_*";
-    }
-
     @Override
     public LogSearchResult findWithCursor(String projectUuid, LogSearchRequest request) {
         log.debug("{} OpenSearch에서 커서 기반 로그 조회 시작: projectUuid={}, request={}", LOG_PREFIX, projectUuid, request);
@@ -84,7 +73,7 @@ public class LogRepositoryImpl implements LogRepository {
         try {
             // 쿼리 디버깅을 위한 상세 로그
             log.debug("{} 실제 projectUuid 값: [{}]", LOG_PREFIX, projectUuid);
-            log.debug("{} 검색 인덱스: {}", LOG_PREFIX, getProjectIndexPattern(projectUuid));
+            log.debug("{} 검색 인덱스: {}", LOG_PREFIX, OpenSearchUtils.getProjectIndexPattern(projectUuid));
             log.debug("{} 쿼리 크기: {}", LOG_PREFIX, querySize);
 
             // OpenSearch 쿼리를 JSON으로 직렬화하여 출력
@@ -126,7 +115,7 @@ public class LogRepositoryImpl implements LogRepository {
         log.debug("{} Trace ID 검색 상세 디버깅 정보", LOG_PREFIX);
         log.debug("{} ============================================", LOG_PREFIX);
         log.debug("{} [기본 정보]", LOG_PREFIX);
-        log.debug("{}   - 인덱스 패턴: {}", LOG_PREFIX, getProjectIndexPattern(projectUuid));
+        log.debug("{}   - 인덱스 패턴: {}", LOG_PREFIX, OpenSearchUtils.getProjectIndexPattern(projectUuid));
         log.debug("{}   - Project UUID (원본): {}", LOG_PREFIX, projectUuid);
         log.debug("{}   - Project UUID (변환): {}", LOG_PREFIX, projectUuid.replace("-", "_"));
         log.debug("{}   - Trace ID: {}", LOG_PREFIX, request.getTraceId());
@@ -253,7 +242,7 @@ public class LogRepositoryImpl implements LogRepository {
                             .value(FieldValue.of(projectUuid))))));
 
             SearchRequest searchRequest = new SearchRequest.Builder()
-                    .index(getProjectIndexPattern(projectUuid))
+                    .index(OpenSearchUtils.getProjectIndexPattern(projectUuid))
                     .query(query)
                     .size(1)
                     .build();
@@ -287,7 +276,7 @@ public class LogRepositoryImpl implements LogRepository {
         log.debug("{} 프로젝트 UUID로 로그 존재 확인: projectUuid={}", LOG_PREFIX, projectUuid);
         try {
             SearchRequest searchRequest = new SearchRequest.Builder()
-                    .index(getProjectIndexPattern(projectUuid))
+                    .index(OpenSearchUtils.getProjectIndexPattern(projectUuid))
                     .query(q -> q.term(t -> t.field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
                             .value(FieldValue.of(projectUuid))))
                     .size(1)
@@ -338,7 +327,7 @@ public class LogRepositoryImpl implements LogRepository {
     private SearchRequest buildSearchRequestWithCursor(String projectUuid, Query query, List<SortOptions> sortOptions,
                                                        int size, String cursor) {
         SearchRequest.Builder builder = new SearchRequest.Builder()
-                .index(getProjectIndexPattern(projectUuid))
+                .index(OpenSearchUtils.getProjectIndexPattern(projectUuid))
                 .query(query)
                 .size(size)
                 .sort(sortOptions);
@@ -356,7 +345,7 @@ public class LogRepositoryImpl implements LogRepository {
      */
     private SearchRequest buildTraceSearchRequest(String projectUuid, Query query) {
         return new SearchRequest.Builder()
-                .index(getProjectIndexPattern(projectUuid))
+                .index(OpenSearchUtils.getProjectIndexPattern(projectUuid))
                 .query(query)
                 .size(MAX_TRACE_LOGS)
                 .sort(s -> s.field(f -> f.field(TIMESTAMP_FIELD).order(SortOrder.Asc)))
@@ -680,7 +669,7 @@ public class LogRepositoryImpl implements LogRepository {
 
             // 2. SearchRequest 생성 (size=0, 집계만 수행)
             SearchRequest searchRequest = SearchRequest.of(s -> s
-                    .index(getProjectIndexPattern(projectUuid))
+                    .index(OpenSearchUtils.getProjectIndexPattern(projectUuid))
                     .query(query)
                     .size(0)  // 문서는 반환하지 않음
             );

@@ -15,6 +15,7 @@ import S13P31A306.loglens.domain.component.constants.SourceType;
 import S13P31A306.loglens.domain.component.dto.MetricsData;
 import S13P31A306.loglens.domain.component.service.OpenSearchMetricsService;
 import S13P31A306.loglens.domain.dashboard.dto.FrontendMetricsSummary;
+import S13P31A306.loglens.global.utils.OpenSearchUtils;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -151,7 +152,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
         ));
 
         return SearchRequest.of(s -> s
-                .index(getProjectIndexPattern(projectUuid))
+                .index(OpenSearchUtils.getProjectIndexPattern(projectUuid))
                 .size(0)
                 .query(boolQuery)
                 .aggregations(BY_COMPONENT, a -> a
@@ -190,17 +191,6 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
     }
 
     /**
-     * 프로젝트별 인덱스 패턴을 반환
-     *
-     * @param projectUuid 프로젝트 UUID (하이픈 포함)
-     * @return "{projectUuid_with_underscores}_*" 형식의 인덱스 패턴
-     */
-    private String getProjectIndexPattern(String projectUuid) {
-        String sanitizedUuid = projectUuid.replace("-", "_");
-        return sanitizedUuid + "_*";
-    }
-
-    /**
      * 단일 컴포넌트 메트릭 조회 쿼리 생성 (Backend)
      */
     private SearchRequest buildComponentMetricsRequest(String projectUuid, String componentName) {
@@ -232,7 +222,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
         ));
 
         return SearchRequest.of(s -> s
-                .index(getProjectIndexPattern(projectUuid))  // ✅ 수정: 프로젝트별 인덱스 패턴 사용
+                .index(OpenSearchUtils.getProjectIndexPattern(projectUuid))  // ✅ 수정: 프로젝트별 인덱스 패턴 사용
                 .size(0)
                 .query(boolQuery)
                 .aggregations(TOTAL_CALLS, a -> a
@@ -271,7 +261,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
         );
 
         return SearchRequest.of(s -> s
-                .index(getProjectIndexPattern(projectUuid))
+                .index(OpenSearchUtils.getProjectIndexPattern(projectUuid))
                 .size(0)
                 .query(baseQuery)
                 // 전체 trace 수
