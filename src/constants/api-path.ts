@@ -80,4 +80,19 @@ export const API_PATH = {
 
   // 아키텍처 의존성 조회 (DB 정보)
   ARCHITECTURE_DEPENDENCIES: '/api/dashboards/dependencies/architecture',
+
+  // 알림 설정 조회,수정,생성
+  ALERT_CONFIG: '/api/alerts/config',
+
+  // 알림 읽음 처리
+  ALERT_READ: (alertId: number) => `/api/alerts/${alertId}/read`,
+
+  // 읽지 않은 알림 개수 조회
+  ALERT_UNREAD_COUNT: '/api/alerts/unread-count',
+
+  // 실시간 알림 스트리밍
+  ALERT_STREAM: '/api/alerts/stream',
+
+  // 알림 이력 조회
+  ALERT_HISTORY: '/api/alerts/histories',
 } as const;

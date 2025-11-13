@@ -1,7 +1,7 @@
 // src/pages/LogsPage.tsx
 
 import { useState, useCallback, useEffect } from 'react';
-import { searchLogs, connectLogStream } from '@/services/logService'; // connectLogStream 추가
+import { searchLogs } from '@/services/logService'; // connectLogStream 추가할 것, 현재 서버 부하로 인해 잠시 삭제.
 import { createJiraIssue } from '@/services/jiraService';
 import type { LogData, LogSearchParams } from '@/types/log';
 
@@ -31,13 +31,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useAuthStore } from '@/stores/authStore';
+// import { useAuthStore } from '@/stores/authStore';
 
 const LogsPage = () => {
   const { projectUuid: uuidFromParams } = useParams<{ projectUuid: string }>();
   const projectUuid = uuidFromParams;
 
-  const { accessToken } = useAuthStore();
+  // const { accessToken } = useAuthStore();
 
   const [logs, setLogs] = useState<LogData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -113,78 +113,78 @@ const LogsPage = () => {
   }, [projectUuid]);
 
   // --- 실시간 로그 스트리밍 (SSE) ---
-  useEffect(() => {
-    console.log('SSE useEffect 실행. 현재 accessToken:', accessToken);
+  // useEffect(() => {
+  //   console.log('SSE useEffect 실행. 현재 accessToken:', accessToken);
 
-    if (!projectUuid || !accessToken) {
-      console.warn('SSE 연결 중단. 이유:', {
-        projectUuid: Boolean(projectUuid),
-        accessToken: Boolean(accessToken),
-      });
-      return;
-    }
+  //   if (!projectUuid || !accessToken) {
+  //     console.warn('SSE 연결 중단. 이유:', {
+  //       projectUuid: Boolean(projectUuid),
+  //       accessToken: Boolean(accessToken),
+  //     });
+  //     return;
+  //   }
 
-    // 현재 검색 조건으로 SSE 파라미터 설정
-    const streamParams: LogSearchParams = {
-      projectUuid,
-      logLevel: criteria?.logLevel?.length ? criteria.logLevel : undefined,
-      sourceType: criteria?.sourceType?.length
-        ? criteria.sourceType
-        : undefined,
-      traceId: criteria?.traceId || undefined,
-      keyword: criteria?.keyword || undefined,
-    };
+  //   // 현재 검색 조건으로 SSE 파라미터 설정
+  //   const streamParams: LogSearchParams = {
+  //     projectUuid,
+  //     logLevel: criteria?.logLevel?.length ? criteria.logLevel : undefined,
+  //     sourceType: criteria?.sourceType?.length
+  //       ? criteria.sourceType
+  //       : undefined,
+  //     traceId: criteria?.traceId || undefined,
+  //     keyword: criteria?.keyword || undefined,
+  //   };
 
-    console.log('SSE 연결 시작...', streamParams);
-    const eventSource = connectLogStream(streamParams, accessToken);
+  //   console.log('SSE 연결 시작...', streamParams);
+  //   const eventSource = connectLogStream(streamParams, accessToken);
 
-    // 연결 성공
-    eventSource.onopen = () => {
-      console.log('실시간 로그 스트리밍 연결 성공 🟢');
-    };
+  //   // 연결 성공
+  //   eventSource.onopen = () => {
+  //     console.log('실시간 로그 스트리밍 연결 성공 🟢');
+  //   };
 
-    // 로그 업데이트 이벤트 수신
-    eventSource.addEventListener('log-update', (event: MessageEvent) => {
-      try {
-        const newLogs: LogData[] = JSON.parse(event.data);
-        if (Array.isArray(newLogs) && newLogs.length > 0) {
-          setLogs(prevLogs => {
-            // 중복 제거
-            const existingIds = new Set(prevLogs.map(log => log.logId));
-            const uniqueNewLogs = newLogs.filter(
-              log => !existingIds.has(log.logId),
-            );
+  //   // 로그 업데이트 이벤트 수신
+  //   eventSource.addEventListener('log-update', (event: MessageEvent) => {
+  //     try {
+  //       const newLogs: LogData[] = JSON.parse(event.data);
+  //       if (Array.isArray(newLogs) && newLogs.length > 0) {
+  //         setLogs(prevLogs => {
+  //           // 중복 제거
+  //           const existingIds = new Set(prevLogs.map(log => log.logId));
+  //           const uniqueNewLogs = newLogs.filter(
+  //             log => !existingIds.has(log.logId),
+  //           );
 
-            if (uniqueNewLogs.length === 0) {
-              return prevLogs;
-            }
+  //           if (uniqueNewLogs.length === 0) {
+  //             return prevLogs;
+  //           }
 
-            console.log(`새로운 로그 ${uniqueNewLogs.length}건 수신`);
-            return [...uniqueNewLogs, ...prevLogs];
-          });
-        }
-      } catch (error) {
-        console.error('SSE 로그 파싱 에러:', error);
-      }
-    });
+  //           console.log(`새로운 로그 ${uniqueNewLogs.length}건 수신`);
+  //           return [...uniqueNewLogs, ...prevLogs];
+  //         });
+  //       }
+  //     } catch (error) {
+  //       console.error('SSE 로그 파싱 에러:', error);
+  //     }
+  //   });
 
-    // 하트비트
-    eventSource.addEventListener('heartbeat', () => {
-      // console.log('💗'); // 너무 자주 찍히면 주석 처리
-    });
+  //   // 하트비트
+  //   eventSource.addEventListener('heartbeat', () => {
+  //     // console.log('💗'); // 너무 자주 찍히면 주석 처리
+  //   });
 
-    // 에러 발생 시
-    eventSource.onerror = err => {
-      console.error('SSE 연결 에러 🔴', err);
-      eventSource.close();
-    };
+  //   // 에러 발생 시
+  //   eventSource.onerror = err => {
+  //     console.error('SSE 연결 에러 🔴', err);
+  //     eventSource.close();
+  //   };
 
-    // 연결 끊기
-    return () => {
-      console.log('SSE 연결 종료');
-      eventSource.close();
-    };
-  }, [projectUuid, criteria, accessToken]);
+  //   // 연결 끊기
+  //   return () => {
+  //     console.log('SSE 연결 종료');
+  //     eventSource.close();
+  //   };
+  // }, [projectUuid, criteria, accessToken]);
 
   // 검색핸들러
   const handleSearch = (newCriteria: SearchCriteria) => {
