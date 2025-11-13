@@ -55,7 +55,8 @@ public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
                 successCount++;
             } catch (Exception e) {
                 failCount++;
-                log.error("{} 프로젝트 {} 집계 실패", LOG_PREFIX, project.getProjectUuid(), e);
+                log.error("{} 프로젝트 {} 집계 실패: {}", LOG_PREFIX, project.getProjectUuid(), e.getMessage());
+                log.debug("{} 프로젝트 {} 상세 오류", LOG_PREFIX, project.getProjectUuid(), e);
             }
         }
 
@@ -173,11 +174,19 @@ public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
      * @return Map<String, Long> log_level별 카운트
      */
     private Map<String, Long> extractLogLevelCounts(SearchResponse<Void> response) {
-        Aggregate aggregation = response.aggregations().get("log_level_count");
+        Map<String, Aggregate> aggregations = response.aggregations();
 
-        // aggregation이 없는 경우 (로그가 없음)
+        // aggregations 자체가 없거나 비어있는 경우
+        if (Objects.isNull(aggregations) || aggregations.isEmpty()) {
+            log.debug("{} aggregations가 없음 - 해당 시간 범위에 로그 없음", LOG_PREFIX);
+            return Map.of();
+        }
+
+        Aggregate aggregation = aggregations.get("log_level_count");
+
+        // 특정 aggregation이 없는 경우 (로그가 없음)
         if (Objects.isNull(aggregation)) {
-            log.debug("{} log_level_count aggregation이 null - 로그 없음", LOG_PREFIX);
+            log.debug("{} log_level_count aggregation이 null - 해당 시간 범위에 로그 없음", LOG_PREFIX);
             return Map.of();
         }
 
@@ -198,11 +207,19 @@ public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
      * @return Integer 평균 응답시간 (ms)
      */
     private Integer extractAvgResponseTime(SearchResponse<Void> response) {
-        Aggregate aggregation = response.aggregations().get("avg_duration");
+        Map<String, Aggregate> aggregations = response.aggregations();
 
-        // aggregation이 없는 경우 (로그가 없음)
+        // aggregations 자체가 없거나 비어있는 경우
+        if (Objects.isNull(aggregations) || aggregations.isEmpty()) {
+            log.debug("{} aggregations가 없음 - 해당 시간 범위에 로그 없음", LOG_PREFIX);
+            return 0;
+        }
+
+        Aggregate aggregation = aggregations.get("avg_duration");
+
+        // 특정 aggregation이 없는 경우 (로그가 없음)
         if (Objects.isNull(aggregation)) {
-            log.debug("{} avg_duration aggregation이 null - 로그 없음", LOG_PREFIX);
+            log.debug("{} avg_duration aggregation이 null - 해당 시간 범위에 로그 없음", LOG_PREFIX);
             return 0;
         }
 
