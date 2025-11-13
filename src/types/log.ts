@@ -29,7 +29,7 @@ export interface LogData {
   methodName: string | null;
   threadName: string;
   duration: number | null;
-  componentName:string;
+  componentName: string;
 }
 
 /**
