@@ -19,7 +19,8 @@ class LogFormatter {
   static toConsole(logEntry: LogEntry): string {
     const depth: number = Math.max(0, LightZone.getDepth() - 1);
     const indent: string = '|'.repeat(depth);
-    const arrow: string = '→';
+    // executionTimeMs가 null이면 시작(→), 숫자이면 종료(←)
+    const arrow: string = logEntry.executionTimeMs === null ? '→' : '←';
 
     const color: string = this.COLORS[logEntry.level];
     const reset: string = this.COLORS.RESET;
