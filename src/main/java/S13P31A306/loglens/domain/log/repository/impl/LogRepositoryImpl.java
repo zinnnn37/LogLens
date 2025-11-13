@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.log.repository.impl;
 
+import S13P31A306.loglens.domain.component.constants.OpenSearchField;
 import S13P31A306.loglens.domain.log.constants.LogErrorCode;
 import S13P31A306.loglens.domain.log.dto.internal.LogSearchResult;
 import S13P31A306.loglens.domain.log.dto.internal.TraceLogSearchResult;
@@ -47,10 +48,21 @@ public class LogRepositoryImpl implements LogRepository {
 
     private final OpenSearchClient openSearchClient;
     private final ObjectMapper objectMapper;
-    private static final String LOG_INDEX_PATTERN = "logs-*";
     private static final String TIMESTAMP_FIELD = "timestamp";
     private static final String ID_FIELD = "_id";
     private static final int MAX_TRACE_LOGS = 1000;
+
+    /**
+     * 프로젝트별 인덱스 패턴을 반환
+     *
+     * @param projectUuid 프로젝트 UUID (하이픈 포함)
+     * @return "{projectUuid_with_underscores}-*" 형식의 인덱스 패턴
+     */
+    private String getProjectIndexPattern(String projectUuid) {
+        // Logstash에서 하이픈을 언더스코어로 변환하므로 동일하게 변환
+        String sanitizedUuid = projectUuid.replace("-", "_");
+        return sanitizedUuid + "_*";
+    }
 
     @Override
     public LogSearchResult findWithCursor(String projectUuid, LogSearchRequest request) {
@@ -65,13 +77,14 @@ public class LogRepositoryImpl implements LogRepository {
         List<SortOptions> sortOptions = buildSortOptions(request);
 
         // 3. SearchRequest 빌드
-        SearchRequest searchRequest = buildSearchRequestWithCursor(query, sortOptions, querySize, request.getCursor());
+        SearchRequest searchRequest = buildSearchRequestWithCursor(projectUuid, query, sortOptions, querySize,
+                request.getCursor());
 
         // 4. OpenSearch 쿼리 실행
         try {
             // 쿼리 디버깅을 위한 상세 로그
             log.debug("{} 실제 projectUuid 값: [{}]", LOG_PREFIX, projectUuid);
-            log.debug("{} 검색 인덱스: {}", LOG_PREFIX, LOG_INDEX_PATTERN);
+            log.debug("{} 검색 인덱스: {}", LOG_PREFIX, getProjectIndexPattern(projectUuid));
             log.debug("{} 쿼리 크기: {}", LOG_PREFIX, querySize);
 
             // OpenSearch 쿼리를 JSON으로 직렬화하여 출력
@@ -99,11 +112,108 @@ public class LogRepositoryImpl implements LogRepository {
     @Override
     public TraceLogSearchResult findByTraceId(String projectUuid, LogSearchRequest request) {
         log.debug("{} OpenSearch에서 Trace ID 기반 로그 조회 시작: projectUuid={}, request={}", LOG_PREFIX, projectUuid, request);
+
         // 1. 검색 쿼리 생성
         Query query = buildSearchQuery(projectUuid, request);
 
         // 2. SearchRequest 빌드 (Aggregation 포함)
-        SearchRequest searchRequest = buildTraceSearchRequest(query);
+        SearchRequest searchRequest = buildTraceSearchRequest(projectUuid, query);
+
+        // ============================================================
+        // 🔍 상세 디버깅 로그 시작
+        // ============================================================
+        log.debug("{} ============================================", LOG_PREFIX);
+        log.debug("{} Trace ID 검색 상세 디버깅 정보", LOG_PREFIX);
+        log.debug("{} ============================================", LOG_PREFIX);
+        log.debug("{} [기본 정보]", LOG_PREFIX);
+        log.debug("{}   - 인덱스 패턴: {}", LOG_PREFIX, getProjectIndexPattern(projectUuid));
+        log.debug("{}   - Project UUID (원본): {}", LOG_PREFIX, projectUuid);
+        log.debug("{}   - Project UUID (변환): {}", LOG_PREFIX, projectUuid.replace("-", "_"));
+        log.debug("{}   - Trace ID: {}", LOG_PREFIX, request.getTraceId());
+        log.debug("{}   - 시작 시간: {}", LOG_PREFIX, request.getStartTime());
+        log.debug("{}   - 종료 시간: {}", LOG_PREFIX, request.getEndTime());
+        log.debug("{}   - 키워드: {}", LOG_PREFIX, request.getKeyword());
+
+        log.debug("{} [SearchRequest 정보]", LOG_PREFIX);
+        log.debug("{}   - 인덱스: {}", LOG_PREFIX, searchRequest.index());
+        log.debug("{}   - Size: {}", LOG_PREFIX, searchRequest.size());
+        log.debug("{}   - Sort: {}", LOG_PREFIX, searchRequest.sort());
+
+        log.debug("{} [OpenSearchField 필드명]", LOG_PREFIX);
+        log.debug("{}   - PROJECT_UUID_KEYWORD: {}", LOG_PREFIX, OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName());
+        log.debug("{}   - TRACE_ID: {}", LOG_PREFIX, OpenSearchField.TRACE_ID.getFieldName());
+        log.debug("{}   - LOG_LEVEL: {}", LOG_PREFIX, OpenSearchField.LOG_LEVEL.getFieldName());
+        log.debug("{}   - SOURCE_TYPE: {}", LOG_PREFIX, OpenSearchField.SOURCE_TYPE.getFieldName());
+
+        // Query 상세 분석
+        if (query.isBool()) {
+            BoolQuery boolQuery = query.bool();
+            log.debug("{} [Bool Query 구조]", LOG_PREFIX);
+            log.debug("{}   - Filter 개수: {}", LOG_PREFIX, boolQuery.filter().size());
+            log.debug("{}   - Must 개수: {}", LOG_PREFIX, boolQuery.must().size());
+            log.debug("{}   - Should 개수: {}", LOG_PREFIX, boolQuery.should().size());
+            log.debug("{}   - MustNot 개수: {}", LOG_PREFIX, boolQuery.mustNot().size());
+
+            // 각 필터 상세 출력
+            for (int i = 0; i < boolQuery.filter().size(); i++) {
+                Query filter = boolQuery.filter().get(i);
+                log.debug("{} [Filter[{}]]", LOG_PREFIX, i);
+                log.debug("{}   - Type: term={}, terms={}, range={}, match={}",
+                        LOG_PREFIX, filter.isTerm(), filter.isTerms(), filter.isRange(), filter.isMatch());
+
+                if (filter.isTerm()) {
+                    String field = filter.term().field();
+                    FieldValue fieldValue = filter.term().value();
+                    log.debug("{}   - Term Field: {}", LOG_PREFIX, field);
+
+                    String value = null;
+                    if (fieldValue.isString()) {
+                        value = fieldValue.stringValue();
+                    } else if (fieldValue.isLong()) {
+                        value = String.valueOf(fieldValue.longValue());
+                    } else if (fieldValue.isDouble()) {
+                        value = String.valueOf(fieldValue.doubleValue());
+                    } else if (fieldValue.isBoolean()) {
+                        value = String.valueOf(fieldValue.booleanValue());
+                    }
+                    log.debug("{}   - Term Value: {}", LOG_PREFIX, value);
+                }
+
+                if (filter.isTerms()) {
+                    log.debug("{}   - Terms Field: {}", LOG_PREFIX, filter.terms().field());
+                    log.debug("{}   - Terms Values: {}", LOG_PREFIX, filter.terms().terms());
+                }
+
+                if (filter.isRange()) {
+                    log.debug("{}   - Range Field: {}", LOG_PREFIX, filter.range().field());
+                    log.debug("{}   - Range GTE: {}", LOG_PREFIX, filter.range().gte());
+                    log.debug("{}   - Range LTE: {}", LOG_PREFIX, filter.range().lte());
+                }
+
+                if (filter.isMatch()) {
+                    log.debug("{}   - Match Field: {}", LOG_PREFIX, filter.match().field());
+                    log.debug("{}   - Match Query: {}", LOG_PREFIX, filter.match().query());
+                }
+            }
+
+            // Must 쿼리 출력
+            for (int i = 0; i < boolQuery.must().size(); i++) {
+                Query must = boolQuery.must().get(i);
+                log.debug("{} [Must[{}]]", LOG_PREFIX, i);
+                log.debug("{}   - Type: term={}, terms={}, range={}, match={}",
+                        LOG_PREFIX, must.isTerm(), must.isTerms(), must.isRange(), must.isMatch());
+
+                if (must.isMatch()) {
+                    log.debug("{}   - Match Field: {}", LOG_PREFIX, must.match().field());
+                    log.debug("{}   - Match Query: {}", LOG_PREFIX, must.match().query());
+                }
+            }
+        }
+
+        log.debug("{} ============================================", LOG_PREFIX);
+        // ============================================================
+        // 🔍 상세 디버깅 로그 끝
+        // ============================================================
 
         // 3. OpenSearch 쿼리 실행
         try {
@@ -120,7 +230,78 @@ public class LogRepositoryImpl implements LogRepository {
             return result;
         } catch (IOException e) {
             log.error("{} OpenSearch findByTraceId 중 에러 발생", LOG_PREFIX, e);
+            log.error("{} 에러 상세: {}", LOG_PREFIX, e.getMessage());
+            if (e.getCause() != null) {
+                log.error("{} 에러 원인: {}", LOG_PREFIX, e.getCause().getMessage());
+            }
             throw new BusinessException(GlobalErrorCode.OPENSEARCH_OPERATION_FAILED, null, e);
+        }
+    }
+
+    @Override
+    public java.util.Optional<Log> findByLogId(Long logId, String projectUuid) {
+        log.debug("{} OpenSearch에서 로그 ID로 조회: logId={}, projectUuid={}", LOG_PREFIX, logId, projectUuid);
+
+        try {
+            // 쿼리 생성: log_id와 project_uuid 매칭
+            Query query = Query.of(q -> q.bool(b -> b
+                    .filter(f -> f.term(t -> t
+                            .field(OpenSearchField.LOG_ID.getFieldName())
+                            .value(FieldValue.of(logId))))
+                    .filter(f -> f.term(t -> t
+                            .field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
+                            .value(FieldValue.of(projectUuid))))));
+
+            SearchRequest searchRequest = new SearchRequest.Builder()
+                    .index(getProjectIndexPattern(projectUuid))
+                    .query(query)
+                    .size(1)
+                    .build();
+
+            SearchResponse<Log> response = openSearchClient.search(searchRequest, Log.class);
+
+            if (response.hits().hits().isEmpty()) {
+                log.debug("{} 로그를 찾을 수 없음: logId={}, projectUuid={}", LOG_PREFIX, logId, projectUuid);
+                return java.util.Optional.empty();
+            }
+
+            Hit<Log> hit = response.hits().hits().get(0);
+            Log logEntity = hit.source();
+            if (logEntity != null) {
+                logEntity.setId(hit.id()); // OpenSearch document _id 설정
+                log.debug("{} 로그 조회 성공: logId={}, _id={}", LOG_PREFIX, logId, hit.id());
+                return java.util.Optional.of(logEntity);
+            }
+
+            return java.util.Optional.empty();
+
+        } catch (IOException e) {
+            log.error("{} OpenSearch findByLogId 중 에러 발생: logId={}, projectUuid={}",
+                    LOG_PREFIX, logId, projectUuid, e);
+            throw new BusinessException(GlobalErrorCode.OPENSEARCH_OPERATION_FAILED, null, e);
+        }
+    }
+
+    @Override
+    public boolean existsByProjectUuid(String projectUuid) {
+        log.debug("{} 프로젝트 UUID로 로그 존재 확인: projectUuid={}", LOG_PREFIX, projectUuid);
+        try {
+            SearchRequest searchRequest = new SearchRequest.Builder()
+                    .index(getProjectIndexPattern(projectUuid))
+                    .query(q -> q.term(t -> t.field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
+                            .value(FieldValue.of(projectUuid))))
+                    .size(1)
+                    .build();
+
+            SearchResponse<Log> response = openSearchClient.search(searchRequest, Log.class);
+
+            long totalHits = Objects.requireNonNull(response.hits().total()).value();
+            log.debug("{} OpenSearch 검색 결과: projectUuid={}, totalHits={}", LOG_PREFIX, projectUuid, totalHits);
+
+            return totalHits > 0;
+        } catch (IOException e) {
+            log.error("{} OpenSearch 검색 중 오류 발생: projectUuid={}", LOG_PREFIX, projectUuid, e);
+            return false;
         }
     }
 
@@ -154,10 +335,10 @@ public class LogRepositoryImpl implements LogRepository {
     /**
      * 커서 기반 페이지네이션 SearchRequest 생성
      */
-    private SearchRequest buildSearchRequestWithCursor(Query query, List<SortOptions> sortOptions,
+    private SearchRequest buildSearchRequestWithCursor(String projectUuid, Query query, List<SortOptions> sortOptions,
                                                        int size, String cursor) {
         SearchRequest.Builder builder = new SearchRequest.Builder()
-                .index(LOG_INDEX_PATTERN)
+                .index(getProjectIndexPattern(projectUuid))
                 .query(query)
                 .size(size)
                 .sort(sortOptions);
@@ -173,15 +354,15 @@ public class LogRepositoryImpl implements LogRepository {
     /**
      * TraceId 조회용 SearchRequest 생성 (Aggregation 포함)
      */
-    private SearchRequest buildTraceSearchRequest(Query query) {
+    private SearchRequest buildTraceSearchRequest(String projectUuid, Query query) {
         return new SearchRequest.Builder()
-                .index(LOG_INDEX_PATTERN)
+                .index(getProjectIndexPattern(projectUuid))
                 .query(query)
                 .size(MAX_TRACE_LOGS)
                 .sort(s -> s.field(f -> f.field(TIMESTAMP_FIELD).order(SortOrder.Asc)))
                 .aggregations("min_timestamp", a -> a.min(m -> m.field(TIMESTAMP_FIELD)))
                 .aggregations("max_timestamp", a -> a.max(m -> m.field(TIMESTAMP_FIELD)))
-                .aggregations("level_counts", a -> a.terms(t -> t.field("log_level")))
+                .aggregations("level_counts", a -> a.terms(t -> t.field(OpenSearchField.LOG_LEVEL.getFieldName())))
                 .build();
     }
 
@@ -216,10 +397,10 @@ public class LogRepositoryImpl implements LogRepository {
     private List<Log> extractLogsFromHits(List<Hit<Log>> hits) {
         List<Log> logs = new ArrayList<>();
         for (Hit<Log> hit : hits) {
-            Log log = hit.source();
-            if (log != null) {
-                log.setId(hit.id());
-                logs.add(log);
+            Log logEntity = hit.source();
+            if (Objects.nonNull(logEntity)) {
+                logEntity.setId(hit.id());
+                logs.add(logEntity);
             }
         }
         return logs;
@@ -280,9 +461,9 @@ public class LogRepositoryImpl implements LogRepository {
         Aggregate agg = aggs.get(aggName);
         Double millis = null;
 
-        if (agg.isMin() && agg.min() != null) {
+        if (agg.isMin() && Objects.nonNull(agg.min())) {
             millis = agg.min().value();
-        } else if (agg.isMax() && agg.max() != null) {
+        } else if (agg.isMax() && Objects.nonNull(agg.max())) {
             millis = agg.max().value();
         }
 
@@ -296,7 +477,7 @@ public class LogRepositoryImpl implements LogRepository {
      * 시간 차이 계산 (밀리초)
      */
     private long calculateDuration(LocalDateTime startTime, LocalDateTime endTime) {
-        if (!Objects.isNull(startTime) && !Objects.isNull(endTime)) {
+        if (Objects.nonNull(startTime) && Objects.nonNull(endTime)) {
             return java.time.Duration.between(startTime, endTime).toMillis();
         }
         return 0;
@@ -330,7 +511,7 @@ public class LogRepositoryImpl implements LogRepository {
      */
     private List<FieldValue> convertCursorToFieldValues(String cursor) {
         Object[] searchAfterValues = decodeCursor(cursor);
-        if (searchAfterValues == null) {
+        if (Objects.isNull(searchAfterValues)) {
             return List.of();
         }
         return Arrays.stream(searchAfterValues)
@@ -393,7 +574,8 @@ public class LogRepositoryImpl implements LogRepository {
      * 프로젝트 UUID 필터 추가
      */
     private void addProjectFilter(BoolQuery.Builder builder, String projectUuid) {
-        builder.filter(q -> q.term(t -> t.field("project_uuid").value(FieldValue.of(projectUuid))));
+        builder.filter(q -> q.term(
+                t -> t.field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName()).value(FieldValue.of(projectUuid))));
     }
 
     /**
@@ -401,7 +583,8 @@ public class LogRepositoryImpl implements LogRepository {
      */
     private void addTraceIdFilter(BoolQuery.Builder builder, String traceId) {
         if (Objects.nonNull(traceId) && !traceId.isEmpty()) {
-            builder.filter(q -> q.term(t -> t.field("trace_id").value(FieldValue.of(traceId))));
+            builder.filter(
+                    q -> q.term(t -> t.field(OpenSearchField.TRACE_ID.getFieldName()).value(FieldValue.of(traceId))));
         }
     }
 
@@ -419,7 +602,7 @@ public class LogRepositoryImpl implements LogRepository {
                 .collect(Collectors.toList());
 
         builder.filter(q -> q.terms(t -> t
-                .field("log_level")
+                .field(OpenSearchField.LOG_LEVEL.getFieldName())
                 .terms(new TermsQueryField.Builder().value(levels).build())));
     }
 
@@ -437,7 +620,7 @@ public class LogRepositoryImpl implements LogRepository {
                 .toList();
 
         builder.filter(q -> q.terms(t -> t
-                .field("source_type")
+                .field(OpenSearchField.SOURCE_TYPE.getFieldName())
                 .terms(new TermsQueryField.Builder().value(sources).build())));
     }
 
@@ -467,6 +650,54 @@ public class LogRepositoryImpl implements LogRepository {
     private void addKeywordFilter(BoolQuery.Builder builder, String keyword) {
         if (Objects.nonNull(keyword) && !keyword.isEmpty()) {
             builder.must(q -> q.match(m -> m.field("message").query(FieldValue.of(keyword))));
+        }
+    }
+
+    @Override
+    public long countErrorLogsByProjectUuidAndTimeRange(
+            String projectUuid,
+            LocalDateTime startTime,
+            LocalDateTime endTime) {
+
+        log.debug("{} ERROR 로그 개수 조회: projectUuid={}, startTime={}, endTime={}",
+                LOG_PREFIX, projectUuid, startTime, endTime);
+
+        try {
+            // 1. Bool Query 생성: project_uuid + log_level=ERROR + timestamp 범위
+            Query query = Query.of(q -> q.bool(b -> b
+                    .filter(f -> f.term(t -> t
+                            .field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
+                            .value(FieldValue.of(projectUuid))))
+                    .filter(f -> f.term(t -> t
+                            .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                            .value(FieldValue.of("ERROR"))))
+                    .filter(f -> f.range(r -> r
+                            .field(TIMESTAMP_FIELD)
+                            .gte(JsonData.of(startTime.atOffset(ZoneOffset.UTC).toString()))
+                            .lte(JsonData.of(endTime.atOffset(ZoneOffset.UTC).toString()))
+                    ))
+            ));
+
+            // 2. SearchRequest 생성 (size=0, 집계만 수행)
+            SearchRequest searchRequest = SearchRequest.of(s -> s
+                    .index(getProjectIndexPattern(projectUuid))
+                    .query(query)
+                    .size(0)  // 문서는 반환하지 않음
+            );
+
+            // 3. OpenSearch 쿼리 실행
+            SearchResponse<Void> response = openSearchClient.search(searchRequest, Void.class);
+
+            long errorCount = Objects.requireNonNull(response.hits().total()).value();
+
+            log.debug("{} ERROR 로그 개수 조회 완료: projectUuid={}, errorCount={}",
+                    LOG_PREFIX, projectUuid, errorCount);
+
+            return errorCount;
+
+        } catch (IOException e) {
+            log.error("{} ERROR 로그 개수 조회 실패: projectUuid={}", LOG_PREFIX, projectUuid, e);
+            throw new BusinessException(GlobalErrorCode.OPENSEARCH_OPERATION_FAILED, null, e);
         }
     }
 }
