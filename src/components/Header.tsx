@@ -177,7 +177,7 @@ const Header = ({ className, ...props }: HeaderProps) => {
           ))}
         </ul>
       </nav>
-      
+
       {/* 알림 버튼 누르면 나오는 영역 */}
       <Popover open={isAlertPopoverOpen} onOpenChange={handlePopoverOpenChange}>
         <PopoverTrigger asChild>
@@ -188,7 +188,7 @@ const Header = ({ className, ...props }: HeaderProps) => {
           >
             <Bell className="h-5 w-5" />
             {hasNewNotification && (
-              <span className="absolute -top-1 -right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-card" />
+              <span className="ring-card absolute -top-1 -right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2" />
             )}
           </button>
         </PopoverTrigger>

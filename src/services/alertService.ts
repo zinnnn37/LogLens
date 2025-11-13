@@ -18,7 +18,7 @@ import type {
   AlertSseParams,
   AlertHistoryParams,
   AlertHistoryResponse,
-} from '@/types/alert'; 
+} from '@/types/alert';
 
 /**
  * 알림 설정 조회 (GET)
@@ -53,7 +53,9 @@ export const updateAlertConfig = (
 export const readAlert = (
   params: ReadAlertParams,
 ): Promise<ReadAlertResponse> => {
-  return apiClient.patch<ReadAlertResponse>(API_PATH.ALERT_READ(params.alertId));
+  return apiClient.patch<ReadAlertResponse>(
+    API_PATH.ALERT_READ(params.alertId),
+  );
 };
 
 /**
@@ -82,7 +84,7 @@ export const getAlertHistory = (
  */
 export const connectAlertStream = (
   params: AlertSseParams,
-  accessToken: string, 
+  accessToken: string,
 ): EventSourcePolyfill => {
   const searchParams = new URLSearchParams();
 
@@ -97,6 +99,6 @@ export const connectAlertStream = (
   const url = `${import.meta.env.VITE_API_BASE_URL}${API_PATH.ALERT_STREAM}?${searchParams.toString()}`;
 
   return new EventSourcePolyfill(url, {
-    heartbeatTimeout: 3600000, 
+    heartbeatTimeout: 3600000,
   });
 };

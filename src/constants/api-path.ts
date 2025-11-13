@@ -82,7 +82,7 @@ export const API_PATH = {
   ALERT_CONFIG: '/api/alerts/config',
 
   // 알림 읽음 처리
-  ALERT_READ: (alertId : number) => `/api/alerts/${alertId}/read`,
+  ALERT_READ: (alertId: number) => `/api/alerts/${alertId}/read`,
 
   // 읽지 않은 알림 개수 조회
   ALERT_UNREAD_COUNT: '/api/alerts/unread-count',
@@ -92,6 +92,4 @@ export const API_PATH = {
 
   // 알림 이력 조회
   ALERT_HISTORY: '/api/alerts/histories',
-
-
 } as const;

@@ -1,7 +1,7 @@
 // src/pages/LogsPage.tsx
 
 import { useState, useCallback, useEffect } from 'react';
-import { searchLogs,  } from '@/services/logService'; // connectLogStream 추가할 것, 현재 서버 부하로 인해 잠시 삭제.
+import { searchLogs } from '@/services/logService'; // connectLogStream 추가할 것, 현재 서버 부하로 인해 잠시 삭제.
 import { createJiraIssue } from '@/services/jiraService';
 import type { LogData, LogSearchParams } from '@/types/log';
 

@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getAlertHistory, readAlert } from '@/services/alertService';
-import type {
-  AlertHistoryItem,
-  AlertHistoryResponse,
-} from '@/types/alert';
+import type { AlertHistoryItem, AlertHistoryResponse } from '@/types/alert';
 import { Settings, BellRing } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AlertConfigModal } from '@/components/modal/AlertConfigModal';

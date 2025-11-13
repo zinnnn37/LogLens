@@ -83,12 +83,11 @@ export interface AlertSseParams {
 export interface AlertSseEventData {
   id: number;
   alertMessage: string;
-  alertTime: string; 
+  alertTime: string;
   resolvedYN: 'Y' | 'N';
-  logReference: string; 
+  logReference: string;
   projectUuid: string;
 }
-
 
 // 알림 이력 조회
 export interface AlertHistoryParams {
@@ -99,9 +98,9 @@ export interface AlertHistoryParams {
 export interface AlertHistoryItem {
   id: number;
   alertMessage: string;
-  alertTime: string; 
+  alertTime: string;
   resolvedYN: 'Y' | 'N';
-  logReference: string; 
+  logReference: string;
   projectUuid: string;
 }
 
