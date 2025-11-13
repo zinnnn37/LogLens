@@ -2,7 +2,13 @@ package S13P31A306.loglens.domain.dashboard.controller.impl;
 
 import S13P31A306.loglens.domain.dashboard.constants.DashboardSuccessCode;
 import S13P31A306.loglens.domain.dashboard.controller.DashboardApi;
-import S13P31A306.loglens.domain.dashboard.dto.response.*;
+import S13P31A306.loglens.domain.dashboard.dto.response.ApiEndpointResponse;
+import S13P31A306.loglens.domain.dashboard.dto.response.ComponentDependencyResponse;
+import S13P31A306.loglens.domain.dashboard.dto.response.DashboardOverviewResponse;
+import S13P31A306.loglens.domain.dashboard.dto.response.DatabaseComponentResponse;
+import S13P31A306.loglens.domain.dashboard.dto.response.HeatmapResponse;
+import S13P31A306.loglens.domain.dashboard.dto.response.ProjectComponentsResponse;
+import S13P31A306.loglens.domain.dashboard.dto.response.TopFrequentErrorsResponse;
 import S13P31A306.loglens.domain.dashboard.service.ApiEndpointService;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
 import S13P31A306.loglens.domain.dashboard.service.HeatmapService;
@@ -15,7 +21,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @RestController
@@ -61,7 +71,8 @@ public class DashboardController implements DashboardApi {
     ) {
         log.info("{} 자주 발생하는 에러 TOP {} api 호출", LOG_PREFIX, limit);
 
-        TopFrequentErrorsResponse response = topFrequentErrorsService.getTopFrequentErrors(projectUuid, startTime, endTime, limit);
+        TopFrequentErrorsResponse response = topFrequentErrorsService.getTopFrequentErrors(projectUuid, startTime,
+                endTime, limit);
         return ApiResponseFactory.success(
                 DashboardSuccessCode.FREQUENT_ERROR_RETRIEVED,
                 response
@@ -81,7 +92,8 @@ public class DashboardController implements DashboardApi {
     ) {
         log.info("{} API 통계 {}개 호출", LOG_PREFIX, limit);
 
-        ApiEndpointResponse response = apiEndpointService.getApiEndpointStatistics(projectUuid, startTime, endTime, limit);
+        ApiEndpointResponse response = apiEndpointService.getApiEndpointStatistics(projectUuid, startTime, endTime,
+                limit);
         return ApiResponseFactory.success(
                 DashboardSuccessCode.API_STATISTICS_RETRIEVED,
                 response
@@ -89,35 +101,17 @@ public class DashboardController implements DashboardApi {
     }
 
     @Override
+    @GetMapping("/statistics/logs/heatmap/{projectUuid}")
     public ResponseEntity<? extends BaseResponse> getHeatmap(
-            @ValidUuid @RequestParam String projectUuid,
+            @PathVariable String projectUuid,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime,
-            @RequestParam(required = false) String logLevel
+            @RequestParam(defaultValue = "ALL") String logLevel
     ) {
         log.info("{} 히트맵 통계 호출: projectUuid={}", LOG_PREFIX, projectUuid);
 
         HeatmapResponse response = heatmapService.getLogHeatmap(projectUuid, startTime, endTime, logLevel);
 
-        return ApiResponseFactory.success(
-                DashboardSuccessCode.HEATMAP_RETRIEVED,
-                response
-        );
-    }
-
-    /**
-     * 로그 히트맵 조회
-     */
-    @GetMapping("/statistics/logs/heatmap")
-    public ResponseEntity<? extends BaseResponse> getLogHeatmap(
-            @ValidUuid @RequestParam String projectUuid,
-            @RequestParam(required = false) String startTime,
-            @RequestParam(required = false) String endTime,
-            @RequestParam(required = false) String logLevel
-    ) {
-        log.info("{} 히트맵 조회 api 호출", LOG_PREFIX);
-
-        HeatmapResponse response = heatmapService.getLogHeatmap(projectUuid, startTime, endTime, logLevel);
         return ApiResponseFactory.success(
                 DashboardSuccessCode.HEATMAP_RETRIEVED,
                 response
