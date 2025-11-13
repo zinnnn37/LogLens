@@ -285,8 +285,6 @@ class LogServiceImplTest {
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.getLogId()).isEqualTo(logId);
-            assertThat(result.getMessage()).isEqualTo("NullPointerException occurred");
             assertThat(result.getAnalysis()).isNotNull();
             assertThat(result.getAnalysis().getSummary()).isEqualTo("NULL 참조 에러 발생");
             assertThat(result.getFromCache()).isTrue();
@@ -328,7 +326,6 @@ class LogServiceImplTest {
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.getLogId()).isEqualTo(logId);
             assertThat(result.getAnalysis()).isNotNull();
             assertThat(result.getAnalysis().getSummary()).isEqualTo("데이터베이스 연결 타임아웃");
             assertThat(result.getFromCache()).isFalse();
@@ -356,8 +353,6 @@ class LogServiceImplTest {
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.getLogId()).isEqualTo(logId);
-            assertThat(result.getMessage()).isEqualTo("Test error");
             assertThat(result.getAnalysis()).isNull(); // 분석 결과 없음
             assertThat(result.getFromCache()).isNull();
 

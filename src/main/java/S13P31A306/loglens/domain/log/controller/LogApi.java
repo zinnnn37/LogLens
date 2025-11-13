@@ -57,43 +57,69 @@ public interface LogApi {
                                                               "data": {
                                                                 "logs": [
                                                                   {
-                                                                    "logId": 2108310292,
-                                                                    "traceId": "6beef638-92dd-4c42-9657-5ed08579cd92",
+                                                                    "logId": 2261174186,
+                                                                    "traceId": "fde75789-e22f-4f9f-b139-877115810ba7",
                                                                     "logLevel": "INFO",
                                                                     "sourceType": "BE",
-                                                                    "message": "Response completed: doFilter",
-                                                                    "timestamp": "2025-11-12T20:14:08.109Z",
-                                                                    "logger": "com.example.demo.global.filter.CorsFilter",
-                                                                    "layer": "Other",
+                                                                    "message": "Response completed: existsByEmail",
+                                                                    "timestamp": "2025-11-13T14:08:42.574Z",
+                                                                    "logger": "com.example.demo.domain.user.repository.UserJpaRepository",
+                                                                    "layer": "Repository",
+                                                                    "comment": "thread: http-nio-8081-exec-3, app: demo, pid: 85986",
                                                                     "serviceName": "Loglens",
-                                                                    "methodName": "doFilter",
-                                                                    "threadName": "http-nio-8081-exec-4",
+                                                                    "methodName": "existsByEmail",
+                                                                    "threadName": "http-nio-8081-exec-3",
                                                                     "requesterIp": "127.0.0.1",
-                                                                    "duration": 26
+                                                                    "duration": 5,
+                                                                    "logDetails": {
+                                                                      "response_status": 200,
+                                                                      "response_body": {
+                                                                        "result": "true",
+                                                                        "method": "existsByEmail",
+                                                                        "http": {
+                                                                          "endpoint": "/users",
+                                                                          "method": "POST",
+                                                                          "statusCode": 200
+                                                                        }
+                                                                      }
+                                                                    }
                                                                   },
                                                                   {
-                                                                    "logId": 2066677263,
-                                                                    "traceId": "6beef638-92dd-4c42-9657-5ed08579cd92",
+                                                                    "logId": 450494601,
+                                                                    "traceId": "fde75789-e22f-4f9f-b139-877115810ba7",
                                                                     "logLevel": "INFO",
                                                                     "sourceType": "BE",
-                                                                    "message": "사용자가 생성되었습니다",
-                                                                    "timestamp": "2025-11-12T20:14:08.108Z",
-                                                                    "logger": "com.example.demo.domain.user.controller.UserController",
-                                                                    "layer": "Controller",
+                                                                    "message": "Request received: existsByEmail",
+                                                                    "timestamp": "2025-11-13T14:08:42.569Z",
+                                                                    "logger": "com.example.demo.domain.user.repository.UserJpaRepository",
+                                                                    "layer": "Repository",
+                                                                    "comment": "thread: http-nio-8081-exec-3, app: demo, pid: 85986",
                                                                     "serviceName": "Loglens",
-                                                                    "methodName": null,
-                                                                    "threadName": "http-nio-8081-exec-4",
+                                                                    "methodName": "existsByEmail",
+                                                                    "threadName": "http-nio-8081-exec-3",
                                                                     "requesterIp": "127.0.0.1",
-                                                                    "duration": 21
+                                                                    "duration": null,
+                                                                    "logDetails": {
+                                                                      "request_body": {
+                                                                        "parameters": {
+                                                                          "email": "developer2@example.com"
+                                                                        },
+                                                                        "http": {
+                                                                          "endpoint": "/users",
+                                                                          "method": "POST"
+                                                                        },
+                                                                        "method": "existsByEmail"
+                                                                      }
+                                                                    }
                                                                   }
                                                                 ],
                                                                 "pagination": {
-                                                                  "nextCursor": "WzE3NjI5Nzg0NDgxMDgsIjk3NDBjNGM1NzI1NDZkODA0ZmI3MGY0MTY0MDIwMDU0NjQ3NDc0NzdlN2NmZTFhYmY1NzQ0M2UwMjk1MzExM2QiXQ==",
+                                                                  "nextCursor": "WzE3NjMwNDI5MjI1NjksIjVkZjdlYWUwNDNlNGJiNWY3N2FjODQ2ODJjMjkwMmFhNzhkMzgxZGY3MzU3YWZjZGIwNjQzN2M0MmQ3Y2RjYzYiXQ==",
                                                                   "hasNext": true,
                                                                   "size": 2
                                                                 }
                                                               },
-                                                              "timestamp": "2025-11-13T01:33:07.861Z"
+                                                              "timestamp": "2025-11-13T06:50:08.493Z"
                                                             }
                                                             """
                                             ),
@@ -107,36 +133,76 @@ public interface LogApi {
                                                               "message": "TraceID로 로그를 성공적으로 조회했습니다.",
                                                               "status": 200,
                                                               "data": {
-                                                                "traceId": "6beef638-92dd-4c42-9657-5ed08579cd92",
+                                                                "traceId": "fde75789-e22f-4f9f-b139-877115810ba7",
                                                                 "summary": {
-                                                                  "totalLogs": 14,
-                                                                  "durationMs": 26,
-                                                                  "startTime": "2025-11-12T20:14:08.083Z",
-                                                                  "endTime": "2025-11-12T20:14:08.109Z",
-                                                                  "errorCount": 0,
+                                                                  "totalLogs": 9,
+                                                                  "durationMs": 32,
+                                                                  "startTime": "2025-11-13T14:08:42.560Z",
+                                                                  "endTime": "2025-11-13T14:08:42.592Z",
+                                                                  "errorCount": 3,
                                                                   "warnCount": 0,
-                                                                  "infoCount": 14
+                                                                  "infoCount": 6
                                                                 },
                                                                 "logs": [
                                                                   {
-                                                                    "logId": 4243171600,
-                                                                    "traceId": "6beef638-92dd-4c42-9657-5ed08579cd92",
+                                                                    "logId": 1258064169,
+                                                                    "traceId": "fde75789-e22f-4f9f-b139-877115810ba7",
                                                                     "logLevel": "INFO",
                                                                     "sourceType": "BE",
                                                                     "message": "Request received: doFilter",
-                                                                    "timestamp": "2025-11-12T20:14:08.083Z",
+                                                                    "timestamp": "2025-11-13T14:08:42.560Z",
                                                                     "logger": "com.example.demo.global.filter.CorsFilter",
                                                                     "layer": "Other",
+                                                                    "comment": "thread: http-nio-8081-exec-3, app: demo, pid: 85986",
                                                                     "serviceName": "Loglens",
                                                                     "methodName": "doFilter",
-                                                                    "threadName": "http-nio-8081-exec-4",
+                                                                    "threadName": "http-nio-8081-exec-3",
                                                                     "requesterIp": "127.0.0.1",
-                                                                    "duration": null
+                                                                    "duration": null,
+                                                                    "logDetails": {
+                                                                      "request_body": {
+                                                                        "method": "doFilter",
+                                                                        "parameters": {}
+                                                                      }
+                                                                    }
+                                                                  },
+                                                                  {
+                                                                    "logId": 4009327824,
+                                                                    "traceId": "fde75789-e22f-4f9f-b139-877115810ba7",
+                                                                    "logLevel": "INFO",
+                                                                    "sourceType": "BE",
+                                                                    "message": "Request received: createUser",
+                                                                    "timestamp": "2025-11-13T14:08:42.565Z",
+                                                                    "logger": "com.example.demo.domain.user.controller.UserController",
+                                                                    "layer": "Controller",
+                                                                    "comment": "thread: http-nio-8081-exec-3, app: demo, pid: 85986",
+                                                                    "serviceName": "Loglens",
+                                                                    "methodName": "createUser",
+                                                                    "threadName": "http-nio-8081-exec-3",
+                                                                    "requesterIp": "127.0.0.1",
+                                                                    "duration": null,
+                                                                    "logDetails": {
+                                                                      "request_body": {
+                                                                        "parameters": {
+                                                                          "request": {
+                                                                            "name": "홍길동",
+                                                                            "email": "developer2@example.com",
+                                                                            "secret": "<excluded>",
+                                                                            "password": "****"
+                                                                          }
+                                                                        },
+                                                                        "http": {
+                                                                          "endpoint": "/users",
+                                                                          "method": "POST"
+                                                                        },
+                                                                        "method": "createUser"
+                                                                      }
+                                                                    }
                                                                   }
                                                                 ]
                                                               },
-                                                              "timestamp": "2025-11-13T01:33:34.461Z"
-                                                            }
+                                                              "timestamp": "2025-11-13T06:52:02.117Z"
+                                                            }                                                            
                                                             """
                                             )
                                     }
@@ -198,9 +264,9 @@ public interface LogApi {
     ResponseEntity<? extends BaseResponse> getLogs(@ParameterObject @ModelAttribute LogSearchRequest request);
 
     @Operation(
-            summary = "로그 상세 조회 (AI 분석 포함)",
+            summary = "로그 상세 조회 (AI 분석만 포함)",
             description = """
-                    특정 로그의 상세 정보를 조회하고, AI 분석 결과를 포함합니다.
+                    특정 로그의 AI 분석 결과를 포함합니다.
                     - OpenSearch에 AI 분석 결과가 저장되어 있으면 해당 결과를 반환합니다.
                     - AI 분석 결과가 없으면 AI 서비스를 호출하여 새로 분석합니다.
                     - AI 서비스 호출이 실패해도 로그 기본 정보는 반환됩니다 (analysis 필드가 null).
@@ -213,58 +279,37 @@ public interface LogApi {
             responses = {
                     @ApiResponse(
                             responseCode = "200",
-                            description = "로그 상세 조회 성공",
+                            description = "로그 상세 조회(AI 분석만) 성공",
                             content = @Content(
                                     mediaType = "application/json",
                                     examples = @ExampleObject(
                                             name = "LogDetailSuccess",
-                                            summary = "로그 상세 조회 성공 (AI 분석 포함)",
+                                            summary = "로그 상세 조회 성공 (AI 분석만)",
                                             value = """
                                                     {
                                                       "code": "LG200-4",
                                                       "message": "로그 상세 정보를 성공적으로 조회했습니다.",
                                                       "status": 200,
                                                       "data": {
-                                                        "logId": 2845913357,
-                                                        "traceId": "3bfd962b-4583-4d75-92b9-adffea8412cd",
-                                                        "logLevel": "INFO",
-                                                        "sourceType": "BE",
-                                                        "message": "Response completed: findById",
-                                                        "timestamp": "2025-11-12T20:09:42.429Z",
-                                                        "logger": "com.example.demo.domain.user.repository.UserJpaRepository",
-                                                        "layer": "Repository",
-                                                        "comment": "thread: http-nio-8081-exec-2, app: demo, pid: 48519",
-                                                        "serviceName": "Loglens",
-                                                        "methodName": "findById",
-                                                        "threadName": "http-nio-8081-exec-2",
-                                                        "requesterIp": "127.0.0.1",
-                                                        "duration": 2,
-                                                        "logDetails": {
-                                                          "response_status": 200,
-                                                          "response_body": {
-                                                            "result": "Optional.empty",
-                                                            "method": "findById",
-                                                            "http": {
-                                                              "endpoint": "/users/1",
-                                                              "method": "DELETE",
-                                                              "statusCode": 200
-                                                            }
-                                                          }
-                                                        },
                                                         "analysis": {
-                                                          "summary": "사용자 ID 조회 중 NULL 참조 에러가 발생했습니다.",
-                                                          "errorCause": "사용자가 존재하지 않는 경우 NULL 체크 없이 메서드를 호출하여 발생했습니다.",
-                                                          "solution": "1. [우선순위: 높음] 사용자 조회 전 NULL 체크 추가\\n2. [우선순위: 중간] Optional 사용 고려",
-                                                          "tags": ["NULL_POINTER", "USER_SERVICE", "ERROR"],
-                                                          "analysisType": "TRACE_BASED",
-                                                          "targetType": "LOG",
-                                                          "analyzedAt": "2025-11-07T15:00:45.123Z"
+                                                          "summary": "사용자가 비밀번호 변경 요청을 시도했으나, 기존 비밀번호가 일치하지 않아 **BusinessException** 발생",
+                                                          "solution": "### 사용자 조치 (완료 예상: 즉시)\\n- [ ] 올바른 기존 비밀번호를 입력하여 다시 시도\\n- [ ] 비밀번호를 잊으셨다면 비밀번호 찾기 기능 사용\\n\\n### 선택적 프론트엔드 개선 (완료 예상: 1-2일)\\n- [ ] 비밀번호 입력 시 실시간 검증 기능 추가\\n- [ ] 더 명확한 에러 메시지 표시 (예: \\"입력한 기존 비밀번호가 일치하지 않습니다. 다시 확인해주세요.\\")",
+                                                          "tags": [
+                                                            "USER_ERROR",
+                                                            "SEVERITY_LOW",
+                                                            "BusinessException",
+                                                            "UserService"
+                                                          ],
+                                                          "error_cause": "사용자가 비밀번호 변경을 시도했으나, 입력한 기존 비밀번호가 데이터베이스에 저장된 비밀번호와 일치하지 않아 **BusinessException**이 발생했습니다. 이는 사용자가 잘못된 비밀번호를 입력했거나, 비밀번호 변경 과정에서의 사용자 실수로 인한 것입니다.\\n\\n### 근거 데이터\\n- **에러 메시지**: 기존 비밀번호가 일치하지 않습니다\\n- **발생 시각**: 2025-11-09 02:09:23 UTC\\n- **관련 메서드**: `UserServiceImpl.changePassword()`에서 비밀번호 검증 로직이 실행됨",
+                                                          "analysis_type": "SINGLE",
+                                                          "target_type": "LOG",
+                                                          "analyzed_at": "2025-11-10T04:48:49.551"
                                                         },
                                                         "fromCache": true,
-                                                        "similarLogId": 1234567800,
-                                                        "similarityScore": 0.92
+                                                        "similarLogId": null,
+                                                        "similarityScore": null
                                                       },
-                                                      "timestamp": "2025-11-13T01:28:00.933Z"
+                                                      "timestamp": "2025-11-13T06:52:48.010Z"
                                                     }
                                                     """
                                     )

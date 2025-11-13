@@ -170,32 +170,13 @@ public class LogServiceImpl implements LogService {
                     return new BusinessException(LogErrorCode.LOG_NOT_FOUND);
                 });
 
-        // 2. 기본 로그 정보로 LogDetailResponse 빌드 시작
-        LogDetailResponse.LogDetailResponseBuilder builder = LogDetailResponse.builder()
-                .logId(logEntity.getLogId())
-                .traceId(logEntity.getTraceId())
-                .logLevel(logEntity.getLogLevel())
-                .sourceType(logEntity.getSourceType())
-                .message(logEntity.getMessage())
-                .timestamp(
-                        !Objects.isNull(logEntity.getTimestamp()) ? logEntity.getTimestamp().toLocalDateTime() : null)
-                .logger(logEntity.getLogger())
-                .layer(logEntity.getLayer())
-                .comment(logEntity.getComment())
-                .serviceName(logEntity.getServiceName())
-                .methodName(logEntity.getMethodName())
-                .threadName(logEntity.getThreadName())
-                .requesterIp(logEntity.getRequesterIp())
-                .duration(logEntity.getDuration())
-                .logDetails(removeDuplicateFields(logEntity.getLogDetails()));
-
-        // 3. AI 분석 결과 확인 및 처리
+        // 2. AI 분석 결과 확인 및 처리
         AiAnalysisDto analysis = null;
         Boolean fromCache = null;
         Long similarLogId = null;
         Double similarityScore = null;
 
-        // 3-1. OpenSearch에 저장된 aiAnalysis 확인
+        // 2-1. OpenSearch에 저장된 aiAnalysis 확인
         Map<String, Object> aiAnalysisMap = logEntity.getAiAnalysis();
         if (aiAnalysisMap != null && !aiAnalysisMap.isEmpty()) {
             log.info("{} OpenSearch에 저장된 AI 분석 결과 사용: logId={}", LOG_PREFIX, logId);
@@ -207,7 +188,7 @@ public class LogServiceImpl implements LogService {
             }
         }
 
-        // 3-2. AI 분석이 없으면 AI 서비스 호출
+        // 2-2. AI 분석이 없으면 AI 서비스 호출
         if (Objects.isNull(analysis)) {
             log.info("{} AI 서비스 호출하여 분석 수행: logId={}", LOG_PREFIX, logId);
             try {
@@ -226,8 +207,8 @@ public class LogServiceImpl implements LogService {
             }
         }
 
-        // 4. AI 분석 결과를 포함한 응답 반환
-        LogDetailResponse response = builder
+        // 3. LogDetailResponse 생성 (AI 분석 결과만 포함)
+        LogDetailResponse response = LogDetailResponse.builder()
                 .analysis(analysis)
                 .fromCache(fromCache)
                 .similarLogId(similarLogId)
@@ -357,37 +338,6 @@ public class LogServiceImpl implements LogService {
         if (Objects.isNull(request.getSort()) || request.getSort().isBlank()) {
             request.setSort("TIMESTAMP,DESC");
         }
-    }
-
-    /**
-     * logDetails에서 data 레벨과 중복되는 필드 제거 중복 필드: execution_time (duration), stacktrace (stackTrace), class_name
-     * (className), method_name (methodName)
-     *
-     * @param logDetails 원본 logDetails Map
-     * @return 중복이 제거된 logDetails Map
-     */
-    private Map<String, Object> removeDuplicateFields(Map<String, Object> logDetails) {
-        if (Objects.isNull(logDetails) || logDetails.isEmpty()) {
-            return logDetails;
-        }
-
-        // 중복 필드 목록
-        List<String> duplicateFields = List.of(
-                "execution_time",  // duration과 중복
-                "stacktrace",      // stackTrace와 중복
-                "class_name",      // className과 중복
-                "method_name",      // methodName과 중복
-                "http_method",
-                "request_uri"
-        );
-
-        // 중복 필드 제거한 새로운 Map 생성
-        return logDetails.entrySet().stream()
-                .filter(entry -> !duplicateFields.contains(entry.getKey()))
-                .collect(java.util.stream.Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue
-                ));
     }
 
     /**
