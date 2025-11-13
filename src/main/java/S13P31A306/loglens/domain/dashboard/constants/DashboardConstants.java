@@ -14,4 +14,9 @@ public class DashboardConstants {
     public static final int API_ENDPOINT_DEFAULT_LIMIT = 10;
     public static final int API_ENDPOINT_DEFAULT_TIME_RANGE = 1;
 
+    public static final int HEATMAP_DEFAULT_DAYS = 7;
+    public static final int HEATMAP_MAX_DAYS = 90;
+    public static final int HEATMAP_AGGREGATION_SIZE = 200;
+    public static final String DEFAULT_TIMEZONE = "Asia/Seoul";
+
 }
