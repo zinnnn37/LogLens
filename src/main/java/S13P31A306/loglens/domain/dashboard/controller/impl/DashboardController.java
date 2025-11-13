@@ -147,16 +147,6 @@ public class DashboardController implements DashboardApi {
     }
 
     /**
-     * 트레이스 플로우 조회 (로그 호출 흐름)
-     */
-    @GetMapping("/traces/{traceId}/flow")
-    public ResponseEntity<? extends BaseResponse> getTraceFlow(
-            @PathVariable String traceId
-    ) {
-        return null;
-    }
-
-    /**
      * 알림 피드 조회
      */
     @GetMapping("/alerts")

@@ -57,7 +57,7 @@ public class FrontendMetrics extends BaseEntity {
             Integer totalWarnLogs,
             Integer totalErrorLogs
     ) {
-        double errorRate = calculateErrorRate(totalTraces, totalErrorLogs);
+        double errorRate = calculateErrorRate(totalInfoLogs+totalWarnLogs+totalErrorLogs, totalErrorLogs);
 
         return FrontendMetrics.builder()
                 .projectId(projectId)

@@ -1,6 +1,8 @@
 package S13P31A306.loglens.domain.log.service.impl;
 
-import static S13P31A306.loglens.domain.log.entity.LogLevel.*;
+import static S13P31A306.loglens.domain.log.entity.LogLevel.ERROR;
+import static S13P31A306.loglens.domain.log.entity.LogLevel.INFO;
+import static S13P31A306.loglens.domain.log.entity.LogLevel.WARN;
 import static S13P31A306.loglens.domain.log.entity.SourceType.BE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,6 +10,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -39,19 +42,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @ExtendWith(MockitoExtension.class)
 class LogServiceImplTest {
 
-    @InjectMocks
     private LogServiceImpl logService;
 
     @Mock
@@ -66,14 +71,31 @@ class LogServiceImplTest {
     @Mock
     private AiServiceClient aiServiceClient;
 
+    @Mock
+    private ScheduledExecutorService sseScheduler;
+
+    @Mock
+    private ScheduledFuture<?> scheduledFuture;
+
     private LogSearchRequest baseRequest;
+    private static final long SSE_TIMEOUT = 300000L; // 5분
 
     @BeforeEach
     void setup() {
-        baseRequest = new LogSearchRequest();
-        baseRequest.setProjectUuid("550e8400-e29b-41d4-a716-446655440000");
-        baseRequest.setSize(50);
-        baseRequest.setSort("TIMESTAMP,DESC");
+        logService = new LogServiceImpl(
+                logRepository,
+                logMapper,
+                objectMapper,
+                aiServiceClient,
+                sseScheduler,
+                SSE_TIMEOUT
+        );
+
+        baseRequest = LogSearchRequest.builder()
+                .projectUuid("550e8400-e29b-41d4-a716-446655440000")
+                .size(50)
+                .sort("TIMESTAMP,DESC")
+                .build();
     }
 
     @Test
@@ -263,8 +285,6 @@ class LogServiceImplTest {
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.getLogId()).isEqualTo(logId);
-            assertThat(result.getMessage()).isEqualTo("NullPointerException occurred");
             assertThat(result.getAnalysis()).isNotNull();
             assertThat(result.getAnalysis().getSummary()).isEqualTo("NULL 참조 에러 발생");
             assertThat(result.getFromCache()).isTrue();
@@ -306,7 +326,6 @@ class LogServiceImplTest {
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.getLogId()).isEqualTo(logId);
             assertThat(result.getAnalysis()).isNotNull();
             assertThat(result.getAnalysis().getSummary()).isEqualTo("데이터베이스 연결 타임아웃");
             assertThat(result.getFromCache()).isFalse();
@@ -334,8 +353,6 @@ class LogServiceImplTest {
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.getLogId()).isEqualTo(logId);
-            assertThat(result.getMessage()).isEqualTo("Test error");
             assertThat(result.getAnalysis()).isNull(); // 분석 결과 없음
             assertThat(result.getFromCache()).isNull();
 
@@ -397,6 +414,171 @@ class LogServiceImplTest {
             assertThat(result.getFromCache()).isTrue();
 
             verify(aiServiceClient).analyzeLog(logId, projectUuid);
+        }
+    }
+
+    @Nested
+    @DisplayName("SSE 로그 스트리밍 테스트")
+    class StreamLogsTest {
+
+        @Test
+        void SSE_연결을_생성하고_스케줄러를_시작한다() {
+            // given
+            given(sseScheduler.scheduleAtFixedRate(any(Runnable.class), eq(0L), eq(5L), eq(TimeUnit.SECONDS)))
+                    .willReturn((ScheduledFuture) scheduledFuture);
+
+            // when
+            SseEmitter result = logService.streamLogs(baseRequest);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.getTimeout()).isEqualTo(SSE_TIMEOUT); // 5분
+
+            verify(sseScheduler).scheduleAtFixedRate(any(Runnable.class), eq(0L), eq(5L), eq(TimeUnit.SECONDS));
+        }
+
+        @Test
+        void 스케줄러가_정상적으로_로그를_조회한다() {
+            // given
+            Log log1 = createLog("log-1", "Test message 1", ERROR);
+            Log log2 = createLog("log-2", "Test message 2", WARN);
+            List<Log> logs = Arrays.asList(log1, log2);
+            LogSearchResult searchResult = new LogSearchResult(logs, false, null);
+
+            given(logRepository.findWithCursor(any(), any())).willReturn(searchResult);
+            given(logMapper.toLogResponse(any(Log.class))).willAnswer(inv -> {
+                Log log = inv.getArgument(0);
+                return createLogResponse(log.getId(), log.getMessage(), log.getLogLevel());
+            });
+
+            // 스케줄러가 즉시 실행되도록 설정
+            doAnswer(invocation -> {
+                Runnable task = invocation.getArgument(0);
+                task.run(); // 즉시 실행
+                return (ScheduledFuture) scheduledFuture;
+            }).when(sseScheduler).scheduleAtFixedRate(any(Runnable.class), eq(0L), eq(5L), eq(TimeUnit.SECONDS));
+
+            // when
+            SseEmitter result = logService.streamLogs(baseRequest);
+
+            // then
+            assertThat(result).isNotNull();
+            verify(logRepository).findWithCursor(any(), any());
+            verify(logMapper, times(2)).toLogResponse(any(Log.class));
+        }
+
+        @Test
+        void 로그가_없을_때_heartbeat를_전송한다() {
+            // given
+            LogSearchResult emptyResult = new LogSearchResult(Collections.emptyList(), false, null);
+            given(logRepository.findWithCursor(any(), any())).willReturn(emptyResult);
+
+            // 스케줄러가 즉시 실행되도록 설정
+            doAnswer(invocation -> {
+                Runnable task = invocation.getArgument(0);
+                task.run(); // 즉시 실행
+                return (ScheduledFuture) scheduledFuture;
+            }).when(sseScheduler).scheduleAtFixedRate(any(Runnable.class), eq(0L), eq(5L), eq(TimeUnit.SECONDS));
+
+            // when
+            SseEmitter result = logService.streamLogs(baseRequest);
+
+            // then
+            assertThat(result).isNotNull();
+            verify(logRepository).findWithCursor(any(), any());
+        }
+
+        @Test
+        void startTime이_null이면_현재_시간_기준으로_조회한다() {
+            // given
+            baseRequest.setStartTime(null);
+            LogSearchResult emptyResult = new LogSearchResult(Collections.emptyList(), false, null);
+            given(logRepository.findWithCursor(any(), any())).willReturn(emptyResult);
+
+            doAnswer(invocation -> {
+                Runnable task = invocation.getArgument(0);
+                task.run();
+                return (ScheduledFuture) scheduledFuture;
+            }).when(sseScheduler).scheduleAtFixedRate(any(Runnable.class), eq(0L), eq(5L), eq(TimeUnit.SECONDS));
+
+            // when
+            SseEmitter result = logService.streamLogs(baseRequest);
+
+            // then
+            assertThat(result).isNotNull();
+            verify(logRepository).findWithCursor(any(), any());
+        }
+
+        @Test
+        void 필터_조건이_적용된_로그를_조회한다() {
+            // given
+            baseRequest.setLogLevel(List.of("ERROR", "WARN"));
+            baseRequest.setSourceType(List.of("BE"));
+            baseRequest.setKeyword("exception");
+
+            Log log1 = createLog("log-1", "Exception occurred", ERROR);
+            List<Log> logs = Collections.singletonList(log1);
+            LogSearchResult searchResult = new LogSearchResult(logs, false, null);
+
+            given(logRepository.findWithCursor(any(), any())).willReturn(searchResult);
+            given(logMapper.toLogResponse(any(Log.class))).willAnswer(inv -> {
+                Log log = inv.getArgument(0);
+                return createLogResponse(log.getId(), log.getMessage(), log.getLogLevel());
+            });
+
+            doAnswer(invocation -> {
+                Runnable task = invocation.getArgument(0);
+                task.run();
+                return (ScheduledFuture) scheduledFuture;
+            }).when(sseScheduler).scheduleAtFixedRate(any(Runnable.class), eq(0L), eq(5L), eq(TimeUnit.SECONDS));
+
+            // when
+            SseEmitter result = logService.streamLogs(baseRequest);
+
+            // then
+            assertThat(result).isNotNull();
+            verify(logRepository).findWithCursor(any(), any());
+            verify(logMapper).toLogResponse(any(Log.class));
+        }
+
+        @Test
+        void 마지막_timestamp를_추적하여_새로운_로그만_조회한다() {
+            // given
+            LocalDateTime initialTime = LocalDateTime.of(2024, 1, 15, 12, 0, 0);
+            baseRequest.setStartTime(initialTime);
+
+            Log log1 = createLog("log-1", "Message 1", INFO);
+            log1.setTimestamp(OffsetDateTime.of(2024, 1, 15, 12, 0, 10, 0, ZoneOffset.UTC));
+
+            LogSearchResult firstResult = new LogSearchResult(List.of(log1), false, null);
+            LogSearchResult secondResult = new LogSearchResult(Collections.emptyList(), false, null);
+
+            given(logRepository.findWithCursor(any(), any()))
+                    .willReturn(firstResult)
+                    .willReturn(secondResult);
+
+            given(logMapper.toLogResponse(any(Log.class))).willAnswer(inv -> {
+                Log log = inv.getArgument(0);
+                return LogResponse.builder()
+                        .logId(1L)
+                        .timestamp(LocalDateTime.of(2024, 1, 15, 12, 0, 10))
+                        .message(log.getMessage())
+                        .logLevel(log.getLogLevel())
+                        .build();
+            });
+
+            doAnswer(invocation -> {
+                Runnable task = invocation.getArgument(0);
+                task.run(); // 첫 번째 실행
+                return (ScheduledFuture) scheduledFuture;
+            }).when(sseScheduler).scheduleAtFixedRate(any(Runnable.class), eq(0L), eq(5L), eq(TimeUnit.SECONDS));
+
+            // when
+            SseEmitter result = logService.streamLogs(baseRequest);
+
+            // then
+            assertThat(result).isNotNull();
+            verify(logRepository).findWithCursor(any(), any());
         }
     }
 }

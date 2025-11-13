@@ -17,22 +17,22 @@ public enum OpenSearchField {
     LOG_ID("log_id"),
 
     // ──────────────── 컨텍스트 / 메타데이터 ────────────────
-    COMPONENT_NAME("component_name.keyword"),
-    SERVICE_NAME("service_name.keyword"),
-    SOURCE_TYPE("source_type.keyword"),  // keyword 서브필드 사용
-    LOGGER("logger.keyword"),
+    COMPONENT_NAME("component_name"),
+    SERVICE_NAME("service_name"),
+    SOURCE_TYPE("source_type"),
+    LOGGER("logger"),
 
     // ──────────────── 로그 레벨 및 내용 ────────────────
-    LOG_LEVEL("log_level.keyword"),  // keyword 서브필드 사용
-    LEVEL("level.keyword"),
+    LOG_LEVEL("log_level"),
+    LEVEL("level"),
     MESSAGE("message"),
     MESSAGE_KEYWORD("message.keyword"),
     COMMENT("comment"),
 
     // ──────────────── 클래스 / 메서드 / 스레드 ────────────────
-    CLASS_NAME("class_name.keyword"),
-    METHOD_NAME("method_name.keyword"),
-    THREAD_NAME("thread_name.keyword"),
+    CLASS_NAME("class_name"),
+    METHOD_NAME("method_name"),
+    THREAD_NAME("thread_name"),
 
     // ──────────────── 시간 관련 ────────────────
     TIMESTAMP("timestamp"),

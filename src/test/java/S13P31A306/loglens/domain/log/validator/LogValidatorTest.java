@@ -29,7 +29,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class LogValidatorTest {
+public class LogValidatorTest {
 
     @InjectMocks
     private LogValidator logValidator;
@@ -44,10 +44,11 @@ class LogValidatorTest {
 
     @BeforeEach
     void setup() {
-        baseRequest = new LogSearchRequest();
-        baseRequest.setProjectUuid("550e8400-e29b-41d4-a716-446655440000");
-        baseRequest.setSize(50);
-        baseRequest.setSort("TIMESTAMP,DESC");
+        baseRequest = LogSearchRequest.builder()
+                .projectUuid("550e8400-e29b-41d4-a716-446655440000")
+                .size(50)
+                .sort("TIMESTAMP,DESC")
+                .build();
 
         // 기본 Mock 설정 (일부 테스트에서 사용되지 않을 수 있음)
         lenient().when(projectService.getProjectIdByUuid(anyString())).thenReturn(1);

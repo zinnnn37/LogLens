@@ -652,4 +652,52 @@ public class LogRepositoryImpl implements LogRepository {
             builder.must(q -> q.match(m -> m.field("message").query(FieldValue.of(keyword))));
         }
     }
+
+    @Override
+    public long countErrorLogsByProjectUuidAndTimeRange(
+            String projectUuid,
+            LocalDateTime startTime,
+            LocalDateTime endTime) {
+
+        log.debug("{} ERROR 로그 개수 조회: projectUuid={}, startTime={}, endTime={}",
+                LOG_PREFIX, projectUuid, startTime, endTime);
+
+        try {
+            // 1. Bool Query 생성: project_uuid + log_level=ERROR + timestamp 범위
+            Query query = Query.of(q -> q.bool(b -> b
+                    .filter(f -> f.term(t -> t
+                            .field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
+                            .value(FieldValue.of(projectUuid))))
+                    .filter(f -> f.term(t -> t
+                            .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                            .value(FieldValue.of("ERROR"))))
+                    .filter(f -> f.range(r -> r
+                            .field(TIMESTAMP_FIELD)
+                            .gte(JsonData.of(startTime.atOffset(ZoneOffset.UTC).toString()))
+                            .lte(JsonData.of(endTime.atOffset(ZoneOffset.UTC).toString()))
+                    ))
+            ));
+
+            // 2. SearchRequest 생성 (size=0, 집계만 수행)
+            SearchRequest searchRequest = SearchRequest.of(s -> s
+                    .index(getProjectIndexPattern(projectUuid))
+                    .query(query)
+                    .size(0)  // 문서는 반환하지 않음
+            );
+
+            // 3. OpenSearch 쿼리 실행
+            SearchResponse<Void> response = openSearchClient.search(searchRequest, Void.class);
+
+            long errorCount = Objects.requireNonNull(response.hits().total()).value();
+
+            log.debug("{} ERROR 로그 개수 조회 완료: projectUuid={}, errorCount={}",
+                    LOG_PREFIX, projectUuid, errorCount);
+
+            return errorCount;
+
+        } catch (IOException e) {
+            log.error("{} ERROR 로그 개수 조회 실패: projectUuid={}", LOG_PREFIX, projectUuid, e);
+            throw new BusinessException(GlobalErrorCode.OPENSEARCH_OPERATION_FAILED, null, e);
+        }
+    }
 }

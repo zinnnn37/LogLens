@@ -9,11 +9,13 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer.FrameOptionsConfig;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -101,8 +103,7 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .headers(headers -> headers
-                        .frameOptions(frameOptions -> frameOptions.sameOrigin()))
-
+                        .frameOptions(FrameOptionsConfig::sameOrigin))
                 // 인증 실패 및 권한 거부 예외 처리
                 .exceptionHandling(handler -> handler
                         .authenticationEntryPoint(customAuthenticationEntryPoint)
@@ -110,6 +111,7 @@ public class SecurityConfig {
 
                 // 요청별 접근 제어
                 .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PublicEndPoint.getPublicEndpoints()).permitAll()
                         .anyRequest().authenticated())
 

@@ -18,6 +18,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     public static final String AUTHORIZATION_HEADER = "Authorization";
     public static final String BEARER_PREFIX = "Bearer ";
+    public static final String TOKEN_QUERY_PARAM = "token";
 
     private final JwtTokenProvider jwtTokenProvider;
 
@@ -37,12 +38,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    /**
+     * JWT 토큰 추출 1. Authorization 헤더에서 추출 (일반 API 요청) 2. Query Parameter에서 추출 (SSE 요청 - EventSource는 헤더 설정 불가)
+     */
     private String resolveToken(final HttpServletRequest request) {
-
+        // 1. 헤더에서 토큰 추출
         String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {
             return bearerToken.substring(BEARER_PREFIX.length());
         }
+
+        // 2. Query Parameter에서 토큰 추출 (SSE용)
+        String tokenParam = request.getParameter(TOKEN_QUERY_PARAM);
+        if (StringUtils.hasText(tokenParam)) {
+            return tokenParam;
+        }
+
         return null;
     }
 }

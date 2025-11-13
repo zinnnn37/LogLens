@@ -18,14 +18,21 @@ import S13P31A306.loglens.domain.log.service.LogService;
 import S13P31A306.loglens.global.client.AiServiceClient;
 import S13P31A306.loglens.global.exception.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Slf4j
 @Service
@@ -33,15 +40,22 @@ import org.springframework.stereotype.Service;
 public class LogServiceImpl implements LogService {
 
     private static final String LOG_PREFIX = "[LogService]";
+    private static final long POLLING_INTERVAL = 5; // 5초
+    private static final int MAX_IDLE_POLLS = 3; // 빈 응답 3회 후 폴링 주기 감소 시작
 
     private final LogRepository logRepository;
     private final LogMapper logMapper;
     private final ObjectMapper objectMapper; // For cursor encoding/decoding
     private final AiServiceClient aiServiceClient;
+    private final ScheduledExecutorService sseScheduler;
+    private final long sseTimeout;
 
     @Override
     public LogPageResponse getLogs(LogSearchRequest request) {
         log.info("{} 로그 목록 조회 시작: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
+
+        // 기본값 설정
+        applyDefaults(request);
 
         LogSearchResult result = searchLogs(request.getProjectUuid(), request);
         List<LogResponse> logResponses = mapToLogResponses(result);
@@ -63,6 +77,9 @@ public class LogServiceImpl implements LogService {
         log.info("{} Trace ID로 로그 조회 시작: projectUuid={}, traceId={}",
                 LOG_PREFIX, request.getProjectUuid(), request.getTraceId());
 
+        // 기본값 설정
+        applyDefaults(request);
+
         TraceLogSearchResult result = searchLogsByTraceId(request.getProjectUuid(), request);
         List<LogResponse> logResponses = mapToLogResponses(result);
 
@@ -73,7 +90,8 @@ public class LogServiceImpl implements LogService {
                 .build();
 
         log.info("{} Trace ID로 로그 조회 완료: 로그 수={}, 전체 로그 수={}",
-                LOG_PREFIX, logResponses.size(), result.summary().getTotalLogs());
+                LOG_PREFIX, logResponses.size(),
+                Objects.nonNull(result.summary()) ? result.summary().getTotalLogs() : 0);
 
         return response;
     }
@@ -92,6 +110,9 @@ public class LogServiceImpl implements LogService {
         log.debug("{} OpenSearch에서 Trace ID로 로그 조회: projectUuid={}, traceId={}", LOG_PREFIX, projectUuid,
                 request.getTraceId());
         TraceLogSearchResult result = logRepository.findByTraceId(projectUuid, request);
+        if (Objects.isNull(result) || Objects.isNull(result.logs())) {
+            return new TraceLogSearchResult(Collections.emptyList(), null);
+        }
         log.debug("{} OpenSearch 조회 완료: 로그 개수={}", LOG_PREFIX, result.logs().size());
         return result;
     }
@@ -149,34 +170,13 @@ public class LogServiceImpl implements LogService {
                     return new BusinessException(LogErrorCode.LOG_NOT_FOUND);
                 });
 
-        // 2. 기본 로그 정보로 LogDetailResponse 빌드 시작
-        LogDetailResponse.LogDetailResponseBuilder builder = LogDetailResponse.builder()
-                .logId(logEntity.getLogId())
-                .traceId(logEntity.getTraceId())
-                .logLevel(logEntity.getLogLevel())
-                .sourceType(logEntity.getSourceType())
-                .message(logEntity.getMessage())
-                .timestamp(
-                        !Objects.isNull(logEntity.getTimestamp()) ? logEntity.getTimestamp().toLocalDateTime() : null)
-                .logger(logEntity.getLogger())
-                .layer(logEntity.getLayer())
-                .comment(logEntity.getComment())
-                .serviceName(logEntity.getServiceName())
-                .className(logEntity.getClassName())
-                .methodName(logEntity.getMethodName())
-                .threadName(logEntity.getThreadName())
-                .requesterIp(logEntity.getRequesterIp())
-                .duration(logEntity.getDuration())
-                .stackTrace(logEntity.getStackTrace())
-                .logDetails(logEntity.getLogDetails());
-
-        // 3. AI 분석 결과 확인 및 처리
+        // 2. AI 분석 결과 확인 및 처리
         AiAnalysisDto analysis = null;
         Boolean fromCache = null;
         Long similarLogId = null;
         Double similarityScore = null;
 
-        // 3-1. OpenSearch에 저장된 aiAnalysis 확인
+        // 2-1. OpenSearch에 저장된 aiAnalysis 확인
         Map<String, Object> aiAnalysisMap = logEntity.getAiAnalysis();
         if (aiAnalysisMap != null && !aiAnalysisMap.isEmpty()) {
             log.info("{} OpenSearch에 저장된 AI 분석 결과 사용: logId={}", LOG_PREFIX, logId);
@@ -188,7 +188,7 @@ public class LogServiceImpl implements LogService {
             }
         }
 
-        // 3-2. AI 분석이 없으면 AI 서비스 호출
+        // 2-2. AI 분석이 없으면 AI 서비스 호출
         if (Objects.isNull(analysis)) {
             log.info("{} AI 서비스 호출하여 분석 수행: logId={}", LOG_PREFIX, logId);
             try {
@@ -207,8 +207,8 @@ public class LogServiceImpl implements LogService {
             }
         }
 
-        // 4. AI 분석 결과를 포함한 응답 반환
-        LogDetailResponse response = builder
+        // 3. LogDetailResponse 생성 (AI 분석 결과만 포함)
+        LogDetailResponse response = LogDetailResponse.builder()
                 .analysis(analysis)
                 .fromCache(fromCache)
                 .similarLogId(similarLogId)
@@ -217,5 +217,151 @@ public class LogServiceImpl implements LogService {
 
         log.info("{} 로그 상세 조회 완료: logId={}, hasAnalysis={}", LOG_PREFIX, logId, analysis != null);
         return response;
+    }
+
+    @Override
+    public SseEmitter streamLogs(LogSearchRequest request) {
+        log.info("{} 실시간 로그 스트리밍 시작: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
+
+        SseEmitter emitter = new SseEmitter(sseTimeout);
+
+        // AtomicReference를 사용하여 thread-safe하게 변수 관리
+        AtomicReference<LocalDateTime> lastTimestamp = new AtomicReference<>(request.getStartTime());
+        AtomicReference<ScheduledFuture<?>> scheduledFutureHolder = new AtomicReference<>();
+        AtomicInteger emptyPollCount = new AtomicInteger(0); // 빈 응답 카운터 (OpenSearch 부하 관리용)
+
+        scheduledFutureHolder.set(sseScheduler.scheduleAtFixedRate(() -> {
+            try {
+                // OpenSearch 부하 관리: 빈 응답이 일정 횟수 이상이면 스킵
+                int emptyCount = emptyPollCount.get();
+                if (emptyCount >= MAX_IDLE_POLLS && emptyCount % 2 != 0) {
+                    // 3회 이상 빈 응답 후, 홀수 번째는 스킵하여 폴링 주기를 실질적으로 2배로 늘림
+                    emptyPollCount.incrementAndGet();
+                    emitter.send(SseEmitter.event()
+                            .name("heartbeat")
+                            .data("No new logs"));
+                    log.debug("{} OpenSearch 부하 감소를 위한 폴링 스킵 (emptyCount: {})", LOG_PREFIX, emptyCount);
+                    return;
+                }
+
+                // 검색 조건 복사 및 시작 시간 업데이트
+                LogSearchRequest pollingRequest = createPollingRequest(request, lastTimestamp.get());
+
+                // 새로운 로그 조회
+                LogSearchResult result = searchLogs(pollingRequest.getProjectUuid(), pollingRequest);
+
+                if (!result.logs().isEmpty()) {
+                    List<LogResponse> logResponses = mapToLogResponses(result);
+
+                    // SSE로 데이터 전송
+                    emitter.send(SseEmitter.event()
+                            .name("log-update")
+                            .data(logResponses));
+
+                    // 마지막 timestamp 업데이트 (중복 방지를 위해 1 나노초 추가)
+                    if (!logResponses.isEmpty()) {
+                        LocalDateTime lastLogTime = logResponses.getLast().getTimestamp();
+                        lastTimestamp.set(lastLogTime.plusNanos(1));
+                    }
+
+                    // 빈 응답 카운터 리셋
+                    emptyPollCount.set(0);
+
+                    log.debug("{} 새로운 로그 전송: 개수={}", LOG_PREFIX, logResponses.size());
+                } else {
+                    // 빈 응답 카운터 증가
+                    emptyPollCount.incrementAndGet();
+
+                    // heartbeat 전송 (연결 유지)
+                    emitter.send(SseEmitter.event()
+                            .name("heartbeat")
+                            .data("No new logs"));
+                    log.debug("{} Heartbeat 전송 (빈 응답 카운트: {})", LOG_PREFIX, emptyPollCount.get());
+                }
+            } catch (Exception e) {
+                // 모든 예외에서 스케줄러 정리 (메모리 누수 방지)
+                cleanupScheduler(scheduledFutureHolder.get());
+
+                if (e instanceof java.io.IOException) {
+                    log.debug("{} 클라이언트 연결 종료됨", LOG_PREFIX);
+                    emitter.complete();
+                } else {
+                    log.error("{} 로그 스트리밍 중 오류 발생", LOG_PREFIX, e);
+                    emitter.completeWithError(e);
+                }
+            }
+        }, 0, POLLING_INTERVAL, TimeUnit.SECONDS));
+
+        // 연결 종료 시 스케줄러 정리
+        emitter.onCompletion(() -> {
+            cleanupScheduler(scheduledFutureHolder.get());
+            log.info("{} SSE 연결 정상 종료: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
+        });
+
+        emitter.onTimeout(() -> {
+            cleanupScheduler(scheduledFutureHolder.get());
+            log.info("{} SSE 연결 타임아웃: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
+            emitter.complete();
+        });
+
+        emitter.onError((e) -> {
+            cleanupScheduler(scheduledFutureHolder.get());
+            // IOException은 클라이언트가 연결을 끊은 정상적인 상황
+            if (e instanceof java.io.IOException) {
+                log.debug("{} SSE 클라이언트 연결 종료: projectUuid={}", LOG_PREFIX, request.getProjectUuid());
+            } else {
+                log.error("{} SSE 연결 오류: projectUuid={}", LOG_PREFIX, request.getProjectUuid(), e);
+            }
+        });
+
+        return emitter;
+    }
+
+    /**
+     * 스케줄러 정리 헬퍼 메서드 (중복 코드 제거)
+     */
+    private void cleanupScheduler(ScheduledFuture<?> future) {
+        if (Objects.nonNull(future) && !future.isCancelled()) {
+            future.cancel(true);
+        }
+    }
+
+    /**
+     * LogSearchRequest에 기본값 적용
+     *
+     * @param request 로그 검색 요청
+     */
+    private void applyDefaults(LogSearchRequest request) {
+        if (Objects.isNull(request.getSize())) {
+            request.setSize(100);
+        }
+        if (Objects.isNull(request.getSort()) || request.getSort().isBlank()) {
+            request.setSort("TIMESTAMP,DESC");
+        }
+    }
+
+    /**
+     * 폴링용 검색 요청 생성 마지막 조회 시간 이후의 로그만 조회하도록 설정
+     */
+    private LogSearchRequest createPollingRequest(LogSearchRequest original, LocalDateTime lastTimestamp) {
+        LogSearchRequest pollingRequest = LogSearchRequest.builder()
+                .projectUuid(original.getProjectUuid())
+                .size(original.getSize())
+                .logLevel(original.getLogLevel())
+                .sourceType(original.getSourceType())
+                .keyword(original.getKeyword())
+                .sort(original.getSort())
+                .build();
+
+        // 마지막 조회 시간 이후의 로그만 조회
+        if (Objects.nonNull(lastTimestamp)) {
+            pollingRequest.setStartTime(lastTimestamp);
+        } else if (Objects.nonNull(original.getStartTime())) {
+            pollingRequest.setStartTime(original.getStartTime());
+        }
+
+        pollingRequest.setEndTime(original.getEndTime());
+
+        return pollingRequest;
     }
 }

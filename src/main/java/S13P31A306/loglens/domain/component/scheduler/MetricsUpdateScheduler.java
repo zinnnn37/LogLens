@@ -10,19 +10,18 @@ import S13P31A306.loglens.domain.component.service.OpenSearchMetricsService;
 import S13P31A306.loglens.domain.dashboard.dto.FrontendMetricsSummary;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-
 /**
- * 메트릭 갱신 스케줄러
- * Backend 컴포넌트 메트릭 + Frontend 메트릭을 주기적으로 갱신
+ * 메트릭 갱신 스케줄러 Backend 컴포넌트 메트릭 + Frontend 메트릭을 주기적으로 갱신
  */
 @Slf4j
 @Component
@@ -38,10 +37,10 @@ public class MetricsUpdateScheduler {
     private final OpenSearchMetricsService openSearchMetricsService;
 
     /**
-     * 메트릭 갱신 (매 10분마다 실행)
+     * 메트릭 갱신 (매 5분마다 실행)
      * cron: 초 분 시 일 월 요일
      */
-    @Scheduled(cron = "0 */10 * * * *")
+    @Scheduled(cron = "0 */5 * * * *")
     @Transactional
     public void updateMetrics() {
         log.info("{} ========== 메트릭 갱신 시작 ==========", LOG_PREFIX);
@@ -53,7 +52,7 @@ public class MetricsUpdateScheduler {
 
             for (Project project : allProjects) {
                 try {
-                    updateProjectMetrics(project);
+                    updateProjectMetricsInNewTransaction(project);
                 } catch (Exception e) {
                     log.error("{} 프로젝트 메트릭 갱신 실패: projectId={}, projectName={}",
                             LOG_PREFIX, project.getId(), project.getProjectName(), e);
@@ -69,9 +68,10 @@ public class MetricsUpdateScheduler {
     }
 
     /**
-     * 프로젝트별 메트릭 갱신 (Backend + Frontend)
+     * 프로젝트별 메트릭 갱신 (새 트랜잭션) OpenSearch 호출과 DB 저장을 하나의 독립된 트랜잭션으로 처리
      */
-    private void updateProjectMetrics(Project project) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void updateProjectMetricsInNewTransaction(Project project) {
         Integer projectId = project.getId();
         String projectUuid = project.getProjectUuid();
 
@@ -99,7 +99,8 @@ public class MetricsUpdateScheduler {
         }
 
         // DB에서 프로젝트의 모든 컴포넌트 조회
-        List<S13P31A306.loglens.domain.component.entity.Component> components = componentRepository.findAllByProjectId(projectId);
+        List<S13P31A306.loglens.domain.component.entity.Component> components = componentRepository.findAllByProjectId(
+                projectId);
 
         int updatedCount = 0;
         LocalDateTime now = LocalDateTime.now();
@@ -145,15 +146,15 @@ public class MetricsUpdateScheduler {
         FrontendMetrics metrics = FrontendMetrics.of(
                 projectId,
                 summary.totalTraces(),
-                summary.totalInfoLogs(),
-                summary.totalWarnLogs(),
-                summary.totalErrorLogs()
+                summary.totalInfo(),
+                summary.totalWarn(),
+                summary.totalError()
         );
 
         frontendMetricsRepository.save(metrics);
 
         log.debug("{} Frontend 메트릭 갱신 완료: projectId={}, traces={}, errors={}",
-                LOG_PREFIX, projectId, summary.totalTraces(), summary.totalErrorLogs());
+                LOG_PREFIX, projectId, summary.totalTraces(), summary.totalError());
     }
 
     /**

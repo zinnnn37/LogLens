@@ -7,17 +7,9 @@ spring:
   # ===================================================================
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    # DB 연결 URL. 환경 변수가 없으면 기본값 사용
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:fintech-osm}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     username: ${DB_USERNAME:ssafy}
     password: ${DB_PASSWORD:ssafy}
-    # Hikari Connection Pool 설정
-    hikari:
-      maximum-pool-size: 10 # 최대 커넥션 수
-      minimum-idle: 5      # 최소 유휴 커넥션 수
-      idle-timeout: 600000  # 10분 유지
-      max-lifetime: 1800000 # 30분마다 커넥션 재생성
-      connection-timeout: 3000
 
   data:
     redis:
@@ -29,16 +21,12 @@ spring:
   # JPA 및 Hibernate 설정
   # ===================================================================
   jpa:
-    # SQL 쿼리 출력 여부
     show-sql: false
-    # DDL(Data Definition Language) 자동 생성 전략
     hibernate:
-      ddl-auto: update # 애플리케이션 시작 시 스키마를 새로 생성
-    # Hibernate 관련 추가 프로퍼티
+      ddl-auto: update
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect # MySQL 8 방언 사용
-        format_sql: true                             # SQL을 보기 좋게 포맷팅
+        dialect: org.hibernate.dialect.MySQL8Dialect
 
 # ===================================================================
 # Spring Boot Actuator 설정

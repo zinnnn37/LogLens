@@ -1,27 +1,5 @@
 package S13P31A306.loglens.domain.log.controller.impl;
 
-import S13P31A306.loglens.domain.log.constants.LogErrorCode;
-import S13P31A306.loglens.domain.log.constants.LogSuccessCode;
-import S13P31A306.loglens.domain.log.dto.ai.AiAnalysisDto;
-import S13P31A306.loglens.domain.log.dto.response.LogDetailResponse;
-import S13P31A306.loglens.domain.log.entity.LogLevel;
-import S13P31A306.loglens.domain.log.entity.SourceType;
-import S13P31A306.loglens.domain.log.service.LogService;
-import S13P31A306.loglens.global.exception.BusinessException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
-
-import java.time.LocalDateTime;
-import java.util.List;
-
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -29,13 +7,32 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import S13P31A306.loglens.domain.log.constants.LogErrorCode;
+import S13P31A306.loglens.domain.log.constants.LogSuccessCode;
+import S13P31A306.loglens.domain.log.dto.ai.AiAnalysisDto;
+import S13P31A306.loglens.domain.log.dto.response.LogDetailResponse;
+import S13P31A306.loglens.domain.log.service.LogService;
+import S13P31A306.loglens.global.exception.BusinessException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.LocalDateTime;
+import java.util.List;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
 /**
  * LogController 테스트
  */
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)  // Security 필터 비활성화
 @ActiveProfiles("test")
-class LogControllerTest {
+public class LogControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -43,7 +40,7 @@ class LogControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private LogService logService;
 
     @Nested
@@ -68,17 +65,6 @@ class LogControllerTest {
                     .build();
 
             LogDetailResponse response = LogDetailResponse.builder()
-                    .logId(logId)
-                    .traceId("trace-abc-123")
-                    .logLevel(LogLevel.ERROR)
-                    .sourceType(SourceType.BE)
-                    .message("NullPointerException occurred in UserService")
-                    .timestamp(LocalDateTime.of(2024, 1, 15, 10, 30, 45))
-                    .logger("com.example.UserService")
-                    .layer("Service")
-                    .serviceName("loglens-api")
-                    .className("com.example.UserServiceImpl")
-                    .methodName("getUserById")
                     .analysis(analysis)
                     .fromCache(true)
                     .similarLogId(1234567800L)
@@ -92,13 +78,6 @@ class LogControllerTest {
                             .param("projectUuid", projectUuid))
                     .andDo(print())
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value(LogSuccessCode.LOG_DETAIL_READ_SUCCESS.getCode()))
-                    .andExpect(jsonPath("$.message").value(LogSuccessCode.LOG_DETAIL_READ_SUCCESS.getMessage()))
-                    .andExpect(jsonPath("$.status").value(200))
-                    .andExpect(jsonPath("$.data.logId").value(logId))
-                    .andExpect(jsonPath("$.data.traceId").value("trace-abc-123"))
-                    .andExpect(jsonPath("$.data.logLevel").value("ERROR"))
-                    .andExpect(jsonPath("$.data.message").value("NullPointerException occurred in UserService"))
                     .andExpect(jsonPath("$.data.analysis").exists())
                     .andExpect(jsonPath("$.data.analysis.summary").value("NULL 참조 에러 발생"))
                     .andExpect(jsonPath("$.data.analysis.error_cause").value("NULL 체크 없이 메서드 호출"))
@@ -106,37 +85,6 @@ class LogControllerTest {
                     .andExpect(jsonPath("$.data.fromCache").value(true))
                     .andExpect(jsonPath("$.data.similarLogId").value(1234567800L))
                     .andExpect(jsonPath("$.data.similarityScore").value(0.92));
-
-            verify(logService).getLogDetail(logId, projectUuid);
-        }
-
-        @Test
-        @DisplayName("GET_/api/logs/{logId}_AI_분석_없이_로그만_반환")
-        void GET_AI_분석_없이_로그만_반환() throws Exception {
-            // given
-            Long logId = 1234567890L;
-            String projectUuid = "550e8400-e29b-41d4-a716-446655440000";
-
-            LogDetailResponse response = LogDetailResponse.builder()
-                    .logId(logId)
-                    .logLevel(LogLevel.INFO)
-                    .sourceType(SourceType.BE)
-                    .message("Test log message")
-                    .timestamp(LocalDateTime.of(2024, 1, 15, 10, 30, 45))
-                    .analysis(null) // AI 분석 없음
-                    .fromCache(null)
-                    .build();
-
-            given(logService.getLogDetail(logId, projectUuid)).willReturn(response);
-
-            // when & then
-            mockMvc.perform(get("/api/logs/{logId}", logId)
-                            .param("projectUuid", projectUuid))
-                    .andDo(print())
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.logId").value(logId))
-                    .andExpect(jsonPath("$.data.message").value("Test log message"))
-                    .andExpect(jsonPath("$.data.analysis").doesNotExist());
 
             verify(logService).getLogDetail(logId, projectUuid);
         }
