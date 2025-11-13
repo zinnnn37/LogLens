@@ -6,6 +6,7 @@ import S13P31A306.loglens.domain.alert.exception.AlertErrorCode;
 import S13P31A306.loglens.domain.alert.mapper.AlertHistoryMapper;
 import S13P31A306.loglens.domain.alert.repository.AlertHistoryRepository;
 import S13P31A306.loglens.domain.alert.service.AlertHistoryService;
+import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
@@ -43,6 +44,7 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectService projectService;
+    private final AuthenticationHelper authHelper;
     private final ScheduledExecutorService sseScheduler;
     private final long sseTimeout;
     private final AlertHistoryMapper alertHistoryMapper;
@@ -52,6 +54,7 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
             ProjectRepository projectRepository,
             ProjectMemberRepository projectMemberRepository,
             ProjectService projectService,
+            AuthenticationHelper authHelper,
             @Qualifier("sseScheduler") ScheduledExecutorService sseScheduler,
             @Qualifier("sseTimeout") long sseTimeout,
             AlertHistoryMapper alertHistoryMapper) {
@@ -59,6 +62,7 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
         this.projectRepository = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.projectService = projectService;
+        this.authHelper = authHelper;
         this.sseScheduler = sseScheduler;
         this.sseTimeout = sseTimeout;
         this.alertHistoryMapper = alertHistoryMapper;
@@ -150,7 +154,9 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
     }
 
     @Override
-    public SseEmitter streamAlerts(String projectUuid, Integer userId) {
+    public SseEmitter streamAlerts(String projectUuid) {
+        // 비동기 경계 진입 전에 userId 캡처 (SecurityContext가 유효한 시점)
+        Integer userId = authHelper.getCurrentUserId();
         log.info("{} 실시간 알림 스트리밍 시작: projectUuid={}, userId={}", LOG_PREFIX, projectUuid, userId);
 
         // 1. UUID → ID 변환 및 프로젝트 존재 여부 확인

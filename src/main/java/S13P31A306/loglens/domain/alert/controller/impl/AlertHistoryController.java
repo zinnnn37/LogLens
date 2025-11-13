@@ -62,7 +62,6 @@ public class AlertHistoryController implements AlertHistoryApi {
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Override
     public SseEmitter streamAlerts(@RequestParam String projectUuid) {
-        Integer userId = authHelper.getCurrentUserId();
-        return alertHistoryService.streamAlerts(projectUuid, userId);
+        return alertHistoryService.streamAlerts(projectUuid);
     }
 }

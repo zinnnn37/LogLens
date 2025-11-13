@@ -292,7 +292,7 @@ class AlertHistoryControllerTest {
         @DisplayName("GET_/api/alerts/stream_SSE_연결_생성_성공")
         void GET_SSE_연결_생성_성공() throws Exception {
             // given
-            given(alertHistoryService.streamAlerts(eq(PROJECT_UUID), eq(USER_ID)))
+            given(alertHistoryService.streamAlerts(eq(PROJECT_UUID)))
                     .willReturn(new SseEmitter(300000L));
 
             // when & then
@@ -304,14 +304,14 @@ class AlertHistoryControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(request().asyncStarted());
 
-            verify(alertHistoryService).streamAlerts(eq(PROJECT_UUID), eq(USER_ID));
+            verify(alertHistoryService).streamAlerts(eq(PROJECT_UUID));
         }
 
         @Test
         @DisplayName("GET_/api/alerts/stream_프로젝트_없음_404_에러")
         void GET_프로젝트_없음_404_에러() throws Exception {
             // given
-            given(alertHistoryService.streamAlerts(eq(PROJECT_UUID), eq(USER_ID)))
+            given(alertHistoryService.streamAlerts(eq(PROJECT_UUID)))
                     .willThrow(new BusinessException(PROJECT_NOT_FOUND));
 
             // when & then
@@ -326,7 +326,7 @@ class AlertHistoryControllerTest {
         @DisplayName("GET_/api/alerts/stream_권한_없음_403_에러")
         void GET_권한_없음_403_에러() throws Exception {
             // given
-            given(alertHistoryService.streamAlerts(eq(PROJECT_UUID), eq(USER_ID)))
+            given(alertHistoryService.streamAlerts(eq(PROJECT_UUID)))
                     .willThrow(new BusinessException(FORBIDDEN));
 
             // when & then

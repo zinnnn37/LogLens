@@ -21,7 +21,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 public class AiServiceClient {
 
     private static final String LOG_PREFIX = "[AiServiceClient]";
-    private static final String AI_API_V2_LOGS_PATH = "/api/v2/logs";
+    private static final String AI_API_V2_LANGGRAPH_LOGS_PATH = "/api/v2-langgraph/logs";
 
     private final WebClient webClient;
     private final int timeout;
@@ -37,21 +37,22 @@ public class AiServiceClient {
     }
 
     /**
-     * 로그 AI 분석 요청 AI 서비스의 GET /api/v2/logs/{log_id}/analysis 엔드포인트를 호출합니다.
+     * 로그 AI 분석 요청 AI 서비스의 POST /api/v2-langgraph/logs/{log_id}/analysis 엔드포인트를 호출합니다.
+     * LangGraph 기반 V2 API를 사용하여 3-tier 캐싱, Map-Reduce 처리, 구조화된 워크플로우를 활용합니다.
      *
      * @param logId       분석할 로그 ID
-     * @param projectUuid 프로젝트 UUID (멀티테넌시)
+     * @param projectUuid 프로젝트 UUID (멀티테넌시, Header로 전달)
      * @return AI 분석 결과 응답 DTO, 실패 시 null
      */
     public AiAnalysisResponse analyzeLog(Long logId, String projectUuid) {
         log.debug("{} 🤖 AI 로그 분석 요청: logId={}, projectUuid={}", LOG_PREFIX, logId, projectUuid);
 
         try {
-            AiAnalysisResponse response = webClient.get()
+            AiAnalysisResponse response = webClient.post()
                     .uri(uriBuilder -> uriBuilder
-                            .path(AI_API_V2_LOGS_PATH + "/{log_id}/analysis")
-                            .queryParam("project_uuid", projectUuid)
+                            .path(AI_API_V2_LANGGRAPH_LOGS_PATH + "/{log_id}/analysis")
                             .build(logId))
+                    .header("project_uuid", projectUuid)
                     .retrieve()
                     .bodyToMono(AiAnalysisResponse.class)
                     .timeout(Duration.ofMillis(timeout))

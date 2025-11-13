@@ -43,8 +43,7 @@ public interface AlertHistoryService {
      * SSE를 통해 새로운 알림을 실시간으로 전송합니다.
      *
      * @param projectUuid 프로젝트 UUID
-     * @param userId      사용자 ID
      * @return SseEmitter
      */
-    SseEmitter streamAlerts(String projectUuid, Integer userId);
+    SseEmitter streamAlerts(String projectUuid);
 }

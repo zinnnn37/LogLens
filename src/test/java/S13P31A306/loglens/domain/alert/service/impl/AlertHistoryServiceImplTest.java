@@ -5,6 +5,7 @@ import S13P31A306.loglens.domain.alert.entity.AlertHistory;
 import S13P31A306.loglens.domain.alert.exception.AlertErrorCode;
 import S13P31A306.loglens.domain.alert.mapper.AlertHistoryMapper;
 import S13P31A306.loglens.domain.alert.repository.AlertHistoryRepository;
+import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
@@ -66,6 +67,9 @@ class AlertHistoryServiceImplTest {
     @Mock
     private AlertHistoryMapper alertHistoryMapper;
 
+    @Mock
+    private AuthenticationHelper authHelper;
+
     private static final Integer USER_ID = 1;
     private static final Integer PROJECT_ID = 1;
     private static final String PROJECT_UUID = "test-project-uuid-1234";
@@ -79,6 +83,7 @@ class AlertHistoryServiceImplTest {
                 projectRepository,
                 projectMemberRepository,
                 projectService,
+                authHelper,
                 sseScheduler,
                 SSE_TIMEOUT,
                 alertHistoryMapper
@@ -424,6 +429,7 @@ class AlertHistoryServiceImplTest {
         void SSE_연결을_생성하고_스케줄러를_시작한다() {
             // given
             Project project = createProject();
+            given(authHelper.getCurrentUserId()).willReturn(USER_ID);
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
@@ -432,12 +438,13 @@ class AlertHistoryServiceImplTest {
                     .willReturn((ScheduledFuture) scheduledFuture);
 
             // when
-            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID, USER_ID);
+            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID);
 
             // then
             assertThat(result).isNotNull();
             assertThat(result.getTimeout()).isEqualTo(SSE_TIMEOUT);
 
+            verify(authHelper).getCurrentUserId();
             verify(projectRepository).findById(PROJECT_ID);
             verify(projectMemberRepository).existsByProjectIdAndUserId(PROJECT_ID, USER_ID);
             verify(sseScheduler).scheduleAtFixedRate(
@@ -448,14 +455,16 @@ class AlertHistoryServiceImplTest {
         @DisplayName("프로젝트가_존재하지_않으면_PROJECT_NOT_FOUND_예외를_발생시킨다")
         void 프로젝트가_존재하지_않으면_PROJECT_NOT_FOUND_예외를_발생시킨다() {
             // given
+            given(authHelper.getCurrentUserId()).willReturn(USER_ID);
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> alertHistoryService.streamAlerts(PROJECT_UUID, USER_ID))
+            assertThatThrownBy(() -> alertHistoryService.streamAlerts(PROJECT_UUID))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", PROJECT_NOT_FOUND);
 
+            verify(authHelper).getCurrentUserId();
             verify(projectRepository).findById(PROJECT_ID);
             verify(sseScheduler, never()).scheduleAtFixedRate(
                     any(Runnable.class), anyLong(), anyLong(), any(TimeUnit.class));
@@ -466,15 +475,17 @@ class AlertHistoryServiceImplTest {
         void 프로젝트_멤버가_아니면_FORBIDDEN_예외를_발생시킨다() {
             // given
             Project project = createProject();
+            given(authHelper.getCurrentUserId()).willReturn(USER_ID);
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(false);
 
             // when & then
-            assertThatThrownBy(() -> alertHistoryService.streamAlerts(PROJECT_UUID, USER_ID))
+            assertThatThrownBy(() -> alertHistoryService.streamAlerts(PROJECT_UUID))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", FORBIDDEN);
 
+            verify(authHelper).getCurrentUserId();
             verify(projectRepository).findById(PROJECT_ID);
             verify(projectMemberRepository).existsByProjectIdAndUserId(PROJECT_ID, USER_ID);
             verify(sseScheduler, never()).scheduleAtFixedRate(
@@ -494,6 +505,7 @@ class AlertHistoryServiceImplTest {
                     createAlertHistoryResponse(2, "N")
             );
 
+            given(authHelper.getCurrentUserId()).willReturn(USER_ID);
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
@@ -510,7 +522,7 @@ class AlertHistoryServiceImplTest {
                     any(Runnable.class), eq(0L), eq(5L), eq(TimeUnit.SECONDS));
 
             // when
-            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID, USER_ID);
+            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID);
 
             // then
             assertThat(result).isNotNull();
@@ -532,6 +544,7 @@ class AlertHistoryServiceImplTest {
                     createAlertHistoryResponse(2, "N")
             );
 
+            given(authHelper.getCurrentUserId()).willReturn(USER_ID);
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
@@ -547,7 +560,7 @@ class AlertHistoryServiceImplTest {
                     any(Runnable.class), eq(0L), eq(5L), eq(TimeUnit.SECONDS));
 
             // when
-            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID, USER_ID);
+            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID);
 
             // then
             assertThat(result).isNotNull();
@@ -563,6 +576,7 @@ class AlertHistoryServiceImplTest {
         void 새로운_알림이_없으면_heartbeat를_전송한다() {
             // given
             Project project = createProject();
+            given(authHelper.getCurrentUserId()).willReturn(USER_ID);
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
@@ -577,7 +591,7 @@ class AlertHistoryServiceImplTest {
                     any(Runnable.class), eq(0L), eq(5L), eq(TimeUnit.SECONDS));
 
             // when
-            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID, USER_ID);
+            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID);
 
             // then
             assertThat(result).isNotNull();
@@ -596,6 +610,7 @@ class AlertHistoryServiceImplTest {
             List<AlertHistory> firstResult = Collections.singletonList(alert1);
             List<AlertHistory> secondResult = Collections.emptyList();
 
+            given(authHelper.getCurrentUserId()).willReturn(USER_ID);
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
@@ -612,7 +627,7 @@ class AlertHistoryServiceImplTest {
                     any(Runnable.class), eq(0L), eq(5L), eq(TimeUnit.SECONDS));
 
             // when
-            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID, USER_ID);
+            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID);
 
             // then
             assertThat(result).isNotNull();
@@ -625,6 +640,7 @@ class AlertHistoryServiceImplTest {
         void RuntimeException_발생_시_연결을_정상_종료한다() {
             // given
             Project project = createProject();
+            given(authHelper.getCurrentUserId()).willReturn(USER_ID);
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
@@ -646,7 +662,7 @@ class AlertHistoryServiceImplTest {
                     any(Runnable.class), eq(0L), eq(5L), eq(TimeUnit.SECONDS));
 
             // when
-            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID, USER_ID);
+            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID);
 
             // then
             assertThat(result).isNotNull();
@@ -659,6 +675,7 @@ class AlertHistoryServiceImplTest {
         void 일반_예외_발생_시_에러와_함께_연결을_종료한다() {
             // given
             Project project = createProject();
+            given(authHelper.getCurrentUserId()).willReturn(USER_ID);
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
@@ -680,7 +697,7 @@ class AlertHistoryServiceImplTest {
                     any(Runnable.class), eq(0L), eq(5L), eq(TimeUnit.SECONDS));
 
             // when
-            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID, USER_ID);
+            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID);
 
             // then
             assertThat(result).isNotNull();
@@ -693,6 +710,7 @@ class AlertHistoryServiceImplTest {
         void 타임아웃_발생_시_스케줄러를_취소하고_연결을_종료한다() {
             // given
             Project project = createProject();
+            given(authHelper.getCurrentUserId()).willReturn(USER_ID);
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
@@ -701,7 +719,7 @@ class AlertHistoryServiceImplTest {
                     .willReturn((ScheduledFuture) scheduledFuture);
 
             // when
-            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID, USER_ID);
+            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID);
 
             // then
             assertThat(result).isNotNull();
@@ -715,6 +733,7 @@ class AlertHistoryServiceImplTest {
         void 연결_완료_시_스케줄러_리소스를_정리한다() {
             // given
             Project project = createProject();
+            given(authHelper.getCurrentUserId()).willReturn(USER_ID);
             given(projectService.getProjectIdByUuid(PROJECT_UUID)).willReturn(PROJECT_ID);
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
@@ -723,7 +742,7 @@ class AlertHistoryServiceImplTest {
                     .willReturn((ScheduledFuture) scheduledFuture);
 
             // when
-            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID, USER_ID);
+            SseEmitter result = alertHistoryService.streamAlerts(PROJECT_UUID);
 
             // then
             assertThat(result).isNotNull();
