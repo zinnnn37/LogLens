@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from langchain_core.tools import tool
 
 from app.core.opensearch import opensearch_client
+from app.tools.common_fields import ALL_FIELDS
 
 
 def extract_exception_type(source: Dict[str, Any]) -> str:
@@ -323,26 +324,7 @@ async def get_recent_errors(
                 "query": query,
                 "size": limit,
                 "sort": [{"timestamp": "desc"}],
-                "_source": [
-                    "message", "level", "service_name", "timestamp", "log_id",
-                    "stacktrace",  # 필드명 수정 (stack_trace -> stacktrace)
-                    "layer", "component_name",
-                    # Nested fields (log_details)
-                    "log_details.exception_type",
-                    "log_details.class_name",
-                    "log_details.method_name",
-                    "log_details.http_method",
-                    "log_details.request_uri",
-                    "log_details.response_status",
-                    "log_details.execution_time",
-                    "log_details.stacktrace",
-                    # AI analysis fields
-                    "ai_analysis.summary",
-                    "ai_analysis.error_cause",
-                    "ai_analysis.solution",
-                    "ai_analysis.tags",
-                    "ai_analysis.analysis_type"
-                ]
+                "_source": ALL_FIELDS  # 공통 필드 사용 (trace_id, request_id 포함)
             }
         )
 
@@ -406,6 +388,10 @@ async def get_recent_errors(
             response_status = log_details.get("response_status")
             execution_time = log_details.get("execution_time")
 
+            # 추적 정보 (trace_id, request_id)
+            trace_id = source.get("trace_id", "")
+            request_id = source.get("request_id", "")
+
             # 스택 트레이스 존재 여부
             has_stack = bool(source.get("stacktrace") or log_details.get("stacktrace"))
 
@@ -461,9 +447,17 @@ async def get_recent_errors(
             if has_stack:
                 summary_lines.append(f"   📚 (스택 트레이스 있음)")
 
-            # log_id
+            # 추적 ID들 (trace_id, request_id, log_id)
+            tracking_ids = []
             if log_id:
-                summary_lines.append(f"   (log_id: {log_id})")
+                tracking_ids.append(f"log_id: {log_id}")
+            if trace_id:
+                tracking_ids.append(f"trace_id: {trace_id}")
+            if request_id:
+                tracking_ids.append(f"request_id: {request_id}")
+
+            if tracking_ids:
+                summary_lines.append(f"   ({', '.join(tracking_ids)})")
 
             summary_lines.append("")
 

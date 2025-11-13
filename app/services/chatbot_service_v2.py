@@ -5,9 +5,11 @@ LLM이 자율적으로 도구를 선택하여 로그 분석 수행
 """
 
 import re
+import asyncio
 from typing import List, Optional, Dict, Any
 from app.agents.chatbot_agent import create_log_analysis_agent
 from app.models.chat import ChatResponse, ChatMessage
+from app.utils.agent_logger import AgentLogger
 from langchain_core.messages import HumanMessage, AIMessage
 
 
@@ -33,12 +35,13 @@ class ChatbotServiceV2:
             '에러', '오류', '로그', '성능', 'api', '서비스', '통계', '분석',
             '트래픽', '모니터링', '응답', '시간', '검색', '조회', '느린', '빠른',
             '장애', '실패', '성공', '요청', '배포', '서버', '헬스', '상태',
-            '버그', '예외', '익셉션', '스택', '트레이스',
+            '버그', '예외', '익셉션', '스택', '트레이스', '추적',  # 추가
             # 영어
             'error', 'log', 'performance', 'api', 'service', 'statistics',
             'analysis', 'traffic', 'monitoring', 'response', 'time', 'search',
             'slow', 'fast', 'failure', 'deploy', 'server', 'health', 'status',
-            'bug', 'exception', 'stack', 'trace'
+            'bug', 'exception', 'stack', 'trace', 'traceid', 'trace_id',
+            'requestid', 'request_id', 'tracking'  # 추가
         ]
 
         # 키워드가 하나라도 있으면 로그 관련 질문
@@ -290,10 +293,14 @@ class ChatbotServiceV2:
             "chat_history": history_text  # 프롬프트 변수로 전달
         }
 
+        # Agent 로거 초기화
+        agent_logger = AgentLogger(project_uuid, question)
+
         try:
             # 🚫 로그 무관 질문 사전 필터링 (Agent 호출 전)
             if self._is_off_topic(question):
                 print(f"🚫 Off-topic question detected, skipping agent: {question[:50]}...")
+                agent_logger.log_completion(True, 0, "Off-topic question filtered")
                 # Agent 호출 없이 즉시 범위 설명 반환
                 return ChatResponse(
                     answer="""죄송합니다. 저는 로그 분석 전문 AI 어시스턴트입니다.
@@ -328,11 +335,43 @@ class ChatbotServiceV2:
             # 질문 유형 분류 (로그 관련 질문인 경우)
             query_type = self._classify_query_type(question)
 
-            # Agent 실행 (비동기)
-            result = await agent_executor.ainvoke(agent_input)
+            # Agent 실행 (타임아웃 60초)
+            try:
+                result = await asyncio.wait_for(
+                    agent_executor.ainvoke(agent_input),
+                    timeout=60.0  # 60초 타임아웃
+                )
+            except asyncio.TimeoutError:
+                # 타임아웃 발생 시
+                agent_logger.log_timeout(60.0)
+                agent_logger.log_completion(False, 0, "Timeout after 60s")
+                return ChatResponse(
+                    answer="""⏱️ 요청 처리 시간이 초과되었습니다.
+
+질문이 너무 복잡하거나 광범위할 수 있습니다. 다음과 같이 질문을 단순화해보세요:
+
+**대신 시도해보세요:**
+- "최근 24시간 에러 5개만"
+- "user-service 에러만"
+- "최근 1시간 통계"
+- "특정 log_id 상세 조회"
+
+무엇을 도와드릴까요?""",
+                    from_cache=False,
+                    related_logs=[]
+                )
 
             # Agent 결과에서 답변 추출
-            answer = result.get("output", "죄송합니다. 답변을 생성할 수 없습니다.")
+            answer = result.get("output", "")
+
+            # 답변이 비어있으면 폴백
+            if not answer or len(answer.strip()) < 10:
+                agent_logger.log_completion(False, 0, "Empty or too short answer")
+                return ChatResponse(
+                    answer="죄송합니다. 적절한 답변을 생성하지 못했습니다. 질문을 더 구체적으로 작성해주세요.",
+                    from_cache=False,
+                    related_logs=[]
+                )
 
             # 답변 검증 및 확장
             validated_answer = self._validate_and_enhance_response(answer, query_type, question)
@@ -347,6 +386,9 @@ class ChatbotServiceV2:
             if missing_sections:
                 print(f"⚠️ 누락 섹션: {missing_sections}")
 
+            # 성공 로깅
+            agent_logger.log_completion(True, len(validated_answer))
+
             # ChatResponse 형식으로 반환
             # Agent는 자체적으로 로그를 검색하므로 related_logs는 빈 리스트
             return ChatResponse(
@@ -355,8 +397,18 @@ class ChatbotServiceV2:
                 related_logs=[]  # Agent가 내부적으로 로그 처리
             )
 
+        except asyncio.TimeoutError:
+            # 이미 위에서 처리했지만, 혹시 다른 곳에서 발생하면
+            agent_logger.log_timeout(60.0)
+            agent_logger.log_completion(False, 0, "Timeout")
+            return ChatResponse(
+                answer="⏱️ 요청 처리 시간이 초과되었습니다. 질문을 더 구체적으로 작성해주세요.",
+                from_cache=False,
+                related_logs=[]
+            )
         except Exception as e:
             print(f"❌ Agent 실행 중 오류: {e}")
+            agent_logger.log_completion(False, 0, str(e))
             # 에러 발생 시 사용자 친화적 메시지 반환
             return ChatResponse(
                 answer=f"죄송합니다. 질문 처리 중 오류가 발생했습니다: {str(e)}",

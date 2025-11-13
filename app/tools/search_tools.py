@@ -10,6 +10,7 @@ from langchain_core.tools import tool
 from app.core.opensearch import opensearch_client
 from app.services.similarity_service import similarity_service
 from app.services.embedding_service import embedding_service
+from app.tools.common_fields import BASE_FIELDS, LOG_DETAILS_FIELDS
 
 
 @tool
@@ -87,19 +88,7 @@ async def search_logs_by_keyword(
                 "query": query,
                 "size": 20,  # 최대 20개
                 "sort": [{"timestamp": "desc"}],
-                "_source": [
-                    "message", "level", "service_name", "timestamp", "log_id",
-                    "layer", "component_name",
-                    # Nested fields
-                    "log_details.exception_type",
-                    "log_details.class_name",
-                    "log_details.method_name",
-                    "log_details.http_method",
-                    "log_details.request_uri",
-                    "log_details.response_status",
-                    # AI analysis (summary only for brevity)
-                    "ai_analysis.summary"
-                ]
+                "_source": BASE_FIELDS + LOG_DETAILS_FIELDS + ["ai_analysis.summary"]  # 공통 필드 사용
             }
         )
 

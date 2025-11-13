@@ -7,6 +7,7 @@ from typing import Optional
 from langchain_core.tools import tool
 
 from app.core.opensearch import opensearch_client
+from app.tools.common_fields import ALL_FIELDS
 
 
 @tool
@@ -207,19 +208,7 @@ async def get_logs_by_trace_id(
                 "query": query,
                 "size": limit,
                 "sort": [{"timestamp": "asc"}],  # 시간순 (오름차순)
-                "_source": [
-                    "log_id", "timestamp", "level", "service_name",
-                    "message", "layer", "component_name",
-                    # Nested fields
-                    "log_details.exception_type",
-                    "log_details.class_name",
-                    "log_details.method_name",
-                    "log_details.http_method",
-                    "log_details.request_uri",
-                    "log_details.response_status",
-                    # AI analysis (summary only)
-                    "ai_analysis.summary"
-                ]
+                "_source": ALL_FIELDS  # 공통 필드 사용
             }
         )
 

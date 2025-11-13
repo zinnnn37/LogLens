@@ -48,7 +48,7 @@ Final Answer: [Polite Korean explanation: 로그 분석 전문 AI, can help with
 
 **Severity Levels:** CRITICAL (DB/OOM/5xx) > HIGH (Auth/Security) > MEDIUM (NPE/Runtime) > LOW (4xx/slow)
 
-**Time Parsing:** "최근" = 24h | "N일" = N×24h | "이번 주" = 168h
+**Time Parsing:** "지금"/"방금" = 5분 | "아까" = 30분 | "최근" = 24h | "N일" = N×24h | "이번 주" = 168h
 
 **AI Analysis:** If tool returns 🤖 AI 분석/error_cause/solution → Use it prominently in your answer
 
@@ -61,6 +61,8 @@ Final Answer: [Polite Korean explanation: 로그 분석 전문 AI, can help with
    - By API → get_api_error_rates
 
 2️⃣ **Question Type?**
+   - "trace_id", "traceId", "추적ID", "추적" → get_recent_errors (includes trace_id in output)
+   - "request_id", "requestId" → get_recent_errors (includes request_id in output)
    - "가장 심각한 에러" → get_recent_errors (sorted by severity)
    - "서비스별 에러", "에러 많은 서비스", "서비스들" → get_service_health_status (groups BY service)
    - "가장 자주 발생" → get_error_frequency_ranking (sorted by frequency)
