@@ -1,10 +1,18 @@
 package S13P31A306.loglens.domain.dashboard.service.impl;
 
+import static S13P31A306.loglens.global.constants.GlobalErrorCode.OPENSEARCH_OPERATION_FAILED;
+
 import S13P31A306.loglens.domain.dashboard.dto.opensearch.ErrorAggregation;
 import S13P31A306.loglens.domain.dashboard.dto.opensearch.ErrorStatistics;
 import S13P31A306.loglens.domain.dashboard.service.TopFrequentErrorsQueryService;
-import S13P31A306.loglens.domain.project.validator.ProjectValidator;
 import S13P31A306.loglens.global.exception.BusinessException;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.json.JsonData;
@@ -15,16 +23,6 @@ import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.SearchResponse;
 import org.springframework.stereotype.Service;
-
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-
-import static S13P31A306.loglens.global.constants.GlobalErrorCode.OPENSEARCH_OPERATION_FAILED;
 
 /**
  * 자주 발생하는 에러 조회를 위한 OpenSearch 쿼리 서비스 구현체
@@ -38,19 +36,20 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
     private static final String INDEX_NAME = "logs-*";
 
     private final OpenSearchClient openSearchClient;
-    private final ProjectValidator projectValidator;
 
+    //@formatter:off
     /**
      * Top N 에러 집계 조회
      * OpenSearch에서 예외 타입별로 그룹핑하여 발생 횟수, 최초/최근 발생 시각, 샘플 데이터를 조회
      *
      * @param projectUuid 프로젝트 UUID
-     * @param start 조회 시작 시간
-     * @param end 조회 종료 시간
-     * @param limit 조회할 에러 개수 (1~50)
+     * @param start       조회 시작 시간
+     * @param end         조회 종료 시간
+     * @param limit       조회할 에러 개수 (1~50)
      * @return 에러 집계 결과 리스트 (발생 횟수 내림차순)
      * @throws BusinessException OpenSearch 쿼리 실행 중 I/O 오류 발생 시 (OPENSEARCH_OPERATION_FAILED)
      */
+    //@formatter:on
     @Override
     public List<ErrorAggregation> queryTopErrors(
             String projectUuid,
@@ -62,12 +61,12 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
 
         try {
             SearchRequest request = SearchRequest.of(s -> s
-                    .index(INDEX_NAME)
+                    .index(projectUuid.replace('-', '_') + "_*")
                     .size(0)
                     .query(buildErrorLogQuery(projectUuid, start, end))
                     .aggregations("by_error_type", a -> a
                             .terms(t -> t
-                                    .field("log_details.exception_type")
+                                    .field("logger")
                                     .size(limit))
                             .aggregations("first_occurrence", a2 -> a2
                                     .min(m -> m.field("timestamp")))
@@ -77,7 +76,7 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
                                     .topHits(th -> th
                                             .size(1)
                                             .source(src -> src.filter(f -> f
-                                                    .includes(List.of("message", "stack_trace", "logger")))))))
+                                                    .includes(List.of("message", "logger")))))))
             );
 
             SearchResponse<Void> response = openSearchClient.search(request, Void.class);
@@ -95,12 +94,11 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
     }
 
     /**
-     * 전체 에러 통계 조회
-     * 조회 기간 내 전체 에러 수와 고유 예외 타입 수를 조회
+     * 전체 에러 통계 조회 조회 기간 내 전체 에러 수와 고유 예외 타입 수를 조회
      *
      * @param projectUuid 프로젝트 UUID
-     * @param start 조회 시작 시간
-     * @param end 조회 종료 시간
+     * @param start       조회 시작 시간
+     * @param end         조회 종료 시간
      * @return 에러 통계 (전체 에러 수, 고유 타입 수)
      */
     @Override
@@ -113,11 +111,11 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
 
         try {
             SearchRequest request = SearchRequest.of(s -> s
-                    .index(INDEX_NAME)
+                    .index(projectUuid + "_*") // Changed from "logs-*" to "projectUuid + "_""
                     .size(0)
                     .query(buildErrorLogQuery(projectUuid, start, end))
                     .aggregations("unique_types", a -> a
-                            .cardinality(c -> c.field("log_details.exception_type")))
+                            .cardinality(c -> c.field("logger")))
             );
 
             SearchResponse<Void> response = openSearchClient.search(request, Void.class);
@@ -150,29 +148,37 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
         }
     }
 
+    //@formatter:off
     /**
      * 프로젝트의 ERROR 로그 기본 쿼리 생성
      * project_uuid, log_level(ERROR), timestamp 범위 조건을 포함한 bool 쿼리 생성
      *
      * @param projectUud 프로젝트 UUID
-     * @param start 조회 시작 시간
-     * @param end 조회 종료 시간
+     * @param start      조회 시작 시간
+     * @param end        조회 종료 시간
      * @return OpenSearch Query 객체
      */
+    //@formatter:on
     private Query buildErrorLogQuery(String projectUud, LocalDateTime start, LocalDateTime end) {
+        // LocalDateTime을 ISO 8601 형식(UTC)으로 변환
+        String startStr = start.atZone(java.time.ZoneId.systemDefault())
+                .withZoneSameInstant(java.time.ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_INSTANT);
+        String endStr = end.atZone(java.time.ZoneId.systemDefault())
+                .withZoneSameInstant(java.time.ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_INSTANT);
+
         return Query.of(q -> q.bool(b -> b
-                .must(m -> m.term(t -> t
-                        .field("project_uuid")
-                        .value(FieldValue.of(projectUud))))
                 .must(m -> m.term(t -> t
                         .field("log_level")
                         .value(FieldValue.of("ERROR"))))
                 .must(m -> m.range(r -> r
                         .field("timestamp")
-                        .gte(JsonData.of(start.toString()))
-                        .lte(JsonData.of(end.toString()))))));
+                        .gte(JsonData.of(startStr))
+                        .lte(JsonData.of(endStr))))));
     }
 
+    //@formatter:off
     /**
      * OpenSearch 응답을 ErrorAggregation 리스트로 변환
      * terms aggregation 버킷을 순회하며 예외 타입, 발생 횟수, 시간 정보, 샘플 데이터를 추출
@@ -181,6 +187,7 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
      * @return ErrorAggregation 리스트
      * @throws BusinessException 예상하지 못한 에러
      */
+    //@formatter:on
     private List<ErrorAggregation> parseErrorAggregations(SearchResponse<Void> response) {
         log.debug("{} OpenSearch 쿼리 결과 변환", LOG_PREFIX);
 
@@ -262,8 +269,7 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
     }
 
     /**
-     * ISO 8601 형식의 timestamp 문자열을 LocalDateTime으로 변환
-     * 파싱 실패 시 null 반환
+     * ISO 8601 형식의 timestamp 문자열을 LocalDateTime으로 변환 파싱 실패 시 null 반환
      *
      * @param timestamp ISO 8601 형식의 시간 문자열
      * @return 변환된 LocalDateTime 또는 현재 시간
@@ -279,10 +285,9 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
     }
 
     /**
-     * JsonData 객체에서 특정 필드 값을 문자열로 추출
-     * 추출 실패 시 빈 문자열 반환
+     * JsonData 객체에서 특정 필드 값을 문자열로 추출 추출 실패 시 빈 문자열 반환
      *
-     * @param source JsonData 소스 객체
+     * @param source    JsonData 소스 객체
      * @param fieldName 추출할 필드명
      * @return 필드 값 또는 빈 문자열
      */
@@ -296,19 +301,20 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
         }
     }
 
+    //@formatter:off
     /**
-     * 전체 스택 트레이스에서 첫 라인만 추출
-     * 첫 라인은 실제 에러 발생 지점을 나타내며, 전체 스택을 반환하면 응답 크기가 커지므로 첫 라인만 추출
-     * 추출 실패 시 빈 문자열 반환
+     * 전체 스택 트레이스에서 첫 라인만 추출 첫 라인은 실제 에러 발생 지점을 나타내며,
+     * 전체 스택을 반환하면 응답 크기가 커지므로 첫 라인만 추출 추출 실패 시 빈 문자열 반환
      *
      * @param source JsonData 소스 객체
      * @return 스택 트레이스 첫 라인 또는 빈 문자열
      */
+    //@formatter:on
     private String extractStackTraceFirstLine(JsonData source) {
         log.info("{} Stack Trace의 첫 라인 추출 시작", LOG_PREFIX);
 
         try {
-            String fullStackTrace = source.toJson().asJsonObject().getString("stack_trace", "");
+            String fullStackTrace = source.toJson().asJsonObject().getString("stacktrace", "");
             if (fullStackTrace.isBlank()) {
                 return "";
             }
