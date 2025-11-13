@@ -18,22 +18,39 @@ async def get_error_rate_trend(
     service_name: Optional[str] = None
 ) -> str:
     """
-    에러율 추세를 시간대별로 분석합니다.
+    에러율 추세를 시간대별로 분석합니다 (증가/감소/안정 판정).
+
+    이 도구는 다음을 수행합니다:
+    - ✅ 시간대별 에러율 계산 (ERROR 로그 비율)
+    - ✅ 추세 방향 자동 판정 (증가/감소/안정)
+    - ✅ 변화율 계산 (최근 vs 이전 구간)
+    - ✅ 경고 메시지 제공 (임계치 초과 시)
+    - ❌ 서비스별 비교는 하지 않음 (get_service_health_status 사용)
+    - ❌ 특정 에러 타입 분석 안 함 (get_error_frequency_ranking 사용)
+    - ❌ 트래픽 분포는 제공 안 함 (get_traffic_by_time 사용)
 
     사용 시나리오:
-    - "에러율이 증가하고 있나요?"
-    - "최근 24시간 에러 추세는?"
-    - "에러율이 비정상적으로 높아지고 있나요?"
+    1. "에러율이 증가하고 있나요?"
+    2. "최근 24시간 에러 추세"
+    3. "비정상적인 에러율 급증이 있나?"
+
+    ⚠️ 중요한 제약사항:
+    - 1회 호출로 충분합니다
+    - 에러율 3% 이상이면 경고 표시
+    - 증가 추세 + 높은 에러율이면 위험 알림
 
     입력 파라미터 (JSON 형식):
-        interval: 집계 간격 (1h=1시간, 30m=30분, 15m=15분, 기본 1h)
-        time_hours: 분석 시간 범위 (시간 단위, 기본 24시간)
-        service_name: 서비스 이름 필터 (선택)
+        interval: 집계 간격 (기본 1h, 옵션: 30m/15m)
+        time_hours: 분석 기간 (기본 24시간)
+        service_name: 서비스 필터 (선택)
 
-    참고: project_uuid는 자동으로 주입되므로 전달하지 마세요.
+    관련 도구:
+    - get_service_health_status: 서비스별 에러율 비교
+    - compare_time_periods: 두 시간대 에러율 비교
+    - get_error_frequency_ranking: 에러 타입별 빈도
 
     Returns:
-        시간대별 에러율, 추세 방향 (증가/감소/안정), 변화율
+        시간대별 에러율, 추세 방향, 변화율, 경고
     """
     # 인덱스 패턴
     index_pattern = f"{project_uuid.replace('-', '_')}_*"
@@ -195,22 +212,38 @@ async def get_service_health_status(
     service_name: Optional[str] = None
 ) -> str:
     """
-    서비스별 헬스 상태를 분석합니다.
+    서비스별 헬스 상태를 분석합니다 (Healthy/Degraded/Warning/Down).
+
+    이 도구는 다음을 수행합니다:
+    - ✅ 서비스별 에러율, 성공률 계산
+    - ✅ 헬스 등급 자동 판정 (4단계)
+    - ✅ 평균/P95 응답 시간 포함
+    - ✅ 서비스별 순위 제공
+    - ❌ 시간대별 추세는 제공 안 함 (get_error_rate_trend 사용)
+    - ❌ 특정 에러 타입 분석 안 함 (get_error_frequency_ranking 사용)
+    - ❌ API별 성능은 분석 안 함 (get_slowest_apis 사용)
 
     사용 시나리오:
-    - "user-service가 정상인가요?"
-    - "어떤 서비스가 가장 불안정한가요?"
-    - "각 서비스별 에러율은?"
-    - "서비스별 성공률 순위를 보여줘"
+    1. "어떤 서비스가 가장 불안정해?"
+    2. "user-service 헬스 체크"
+    3. "서비스별 에러율 순위"
+
+    ⚠️ 중요한 제약사항:
+    - 1회 호출로 충분합니다
+    - 헬스 점수는 성공률 70% + 에러율 페널티로 계산
+    - 등급: 🟢Healthy > 🟡Degraded > 🟠Warning > 🔴Down
 
     입력 파라미터 (JSON 형식):
-        time_hours: 분석 시간 범위 (시간 단위, 기본 24시간)
-        service_name: 특정 서비스만 조회 (선택, 없으면 전체 서비스)
+        time_hours: 분석 기간 (기본 24시간)
+        service_name: 특정 서비스 필터 (선택)
 
-    참고: project_uuid는 자동으로 주입되므로 전달하지 마세요.
+    관련 도구:
+    - get_error_rate_trend: 서비스별 에러율 추세
+    - get_error_frequency_ranking: 에러 타입 빈도
+    - get_slowest_apis: API 응답 시간
 
     Returns:
-        서비스별 헬스 등급, 에러율, 성공률, 순위
+        서비스별 헬스 등급, 에러율, 성공률, 응답 시간
     """
     # 인덱스 패턴
     index_pattern = f"{project_uuid.replace('-', '_')}_*"
@@ -429,23 +462,34 @@ async def get_error_frequency_ranking(
     service_name: Optional[str] = None
 ) -> str:
     """
-    에러 타입별 발생 빈도를 순위로 분석합니다.
+    에러 타입별 발생 빈도 순위를 분석합니다 (가장 자주 발생하는 에러).
+
+    이 도구는 다음을 수행합니다:
+    - ✅ 에러 타입별 발생 횟수 집계
+    - ✅ 빈도순 정렬 (상위 N개)
+    - ✅ 최초/최근 발생 시간 추적
+    - ✅ 영향받은 서비스 목록 제공
+    - ❌ 에러율 추세는 제공 안 함 (get_error_rate_trend 사용)
+    - ❌ 서비스별 헬스는 분석 안 함 (get_service_health_status 사용)
 
     사용 시나리오:
-    - "가장 자주 발생하는 에러는?"
-    - "NullPointerException이 몇 번 발생했나요?"
-    - "반복되는 에러 패턴이 있나요?"
-    - "동일한 에러가 여러 서비스에서 발생하나요?"
+    1. "가장 자주 발생하는 에러는?"
+    2. "NullPointerException이 몇 번 났어?"
+
+    ⚠️ 중요한 제약사항:
+    - 1회 호출로 충분합니다
 
     입력 파라미터 (JSON 형식):
-        time_hours: 분석 시간 범위 (시간 단위, 기본 24시간)
+        time_hours: 분석 기간 (기본 24시간)
         limit: 조회할 에러 타입 개수 (기본 10개)
-        service_name: 서비스 이름 필터 (선택)
+        service_name: 서비스 필터 (선택)
 
-    참고: project_uuid는 자동으로 주입되므로 전달하지 마세요.
+    관련 도구:
+    - get_service_health_status: 서비스별 에러율
+    - get_error_rate_trend: 시간대별 에러율 추세
 
     Returns:
-        에러 타입별 발생 횟수, 최초/최근 발생 시간, 영향받은 서비스
+        에러 타입별 발생 횟수, 최초/최근 발생 시간
     """
     # 인덱스 패턴
     index_pattern = f"{project_uuid.replace('-', '_')}_*"
@@ -605,20 +649,32 @@ async def get_api_error_rates(
     min_requests: int = 10  # 최소 요청 수 (너무 적은 API 제외)
 ) -> str:
     """
-    API 엔드포인트별 에러율을 분석합니다.
+    API 엔드포인트별 에러율을 분석합니다 (실패율 높은 API).
+
+    이 도구는 다음을 수행합니다:
+    - ✅ API별 에러율, 성공률 계산
+    - ✅ 5xx/4xx 에러 분포 제공
+    - ✅ 요청 수 통계 포함
+    - ✅ 에러율순 정렬
+    - ❌ 응답 시간은 분석 안 함 (get_slowest_apis 사용)
+    - ❌ 시간대별 추세는 제공 안 함 (get_error_rate_trend 사용)
 
     사용 시나리오:
-    - "가장 에러가 많이 발생하는 API는?"
-    - "/api/payment 엔드포인트의 실패율은?"
-    - "5xx 에러가 가장 많은 엔드포인트는?"
-    - "API별 성공률을 보여줘"
+    1. "에러가 많은 API는?"
+    2. "/api/payment 실패율은?"
+
+    ⚠️ 중요한 제약사항:
+    - 1회 호출로 충분합니다
+    - 요청 10건 미만 API는 제외됩니다
 
     입력 파라미터 (JSON 형식):
-        time_hours: 분석 시간 범위 (시간 단위, 기본 24시간)
+        time_hours: 분석 기간 (기본 24시간)
         limit: 조회할 API 개수 (기본 10개)
-        min_requests: 최소 요청 수 필터 (기본 10건)
+        min_requests: 최소 요청 수 (기본 10건)
 
-    참고: project_uuid는 자동으로 주입되므로 전달하지 마세요.
+    관련 도구:
+    - get_slowest_apis: API 응답 시간
+    - get_error_rate_trend: 시간대별 에러율
 
     Returns:
         API별 에러율, 성공률, 5xx/4xx 분포
@@ -788,20 +844,32 @@ async def get_affected_users_count(
     """
     영향받은 사용자 수를 분석합니다 (requester_ip 기반).
 
+    이 도구는 다음을 수행합니다:
+    - ✅ 고유 사용자 수 계산 (IP 기반)
+    - ✅ 전체 대비 영향 비율 제공
+    - ✅ 사용자별 에러 빈도 분석
+    - ✅ 반복 에러 사용자 감지
+    - ❌ 특정 에러 타입별 분석 안 함 (get_error_frequency_ranking 사용)
+    - ❌ 시간대별 추세는 제공 안 함 (get_error_rate_trend 사용)
+
     사용 시나리오:
-    - "몇 명의 사용자가 영향받았나요?"
-    - "사용자에게 노출된 에러는 몇 건인가요?"
-    - "전체 사용자 중 몇 %가 에러를 경험했나요?"
-    - "특정 IP에서 반복적으로 에러가 발생하나요?"
+    1. "몇 명이 에러를 겪었어?"
+    2. "사용자 영향도는?"
+
+    ⚠️ 중요한 제약사항:
+    - 1회 호출로 충분합니다
+    - requester_ip 필드가 필요합니다
 
     입력 파라미터 (JSON 형식):
-        time_hours: 분석 시간 범위 (시간 단위, 기본 24시간)
-        error_only: 에러만 분석 (True) vs 전체 분석 (False)
+        time_hours: 분석 기간 (기본 24시간)
+        error_only: 에러만 분석 (기본 True)
 
-    참고: project_uuid는 자동으로 주입되므로 전달하지 마세요.
+    관련 도구:
+    - get_error_frequency_ranking: 에러 타입별 빈도
+    - get_service_health_status: 서비스별 헬스
 
     Returns:
-        영향받은 고유 사용자 수, 비율, 사용자별 에러 빈도
+        고유 사용자 수, 영향 비율, 사용자별 빈도
     """
     # 인덱스 패턴
     index_pattern = f"{project_uuid.replace('-', '_')}_*"

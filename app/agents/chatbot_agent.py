@@ -12,7 +12,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import Tool
 
 from app.tools.search_tools import search_logs_by_keyword, search_logs_by_similarity, search_logs_advanced
-from app.tools.analysis_tools import get_log_statistics, get_recent_errors, correlate_logs, analyze_errors_unified
+from app.tools.analysis_tools import get_log_statistics, get_recent_errors, correlate_logs, analyze_errors_unified, analyze_single_log
 from app.tools.detail_tools import get_log_detail, get_logs_by_trace_id
 from app.tools.performance_tools import get_slowest_apis, get_traffic_by_time
 from app.tools.monitoring_tools import (
@@ -54,13 +54,18 @@ Final Answer: [Polite Korean explanation: 로그 분석 전문 AI, can help with
 
 **Tool Selection Decision Tree:**
 
-1️⃣ **Group by what?**
+1️⃣ **Single Log Analysis (특정 log_id)?**
+   - "log_id X를 분석해줘", "로그 X 분석", "이 로그 뭐야" → analyze_single_log (AI-powered deep analysis)
+   - ⚠️ If user mentions specific log_id, ALWAYS use analyze_single_log (NOT get_log_detail)
+   - ⚠️ get_log_detail only retrieves raw log data (NO analysis)
+
+2️⃣ **Group by what?**
    - By SERVICE → get_service_health_status
    - By ERROR TYPE → get_error_frequency_ranking
    - By TIME → get_error_rate_trend
    - By API → get_api_error_rates
 
-2️⃣ **Question Type?**
+3️⃣ **Question Type?**
    - "trace_id", "traceId", "추적ID", "추적" → get_recent_errors (includes trace_id in output)
    - "request_id", "requestId" → get_recent_errors (includes request_id in output)
    - "가장 심각한 에러" → get_recent_errors (sorted by severity)
@@ -75,7 +80,7 @@ Final Answer: [Polite Korean explanation: 로그 분석 전문 AI, can help with
    - "리소스 이슈" → detect_resource_issues
    - "배포 영향" → analyze_deployment_impact
 
-3️⃣ **Efficiency:** Use ONE broad query first → Analyze → If needed, 1-2 more refined calls (max 3-4 total)
+4️⃣ **Efficiency:** Use ONE broad query first → Analyze → If needed, 1-2 more refined calls (max 3-4 total)
 
 ✅ FORMATTING TEMPLATE (MUST FOLLOW):
 
@@ -433,6 +438,16 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
         params = {**kwargs, "project_uuid": project_uuid}
         return await analyze_errors_unified.ainvoke(params)
 
+    async def _analyze_single_log_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in analyze_single_log: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await analyze_single_log.ainvoke(params)
+
     # Tool 목록 (wrapper 함수 사용)
     tools: List[Tool] = [
         Tool(
@@ -571,6 +586,12 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
             description=analyze_errors_unified.description,
             func=_dummy_func,
             coroutine=_analyze_errors_unified_wrapper
+        ),
+        Tool(
+            name="analyze_single_log",
+            description=analyze_single_log.description,
+            func=_dummy_func,
+            coroutine=_analyze_single_log_wrapper
         ),
     ]
 

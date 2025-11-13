@@ -22,24 +22,39 @@ async def search_logs_by_keyword(
     time_hours: int = 24
 ) -> str:
     """
-    키워드로 로그를 검색합니다.
+    키워드로 로그 메시지를 검색합니다 (텍스트 매칭).
+
+    이 도구는 다음을 수행합니다:
+    - ✅ 특정 키워드가 포함된 로그 검색 (message 필드 대상)
+    - ✅ 레벨별, 서비스별 필터링 지원
+    - ✅ 최근 20개 로그 반환 (시간 역순)
+    - ✅ 레벨별 분포 통계 제공
+    - ❌ 의미적 유사도 검색은 하지 않음 (search_logs_by_similarity 사용)
+    - ❌ AI 기반 분석은 하지 않음 (analyze_single_log 사용)
+    - ❌ 특정 시간대 지정 불가 (search_logs_advanced 사용)
 
     사용 시나리오:
-    - 특정 에러 메시지로 로그 찾기 (예: "NullPointerException")
-    - 특정 단어가 포함된 로그 찾기 (예: "user-service")
+    1. "NullPointerException이 포함된 로그 찾아줘"
+    2. "user-service라는 단어가 들어간 ERROR 로그"
+    3. "timeout 문제 검색"
+
+    ⚠️ 중요한 제약사항:
+    - "검색 결과가 없습니다" 응답은 **정상 결과**입니다. 다른 도구로 재시도하지 마세요
+    - 1회 호출로 충분합니다. 같은 키워드로 반복 검색하지 마세요
 
     입력 파라미터 (JSON 형식):
-        keyword: 검색할 키워드 (메시지 내용, 필수)
-        level: 로그 레벨 필터 (ERROR, WARN, INFO, DEBUG 중 하나, 선택)
-        service_name: 서비스 이름 필터 (선택)
-        time_hours: 검색할 시간 범위 (시간 단위, 기본 24시간)
+        keyword: 검색 키워드 (필수, 예: "NullPointerException")
+        level: 로그 레벨 필터 (선택, ERROR/WARN/INFO/DEBUG)
+        service_name: 서비스 필터 (선택, 예: "user-service")
+        time_hours: 검색 시간 범위 (기본 24시간)
 
-    참고:
-    - project_uuid는 자동으로 주입되므로 전달하지 마세요.
-    - ⚠️ "검색 결과가 없습니다" 응답은 유효한 결과입니다. 다른 도구로 재시도하지 마세요.
+    관련 도구:
+    - search_logs_by_similarity: 자연어 질문으로 의미적 유사 로그 검색
+    - search_logs_advanced: 커스텀 시간 범위 + 다중 필터
+    - get_log_detail: 특정 log_id의 상세 정보 조회
 
     Returns:
-        검색 결과 요약 (건수, 주요 메시지, 시간 정보)
+        검색 결과 (건수, 레벨별 분포, 상위 5개 로그)
     """
     # 시간 범위 계산
     end_time = datetime.utcnow()
@@ -176,24 +191,40 @@ async def search_logs_by_similarity(
     time_hours: int = 168  # 기본 7일
 ) -> str:
     """
-    의미적 유사도로 로그를 검색합니다 (Vector Search).
+    의미적 유사도로 로그를 검색합니다 (Vector 임베딩 기반).
+
+    이 도구는 다음을 수행합니다:
+    - ✅ 자연어 질문을 임베딩으로 변환하여 의미적 유사 로그 검색
+    - ✅ 코사인 유사도 기반 상위 k개 반환
+    - ✅ 유사도 점수 제공 (0.0~1.0)
+    - ✅ 레벨별 필터링 지원
+    - ❌ 정확한 키워드 매칭은 하지 않음 (search_logs_by_keyword 사용)
+    - ❌ AI 분석은 하지 않음 (analyze_single_log 사용)
+    - ❌ 특정 시간대 지정 불가 (search_logs_advanced 사용)
 
     사용 시나리오:
-    - 자연어 질문으로 관련 로그 찾기 (예: "사용자 인증 실패 관련 로그")
-    - 특정 상황과 유사한 로그 찾기 (예: "데이터베이스 연결 문제")
+    1. "사용자 인증 실패와 유사한 로그 찾아줘"
+    2. "데이터베이스 연결 문제 비슷한 상황"
+    3. "결제 실패 관련 로그"
+
+    ⚠️ 중요한 제약사항:
+    - "유사한 로그를 찾을 수 없습니다" 응답은 **정상 결과**입니다. 다른 도구로 재시도하지 마세요
+    - 1회 호출로 충분합니다. 같은 쿼리로 반복 검색하지 마세요
+    - 기본 검색 범위는 7일입니다 (키워드 검색보다 넓음)
 
     입력 파라미터 (JSON 형식):
-        query: 검색 쿼리 (자연어, 필수)
-        k: 반환할 로그 개수 (기본 5개)
-        level: 로그 레벨 필터 (ERROR, WARN, INFO, DEBUG 중 하나, 선택)
-        time_hours: 검색할 시간 범위 (시간 단위, 기본 168시간=7일)
+        query: 자연어 검색 쿼리 (필수, 예: "데이터베이스 연결 문제")
+        k: 반환 개수 (기본 5개, 최대 20개)
+        level: 로그 레벨 필터 (선택, ERROR/WARN/INFO/DEBUG)
+        time_hours: 검색 시간 범위 (기본 168시간=7일)
 
-    참고:
-    - project_uuid는 자동으로 주입되므로 전달하지 마세요.
-    - ⚠️ "유사한 로그를 찾을 수 없습니다" 응답은 유효한 결과입니다. 다른 도구로 재시도하지 마세요.
+    관련 도구:
+    - search_logs_by_keyword: 정확한 키워드 매칭 검색
+    - search_logs_advanced: 커스텀 시간 범위 + 다중 필터
+    - analyze_single_log: 특정 log_id AI 분석
 
     Returns:
-        유사한 로그 목록 (상위 k개)
+        유사도순 로그 목록 (유사도 점수, 상세 정보 포함)
     """
     try:
         # 쿼리 임베딩
@@ -297,25 +328,42 @@ async def search_logs_advanced(
     limit: int = 50
 ) -> str:
     """
-    고급 로그 검색 (커스텀 시간 범위 + 다중 필터)
+    고급 로그 검색 (커스텀 시간 범위 + 다중 필터 조합).
 
-    특정 날짜/시간 범위 지정, 여러 조건 동시 필터링 가능
+    이 도구는 다음을 수행합니다:
+    - ✅ 정확한 날짜/시간 범위 지정 가능 (ISO 8601 형식)
+    - ✅ 여러 조건 동시 필터링 (서비스, 레벨, 키워드)
+    - ✅ 최대 50개 로그 반환
+    - ✅ 조건별 카운트 통계 제공
+    - ❌ 의미적 유사도 검색은 하지 않음 (search_logs_by_similarity 사용)
+    - ❌ AI 분석은 하지 않음 (analyze_single_log 사용)
+    - ❌ 상대적 시간 표현 불가 ("최근 24시간"은 time_hours 파라미터를 쓰는 다른 도구 사용)
 
-    Args:
-        project_uuid: 프로젝트 UUID (언더스코어 형식)
-        start_time: 시작 시간 (ISO 8601 형식: "2025-11-05T14:00:00" 또는 "2025-11-05")
-        end_time: 종료 시간 (ISO 8601 형식)
-        service_name: 서비스 이름 (선택)
-        level: 로그 레벨 (ERROR, WARN, INFO 등, 선택)
-        keyword: 검색 키워드 (message 필드, 선택)
+    사용 시나리오:
+    1. "2025-11-05 14:00부터 16:00까지 payment-service ERROR 로그"
+    2. "어제 오후 2시~4시 사이 DatabaseTimeout 검색"
+    3. "특정 배포 시점 전후 로그 비교"
+
+    ⚠️ 중요한 제약사항:
+    - 시간 형식은 ISO 8601 준수 ("2025-11-05T14:00:00" 또는 "2025-11-05")
+    - "검색 결과가 없습니다" 응답은 **정상 결과**입니다
+    - 1회 호출로 충분합니다
+
+    입력 파라미터 (JSON 형식):
+        start_time: 시작 시간 (ISO 형식, 예: "2025-11-05T14:00:00")
+        end_time: 종료 시간 (ISO 형식, 예: "2025-11-05T16:00:00")
+        service_name: 서비스 필터 (선택)
+        level: 로그 레벨 (선택, ERROR/WARN/INFO/DEBUG)
+        keyword: 키워드 필터 (선택)
         limit: 최대 결과 수 (기본 50)
 
-    Returns:
-        검색 결과 요약 (시간 범위 + 조건 + 결과)
+    관련 도구:
+    - search_logs_by_keyword: 상대적 시간 (time_hours) 사용 검색
+    - compare_time_periods: 두 시간대 비교 분석
+    - analyze_deployment_impact: 배포 전후 영향 분석
 
-    Examples:
-        - "2025-11-05 14:00부터 16:00까지 payment-service 에러 검색"
-        - "어제 오후 2시~4시 사이 DatabaseTimeout 로그"
+    Returns:
+        검색 조건 요약, 결과 목록 (최대 50개)
     """
     try:
         from datetime import datetime, timezone

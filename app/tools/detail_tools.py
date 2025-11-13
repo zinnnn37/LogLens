@@ -16,19 +16,37 @@ async def get_log_detail(
     project_uuid: str
 ) -> str:
     """
-    특정 로그의 상세 정보를 조회합니다.
+    특정 log_id의 원본 로그 데이터를 조회합니다 (분석 없음).
+
+    이 도구는 다음을 수행합니다:
+    - ✅ 특정 log_id의 모든 필드 조회 (메시지, 스택 트레이스, 메타데이터)
+    - ✅ AI 분석 결과가 있으면 함께 표시
+    - ✅ log_details 상세 정보 포함
+    - ✅ trace_id 표시 (연관 로그 추적용)
+    - ❌ 새로운 AI 분석은 수행하지 않음 (analyze_single_log 사용)
+    - ❌ 연관 로그 자동 조회 안 함 (get_logs_by_trace_id 사용)
+    - ❌ 근본 원인/해결책 제시 안 함 (analyze_single_log 사용)
 
     사용 시나리오:
-    - 특정 로그의 전체 내용 확인 (스택 트레이스 포함)
-    - 에러 원인 분석을 위한 상세 정보 조회
+    1. "log_id 12345의 원본 내용 보여줘"
+    2. "스택 트레이스 전체를 확인하고 싶어"
+    3. "이 로그의 trace_id가 뭐야?"
+
+    ⚠️ 중요한 제약사항:
+    - 이 도구는 **조회만** 합니다. AI 분석이 필요하면 analyze_single_log를 사용하세요
+    - "log_id를 찾을 수 없습니다" 응답은 **정상 결과**입니다
+    - 사용자가 "분석"을 요청하면 analyze_single_log를 사용하세요
 
     입력 파라미터 (JSON 형식):
-        log_id: 로그 ID (정수, 필수)
+        log_id: 로그 ID (정수, 필수, 예: 1234567890)
 
-    참고: project_uuid는 자동으로 주입되므로 전달하지 마세요.
+    관련 도구:
+    - analyze_single_log: 특정 log_id AI 기반 심층 분석 (근본 원인, 해결책)
+    - get_logs_by_trace_id: 동일 trace_id를 가진 연관 로그 조회
+    - search_logs_by_keyword: 키워드로 로그 검색
 
     Returns:
-        로그 상세 정보 (메시지, 스택 트레이스, 메타데이터 전체)
+        로그 상세 정보 (기본 정보, 메시지, 스택 트레이스, AI 분석 결과)
     """
     # 인덱스 패턴 (UUID의 하이픈을 언더스코어로 변환)
     index_pattern = f"{project_uuid.replace('-', '_')}_*"
@@ -177,20 +195,38 @@ async def get_logs_by_trace_id(
     limit: int = 50
 ) -> str:
     """
-    동일한 trace_id를 가진 모든 로그를 조회합니다.
+    동일한 trace_id를 가진 모든 연관 로그를 조회합니다 (분산 트레이싱).
+
+    이 도구는 다음을 수행합니다:
+    - ✅ 특정 trace_id의 모든 로그를 시간순 조회
+    - ✅ 서비스 간 호출 흐름 파악
+    - ✅ 서비스별 분포 통계 제공
+    - ✅ 최대 50개 로그 반환
+    - ❌ AI 기반 근본 원인 분석은 하지 않음 (analyze_single_log 사용)
+    - ❌ 특정 log_id의 상세 정보만 필요하면 사용 불가 (get_log_detail 사용)
+    - ❌ trace_id가 없는 로그는 조회 불가
 
     사용 시나리오:
-    - 특정 요청의 전체 흐름 추적 (분산 트레이싱)
-    - 연관된 로그를 시간순으로 확인하여 문제 원인 파악
+    1. "이 요청의 전체 흐름을 추적해줘" (trace_id 제공 시)
+    2. "trace_id abc123의 모든 로그 보여줘"
+    3. "서비스 간 호출 순서 확인"
+
+    ⚠️ 중요한 제약사항:
+    - "trace_id에 해당하는 로그가 없습니다" 응답은 **정상 결과**입니다
+    - 1회 호출로 충분합니다
+    - trace_id는 대소문자를 구분합니다
 
     입력 파라미터 (JSON 형식):
-        trace_id: Trace ID (문자열, 필수)
+        trace_id: Trace ID (문자열, 필수, 예: "abc123-def456")
         limit: 최대 조회 개수 (기본 50개)
 
-    참고: project_uuid는 자동으로 주입되므로 전달하지 마세요.
+    관련 도구:
+    - get_log_detail: 특정 log_id의 상세 정보 조회
+    - analyze_single_log: 특정 log_id AI 분석
+    - detect_cascading_failures: 연쇄 장애 패턴 감지
 
     Returns:
-        연관된 로그 목록 (시간순)
+        시간순 로그 목록, 서비스별 분포 통계
     """
     # 인덱스 패턴 (UUID의 하이픈을 언더스코어로 변환)
     index_pattern = f"{project_uuid.replace('-', '_')}_*"

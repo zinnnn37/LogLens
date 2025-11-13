@@ -19,23 +19,40 @@ async def get_slowest_apis(
     min_execution_time: Optional[int] = None
 ) -> str:
     """
-    응답 시간이 가장 느린 API 엔드포인트를 조회합니다.
+    응답 시간이 가장 느린 API 엔드포인트를 분석합니다 (평균 시간 기준).
+
+    이 도구는 다음을 수행합니다:
+    - ✅ API별 평균/최대/최소 응답 시간 집계
+    - ✅ P50/P95/P99 백분위수 제공
+    - ✅ 성능 등급 판정 (빠름/보통/느림/매우 느림)
+    - ✅ 요청 수 통계 포함
+    - ❌ 특정 시간대 트래픽 분포는 제공 안 함 (get_traffic_by_time 사용)
+    - ❌ 에러 분석은 하지 않음 (get_recent_errors 사용)
+    - ❌ 시간대별 추세는 제공 안 함 (get_traffic_by_time 사용)
 
     사용 시나리오:
-    - "응답 시간이 가장 느린 API는?"
-    - "평균 응답 시간이 긴 엔드포인트 분석"
-    - "성능 병목 지점 파악"
+    1. "가장 느린 API는?"
+    2. "응답 시간이 5초 넘는 API 찾아줘"
+    3. "성능 병목 지점 파악"
+
+    ⚠️ 중요한 제약사항:
+    - 1회 호출로 충분합니다
+    - execution_time 데이터가 없으면 결과 없음 (정상)
+    - 기본 분석 기간은 7일입니다
 
     입력 파라미터 (JSON 형식):
         limit: 조회할 API 개수 (기본 10개)
-        time_hours: 분석 시간 범위 (시간 단위, 기본 168시간=7일)
-        service_name: 서비스 이름 필터 (선택)
-        min_execution_time: 최소 실행 시간 필터 (밀리초, 선택)
+        time_hours: 분석 기간 (기본 168시간=7일)
+        service_name: 서비스 필터 (선택)
+        min_execution_time: 최소 실행 시간 (밀리초, 선택)
 
-    참고: project_uuid는 자동으로 주입되므로 전달하지 마세요.
+    관련 도구:
+    - get_traffic_by_time: 시간대별 트래픽 분포
+    - get_error_rate_trend: 시간대별 에러율 추세
+    - analyze_deployment_impact: 배포 전후 성능 비교
 
     Returns:
-        응답 시간이 느린 API 목록 (평균/최대/P95 포함)
+        느린 API 목록 (평균/P95/P99, 성능 등급)
     """
     # 인덱스 패턴 (UUID의 하이픈을 언더스코어로 변환)
     index_pattern = f"{project_uuid.replace('-', '_')}_*"
@@ -310,23 +327,40 @@ async def get_traffic_by_time(
     service_name: Optional[str] = None
 ) -> str:
     """
-    시간대별 트래픽 분포를 조회합니다.
+    시간대별 트래픽 분포를 분석합니다 (피크 타임 파악).
+
+    이 도구는 다음을 수행합니다:
+    - ✅ 시간대별 로그 건수 집계
+    - ✅ 피크 타임 자동 감지
+    - ✅ 시간대별 레벨 분포 (ERROR/WARN/INFO/DEBUG)
+    - ✅ 시간대별 주요 서비스 표시
+    - ❌ 에러율 추세는 제공 안 함 (get_error_rate_trend 사용)
+    - ❌ API 응답 시간은 분석 안 함 (get_slowest_apis 사용)
+    - ❌ 서비스별 헬스는 제공 안 함 (get_service_health_status 사용)
 
     사용 시나리오:
-    - "트래픽이 가장 많은 시간대는?"
-    - "시간대별 에러 발생 패턴 분석"
-    - "피크 타임 파악"
+    1. "트래픽이 가장 많은 시간대는?"
+    2. "시간대별 ERROR 발생 패턴"
+    3. "피크 타임 파악"
+
+    ⚠️ 중요한 제약사항:
+    - 1회 호출로 충분합니다
+    - 데이터 없는 시간대도 표시됩니다 (0건으로)
+    - KST 시간대로 표시됩니다
 
     입력 파라미터 (JSON 형식):
-        interval: 집계 간격 (1h=1시간, 30m=30분, 1d=1일, 기본 1h)
-        time_hours: 분석 시간 범위 (시간 단위, 기본 168시간=7일)
-        level: 로그 레벨 필터 (ERROR, WARN, INFO, DEBUG 중 하나, 선택)
-        service_name: 서비스 이름 필터 (선택)
+        interval: 집계 간격 (기본 1h, 옵션: 30m/1d)
+        time_hours: 분석 기간 (기본 168시간=7일)
+        level: 로그 레벨 필터 (선택)
+        service_name: 서비스 필터 (선택)
 
-    참고: project_uuid는 자동으로 주입되므로 전달하지 마세요.
+    관련 도구:
+    - get_error_rate_trend: 시간대별 에러율 추세
+    - get_slowest_apis: API 응답 시간 분석
+    - compare_time_periods: 두 시간대 비교
 
     Returns:
-        시간대별 트래픽 분포 (요청 수, 레벨별 분포 포함)
+        시간대별 트래픽 (피크 타임, 레벨별 분포, 전체 통계)
     """
     # 인덱스 패턴 (UUID의 하이픈을 언더스코어로 변환)
     index_pattern = f"{project_uuid.replace('-', '_')}_*"

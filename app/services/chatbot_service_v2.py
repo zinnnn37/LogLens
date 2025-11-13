@@ -10,6 +10,7 @@ from typing import List, Optional, Dict, Any
 from app.agents.chatbot_agent import create_log_analysis_agent
 from app.models.chat import ChatResponse, ChatMessage
 from app.utils.agent_logger import AgentLogger
+from app.callbacks.tool_tracker_callback import ToolTrackerCallback
 from langchain_core.messages import HumanMessage, AIMessage
 
 
@@ -270,6 +271,9 @@ class ChatbotServiceV2:
         # ReAct Agent 생성 (project_uuid 바인딩)
         agent_executor = create_log_analysis_agent(project_uuid)
 
+        # ToolCallTracker 콜백 생성
+        tool_tracker_callback = ToolTrackerCallback()
+
         # 대화 기록을 LangChain 메시지 형식으로 변환
         langchain_history = []
         if chat_history:
@@ -335,10 +339,13 @@ class ChatbotServiceV2:
             # 질문 유형 분류 (로그 관련 질문인 경우)
             query_type = self._classify_query_type(question)
 
-            # Agent 실행 (타임아웃 60초)
+            # Agent 실행 (타임아웃 60초, 콜백 추가)
             try:
                 result = await asyncio.wait_for(
-                    agent_executor.ainvoke(agent_input),
+                    agent_executor.ainvoke(
+                        agent_input,
+                        config={"callbacks": [tool_tracker_callback]}
+                    ),
                     timeout=60.0  # 60초 타임아웃
                 )
             except asyncio.TimeoutError:
@@ -388,6 +395,11 @@ class ChatbotServiceV2:
 
             # 성공 로깅
             agent_logger.log_completion(True, len(validated_answer))
+
+            # 도구 호출 통계 로깅
+            tool_summary = tool_tracker_callback.get_summary()
+            if tool_summary != "No tool calls yet.":
+                print(f"📊 도구 호출 통계:\n{tool_summary}")
 
             # ChatResponse 형식으로 반환
             # Agent는 자체적으로 로그를 검색하므로 related_logs는 빈 리스트
