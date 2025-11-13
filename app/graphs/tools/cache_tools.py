@@ -135,9 +135,14 @@ def create_check_trace_cache_tool(project_uuid: str):
     return check_trace_cache
 
 
-def create_check_similarity_cache_tool(project_uuid: str):
+def create_check_similarity_cache_tool(project_uuid: str, requesting_log_id: Optional[int] = None, log_metadata: Optional[Dict[str, Any]] = None):
     """
     Similarity Cache 체크 도구 생성 (project_uuid 바인딩)
+
+    Args:
+        project_uuid: 프로젝트 UUID
+        requesting_log_id: 요청한 로그 ID (자기 자신 제외용)
+        log_metadata: 로그 메타데이터 (level, service_name, source_type 등)
     """
 
     @tool
@@ -164,37 +169,59 @@ def create_check_similarity_cache_tool(project_uuid: str):
             # 임베딩 생성
             log_vector = await embedding_service.embed_query(log_message)
 
-            # 유사한 로그 검색 (분석 결과가 있는 로그만)
-            filters = {}  # 레벨 필터 등을 추가 가능
-
             # 인덱스 패턴
             index_pattern = f"{project_uuid.replace('-', '_')}_*"
 
+            # Query 구성: must 조건
+            must_clauses = [
+                {
+                    "knn": {
+                        "message_embedding": {
+                            "vector": log_vector,
+                            "k": 5
+                        }
+                    }
+                },
+                {"exists": {"field": "ai_analysis.summary"}}
+            ]
+
+            # 메타데이터 필터링 추가 (level, service_name, source_type 매칭)
+            if log_metadata:
+                if log_metadata.get("level"):
+                    must_clauses.append({"term": {"level": log_metadata["level"]}})
+                if log_metadata.get("service_name"):
+                    must_clauses.append({"term": {"service_name.keyword": log_metadata["service_name"]}})
+                if log_metadata.get("source_type"):
+                    must_clauses.append({"term": {"source_type.keyword": log_metadata["source_type"]}})
+
+            # Query 구성: must_not 조건 (자기 자신 제외)
+            must_not_clauses = []
+            if requesting_log_id:
+                must_not_clauses.append({"term": {"log_id": requesting_log_id}})
+
             # OpenSearch KNN 검색
+            query_body = {
+                "size": 5,
+                "query": {
+                    "bool": {
+                        "must": must_clauses
+                    }
+                },
+                "_source": ["log_id", "message", "ai_analysis", "level", "service_name", "source_type"]
+            }
+
+            if must_not_clauses:
+                query_body["query"]["bool"]["must_not"] = must_not_clauses
+
             results = opensearch_client.search(
                 index=index_pattern,
-                body={
-                    "size": 5,
-                    "query": {
-                        "bool": {
-                            "must": [
-                                {
-                                    "knn": {
-                                        "message_embedding": {
-                                            "vector": log_vector,
-                                            "k": 5
-                                        }
-                                    }
-                                },
-                                {"exists": {"field": "ai_analysis.summary"}}
-                            ]
-                        }
-                    },
-                    "_source": ["log_id", "message", "ai_analysis"]
-                }
+                body=query_body
             )
 
             hits = results.get("hits", {}).get("hits", [])
+
+            # 로깅: 검색된 후보 개수
+            print(f"[Similarity Cache] Searched for log_id={requesting_log_id}, found {len(hits)} candidates")
 
             for hit in hits:
                 score = hit.get("_score", 0)
@@ -208,6 +235,9 @@ def create_check_similarity_cache_tool(project_uuid: str):
                     ai_analysis = source.get("ai_analysis")
 
                     if ai_analysis and ai_analysis.get("summary"):
+                        # 로깅: 캐시 히트
+                        print(f"[Similarity Cache] ✅ CACHE HIT - Requested: {requesting_log_id}, Matched: {similar_log_id}, Score: {similarity:.4f}")
+
                         return json.dumps({
                             "cache_hit": True,
                             "cache_type": "similarity",
@@ -216,9 +246,12 @@ def create_check_similarity_cache_tool(project_uuid: str):
                             "analysis": ai_analysis
                         }, ensure_ascii=False)
 
+            # 로깅: 캐시 미스
+            print(f"[Similarity Cache] ❌ CACHE MISS - Requested: {requesting_log_id}, No match above threshold {threshold}")
             return "CACHE_MISS: 유사한 로그의 분석 결과가 없습니다."
 
         except Exception as e:
+            print(f"[Similarity Cache] ⚠️ ERROR - {str(e)}")
             return f"ERROR: {str(e)}"
 
     return check_similarity_cache

@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     OPENSEARCH_USE_SSL: bool = False  # OpenSearch security plugin disabled
 
     # Analysis Settings
-    SIMILARITY_THRESHOLD: float = 0.8
+    SIMILARITY_THRESHOLD: float = 0.92  # Increased from 0.8 to prevent false cache matches
     MAX_CONTEXT_LOGS: int = 5
 
     # Caching Settings

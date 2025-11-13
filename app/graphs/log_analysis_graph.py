@@ -53,7 +53,7 @@ class LogAnalysisGraph:
         # 도구 생성 (project_uuid 바인딩)
         self.check_direct_cache = create_check_direct_cache_tool(project_uuid)
         self.check_trace_cache = create_check_trace_cache_tool(project_uuid)
-        self.check_similarity_cache = create_check_similarity_cache_tool(project_uuid)
+        # Note: check_similarity_cache is created dynamically in _check_similarity_cache_node with metadata
         self.collect_trace_logs = create_collect_trace_logs_tool(project_uuid)
         self.analyze_single_log = create_analyze_single_log_tool(project_uuid)
         self.analyze_logs_direct = create_analyze_logs_direct_tool(project_uuid)
@@ -266,15 +266,32 @@ class LogAnalysisGraph:
 
     async def _check_similarity_cache_node(self, state: LogAnalysisState) -> Dict[str, Any]:
         """
-        4. Similarity Cache 체크
+        4. Similarity Cache 체크 (메타데이터 필터링 포함)
         """
         if state.get("error") or not state.get("log_message"):
             return {"similarity_cache_result": None}
 
         start_time = time.time()
 
+        log_id = state["log_id"]
         log_message = state["log_message"]
-        result_str = await self.check_similarity_cache.ainvoke({
+        log_data = state.get("log_data", {})
+
+        # 메타데이터 추출
+        log_metadata = {
+            "level": log_data.get("level") or state.get("log_level"),
+            "service_name": log_data.get("service_name") or state.get("service_name"),
+            "source_type": log_data.get("source_type")
+        }
+
+        # Similarity cache 도구 생성 (log_id와 메타데이터 전달)
+        check_similarity_cache_with_metadata = create_check_similarity_cache_tool(
+            self.project_uuid,
+            requesting_log_id=log_id,
+            log_metadata=log_metadata
+        )
+
+        result_str = await check_similarity_cache_with_metadata.ainvoke({
             "log_message": log_message,
             "threshold": settings.SIMILARITY_THRESHOLD
         })
@@ -288,11 +305,19 @@ class LogAnalysisGraph:
         try:
             result = json.loads(result_str)
             if result.get("cache_hit"):
+                similar_log_id = result.get("similar_log_id")
+
+                # 로그 ID 검증: 캐시된 log_id가 요청한 log_id와 다른지 확인
+                if similar_log_id != log_id:
+                    print(f"[Similarity Cache Validation] ⚠️ Cache returned different log - Requested: {log_id}, Got: {similar_log_id}, Score: {result.get('similarity_score', 0):.4f}")
+                else:
+                    print(f"[Similarity Cache Validation] ⚠️ WARNING: Cache returned same log_id (should have been excluded)")
+
                 return {
                     "similarity_cache_result": result,
                     "from_cache": True,
                     "cache_type": "similarity",
-                    "similar_log_id": result.get("similar_log_id"),
+                    "similar_log_id": similar_log_id,
                     "similarity_score": result.get("similarity_score"),
                     "final_analysis": result["analysis"],
                     "cache_check_duration_ms": state.get("cache_check_duration_ms", 0) + duration_ms,
