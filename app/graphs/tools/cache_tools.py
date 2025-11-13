@@ -232,6 +232,12 @@ def create_check_similarity_cache_tool(project_uuid: str, requesting_log_id: Opt
                 if similarity >= threshold:
                     source = hit["_source"]
                     similar_log_id = source.get("log_id")
+
+                    # 자기 자신 매칭 방지 (Post-filter)
+                    if similar_log_id == requesting_log_id:
+                        print(f"[Similarity Cache] ⚠️ Skipping self-match: log_id={similar_log_id}")
+                        continue
+
                     ai_analysis = source.get("ai_analysis")
 
                     if ai_analysis and ai_analysis.get("summary"):

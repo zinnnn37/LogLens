@@ -17,7 +17,11 @@ router = APIRouter(prefix="/v2-langgraph", tags=["Log Analysis V2 (LangGraph)"])
 @router.post("/logs/{log_id}/analysis", response_model=LogAnalysisResponse)
 async def analyze_log_v2(
     log_id: int,
-    project_uuid: str = Header(..., description="Project UUID for multi-tenancy"),
+    project_uuid: str = Header(
+        ...,
+        description="Project UUID for multi-tenancy",
+        convert_underscores=False  # BE가 보내는 project_uuid 헤더를 그대로 받음
+    ),
 ) -> LogAnalysisResponse:
     """
     로그 분석 V2 (LangGraph Edition)

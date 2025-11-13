@@ -210,7 +210,7 @@ class LogAnalysisGraph:
 
         # 캐시 히트 여부 파싱
         import json
-        if result_str.startswith("CACHE_MISS"):
+        if result_str.startswith("CACHE_MISS") or result_str.startswith("ERROR:"):
             return {
                 "direct_cache_result": None,
                 "cache_check_duration_ms": duration_ms,
@@ -246,7 +246,7 @@ class LogAnalysisGraph:
         duration_ms = int((time.time() - start_time) * 1000)
 
         import json
-        if result_str.startswith("CACHE_MISS"):
+        if result_str.startswith("CACHE_MISS") or result_str.startswith("ERROR:"):
             return {"trace_cache_result": None}
 
         try:
@@ -299,7 +299,7 @@ class LogAnalysisGraph:
         duration_ms = int((time.time() - start_time) * 1000)
 
         import json
-        if result_str.startswith("CACHE_MISS"):
+        if result_str.startswith("CACHE_MISS") or result_str.startswith("ERROR:"):
             return {"similarity_cache_result": None}
 
         try:
@@ -442,7 +442,15 @@ class LogAnalysisGraph:
         8. 검증 (한국어 + 품질)
         """
         if state.get("error"):
-            return {"korean_valid": False, "quality_score": 0.0}
+            # 에러 발생 시에도 재시도 카운터 증가 (무한 루프 방지)
+            current_korean_retry = state.get("korean_retry_count", 0)
+            current_validation_retry = state.get("validation_retry_count", 0)
+            return {
+                "korean_valid": False,
+                "quality_score": 0.0,
+                "korean_retry_count": current_korean_retry + 1,
+                "validation_retry_count": current_validation_retry + 1,
+            }
 
         start_time = time.time()
         import json
@@ -486,6 +494,7 @@ class LogAnalysisGraph:
             "validation_duration_ms": duration_ms,
             "korean_retry_count": new_korean_retry,
             "validation_retry_count": new_validation_retry,
+            "error": None,  # 재시도 시 에러 초기화
         }
 
     async def _save_result_node(self, state: LogAnalysisState) -> Dict[str, Any]:
@@ -588,6 +597,10 @@ class LogAnalysisGraph:
 
     def _validation_router(self, state: LogAnalysisState) -> str:
         """검증 결과 라우팅"""
+        # 에러 상태가 있으면 재시도 중단 (무한 루프 방지)
+        if state.get("error"):
+            return "max_retries"
+
         korean_valid = state.get("korean_valid", False)
         quality_score = state.get("quality_score", 0.0)
         korean_retry_count = state.get("korean_retry_count", 0)
