@@ -228,6 +228,7 @@ const LogsPage = () => {
       'layer',
       'serviceName',
       'logger',
+      'componentName',
       'methodName',
       'threadName',
       'message',
