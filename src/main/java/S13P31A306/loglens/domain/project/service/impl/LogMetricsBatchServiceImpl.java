@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.json.JsonData;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.aggregations.Aggregate;
 import org.opensearch.client.opensearch._types.aggregations.Aggregation;
 import org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
@@ -54,7 +55,8 @@ public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
                 successCount++;
             } catch (Exception e) {
                 failCount++;
-                log.error("{} 프로젝트 {} 집계 실패", LOG_PREFIX, project.getProjectUuid(), e);
+                log.error("{} 프로젝트 {} 집계 실패: {}", LOG_PREFIX, project.getProjectUuid(), e.getMessage());
+                log.debug("{} 프로젝트 {} 상세 오류", LOG_PREFIX, project.getProjectUuid(), e);
             }
         }
 
@@ -172,9 +174,23 @@ public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
      * @return Map<String, Long> log_level별 카운트
      */
     private Map<String, Long> extractLogLevelCounts(SearchResponse<Void> response) {
-        return response.aggregations()
-                .get("log_level_count")
-                .sterms()
+        Map<String, Aggregate> aggregations = response.aggregations();
+
+        // aggregations 자체가 없거나 비어있는 경우
+        if (Objects.isNull(aggregations) || aggregations.isEmpty()) {
+            log.debug("{} aggregations가 없음 - 해당 시간 범위에 로그 없음", LOG_PREFIX);
+            return Map.of();
+        }
+
+        Aggregate aggregation = aggregations.get("log_level_count");
+
+        // 특정 aggregation이 없는 경우 (로그가 없음)
+        if (Objects.isNull(aggregation)) {
+            log.debug("{} log_level_count aggregation이 null - 해당 시간 범위에 로그 없음", LOG_PREFIX);
+            return Map.of();
+        }
+
+        return aggregation.sterms()
                 .buckets()
                 .array()
                 .stream()
@@ -191,10 +207,23 @@ public class LogMetricsBatchServiceImpl implements LogMetricsBatchService {
      * @return Integer 평균 응답시간 (ms)
      */
     private Integer extractAvgResponseTime(SearchResponse<Void> response) {
-        Double avgDuration = response.aggregations()
-                .get("avg_duration")
-                .avg()
-                .value();
+        Map<String, Aggregate> aggregations = response.aggregations();
+
+        // aggregations 자체가 없거나 비어있는 경우
+        if (Objects.isNull(aggregations) || aggregations.isEmpty()) {
+            log.debug("{} aggregations가 없음 - 해당 시간 범위에 로그 없음", LOG_PREFIX);
+            return 0;
+        }
+
+        Aggregate aggregation = aggregations.get("avg_duration");
+
+        // 특정 aggregation이 없는 경우 (로그가 없음)
+        if (Objects.isNull(aggregation)) {
+            log.debug("{} avg_duration aggregation이 null - 해당 시간 범위에 로그 없음", LOG_PREFIX);
+            return 0;
+        }
+
+        Double avgDuration = aggregation.avg().value();
 
         if (Objects.isNull(avgDuration) || avgDuration.isNaN()) {
             return 0;
