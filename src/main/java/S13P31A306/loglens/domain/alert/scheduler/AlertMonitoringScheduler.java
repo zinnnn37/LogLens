@@ -21,9 +21,9 @@ public class AlertMonitoringScheduler {
 
     /**
      * 알림 모니터링 스케줄러
-     * 매 5분마다 00초에 실행 (예: 10:00:00, 10:05:00, 10:10:00)
+     * 매 15초마다 실행 (예: 10:00:00, 10:00:15, 10:00:30, 10:00:45)
      */
-    @Scheduled(cron = "0 */5 * * * *")
+    @Scheduled(cron = "*/15 * * * * *")
     public void checkAlerts() {
         log.info("{} 알림 모니터링 스케줄러 시작", LOG_PREFIX);
 
