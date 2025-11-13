@@ -830,19 +830,22 @@ async def analyze_single_log(
             lines.append("")
 
         # 요약
-        lines.append("### 📋 요약")
-        lines.append(analysis.summary)
-        lines.append("")
+        if analysis.summary:
+            lines.append("### 📋 요약")
+            lines.append(analysis.summary)
+            lines.append("")
 
         # 근본 원인
-        lines.append("### 🔍 근본 원인 (Root Cause)")
-        lines.append(analysis.error_cause)
-        lines.append("")
+        if analysis.error_cause:
+            lines.append("### 🔍 근본 원인 (Root Cause)")
+            lines.append(analysis.error_cause)
+            lines.append("")
 
         # 해결 방법
-        lines.append("### 💡 해결 방법 (Solutions)")
-        lines.append(analysis.solution)
-        lines.append("")
+        if analysis.solution:
+            lines.append("### 💡 해결 방법 (Solutions)")
+            lines.append(analysis.solution)
+            lines.append("")
 
         # 태그
         if analysis.tags:
@@ -851,9 +854,12 @@ async def analyze_single_log(
             lines.append("")
 
         # 분석 타입
-        lines.append(f"**분석 타입:** {analysis.analysis_type.value}")
-        lines.append(f"**대상 타입:** {analysis.target_type.value}")
-        lines.append(f"**분석 완료:** {analysis.analyzed_at}")
+        if hasattr(analysis, 'analysis_type') and analysis.analysis_type:
+            lines.append(f"**분석 타입:** {analysis.analysis_type.value}")
+        if hasattr(analysis, 'target_type') and analysis.target_type:
+            lines.append(f"**대상 타입:** {analysis.target_type.value}")
+        if hasattr(analysis, 'analyzed_at') and analysis.analyzed_at:
+            lines.append(f"**분석 완료:** {analysis.analyzed_at}")
 
         return "\n".join(lines)
 
