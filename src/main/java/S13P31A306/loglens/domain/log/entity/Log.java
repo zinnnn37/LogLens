@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.log.entity;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -25,7 +26,7 @@ public class Log {
     private String projectUuid;
 
     @JsonProperty("timestamp")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private OffsetDateTime timestamp;
 
     @JsonProperty("requester_ip")
@@ -44,10 +45,8 @@ public class Log {
 
     // ========== 로그 내용 ==========
     @JsonProperty("log_level")
+    @JsonAlias("level")
     private LogLevel logLevel;
-
-    @JsonProperty("level")
-    private LogLevel level;
 
     private String message;
 
@@ -63,15 +62,19 @@ public class Log {
     @JsonProperty("thread_name")
     private String threadName;
 
+    @JsonProperty("component_name")
+    private String componentName;
+
     // ========== 트레이싱 ==========
     @JsonProperty("trace_id")
+    @JsonAlias({"trace_id", "traceId"})
     private String traceId;
 
     // ========== 성능 ==========
     private Integer duration;
 
     // ========== 에러 정보 ==========
-    @JsonProperty("stack_trace")
+    @JsonProperty("stacktrace")
     private String stackTrace;
 
     // ========== 로그 상세 ==========
@@ -87,6 +90,6 @@ public class Log {
 
     // ========== 시스템 필드 ==========
     @JsonProperty("indexed_at")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private OffsetDateTime indexedAt;
 }

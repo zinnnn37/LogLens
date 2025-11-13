@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.project.entity;
 
+import S13P31A306.loglens.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,7 +17,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-public class HeatmapMetrics {
+public class HeatmapMetrics extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
