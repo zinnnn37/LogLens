@@ -104,7 +104,7 @@ const MainPage = () => {
           <img
             src={NoProjectIllust}
             alt="프로젝트 없음"
-            className="max-w-[280px] object-contain md:max-w-[400px]"
+            className="mt-10 max-w-[280px] object-contain md:max-w-[400px]"
           />
           <div>
             <h2 className="text-foreground mb-1 text-lg font-semibold">
