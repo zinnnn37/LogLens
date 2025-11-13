@@ -62,8 +62,8 @@ public class LogDetailResponse {
     @Schema(description = "서비스 이름", example = "Loglens")
     private String serviceName;
 
-    @Schema(description = "클래스 이름", example = "com.example.demo.domain.user.repository.UserJpaRepository")
-    private String className;
+//    @Schema(description = "클래스 이름", example = "com.example.demo.domain.user.repository.UserJpaRepository")
+//    private String className;
 
     @Schema(description = "메서드 이름", example = "existsByEmail", nullable = true)
     private String methodName;
@@ -77,10 +77,7 @@ public class LogDetailResponse {
     @Schema(description = "실행 시간 (밀리초)", example = "2", nullable = true)
     private Integer duration;
 
-    // ========== 상세 정보 전용: stackTrace, logDetails ==========
-    @Schema(description = "스택 트레이스", example = "com.example.demo.global.exception.BusinessException: 사용자를 찾을 수 없습니다", nullable = true)
-    private String stackTrace;
-
+    // ========== 상세 정보 전용: logDetails ==========
     @Schema(description = "로그 상세 정보 (request_body, response_body, exception_type 등 추가 메타데이터)", nullable = true)
     private Map<String, Object> logDetails;
 

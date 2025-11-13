@@ -49,9 +49,6 @@ public class LogResponse {
     @Schema(description = "서비스 이름", example = "Loglens")
     private String serviceName;
 
-    @Schema(description = "클래스 이름", example = "com.example.demo.domain.user.repository.UserJpaRepository")
-    private String className;
-
     @Schema(description = "메서드 이름", example = "existsByEmail", nullable = true)
     private String methodName;
 

@@ -183,12 +183,10 @@ public class LogServiceImpl implements LogService {
                 .layer(logEntity.getLayer())
                 .comment(logEntity.getComment())
                 .serviceName(logEntity.getServiceName())
-                .className(logEntity.getClassName())
                 .methodName(logEntity.getMethodName())
                 .threadName(logEntity.getThreadName())
                 .requesterIp(logEntity.getRequesterIp())
                 .duration(logEntity.getDuration())
-                .stackTrace(logEntity.getStackTrace())
                 .logDetails(removeDuplicateFields(logEntity.getLogDetails()));
 
         // 3. AI 분석 결과 확인 및 처리
@@ -378,7 +376,9 @@ public class LogServiceImpl implements LogService {
                 "execution_time",  // duration과 중복
                 "stacktrace",      // stackTrace와 중복
                 "class_name",      // className과 중복
-                "method_name"      // methodName과 중복
+                "method_name",      // methodName과 중복
+                "http_method",
+                "request_uri"
         );
 
         // 중복 필드 제거한 새로운 Map 생성
