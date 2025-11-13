@@ -68,7 +68,7 @@ public class AlertMonitoringServiceImpl implements AlertMonitoringService {
      * 프로젝트별 알림 체크 (독립 트랜잭션)
      * 각 프로젝트마다 새로운 트랜잭션으로 처리하여 한 프로젝트의 실패가 다른 프로젝트에 영향을 주지 않도록 함
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
     public boolean checkProjectAlertsInNewTransaction(Project project) {
         log.debug("{} 프로젝트 알림 체크 시작: projectId={}, projectUuid={}",
                 LOG_PREFIX, project.getId(), project.getProjectUuid());
