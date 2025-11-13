@@ -9,20 +9,20 @@ import S13P31A306.loglens.global.dto.response.ValidationErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 전역 예외 핸들러 - 서비스 전체에서 발생하는 예외를 일관된 형식으로 처리한다.
@@ -80,6 +80,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<BaseResponse> handleMethodNotAllowed(
             final HttpRequestMethodNotSupportedException e) {
         return buildErrorResponse(GlobalErrorCode.METHOD_NOT_ALLOWED);
+    }
+
+    //formatter:off
+
+    /**
+     * Spring Security Authorization 예외 처리 SSE 연결 종료 시 정상적으로 발생할 수 있는 예외
+     */
+    //formatter:on
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<BaseResponse> handleAuthorizationDeniedException(
+            final AuthorizationDeniedException e, final HttpServletRequest request) {
+        // SSE 엔드포인트인 경우 간단한 로그만 출력 (정상적인 연결 종료)
+        if (request.getRequestURI().contains("/stream")) {
+            log.debug("{} SSE 연결 종료로 인한 Authorization 예외 (정상): uri={}", LOG_PREFIX, request.getRequestURI());
+        } else {
+            log.warn("{} 권한 거부: uri={}, message={}", LOG_PREFIX, request.getRequestURI(), e.getMessage());
+        }
+        return buildErrorResponse(GlobalErrorCode.FORBIDDEN);
     }
 
     /**
