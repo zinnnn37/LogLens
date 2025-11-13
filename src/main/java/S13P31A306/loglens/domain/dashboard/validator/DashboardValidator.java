@@ -17,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
+import java.util.Set;
 
 import static S13P31A306.loglens.domain.dashboard.constants.DashboardConstants.*;
 import static S13P31A306.loglens.domain.dashboard.constants.DashboardErrorCode.*;
@@ -143,7 +144,7 @@ public class DashboardValidator {
     public LocalDateTime validateAndParseTime(String time) {
         log.info("{} 시간 문자열 파싱 시작: time={}", LOG_PREFIX, time);
 
-        if (Objects.isNull(time)) {
+        if (Objects.isNull(time) || time.isBlank()) {
             return null;
         }
 
@@ -164,15 +165,15 @@ public class DashboardValidator {
      * @throws BusinessException 시작 시간이 종료 시간보다 늦은 경우 (INVALID_TIME_RANGE)
      * @throws BusinessException 조회 기간이 90일을 초과하는 경우 (PERIOD_EXCEEDS_LIMIT)
      */
-    public void validateTimeRange(LocalDateTime start, LocalDateTime end) {
+    public void validateTimeRange(LocalDateTime start, LocalDateTime end, int timeRange) {
         log.info("{} 시간 범위 유효성 검증: start={}, end={}", LOG_PREFIX, start, end);
         if (start.isAfter(end)) {
             log.warn("{} 시작 시간은 종료 시간보다 앞서야 합니다: start={}, end={}", LOG_PREFIX, start, end);
             throw new BusinessException(INVALID_TIME_RANGE);
         }
-        if (ChronoUnit.DAYS.between(start, end) > ERROR_MAX_DEFAULT_RETRIEVAL_TIME) {
+        if (ChronoUnit.DAYS.between(start, end) > timeRange) {
             log.warn("{} 최대 조회 기간을 초과합니다(최대 {}일): {}일",
-                    LOG_PREFIX, ERROR_MAX_DEFAULT_RETRIEVAL_TIME, ChronoUnit.DAYS.between(start, end));
+                    LOG_PREFIX, timeRange, ChronoUnit.DAYS.between(start, end));
             throw new BusinessException(INVALID_TIME_RANGE);
         }
     }
@@ -217,12 +218,30 @@ public class DashboardValidator {
         } else if (Objects.isNull(startTime)) {
             startTime = endTime.minusDays(API_ENDPOINT_DEFAULT_TIME_RANGE);
         }
-        validateTimeRange(startTime, endTime);
+
+        if (startTime.isAfter(endTime)) {
+            throw new BusinessException(INVALID_TIME_RANGE);
+        }
 
         log.debug("{} API 통계 조회 요청 검증 완료: start={}, end={}",
                 LOG_PREFIX, startTime, endTime);
 
         return new LocalDateTime[]{startTime, endTime};
+    }
+
+    public String validateLogLevel(String logLevel) {
+        if (Objects.isNull(logLevel)) {
+            return "ALL";
+        }
+
+        String upperLevel = logLevel.toUpperCase();
+        Set<String> validLevels = Set.of("ALL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE");
+
+        if (!validLevels.contains(upperLevel)) {
+            throw new BusinessException(INVALID_LOG_LEVEL);
+        }
+
+        return upperLevel;
     }
 
 }
