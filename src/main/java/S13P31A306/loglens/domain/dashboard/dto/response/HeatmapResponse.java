@@ -1,11 +1,13 @@
 package S13P31A306.loglens.domain.dashboard.dto.response;
 
+import S13P31A306.loglens.global.annotation.Sensitive;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
 @Schema(description = "히트맵 조회 응답")
 public record HeatmapResponse(
         @Schema(description = "프로젝트 ID", example = "12345")
+        @Sensitive
         Integer projectId,
 
         @Schema(description = "조회 기간")
