@@ -111,7 +111,7 @@ public class TopFrequentErrorsQueryServiceImpl implements TopFrequentErrorsQuery
 
         try {
             SearchRequest request = SearchRequest.of(s -> s
-                    .index(projectUuid + "_*") // Changed from "logs-*" to "projectUuid + "_""
+                    .index(projectUuid.replace('-', '_') + "_*")
                     .size(0)
                     .query(buildErrorLogQuery(projectUuid, start, end))
                     .aggregations("unique_types", a -> a
