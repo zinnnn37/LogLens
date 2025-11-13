@@ -58,6 +58,9 @@ public class LogResponse {
 
     @Schema(description = "메서드 이름", example = "existsByEmail", nullable = true)
     private String methodName;
+    
+    @Schema(description = "컴포넌트 이름", example = "database")
+    private String componentName;
 
     @Schema(description = "스레드 이름", example = "http-nio-8081-exec-4")
     private String threadName;
