@@ -47,8 +47,9 @@ public class LogMetrics extends BaseTimeEntity {
     private LocalDateTime aggregatedAt;
 
     @Builder
-    public LogMetrics(Project project, Integer totalLogs, Integer errorLogs,
+    public LogMetrics(Integer id, Project project, Integer totalLogs, Integer errorLogs,
                       Integer warnLogs, Integer infoLogs, Long sumResponseTime, Integer avgResponseTime, LocalDateTime aggregatedAt) {
+        this.id = id;
         this.project = project;
         this.totalLogs = totalLogs;
         this.errorLogs = errorLogs;
