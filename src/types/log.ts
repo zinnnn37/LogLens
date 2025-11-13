@@ -19,7 +19,7 @@ export interface LogData {
   logId: number;
   traceId: string;
   timestamp: string; // ISO 8601 date-time
-  logLevel: 'WARN' | 'ERROR' | 'INFO' | 'DEBUG';
+  logLevel: 'WARN' | 'ERROR' | 'INFO';
   sourceType: 'FE' | 'BE' | 'INFRA';
   message: string;
   layer: string;
@@ -29,6 +29,7 @@ export interface LogData {
   methodName: string | null;
   threadName: string;
   duration: number | null;
+  componentName: string;
 }
 
 /**
