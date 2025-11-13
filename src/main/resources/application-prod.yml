@@ -46,7 +46,7 @@ management: # Spring-Actuator 설정
 # ===================================================================
 logging:
   level:
-    S13P31A306.loglens: DEBUG
+    S13P31A306.loglens: INFO
     org.hibernate.SQL: ERROR # Hibernate가 실행하는 SQL 로그 출력
     org.hibernate.type.descriptor.sql: ERROR # SQL 바인딩 파라미터 로그 출력
     org.springframework: INFO
