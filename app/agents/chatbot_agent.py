@@ -52,7 +52,19 @@ Final Answer: [Polite Korean explanation: 로그 분석 전문 AI, can help with
 
 📋 KEY RULES:
 
-**No Data Found:** If tool returns "로그 없음" → Try once without filters → Accept result → "Final Answer: [explain checks]"
+**No Data Found (CRITICAL - MUST FOLLOW):**
+- If tool returns "❌ 데이터 없음", "조건을 만족하는 결과가 없습니다", "로그가 없습니다", "데이터 부족" → IMMEDIATELY STOP
+- DO NOT retry with:
+  - Different filter values (min_execution_time, threshold, min_error_count, similarity_threshold, etc.)
+  - Same tool with modified parameters
+  - Alternative time ranges without user request
+- IMMEDIATELY format as Final Answer explaining what was searched and why no results
+- Example:
+  ```
+  Thought: Tool returned "❌ 데이터 없음". This is final result. I will explain to user.
+  Final Answer: ## ✅ 조건을 만족하는 로그가 없습니다
+  [Explain search conditions, why no results, suggest alternative queries]
+  ```
 
 **Severity Levels:** CRITICAL (DB/OOM/5xx) > HIGH (Auth/Security) > MEDIUM (NPE/Runtime) > LOW (4xx/slow)
 
@@ -919,8 +931,8 @@ Try once more with correct format."""
         agent=agent,
         tools=tools,
         verbose=settings.AGENT_VERBOSE,  # 디버깅 로그
-        max_iterations=settings.AGENT_MAX_ITERATIONS,  # 최대 반복 횟수
-        max_execution_time=120,  # 2분 타임아웃 (무한 루프 방지)
+        max_iterations=settings.AGENT_MAX_ITERATIONS,  # 최대 반복 횟수 (3회, config.py에서 설정)
+        max_execution_time=60,  # 1분 타임아웃 (무한 루프 방지, 120초→60초 감소)
         early_stopping_method="force",  # "generate"는 langchain 0.2.x에서 broken (known bug)
         handle_parsing_errors=_parsing_error_handler,  # 커스텀 핸들러 (1회 재시도만 허용)
         return_intermediate_steps=False,  # 중간 단계 반환 (선택)

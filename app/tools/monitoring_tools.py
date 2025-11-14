@@ -1082,7 +1082,13 @@ async def detect_anomalies(
         buckets = response['aggregations']['time_buckets']['buckets']
 
         if len(buckets) < 10:
-            return "분석할 데이터가 부족합니다 (최소 10시간 필요)."
+            from app.tools.response_templates import get_conditional_failure_message
+            return get_conditional_failure_message(
+                condition="데이터 포인트",
+                current_value=f"{len(buckets)}개",
+                required_value="10개 이상",
+                tool_name="이상 탐지 분석"
+            )
 
         # 메트릭별 값 계산
         values = []
@@ -1107,7 +1113,13 @@ async def detect_anomalies(
             timestamps.append(timestamp)
 
         if len(values) < 10:
-            return "데이터 포인트가 부족합니다."
+            from app.tools.response_templates import get_conditional_failure_message
+            return get_conditional_failure_message(
+                condition="유효한 데이터 포인트",
+                current_value=f"{len(values)}개",
+                required_value="10개 이상",
+                tool_name="이상 탐지 분석"
+            )
 
         # 통계 계산
         mean_value = statistics.mean(values)

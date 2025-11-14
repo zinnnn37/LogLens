@@ -124,14 +124,23 @@ async def cluster_stack_traces(
         total_count = results.get("hits", {}).get("total", {}).get("value", 0)
 
         if total_count == 0:
-            filter_msg = f" ({exception_type})" if exception_type else ""
-            return (
-                f"최근 {time_hours}시간 동안 스택 트레이스가 있는 에러{filter_msg}가 없습니다.\n\n"
-                f"💡 확인 사항:\n"
-                f"1. stack_trace 필드가 로그에 포함되어 있는지 확인하세요\n"
-                f"2. exception_type 필터를 제거하거나 변경해보세요\n"
-                f"3. 시간 범위를 늘려보세요 (time_hours 증가)"
-            )
+            from app.tools.response_templates import get_empty_result_message
+
+            conditions = ["stack_trace 필드 존재"]
+            if exception_type:
+                conditions.append(f"예외 타입 = {exception_type}")
+
+            suggestions = [
+                "stack_trace 필드가 로그에 포함되어 있는지 확인하세요",
+                "exception_type 필터를 제거해보세요" if exception_type else "필터 없이 전체 조회",
+                "시간 범위를 늘려보세요 (time_hours=336 for 14일)"
+            ]
+
+            return get_empty_result_message(
+                conditions=", ".join(conditions),
+                time_hours=time_hours,
+                suggestions=suggestions
+            ) + "\n\n⚠️ similarity_threshold를 조정해서 재호출하지 마세요."
 
         # 클러스터링
         clusters = []  # List[Dict]
@@ -359,9 +368,11 @@ async def detect_concurrency_issues(
         hits = results.get("hits", {}).get("hits", [])
 
         if not hits:
-            return (
-                f"최근 {time_hours}시간 동안 thread_name이 있는 에러가 없습니다.\n\n"
-                f"🟢 동시성 문제가 없거나, 로그에 thread_name이 포함되지 않았습니다."
+            from app.tools.response_templates import get_no_problem_message
+            return get_no_problem_message(
+                analysis_type="동시성 문제",
+                time_hours=time_hours,
+                note="로그에 thread_name 필드가 없으면 이 분석을 수행할 수 없습니다"
             )
 
         # 스레드별 에러 그룹핑
@@ -582,10 +593,12 @@ async def detect_recurring_errors(
         hits = results.get("hits", {}).get("hits", [])
 
         if not hits:
-            return (
-                f"최근 {time_hours}시간 동안 에러가 없습니다.\n\n"
-                f"🟢 시스템이 안정적으로 운영되고 있습니다."
-            )
+            from app.tools.response_templates import get_no_problem_message
+            return get_no_problem_message(
+                analysis_type="에러",
+                time_hours=time_hours,
+                note="시스템이 안정적으로 운영되고 있습니다"
+            ) + "\n\n⚠️ min_occurrences를 조정해서 재호출하지 마세요."
 
         # 에러 그룹핑 (exception_type + class_name)
         error_groups = defaultdict(list)  # {error_key: [timestamps]}

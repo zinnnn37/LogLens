@@ -260,16 +260,27 @@ async def get_slowest_apis(
         buckets = [b for b in buckets if b.get("key", "unknown") != "unknown"]
 
         if not buckets:
-            return (
-                f"최근 {time_hours}시간 동안 응답 시간 데이터가 있는 API가 없습니다.\n\n"
-                f"디버깅 정보:\n"
-                f"- 검색 인덱스: {index_pattern}\n"
-                f"- 시간 범위: {start_time.isoformat()[:19]} ~ {end_time.isoformat()[:19]} (UTC)\n"
-                f"- 총 매칭 문서 수: {total_hits}건\n"
-                f"- 확인 사항:\n"
-                f"  1. 로그에 execution_time 또는 duration 필드가 있는지 확인\n"
-                f"  2. 로그가 해당 시간 범위 내에 있는지 확인\n"
-                f"  3. OpenSearch 인덱스가 올바르게 생성되었는지 확인"
+            from app.tools.response_templates import get_empty_result_message
+
+            conditions = []
+            if min_execution_time:
+                conditions.append(f"최소 실행시간 ≥ {min_execution_time}ms")
+            if service_name:
+                conditions.append(f"서비스명 = {service_name}")
+            conditions.append("execution_time 필드 존재")
+
+            condition_str = ", ".join(conditions)
+
+            suggestions = [
+                f"min_execution_time 조건을 낮춰보세요 (현재: {min_execution_time}ms)" if min_execution_time else "필터 없이 전체 조회 (limit=10)",
+                "시간 범위를 늘려보세요 (time_hours=336 for 14일)",
+                "로그에 execution_time 필드가 포함되어 있는지 확인"
+            ]
+
+            return get_empty_result_message(
+                conditions=condition_str,
+                time_hours=time_hours,
+                suggestions=suggestions
             )
 
         # 결과 포맷팅
