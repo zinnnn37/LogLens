@@ -1,12 +1,24 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { DashboardTopErrorsData } from '@/types/dashboard';
 import NotFoundIllust from '@/assets/images/NotFoundIllust.png';
+import { useNavigate, useParams } from 'react-router-dom';
 
 interface FrequentErrorsCardProps {
   data: DashboardTopErrorsData;
 }
 
 const FrequentErrorsCard = ({ data }: FrequentErrorsCardProps) => {
+  const navigate = useNavigate();
+  const { projectUuid } = useParams<{ projectUuid: string }>();
+
+  const handleErrorClick = (message: string) => {
+    if (projectUuid) {
+      navigate(
+        `/project/${projectUuid}/logs?keyword=${encodeURIComponent(message)}&logLevel=ERROR`,
+      );
+    }
+  };
+
   return (
     <Card className="h-full">
       <CardHeader>
@@ -29,7 +41,8 @@ const FrequentErrorsCard = ({ data }: FrequentErrorsCardProps) => {
             {data.errors.map(error => (
               <div
                 key={error.rank}
-                className="rounded-lg border p-4 transition-colors hover:bg-gray-50"
+                className="cursor-pointer rounded-lg border p-4 transition-colors hover:border-gray-300 hover:bg-gray-50"
+                onClick={() => handleErrorClick(error.message)}
               >
                 {/* 헤더: 순위 + 에러 타입 */}
                 <div className="mb-3 flex items-center gap-3">
