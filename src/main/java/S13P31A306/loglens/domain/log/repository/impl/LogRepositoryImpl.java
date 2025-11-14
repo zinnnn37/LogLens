@@ -39,6 +39,7 @@ import org.opensearch.client.opensearch._types.Time;
 import org.opensearch.client.opensearch._types.aggregations.Aggregate;
 import org.opensearch.client.opensearch._types.aggregations.CalendarInterval;
 import org.opensearch.client.opensearch._types.aggregations.DateHistogramBucket;
+import org.opensearch.client.opensearch._types.aggregations.FieldDateMath;
 import org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
@@ -732,12 +733,23 @@ public class LogRepositoryImpl implements LogRepository {
                     ))
                     .aggregations("logs_over_time", a -> a
                             // Date Histogram aggregation
-                            .dateHistogram(dh -> dh
-                                    .field(TIMESTAMP_FIELD)
-                                    .fixedInterval(Time.of(t -> t.time(interval)))
-                                    .timeZone("Asia/Seoul")
-                                    .minDocCount(0)  // 로그가 없는 시간대도 포함
-                            )
+                            .dateHistogram(dh -> {
+                                    dh.field(TIMESTAMP_FIELD)
+                                            .fixedInterval(Time.of(t -> t.time(interval)))
+                                            .timeZone("Asia/Seoul")
+                                            .minDocCount(0);  // 로그가 없는 시간대도 포함
+
+                                    // extendedBounds 설정 (전체 조회 범위에 버킷 강제 생성)
+                                    long startMillis = startTime.atZone(ZoneId.of("Asia/Seoul")).toInstant().toEpochMilli();
+                                    long endMillis = endTime.atZone(ZoneId.of("Asia/Seoul")).toInstant().toEpochMilli();
+
+                                    dh.extendedBounds(eb -> eb
+                                            .min(FieldDateMath.of(fdm -> fdm.value((double) startMillis)))
+                                            .max(FieldDateMath.of(fdm -> fdm.value((double) endMillis)))
+                                    );
+
+                                    return dh;
+                            })
                             // log_level별 집계 (sub-aggregation)
                             .aggregations("by_level", sub -> sub
                                     .terms(t -> t
@@ -853,12 +865,23 @@ public class LogRepositoryImpl implements LogRepository {
                     ))
                     .aggregations("traffic_over_time", a -> a
                             // Date Histogram aggregation
-                            .dateHistogram(dh -> dh
-                                    .field(TIMESTAMP_FIELD)
-                                    .fixedInterval(Time.of(t -> t.time(interval)))
-                                    .timeZone("Asia/Seoul")
-                                    .minDocCount(0)  // 로그가 없는 시간대도 포함
-                            )
+                            .dateHistogram(dh -> {
+                                    dh.field(TIMESTAMP_FIELD)
+                                            .fixedInterval(Time.of(t -> t.time(interval)))
+                                            .timeZone("Asia/Seoul")
+                                            .minDocCount(0);  // 로그가 없는 시간대도 포함
+
+                                    // extendedBounds 설정 (전체 조회 범위에 버킷 강제 생성)
+                                    long startMillis = startTime.atZone(ZoneId.of("Asia/Seoul")).toInstant().toEpochMilli();
+                                    long endMillis = endTime.atZone(ZoneId.of("Asia/Seoul")).toInstant().toEpochMilli();
+
+                                    dh.extendedBounds(eb -> eb
+                                            .min(FieldDateMath.of(fdm -> fdm.value((double) startMillis)))
+                                            .max(FieldDateMath.of(fdm -> fdm.value((double) endMillis)))
+                                    );
+
+                                    return dh;
+                            })
                             // source_type별 집계 (sub-aggregation)
                             .aggregations("by_source_type", sub -> sub
                                     .terms(t -> t
