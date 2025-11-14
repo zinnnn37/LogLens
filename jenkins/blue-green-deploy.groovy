@@ -109,7 +109,9 @@ pipeline {
                     def containerName = "loglens-app-${env.DEPLOY_TARGET}"
                     def port = env.DEPLOY_TARGET == 'blue' ? env.BLUE_PORT : env.GREEN_PORT
 
-                    sh """#!/bin/bash
+                    sh
+                    """
+                        #!/bin/bash
                         # 기존 컨테이너 정리
                         if [ \$(docker ps -aq -f name=${containerName}) ]; then
                             echo "🗑️ Removing old container: ${containerName}"
@@ -117,60 +119,62 @@ pipeline {
                             docker rm ${containerName} || true
                         fi
                         
+                        # ✅ 로그 디렉토리 절대 경로 설정
+                        LOG_DIR="/home/ubuntu/loglens/logs"
+                        
                         # 로그 디렉토리 백업 및 초기화
-                        echo "📁 Initializing log directories..."
-                        BACKUP_DIR=~/loglens/logs/backup/\$(date +%Y%m%d_%H%M%S)
+                        echo "📁 Initializing log directories at \${LOG_DIR}..."
+                        BACKUP_DIR=\${LOG_DIR}/backup/\$(date +%Y%m%d_%H%M%S)
                         
                         # BE 로그 백업
-                        if [ -d ~/loglens/logs/be ] && [ "\$(ls -A ~/loglens/logs/be)" ]; then
+                        if [ -d \${LOG_DIR}/be ] && [ "\$(ls -A \${LOG_DIR}/be)" ]; then
                             echo "  💾 Backing up existing BE logs..."
                             mkdir -p \${BACKUP_DIR}/be
-                            mv ~/loglens/logs/be/* \${BACKUP_DIR}/be/ 2>/dev/null || true
+                            mv \${LOG_DIR}/be/* \${BACKUP_DIR}/be/ 2>/dev/null || true
                             echo "  ✅ BE logs backed up to \${BACKUP_DIR}/be/"
                         fi
                         
                         # FE 로그 백업
-                        if [ -d ~/loglens/logs/fe ] && [ "\$(ls -A ~/loglens/logs/fe)" ]; then
+                        if [ -d \${LOG_DIR}/fe ] && [ "\$(ls -A \${LOG_DIR}/fe)" ]; then
                             echo "  💾 Backing up existing FE logs..."
                             mkdir -p \${BACKUP_DIR}/fe
-                            mv ~/loglens/logs/fe/* \${BACKUP_DIR}/fe/ 2>/dev/null || true
+                            mv \${LOG_DIR}/fe/* \${BACKUP_DIR}/fe/ 2>/dev/null || true
                             echo "  ✅ FE logs backed up to \${BACKUP_DIR}/fe/"
                         fi
                         
                         # Infra 로그 백업
-                        if [ -d ~/loglens/logs/infra ] && [ "\$(ls -A ~/loglens/logs/infra)" ]; then
+                        if [ -d \${LOG_DIR}/infra ] && [ "\$(ls -A \${LOG_DIR}/infra)" ]; then
                             echo "  💾 Backing up existing Infra logs..."
                             mkdir -p \${BACKUP_DIR}/infra
-                            mv ~/loglens/logs/infra/* \${BACKUP_DIR}/infra/ 2>/dev/null || true
+                            mv \${LOG_DIR}/infra/* \${BACKUP_DIR}/infra/ 2>/dev/null || true
                             echo "  ✅ Infra logs backed up to \${BACKUP_DIR}/infra/"
                         fi
                         
-                        # ✅ 핵심: 디렉토리 삭제 후 재생성 + 권한 설정
+                        # 디렉토리 재생성 및 권한 설정
                         echo "🔧 Recreating log directories with proper ownership..."
-                        rm -rf ~/loglens/logs/be ~/loglens/logs/fe ~/loglens/logs/infra
-                        mkdir -p ~/loglens/logs/be ~/loglens/logs/fe ~/loglens/logs/infra/mysql
+                        rm -rf \${LOG_DIR}/be \${LOG_DIR}/fe \${LOG_DIR}/infra
+                        mkdir -p \${LOG_DIR}/be \${LOG_DIR}/fe \${LOG_DIR}/infra/mysql
                         
-                        # ✅ spring 사용자(1000:1000) 소유권 설정
-                        chown -R 1000:1000 ~/loglens/logs/be ~/loglens/logs/fe
-                        chmod -R 777 ~/loglens/logs/be ~/loglens/logs/fe
+                        # 권한 설정
+                        chown -R 1000:1000 \${LOG_DIR}
+                        chmod -R 777 \${LOG_DIR}
                         
                         echo "✅ Log directories initialized"
-                        echo "📋 Directory ownership:"
-                        ls -la ~/loglens/logs/
+                        ls -la \${LOG_DIR}/
                         
                         # 3일 이상 된 백업 로그 자동 삭제
-                        if [ -d ~/loglens/logs/backup ]; then
+                        if [ -d \${LOG_DIR}/backup ]; then
                             echo "🧹 Cleaning up old log backups (older than 3 days)..."
-                            DELETED_COUNT=\$(find ~/loglens/logs/backup/* -type d -mtime +3 2>/dev/null | wc -l)
+                            DELETED_COUNT=\$(find \${LOG_DIR}/backup/* -type d -mtime +3 2>/dev/null | wc -l)
                             if [ "\${DELETED_COUNT}" -gt 0 ]; then
-                                find ~/loglens/logs/backup/* -type d -mtime +3 -exec rm -rf {} + 2>/dev/null || true
+                                find \${LOG_DIR}/backup/* -type d -mtime +3 -exec rm -rf {} + 2>/dev/null || true
                                 echo "  ✅ Deleted \${DELETED_COUNT} old backup(s)"
                             else
                                 echo "  ℹ️  No old backups to clean"
                             fi
                         fi
                         
-                        # 새 컨테이너 배포
+                        # ✅ 새 컨테이너 배포 (절대 경로 사용)
                         echo "🚀 Deploying ${containerName} on port ${port}"
                         docker run -d \
                             --name ${containerName} \
@@ -179,7 +183,7 @@ pipeline {
                             --env-file ${WORKSPACE}/.env \
                             --restart unless-stopped \
                             --user root \
-                            -v ~/loglens/logs:/app/logs \
+                            -v \${LOG_DIR}:/app/logs \
                             ${IMAGE_NAME}
                         
                         echo "✅ ${containerName} deployed successfully"
@@ -189,19 +193,15 @@ pipeline {
                         echo "📋 Verifying volume mounts..."
                         docker inspect ${containerName} --format='{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'
                         
-                        # 컨테이너 내부 권한 확인
-                        echo "📋 Verifying permissions inside container..."
-                        sleep 5
-                        docker exec ${containerName} ls -la /app/logs/
-                        
                         # 로그 파일 생성 대기
                         echo "⏳ Waiting for application to start..."
-                        sleep 10
+                        sleep 15
                         
-                        echo "📋 Checking log files..."
+                        echo "📋 Checking log files in container..."
                         docker exec ${containerName} ls -lh /app/logs/be/ 2>/dev/null || echo "  ⚠️  BE logs not yet created"
-                        docker exec ${containerName} ls -lh /app/logs/fe/ 2>/dev/null || echo "  ⚠️  FE logs not yet created"
-                        ls -lh ~/loglens/logs/be/ 2>/dev/null || echo "  ⚠️  BE logs not visible on host"
+                        
+                        echo "📋 Checking log files on host..."
+                        ls -lh \${LOG_DIR}/be/ 2>/dev/null || echo "  ⚠️  BE logs not visible on host"
                     """
                 }
             }
