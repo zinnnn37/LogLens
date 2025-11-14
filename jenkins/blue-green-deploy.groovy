@@ -178,6 +178,7 @@ pipeline {
                             -p ${port}:8080 \
                             --env-file ${WORKSPACE}/.env \
                             --restart unless-stopped \
+                            --user root \
                             -v ~/loglens/logs:/app/logs \
                             ${IMAGE_NAME}
                         
