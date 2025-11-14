@@ -7,6 +7,8 @@ import type {
   DashboardApiStatsParams,
   DashboardTopErrorsData,
   DashboardTopErrorsParams,
+  HeatmapParams,
+  HeatmapResponse,
 } from '@/types/dashboard';
 
 /**
@@ -43,6 +45,19 @@ export const getDashboardTopErrors = async (
 ): Promise<DashboardTopErrorsData> => {
   const response = await apiClient.get<DashboardTopErrorsData>(
     API_PATH.STATISTICS_ERROS_TOP, // 또는 STATISTICS_TOP_ERRORS (이름 변경 시)
+    params,
+  );
+  return response;
+};
+
+/**
+ * 히트맵
+ */
+export const getLogHeatmap = async (
+  params: HeatmapParams,
+): Promise<HeatmapResponse> => {
+  const response = await apiClient.get<HeatmapResponse>(
+    API_PATH.STATISTICS_HEATMAP,
     params,
   );
   return response;

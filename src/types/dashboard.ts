@@ -107,3 +107,53 @@ export interface DashboardTopErrorsData {
   errors: ErrorStats[];
   summary: ErrorStatsSummary;
 }
+
+// 히트맵 요청 파라미터
+export interface HeatmapParams {
+  projectUuid: string;
+  startTime: string;
+  endTime: string;
+  logLevel: string;
+}
+
+export interface HeatmapPeriod {
+  startTime: string;
+  endTime: string;
+}
+
+export interface HeatmapHourlyData {
+  hour: number;
+  count: number;
+  errorCount: number;
+  warnCount: number;
+  infoCount: number;
+  intensity: number;
+}
+
+export interface HeatmapDailyData {
+  dayOfWeek: string;
+  dayName: string;
+  hourlyData: HeatmapHourlyData[];
+  totalCount: number;
+}
+
+export interface HeatmapSummary {
+  totalLogs: number;
+  peakDay: string;
+  peakHour: number;
+  peakCount: number;
+  avgDailyCount: number;
+}
+
+export interface HeatmapMetadata {
+  logLevel: string;
+  timezone: string;
+}
+// 히트맵 응답
+export interface HeatmapResponse {
+  projectId: number;
+  period: HeatmapPeriod;
+  heatmap: HeatmapDailyData[];
+  summary: HeatmapSummary;
+  metadata: HeatmapMetadata;
+}
