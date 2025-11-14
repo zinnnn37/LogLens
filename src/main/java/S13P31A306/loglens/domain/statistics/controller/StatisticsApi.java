@@ -1,6 +1,7 @@
 package S13P31A306.loglens.domain.statistics.controller;
 
 import S13P31A306.loglens.domain.statistics.dto.response.LogTrendResponse;
+import S13P31A306.loglens.domain.statistics.dto.response.TrafficResponse;
 import S13P31A306.loglens.global.annotation.ValidUuid;
 import S13P31A306.loglens.global.config.swagger.annotation.ApiInternalServerError;
 import S13P31A306.loglens.global.config.swagger.annotation.ApiUnauthorizedError;
@@ -205,6 +206,184 @@ public interface StatisticsApi {
             }
     )
     ResponseEntity<? extends BaseResponse> getLogTrend(
+            @Parameter(description = "프로젝트 UUID", required = true, example = "3a73c7d4-8176-3929-b72f-d5b921daae67")
+            @ValidUuid
+            @RequestParam String projectUuid
+    );
+
+    @Operation(
+            summary = "Traffic 그래프 조회",
+            description = "24시간 전부터 3시간 간격으로 FE/BE 로그 발생 추이를 조회합니다. 총 8개의 데이터 포인트를 반환합니다.",
+            security = @SecurityRequirement(name = SwaggerMessages.BEARER_AUTH),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Traffic 조회 성공",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = TrafficResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "TrafficSuccess",
+                                            summary = "Traffic 조회 성공 예시",
+                                            value = """
+                                                    {
+                                                      "code": "STATISTICS_2002",
+                                                      "message": "Traffic 조회 성공",
+                                                      "status": 200,
+                                                      "data": {
+                                                        "projectUuid": "3a73c7d4-8176-3929-b72f-d5b921daae67",
+                                                        "period": {
+                                                          "startTime": "2025-11-13T15:00:00+09:00",
+                                                          "endTime": "2025-11-14T15:00:00+09:00"
+                                                        },
+                                                        "interval": "3h",
+                                                        "dataPoints": [
+                                                          {
+                                                            "timestamp": "2025-11-13T15:00:00+09:00",
+                                                            "hour": "15:00",
+                                                            "totalCount": 1523,
+                                                            "feCount": 812,
+                                                            "beCount": 711
+                                                          },
+                                                          {
+                                                            "timestamp": "2025-11-13T18:00:00+09:00",
+                                                            "hour": "18:00",
+                                                            "totalCount": 1820,
+                                                            "feCount": 970,
+                                                            "beCount": 850
+                                                          },
+                                                          {
+                                                            "timestamp": "2025-11-13T21:00:00+09:00",
+                                                            "hour": "21:00",
+                                                            "totalCount": 980,
+                                                            "feCount": 520,
+                                                            "beCount": 460
+                                                          },
+                                                          {
+                                                            "timestamp": "2025-11-14T00:00:00+09:00",
+                                                            "hour": "00:00",
+                                                            "totalCount": 450,
+                                                            "feCount": 240,
+                                                            "beCount": 210
+                                                          },
+                                                          {
+                                                            "timestamp": "2025-11-14T03:00:00+09:00",
+                                                            "hour": "03:00",
+                                                            "totalCount": 320,
+                                                            "feCount": 170,
+                                                            "beCount": 150
+                                                          },
+                                                          {
+                                                            "timestamp": "2025-11-14T06:00:00+09:00",
+                                                            "hour": "06:00",
+                                                            "totalCount": 1150,
+                                                            "feCount": 610,
+                                                            "beCount": 540
+                                                          },
+                                                          {
+                                                            "timestamp": "2025-11-14T09:00:00+09:00",
+                                                            "hour": "09:00",
+                                                            "totalCount": 2100,
+                                                            "feCount": 1120,
+                                                            "beCount": 980
+                                                          },
+                                                          {
+                                                            "timestamp": "2025-11-14T12:00:00+09:00",
+                                                            "hour": "12:00",
+                                                            "totalCount": 2650,
+                                                            "feCount": 1410,
+                                                            "beCount": 1240
+                                                          }
+                                                        ],
+                                                        "summary": {
+                                                          "totalLogs": 12000,
+                                                          "totalFeCount": 6400,
+                                                          "totalBeCount": 5600,
+                                                          "avgLogsPerInterval": 1500,
+                                                          "peakHour": "12:00",
+                                                          "peakCount": 2650
+                                                        }
+                                                      },
+                                                      "timestamp": "2025-11-14T07:30:00Z"
+                                                    }
+                                                    """
+                                    )
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "잘못된 요청 (UUID 형식 오류)",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "InvalidUuidFormat",
+                                            summary = "잘못된 UUID 형식",
+                                            value = """
+                                                    {
+                                                      "code": "G400",
+                                                      "message": "입력값이 유효하지 않습니다.",
+                                                      "status": 400,
+                                                      "data": {
+                                                        "uri": "/api/statistics/traffic",
+                                                        "validationErrors": [
+                                                          {
+                                                            "field": "projectUuid",
+                                                            "rejectedValue": "invalid-uuid",
+                                                            "code": "C400-1",
+                                                            "message": "UUID 형식이 올바르지 않습니다."
+                                                          }
+                                                        ]
+                                                      },
+                                                      "timestamp": "2025-11-14T07:30:00Z"
+                                                    }
+                                                    """
+                                    )
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "권한 없음 (프로젝트 멤버 아님)",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "NotProjectMember",
+                                            summary = "프로젝트 멤버가 아님",
+                                            value = """
+                                                    {
+                                                      "code": "PJ403-3",
+                                                      "message": "해당 프로젝트의 멤버가 아닙니다.",
+                                                      "status": 403,
+                                                      "timestamp": "2025-11-14T07:30:00Z"
+                                                    }
+                                                    """
+                                    )
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "프로젝트를 찾을 수 없음",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "ProjectNotFound",
+                                            summary = "프로젝트를 찾을 수 없음",
+                                            value = """
+                                                    {
+                                                      "code": "PJ404-1",
+                                                      "message": "해당 프로젝트를 찾을 수 없습니다.",
+                                                      "status": 404,
+                                                      "timestamp": "2025-11-14T07:30:00Z"
+                                                    }
+                                                    """
+                                    )
+                            )
+                    )
+            }
+    )
+    ResponseEntity<? extends BaseResponse> getTraffic(
             @Parameter(description = "프로젝트 UUID", required = true, example = "3a73c7d4-8176-3929-b72f-d5b921daae67")
             @ValidUuid
             @RequestParam String projectUuid

@@ -3,7 +3,9 @@ package S13P31A306.loglens.domain.statistics.controller.impl;
 import S13P31A306.loglens.domain.statistics.constants.StatisticsSuccessCode;
 import S13P31A306.loglens.domain.statistics.controller.StatisticsApi;
 import S13P31A306.loglens.domain.statistics.dto.response.LogTrendResponse;
+import S13P31A306.loglens.domain.statistics.dto.response.TrafficResponse;
 import S13P31A306.loglens.domain.statistics.service.LogTrendService;
+import S13P31A306.loglens.domain.statistics.service.TrafficService;
 import S13P31A306.loglens.global.annotation.ValidUuid;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
@@ -29,6 +31,7 @@ public class StatisticsController implements StatisticsApi {
     private static final String LOG_PREFIX = "[StatisticsController]";
 
     private final LogTrendService logTrendService;
+    private final TrafficService trafficService;
 
     @Override
     @GetMapping("/log-trend")
@@ -41,6 +44,21 @@ public class StatisticsController implements StatisticsApi {
 
         return ApiResponseFactory.success(
                 StatisticsSuccessCode.LOG_TREND_RETRIEVED,
+                response
+        );
+    }
+
+    @Override
+    @GetMapping("/traffic")
+    public ResponseEntity<? extends BaseResponse> getTraffic(
+            @ValidUuid @RequestParam String projectUuid
+    ) {
+        log.info("{} Traffic API 호출: projectUuid={}", LOG_PREFIX, projectUuid);
+
+        TrafficResponse response = trafficService.getTraffic(projectUuid);
+
+        return ApiResponseFactory.success(
+                StatisticsSuccessCode.TRAFFIC_RETRIEVED,
                 response
         );
     }
