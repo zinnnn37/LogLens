@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-    private static final String LOG_PREFIX = "[Prometheus(GlobalExceptionHandler)]";
+    private static final String LOG_PREFIX = "[GlobalExceptionHandler]";
 
     /**
      * 전역 비즈니스 예외 처리
