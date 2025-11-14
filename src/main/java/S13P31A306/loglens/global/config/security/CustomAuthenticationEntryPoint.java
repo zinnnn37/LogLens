@@ -20,10 +20,11 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
 
-        // SSE 클라이언트 연결 종료와 같은 IO 예외는 무시
-        if (response.isCommitted() && (authException.getCause() instanceof IOException
-                || authException.getCause() instanceof NestedServletException)) {
-            log.debug("Client connection closed before response completed.", authException);
+        // SSE 스트림처럼 응답이 이미 커밋된 경우, 클라이언트 연결이 끊겼을 가능성이 높으므로 예외를 무시합니다.
+        // 이미 커밋된 응답에 에러를 작성하려고 하면 IllegalStateException이 발생할 수 있습니다.
+        if (response.isCommitted()) {
+            log.debug("Response has already been committed. Ignoring authentication exception for {}: {}",
+                request.getRequestURI(), authException.getMessage());
             return;
         }
 
