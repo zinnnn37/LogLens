@@ -392,7 +392,7 @@ const LogsPage = () => {
         </div>
 
         {/* 검색 결과 */}
-        <div>
+        <div className="-mt-3">
           <DetailLogSearchTable
             logs={logs}
             loading={loading}
