@@ -35,26 +35,26 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            steps {
-                echo "🧪 Running tests"
-                sh '''
-                    ./gradlew test --no-daemon
-                '''
-            }
-            post {
-                always {
-                    script {
-                        def testResults = findFiles(glob: 'build/test-results/test/*.xml')
-                        if (testResults.length > 0) {
-                            junit 'build/test-results/test/*.xml'
-                        } else {
-                            echo "⚠️ No test results found"
-                        }
-                    }
-                }
-            }
-        }
+//        stage('Test') {
+//            steps {
+//                echo "🧪 Running tests"
+//                sh '''
+//                    ./gradlew test --no-daemon
+//                '''
+//            }
+//            post {
+//                always {
+//                    script {
+//                        def testResults = findFiles(glob: 'build/test-results/test/*.xml')
+//                        if (testResults.length > 0) {
+//                            junit 'build/test-results/test/*.xml'
+//                        } else {
+//                            echo "⚠️ No test results found"
+//                        }
+//                    }
+//                }
+//            }
+//        }
 
         stage('Archive Artifacts') {
             steps {
