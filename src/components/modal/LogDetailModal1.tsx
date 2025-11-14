@@ -227,7 +227,9 @@ const LogDetailModal1 = ({
                 label="LogDetail"
                 value={
                   <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                    {JSON.stringify(log.logDetails, null, 2).slice(1, -1).replace(/"/g, '')
+                    {JSON.stringify(log.logDetails, null, 2)
+                      .slice(1, -1)
+                      .replace(/"/g, '')
                       .trim()}
                   </pre>
                 }
