@@ -5,7 +5,7 @@ TraceID 기반 함수 호출 추적 및 성능 측정 라이브러리
 ## 설치
 
 ```bash
-npm install https://www.loglens.co.kr/static/libs/soo1-loglens-0.0.7.tgz
+npm install https://www.loglens.co.kr/static/libs/soo1-loglens-0.0.9.tgz
 ```
 
 ## 시작하기
