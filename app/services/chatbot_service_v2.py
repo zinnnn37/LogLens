@@ -20,7 +20,7 @@ class ChatbotServiceV2:
     @staticmethod
     def _is_off_topic(question: str) -> bool:
         """
-        로그 분석과 무관한 질문 감지
+        로그 분석과 무관한 질문 감지 (정규식 기반 강화 버전)
 
         Args:
             question: 사용자 질문
@@ -30,36 +30,61 @@ class ChatbotServiceV2:
         """
         question_lower = question.lower()
 
-        # 로그 관련 키워드 (한글 + 영어)
-        log_keywords = [
-            # 한글
-            '에러', '오류', '로그', '성능', 'api', '서비스', '통계', '분석',
-            '트래픽', '모니터링', '응답', '시간', '검색', '조회', '느린', '빠른',
-            '장애', '실패', '성공', '요청', '배포', '서버', '헬스', '상태',
-            '버그', '예외', '익셉션', '스택', '트레이스', '추적',  # 추가
-            # 영어
-            'error', 'log', 'performance', 'api', 'service', 'statistics',
-            'analysis', 'traffic', 'monitoring', 'response', 'time', 'search',
-            'slow', 'fast', 'failure', 'deploy', 'server', 'health', 'status',
-            'bug', 'exception', 'stack', 'trace', 'traceid', 'trace_id',
-            'requestid', 'request_id', 'tracking'  # 추가
+        # 로그 관련 키워드 패턴 (정규식 - 더 정교함)
+        log_patterns = [
+            # 에러/오류
+            r'에러|오류|error|exception|익셉션|예외|버그|bug|장애|failure|실패|문제|이슈|issue',
+            # 로그
+            r'로그|log',
+            # 성능/시간
+            r'성능|performance|응답\s*시간|response\s*time|지연|latency|느린|slow|빠른|fast',
+            r'\d+\.?\d*\s*(초|ms|밀리초|millisecond|sec|second|분|min|minute)',  # "0.2초", "200ms", "1.5초"
+            # API/서비스
+            r'api|endpoint|엔드포인트|서비스|service|서버|server',
+            # 통계/분석
+            r'통계|statistics|stat|분석|analysis|조회|검색|search|찾|find|보여줘|show',
+            # 모니터링
+            r'모니터링|monitor|헬스|health|상태|status|트래픽|traffic',
+            # 요청/응답
+            r'요청|request|응답|response|호출|call',
+            # 배포
+            r'배포|deploy|릴리스|release',
+            # 추적
+            r'trace|tracing|추적|tracking|trace_id|traceid|request_id|requestid',
+            # 스택
+            r'stack|스택|trace',
+            # 시간 표현
+            r'최근|recent|어제|yesterday|오늘|today|지금|now|방금|just now'
         ]
 
-        # 키워드가 하나라도 있으면 로그 관련 질문
-        if any(keyword in question_lower for keyword in log_keywords):
-            return False  # Not off-topic
+        # 정규식 매칭 (하나라도 매칭되면 로그 관련)
+        for pattern in log_patterns:
+            if re.search(pattern, question_lower, re.IGNORECASE):
+                return False  # Not off-topic
 
-        # 인사말 키워드
-        greeting_keywords = ['안녕', 'hello', 'hi', '반가', 'hey']
-        if any(greet in question_lower for greet in greeting_keywords):
-            return True  # Off-topic (greeting)
+        # 명확한 Off-topic 패턴
+        off_topic_patterns = [
+            r'날씨|weather|요리|recipe|맛집|restaurant|음식|food',
+            r'영화|movie|음악|music|게임|game|스포츠|sport',
+            r'여행|travel|쇼핑|shopping'
+        ]
+
+        for pattern in off_topic_patterns:
+            if re.search(pattern, question_lower, re.IGNORECASE):
+                return True  # Off-topic
+
+        # 인사말만 있는 경우 (단, 다른 키워드 없이)
+        greeting_only = re.match(r'^(안녕|hello|hi|반가|hey|헤이)[\s!?]*$', question_lower)
+        if greeting_only:
+            return True  # Off-topic (greeting only)
 
         # 너무 짧은 질문 (3글자 미만)
         if len(question.strip()) < 3:
             return True  # Off-topic (too vague)
 
-        # 키워드가 없으면 로그 무관으로 간주
-        return True  # Off-topic (no log keywords)
+        # 애매한 경우 → 로그 관련으로 처리 (false negative 최소화)
+        # Agent가 판단하도록 넘김
+        return False  # Assume log-related when ambiguous
 
     @staticmethod
     def _classify_query_type(question: str) -> str:
