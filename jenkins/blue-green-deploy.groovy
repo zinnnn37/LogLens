@@ -109,9 +109,7 @@ pipeline {
                     def containerName = "loglens-app-${env.DEPLOY_TARGET}"
                     def port = env.DEPLOY_TARGET == 'blue' ? env.BLUE_PORT : env.GREEN_PORT
 
-                    sh
-                    """
-                        #!/bin/bash
+                    sh """#!/bin/bash
                         # 기존 컨테이너 정리
                         if [ \$(docker ps -aq -f name=${containerName}) ]; then
                             echo "🗑️ Removing old container: ${containerName}"
@@ -176,14 +174,14 @@ pipeline {
                         
                         # ✅ 새 컨테이너 배포 (절대 경로 사용)
                         echo "🚀 Deploying ${containerName} on port ${port}"
-                        docker run -d \
-                            --name ${containerName} \
-                            --network loglens-network \
-                            -p ${port}:8080 \
-                            --env-file ${WORKSPACE}/.env \
-                            --restart unless-stopped \
-                            --user root \
-                            -v \${LOG_DIR}:/app/logs \
+                        docker run -d \\
+                            --name ${containerName} \\
+                            --network loglens-network \\
+                            -p ${port}:8080 \\
+                            --env-file \${WORKSPACE}/.env \\
+                            --restart unless-stopped \\
+                            --user root \\
+                            -v \${LOG_DIR}:/app/logs \\
                             ${IMAGE_NAME}
                         
                         echo "✅ ${containerName} deployed successfully"
