@@ -117,7 +117,59 @@ pipeline {
                             docker rm ${containerName} || true
                         fi
                         
-                        # 새 컨테이너 배포 (env-file 사용)
+                        # ✅ 여기에 로그 디렉토리 백업 및 초기화 추가 ✅
+                        # 로그 디렉토리 백업 및 초기화
+                        echo "📁 Initializing log directories..."
+                        BACKUP_DIR=~/loglens/logs/backup/\$(date +%Y%m%d_%H%M%S)
+                        
+                        # BE 로그 백업 및 초기화
+                        if [ -d ~/loglens/logs/be ] && [ "\$(ls -A ~/loglens/logs/be)" ]; then
+                            echo "  💾 Backing up existing BE logs..."
+                            mkdir -p \${BACKUP_DIR}/be
+                            mv ~/loglens/logs/be/* \${BACKUP_DIR}/be/ 2>/dev/null || true
+                            echo "  ✅ BE logs backed up to \${BACKUP_DIR}/be/"
+                        fi
+                        mkdir -p ~/loglens/logs/be
+                        
+                        # FE 로그 백업 및 초기화
+                        if [ -d ~/loglens/logs/fe ] && [ "\$(ls -A ~/loglens/logs/fe)" ]; then
+                            echo "  💾 Backing up existing FE logs..."
+                            mkdir -p \${BACKUP_DIR}/fe
+                            mv ~/loglens/logs/fe/* \${BACKUP_DIR}/fe/ 2>/dev/null || true
+                            echo "  ✅ FE logs backed up to \${BACKUP_DIR}/fe/"
+                        fi
+                        mkdir -p ~/loglens/logs/fe
+                        
+                        # Infra 로그 백업 및 초기화
+                        if [ -d ~/loglens/logs/infra ] && [ "\$(ls -A ~/loglens/logs/infra)" ]; then
+                            echo "  💾 Backing up existing Infra logs..."
+                            mkdir -p \${BACKUP_DIR}/infra
+                            mv ~/loglens/logs/infra/* \${BACKUP_DIR}/infra/ 2>/dev/null || true
+                            echo "  ✅ Infra logs backed up to \${BACKUP_DIR}/infra/"
+                        fi
+                        mkdir -p ~/loglens/logs/infra/mysql
+                        
+                        # 권한 설정
+                        chmod -R 755 ~/loglens/logs
+                        
+                        echo "✅ Log directories initialized"
+                        ls -la ~/loglens/logs/
+                        
+                        # 3일 이상 된 백업 로그 자동 삭제
+                        if [ -d ~/loglens/logs/backup ]; then
+                            echo "🧹 Cleaning up old log backups (older than 3 days)..."
+                            DELETED_COUNT=\$(find ~/loglens/logs/backup/* -type d -mtime +3 2>/dev/null | wc -l)
+                            if [ "\${DELETED_COUNT}" -gt 0 ]; then
+                                find ~/loglens/logs/backup/* -type d -mtime +3 -exec rm -rf {} + 2>/dev/null || true
+                                echo "  ✅ Deleted \${DELETED_COUNT} old backup(s)"
+                            else
+                                echo "  ℹ️  No old backups to clean"
+                            fi
+                        fi
+                        
+                        # ✅ 여기까지 추가 ✅
+                        
+                        # 새 컨테이너 배포 (볼륨 마운트 추가)
                         echo "🚀 Deploying ${containerName} on port ${port}"
                         docker run -d \
                             --name ${containerName} \
@@ -125,10 +177,16 @@ pipeline {
                             -p ${port}:8080 \
                             --env-file ${WORKSPACE}/.env \
                             --restart unless-stopped \
+                            -v ~/loglens/logs/be:/app/logs/be \
+                            -v ~/loglens/logs/fe:/app/logs/fe \
                             ${IMAGE_NAME}
                         
                         echo "✅ ${containerName} deployed successfully"
                         docker ps | grep ${containerName}
+                        
+                        # 볼륨 마운트 확인
+                        echo "📋 Verifying volume mounts..."
+                        docker inspect ${containerName} --format='{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'
                     """
                 }
             }
