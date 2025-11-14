@@ -54,7 +54,8 @@ public class HeatmapMetrics extends BaseTimeEntity {
             Integer errorCount,
             Integer warnCount,
             Integer infoCount,
-            LocalDateTime aggregatedAt) {
+            LocalDateTime aggregatedAt
+    ) {
         this.totalCount = totalCount;
         this.errorCount = errorCount;
         this.warnCount = warnCount;

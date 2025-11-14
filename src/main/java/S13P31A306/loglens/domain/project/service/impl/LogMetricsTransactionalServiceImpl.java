@@ -10,9 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.FieldValue;
 import org.opensearch.client.opensearch._types.aggregations.Aggregate;
-import org.opensearch.client.opensearch._types.aggregations.CalendarInterval;
-import org.opensearch.client.opensearch._types.aggregations.CompositeAggregationSource;
-import org.opensearch.client.opensearch._types.aggregations.CompositeBucket;
 import org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.SearchResponse;
@@ -48,6 +45,9 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
         try {
             String indexPattern = getProjectIndexPattern(project.getProjectUuid());
 
+            // 🔍 디버깅: 쿼리 테스트
+            debugLogMetricsQuery(indexPattern, from, to);
+
             // 1. LogMetrics 집계
             SearchRequest logMetricsRequest = buildLogMetricsRequest(indexPattern, from, to);
             SearchResponse<Void> logMetricsResponse = openSearchClient.search(logMetricsRequest, Void.class);
@@ -63,19 +63,93 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
 
             log.info("{} Calculated {} heatmap cells", LOG_PREFIX, heatmapMetrics.size());
 
-            // 3. 저장
-            transactionHelper.saveMetrics(metrics, heatmapMetrics);
+            // 3. 독립적으로 저장 (외부 호출)
+            boolean logMetricsSuccess = false;
+            boolean heatmapMetricsSuccess = false;
+
+            // HeatmapMetrics 먼저 저장
+            if (!heatmapMetrics.isEmpty()) {
+                try {
+                    transactionHelper.saveHeatmapMetrics(heatmapMetrics);
+                    heatmapMetricsSuccess = true;
+                    log.info("{} ✅ HeatmapMetrics 저장 성공: {} cells", LOG_PREFIX, heatmapMetrics.size());
+                } catch (Exception e) {
+                    log.error("{} ❌ HeatmapMetrics 저장 실패", LOG_PREFIX, e);
+                }
+            } else {
+                heatmapMetricsSuccess = true;
+            }
+
+            // LogMetrics 저장
+            if (metrics.getTotalLogs() > 0) {
+                try {
+                    transactionHelper.saveLogMetrics(metrics);
+                    logMetricsSuccess = true;
+                    log.info("{} ✅ LogMetrics 저장 성공: totalLogs={}", LOG_PREFIX, metrics.getTotalLogs());
+                } catch (Exception e) {
+                    log.error("{} ❌ LogMetrics 저장 실패", LOG_PREFIX, e);
+                }
+            } else {
+                logMetricsSuccess = true;
+            }
 
             long elapsed = System.currentTimeMillis() - startTime;
-            log.info("{} 집계 완료: projectId={}, 소요시간={}ms, 증분로그={}, 히트맵셀={}",
+            log.info("{} 집계 완료: projectId={}, 소요시간={}ms, 증분로그={}, 히트맵셀={}, LogMetrics={}, HeatmapMetrics={}",
                     LOG_PREFIX, project.getId(), elapsed,
                     metrics.getTotalLogs() - (previous != null ? previous.getTotalLogs() : 0),
-                    heatmapMetrics.size());
+                    heatmapMetrics.size(),
+                    logMetricsSuccess ? "성공" : "실패",
+                    heatmapMetricsSuccess ? "성공" : "실패");
 
         } catch (Exception e) {
             log.error("{} OpenSearch 집계 실패: projectId={}, from={}, to={}",
                     LOG_PREFIX, project.getId(), from, to, e);
-            throw new BusinessException(OPENSEARCH_OPERATION_FAILED);
+        }
+    }
+
+    /**
+     * OpenSearch 쿼리 직접 테스트 (디버깅용)
+     */
+    private void debugLogMetricsQuery(String indexPattern, LocalDateTime from, LocalDateTime to) {
+        try {
+            log.info("{} ===== OpenSearch 쿼리 디버깅 =====", LOG_PREFIX);
+            log.info("{} Index: {}", LOG_PREFIX, indexPattern);
+            log.info("{} From: {}", LOG_PREFIX, from);
+            log.info("{} To: {}", LOG_PREFIX, to);
+
+            // 간단한 count 쿼리로 데이터 존재 확인
+            SearchRequest countRequest = SearchRequest.of(s -> s
+                    .index(indexPattern)
+                    .size(0)
+                    .query(q -> q
+                            .range(r -> r
+                                    .field("timestamp")
+                                    .gte(JsonData.of(from.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
+                                    .lt(JsonData.of(to.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
+                            )
+                    )
+            );
+
+            log.info("{} 쿼리 완", LOG_PREFIX);
+
+            SearchResponse<Void> countResponse = openSearchClient.search(countRequest, Void.class);
+            long totalHits = countResponse.hits().total().value();
+            log.info("{} 해당 기간 총 문서 수: {}", LOG_PREFIX, totalHits);
+
+            if (totalHits == 0) {
+                log.warn("{} ⚠️ 해당 기간에 데이터가 없습니다!", LOG_PREFIX);
+                return;
+            }
+
+            // 실제 집계 쿼리 테스트
+            SearchRequest testRequest = buildLogMetricsRequest(indexPattern, from, to);
+            SearchResponse<Void> testResponse = openSearchClient.search(testRequest, Void.class);
+
+            log.info("{} Aggregations 응답: {}", LOG_PREFIX,
+                    testResponse.aggregations() != null ? testResponse.aggregations().keySet() : "null");
+
+        } catch (Exception e) {
+            log.error("{} 쿼리 디버깅 실패", LOG_PREFIX, e);
         }
     }
 
@@ -139,7 +213,7 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
                                 .field("timestamp")
                                 .fixedInterval(fi -> fi.time("1h"))
                                 .timeZone(DEFAULT_TIMEZONE)
-                                .format("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")  // 추가
+                                .format("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
                         )
                         .aggregations("by_level", agg -> agg
                                 .terms(t -> t.field("log_level"))
@@ -171,21 +245,18 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
 
         for (var bucket : buckets) {
             try {
-                // keyAsString을 사용 (ISO 8601 형식)
                 String keyAsString = bucket.keyAsString();
                 if (keyAsString == null) {
                     log.warn("{} keyAsString is null for bucket, using key: {}", LOG_PREFIX, bucket.key());
                     continue;
                 }
 
-                // "2025-11-13T02:00:00.000+09:00" 형식 파싱
                 ZonedDateTime zdt = ZonedDateTime.parse(keyAsString);
                 LocalDate date = zdt.toLocalDate();
                 Integer hour = zdt.getHour();
 
                 int totalCount = (int) bucket.docCount();
 
-                // by_level aggregation 파싱
                 Map<String, Integer> levelCounts = new HashMap<>();
                 Aggregate byLevel = bucket.aggregations().get("by_level");
 
@@ -225,17 +296,6 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
         return result;
     }
 
-    private Map<String, Integer> parseLevelCounts(Aggregate byLevel) {
-        Map<String, Integer> counts = new HashMap<>();
-        if (Objects.isNull(byLevel) || Objects.isNull(byLevel.sterms())) {
-            return counts;
-        }
-        for (StringTermsBucket bucket : byLevel.sterms().buckets().array()) {
-            counts.put(bucket.key(), (int) bucket.docCount());
-        }
-        return counts;
-    }
-
     private String getProjectIndexPattern(String projectUuid) {
         String sanitizedUuid = projectUuid.replace("-", "_");
         return sanitizedUuid + "_*";
@@ -249,11 +309,29 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
 
         Map<String, Aggregate> aggs = response.aggregations();
 
+        // 🔍 디버깅: aggregation 전체 구조 확인
+        log.info("{} ===== Aggregation 디버깅 시작 =====", LOG_PREFIX);
+        log.info("{} Aggregations null 여부: {}", LOG_PREFIX, aggs == null);
+        if (aggs != null) {
+            log.info("{} Aggregations 개수: {}", LOG_PREFIX, aggs.size());
+            log.info("{} Aggregations keys: {}", LOG_PREFIX, aggs.keySet());
+
+            aggs.forEach((key, agg) -> {
+                log.info("{} Aggregation[{}] - isValueCount: {}, isFilter: {}, isSum: {}",
+                        LOG_PREFIX, key, agg.isValueCount(), agg.isFilter(), agg.isSum());
+            });
+        }
+        log.info("{} ===== Aggregation 디버깅 끝 =====", LOG_PREFIX);
+
         long incrementalTotal = extractValueCount(aggs, "total_logs");
         long incrementalErrors = extractNestedValueCount(aggs, "error_logs");
         long incrementalWarns = extractNestedValueCount(aggs, "warn_logs");
         long incrementalInfos = extractNestedValueCount(aggs, "info_logs");
         long incrementalSumResponseTime = extractSumValue(aggs);
+
+        log.info("{} 추출된 값들 - total: {}, error: {}, warn: {}, info: {}, sumResponseTime: {}",
+                LOG_PREFIX, incrementalTotal, incrementalErrors, incrementalWarns,
+                incrementalInfos, incrementalSumResponseTime);
 
         long newTotalLogs = (previous != null ? previous.getTotalLogs() : 0) + incrementalTotal;
         long newErrorLogs = (previous != null ? previous.getErrorLogs() : 0) + incrementalErrors;
@@ -310,4 +388,5 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
         log.warn("{} sum_response_time aggregation not found or invalid", LOG_PREFIX);
         return 0L;
     }
+
 }
