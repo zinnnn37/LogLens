@@ -20,9 +20,18 @@ configurations {
 	}
 }
 
+//repositories {
+//	mavenCentral()
+//}
+
 repositories {
 	mavenCentral()
+//    mavenLocal()
+	maven {
+		url 'https://api.loglens.co.kr/maven-repo'
+	}
 }
+
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
