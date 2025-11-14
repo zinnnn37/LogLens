@@ -18,20 +18,22 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class LogMetricsTransactionHelper {
 
+    private static final String LOG_PREFIX = "[LogMetricsTransactionHelper]";
+
     private final LogMetricsRepository logMetricsRepository;
     private final HeatmapMetricsRepository heatmapMetricsRepository;
 
+    /**
+     * LogMetrics 저장 (독립 트랜잭션)
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void saveMetrics(LogMetrics logMetrics, List<HeatmapMetrics> heatmapMetrics) {
-
-        // LogMetrics 처리
-        Optional<LogMetrics> existingLogMetrics = logMetricsRepository
+    public void saveLogMetrics(LogMetrics logMetrics) {
+        Optional<LogMetrics> existing = logMetricsRepository
                 .findTopByProjectIdOrderByAggregatedAtDesc(logMetrics.getProject().getId());
 
-        if (existingLogMetrics.isPresent()) {
-            LogMetrics existing = existingLogMetrics.get();
-            // 기존 엔티티를 직접 수정 (더티 체킹 활용)
-            existing.updateMetrics(
+        if (existing.isPresent()) {
+            LogMetrics entity = existing.get();
+            entity.updateMetrics(
                     logMetrics.getTotalLogs(),
                     logMetrics.getErrorLogs(),
                     logMetrics.getWarnLogs(),
@@ -40,46 +42,49 @@ public class LogMetricsTransactionHelper {
                     logMetrics.getAvgResponseTime(),
                     logMetrics.getAggregatedAt()
             );
-            // save 호출 불필요 (더티 체킹으로 자동 업데이트)
+            log.debug("{} LogMetrics 업데이트: id={}, totalLogs={}",
+                    LOG_PREFIX, entity.getId(), entity.getTotalLogs());
         } else {
             logMetricsRepository.save(logMetrics);
+            log.debug("{} LogMetrics 신규 저장: totalLogs={}",
+                    LOG_PREFIX, logMetrics.getTotalLogs());
         }
+    }
 
-        // HeatmapMetrics 처리
+    /**
+     * HeatmapMetrics 저장 (독립 트랜잭션)
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void saveHeatmapMetrics(List<HeatmapMetrics> heatmapMetrics) {
+        int savedCount = 0;
+        int updatedCount = 0;
+
         for (HeatmapMetrics heatmap : heatmapMetrics) {
-            Optional<HeatmapMetrics> existingHeatmap = heatmapMetricsRepository
+            Optional<HeatmapMetrics> existing = heatmapMetricsRepository
                     .findByProjectIdAndDateAndHour(
                             heatmap.getProject().getId(),
                             heatmap.getDate(),
                             heatmap.getHour()
                     );
 
-            if (existingHeatmap.isPresent()) {
-                HeatmapMetrics existing = existingHeatmap.get();
-                existing.updateMetrics(
-                        existing.getTotalCount() + heatmap.getTotalCount(),
-                        existing.getErrorCount() + heatmap.getErrorCount(),
-                        existing.getWarnCount() + heatmap.getWarnCount(),
-                        existing.getInfoCount() + heatmap.getInfoCount(),
+            if (existing.isPresent()) {
+                HeatmapMetrics entity = existing.get();
+                entity.updateMetrics(
+                        entity.getTotalCount() + heatmap.getTotalCount(),
+                        entity.getErrorCount() + heatmap.getErrorCount(),
+                        entity.getWarnCount() + heatmap.getWarnCount(),
+                        entity.getInfoCount() + heatmap.getInfoCount(),
                         heatmap.getAggregatedAt()
                 );
+                updatedCount++;
             } else {
                 heatmapMetricsRepository.save(heatmap);
+                savedCount++;
             }
         }
+
+        log.info("{} HeatmapMetrics 저장 완료: 신규={}, 업데이트={}",
+                LOG_PREFIX, savedCount, updatedCount);
     }
 
-    private HeatmapMetrics mergeHeatmapMetrics(HeatmapMetrics existing, HeatmapMetrics increment) {
-        return HeatmapMetrics.builder()
-                .id(existing.getId())
-                .project(existing.getProject())
-                .date(existing.getDate())
-                .hour(existing.getHour())
-                .totalCount(existing.getTotalCount() + increment.getTotalCount())
-                .errorCount(existing.getErrorCount() + increment.getErrorCount())
-                .warnCount(existing.getWarnCount() + increment.getWarnCount())
-                .infoCount(existing.getInfoCount() + increment.getInfoCount())
-                .aggregatedAt(increment.getAggregatedAt())
-                .build();
-    }
 }
