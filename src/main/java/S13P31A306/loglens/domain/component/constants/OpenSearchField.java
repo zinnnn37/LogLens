@@ -18,6 +18,7 @@ public enum OpenSearchField {
 
     // ──────────────── 컨텍스트 / 메타데이터 ────────────────
     COMPONENT_NAME("component_name"),
+    COMPONENT_NAME_KEYWORD("component_name.keyword"),
     SERVICE_NAME("service_name"),
     SOURCE_TYPE("source_type"),
     LOGGER("logger"),

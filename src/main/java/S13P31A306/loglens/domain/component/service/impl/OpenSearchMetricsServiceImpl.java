@@ -157,7 +157,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
                 .query(boolQuery)
                 .aggregations(BY_COMPONENT, a -> a
                         .terms(t -> t
-                                .field(OpenSearchField.COMPONENT_NAME.getFieldName())
+                                .field(OpenSearchField.COMPONENT_NAME_KEYWORD.getFieldName())
                                 .size(OpenSearchAggregation.MAX_SIZE)
                         )
                         .aggregations(TOTAL_CALLS, sub -> sub
@@ -205,7 +205,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
                                 .value(v -> v.stringValue(SourceType.BACKEND.getType()))
                         ))
                         .filter(f -> f.term(t -> t
-                                .field(OpenSearchField.COMPONENT_NAME.getFieldName())
+                                .field(OpenSearchField.COMPONENT_NAME_KEYWORD.getFieldName())
                                 .value(v -> v.stringValue(componentName))
                         ))
                 )
