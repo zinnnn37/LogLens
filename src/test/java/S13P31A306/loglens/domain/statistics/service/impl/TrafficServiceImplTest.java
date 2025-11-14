@@ -2,15 +2,14 @@ package S13P31A306.loglens.domain.statistics.service.impl;
 
 import S13P31A306.loglens.domain.log.repository.LogRepository;
 import S13P31A306.loglens.domain.project.entity.Project;
-import S13P31A306.loglens.domain.statistics.dto.internal.LogTrendAggregation;
-import S13P31A306.loglens.domain.statistics.dto.response.LogTrendResponse;
-import S13P31A306.loglens.domain.statistics.mapper.LogTrendMapper;
+import S13P31A306.loglens.domain.statistics.dto.internal.TrafficAggregation;
+import S13P31A306.loglens.domain.statistics.dto.response.TrafficResponse;
+import S13P31A306.loglens.domain.statistics.mapper.TrafficMapper;
 import S13P31A306.loglens.domain.statistics.validator.StatisticsValidator;
 import S13P31A306.loglens.global.exception.BusinessException;
 
 import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.MEMBER_NOT_FOUND;
 import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PROJECT_NOT_FOUND;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -33,20 +32,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 /**
- * LogTrendServiceImpl 단위 테스트
+ * TrafficServiceImpl 단위 테스트
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("LogTrendServiceImpl 테스트")
-class LogTrendServiceImplTest {
+@DisplayName("TrafficServiceImpl 테스트")
+class TrafficServiceImplTest {
 
     @InjectMocks
-    private LogTrendServiceImpl logTrendService;
+    private TrafficServiceImpl trafficService;
 
     @Mock
     private LogRepository logRepository;
 
     @Mock
-    private LogTrendMapper logTrendMapper;
+    private TrafficMapper trafficMapper;
 
     @Mock
     private StatisticsValidator statisticsValidator;
@@ -56,50 +55,50 @@ class LogTrendServiceImplTest {
     private static final Integer PROJECT_ID = 1;
 
     @Nested
-    @DisplayName("로그 추이 조회 테스트")
-    class GetLogTrendTest {
+    @DisplayName("Traffic 조회 테스트")
+    class GetTrafficTest {
 
         @Test
-        void 로그_추이_조회_성공_시_8개의_데이터포인트를_반환한다() {
+        void Traffic_조회_성공_시_8개의_데이터포인트를_반환한다() {
             // given
             Project project = createProject();
-            List<LogTrendAggregation> aggregations = create8Aggregations();
-            LogTrendResponse expectedResponse = createResponse();
+            List<TrafficAggregation> aggregations = create8Aggregations();
+            TrafficResponse expectedResponse = createResponse();
 
-            given(statisticsValidator.validateLogTrendRequest(PROJECT_UUID)).willReturn(project);
-            given(logRepository.aggregateLogTrendByTimeRange(
+            given(statisticsValidator.validateTrafficRequest(PROJECT_UUID)).willReturn(project);
+            given(logRepository.aggregateTrafficByTimeRange(
                     eq(PROJECT_UUID), any(), any(), eq("3h")
             )).willReturn(aggregations);
-            given(logTrendMapper.toLogTrendResponse(
+            given(trafficMapper.toTrafficResponse(
                     eq(PROJECT_UUID), any(), any(), eq(aggregations)
             )).willReturn(expectedResponse);
 
             // when
-            LogTrendResponse response = logTrendService.getLogTrend(PROJECT_UUID);
+            TrafficResponse response = trafficService.getTraffic(PROJECT_UUID);
 
             // then
             assertThat(response).isNotNull();
             assertThat(response.dataPoints()).hasSize(8);
-            verify(statisticsValidator).validateLogTrendRequest(PROJECT_UUID);
+            verify(statisticsValidator).validateTrafficRequest(PROJECT_UUID);
         }
 
         @Test
         void 각_데이터포인트의_hour_필드가_HH_mm_형식이다() {
             // given
             Project project = createProject();
-            List<LogTrendAggregation> aggregations = create8Aggregations();
-            LogTrendResponse expectedResponse = createResponse();
+            List<TrafficAggregation> aggregations = create8Aggregations();
+            TrafficResponse expectedResponse = createResponse();
 
-            given(statisticsValidator.validateLogTrendRequest(PROJECT_UUID)).willReturn(project);
-            given(logRepository.aggregateLogTrendByTimeRange(
+            given(statisticsValidator.validateTrafficRequest(PROJECT_UUID)).willReturn(project);
+            given(logRepository.aggregateTrafficByTimeRange(
                     any(), any(), any(), any()
             )).willReturn(aggregations);
-            given(logTrendMapper.toLogTrendResponse(
+            given(trafficMapper.toTrafficResponse(
                     any(), any(), any(), any()
             )).willReturn(expectedResponse);
 
             // when
-            LogTrendResponse response = logTrendService.getLogTrend(PROJECT_UUID);
+            TrafficResponse response = trafficService.getTraffic(PROJECT_UUID);
 
             // then
             response.dataPoints().forEach(dataPoint -> {
@@ -110,22 +109,22 @@ class LogTrendServiceImplTest {
         @Test
         void 프로젝트가_존재하지_않으면_예외를_발생시킨다() {
             // given
-            given(statisticsValidator.validateLogTrendRequest(PROJECT_UUID))
+            given(statisticsValidator.validateTrafficRequest(PROJECT_UUID))
                     .willThrow(new BusinessException(PROJECT_NOT_FOUND));
 
             // when & then
-            assertThatThrownBy(() -> logTrendService.getLogTrend(PROJECT_UUID))
+            assertThatThrownBy(() -> trafficService.getTraffic(PROJECT_UUID))
                     .isInstanceOf(BusinessException.class);
         }
 
         @Test
         void 사용자가_프로젝트_멤버가_아니면_예외를_발생시킨다() {
             // given
-            given(statisticsValidator.validateLogTrendRequest(PROJECT_UUID))
+            given(statisticsValidator.validateTrafficRequest(PROJECT_UUID))
                     .willThrow(new BusinessException(MEMBER_NOT_FOUND));
 
             // when & then
-            assertThatThrownBy(() -> logTrendService.getLogTrend(PROJECT_UUID))
+            assertThatThrownBy(() -> trafficService.getTraffic(PROJECT_UUID))
                     .isInstanceOf(BusinessException.class);
         }
 
@@ -133,27 +132,26 @@ class LogTrendServiceImplTest {
         void 로그가_없는_경우_0으로_채워진_8개_데이터를_반환한다() {
             // given
             Project project = createProject();
-            List<LogTrendAggregation> emptyAggregations = createEmptyAggregations();
-            LogTrendResponse expectedResponse = createEmptyResponse();
+            List<TrafficAggregation> emptyAggregations = createEmptyAggregations();
+            TrafficResponse expectedResponse = createEmptyResponse();
 
-            given(statisticsValidator.validateLogTrendRequest(PROJECT_UUID)).willReturn(project);
-            given(logRepository.aggregateLogTrendByTimeRange(
+            given(statisticsValidator.validateTrafficRequest(PROJECT_UUID)).willReturn(project);
+            given(logRepository.aggregateTrafficByTimeRange(
                     any(), any(), any(), any()
             )).willReturn(emptyAggregations);
-            given(logTrendMapper.toLogTrendResponse(
+            given(trafficMapper.toTrafficResponse(
                     any(), any(), any(), any()
             )).willReturn(expectedResponse);
 
             // when
-            LogTrendResponse response = logTrendService.getLogTrend(PROJECT_UUID);
+            TrafficResponse response = trafficService.getTraffic(PROJECT_UUID);
 
             // then
             assertThat(response.dataPoints()).hasSize(8);
             response.dataPoints().forEach(dataPoint -> {
                 assertThat(dataPoint.totalCount()).isZero();
-                assertThat(dataPoint.infoCount()).isZero();
-                assertThat(dataPoint.warnCount()).isZero();
-                assertThat(dataPoint.errorCount()).isZero();
+                assertThat(dataPoint.feCount()).isZero();
+                assertThat(dataPoint.beCount()).isZero();
             });
         }
     }
@@ -163,78 +161,78 @@ class LogTrendServiceImplTest {
         return mock(Project.class);
     }
 
-    private List<LogTrendAggregation> create8Aggregations() {
-        List<LogTrendAggregation> aggregations = new ArrayList<>();
+    private List<TrafficAggregation> create8Aggregations() {
+        List<TrafficAggregation> aggregations = new ArrayList<>();
         LocalDateTime start = LocalDateTime.of(2025, 11, 13, 15, 0);
 
         for (int i = 0; i < 8; i++) {
-            aggregations.add(new LogTrendAggregation(
+            aggregations.add(new TrafficAggregation(
                     start.plusHours(i * 3),
                     1500 + i * 100,
-                    1200,
-                    250,
-                    50
+                    800 + i * 50,
+                    700 + i * 50
             ));
         }
 
         return aggregations;
     }
 
-    private List<LogTrendAggregation> createEmptyAggregations() {
-        List<LogTrendAggregation> aggregations = new ArrayList<>();
+    private List<TrafficAggregation> createEmptyAggregations() {
+        List<TrafficAggregation> aggregations = new ArrayList<>();
         LocalDateTime start = LocalDateTime.of(2025, 11, 13, 15, 0);
 
         for (int i = 0; i < 8; i++) {
-            aggregations.add(new LogTrendAggregation(
+            aggregations.add(new TrafficAggregation(
                     start.plusHours(i * 3),
-                    0, 0, 0, 0
+                    0, 0, 0
             ));
         }
 
         return aggregations;
     }
 
-    private LogTrendResponse createResponse() {
+    private TrafficResponse createResponse() {
         // 8개의 DataPoint 생성
-        List<LogTrendResponse.DataPoint> dataPoints = new ArrayList<>();
+        List<TrafficResponse.DataPoint> dataPoints = new ArrayList<>();
         LocalDateTime start = LocalDateTime.of(2025, 11, 13, 15, 0);
 
         for (int i = 0; i < 8; i++) {
-            dataPoints.add(new LogTrendResponse.DataPoint(
+            dataPoints.add(new TrafficResponse.DataPoint(
                     start.plusHours(i * 3).toString(),
                     String.format("%02d:00", (15 + i * 3) % 24),
                     1500 + i * 100,
-                    1200, 250, 50
+                    800 + i * 50,
+                    700 + i * 50
             ));
         }
 
-        return new LogTrendResponse(
+        return new TrafficResponse(
                 PROJECT_UUID,
-                new LogTrendResponse.Period(start.toString(), start.plusHours(24).toString()),
+                new TrafficResponse.Period(start.toString(), start.plusHours(24).toString()),
                 "3h",
                 dataPoints,
-                new LogTrendResponse.Summary(12000, 1500, "12:00", 2100)
+                new TrafficResponse.Summary(12000, 6400, 5600, 1500, "12:00", 2200)
         );
     }
 
-    private LogTrendResponse createEmptyResponse() {
-        List<LogTrendResponse.DataPoint> dataPoints = new ArrayList<>();
+    private TrafficResponse createEmptyResponse() {
+        List<TrafficResponse.DataPoint> dataPoints = new ArrayList<>();
         LocalDateTime start = LocalDateTime.of(2025, 11, 13, 15, 0);
 
         for (int i = 0; i < 8; i++) {
-            dataPoints.add(new LogTrendResponse.DataPoint(
+            dataPoints.add(new TrafficResponse.DataPoint(
                     start.plusHours(i * 3).toString(),
                     String.format("%02d:00", (15 + i * 3) % 24),
-                    0, 0, 0, 0
+                    0, 0, 0
             ));
         }
 
-        return new LogTrendResponse(
+        return new TrafficResponse(
                 PROJECT_UUID,
-                new LogTrendResponse.Period(start.toString(), start.plusHours(24).toString()),
+                new TrafficResponse.Period(start.toString(), start.plusHours(24).toString()),
                 "3h",
                 dataPoints,
-                new LogTrendResponse.Summary(0, 0, "15:00", 0)
+                new TrafficResponse.Summary(0, 0, 0, 0, "15:00", 0)
         );
     }
 }
