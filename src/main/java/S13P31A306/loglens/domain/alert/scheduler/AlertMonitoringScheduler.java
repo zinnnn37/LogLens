@@ -25,11 +25,11 @@ public class AlertMonitoringScheduler {
      */
     @Scheduled(cron = "*/15 * * * * *")
     public void checkAlerts() {
-        log.info("{} 알림 모니터링 스케줄러 시작", LOG_PREFIX);
+        log.debug("{} 알림 모니터링 스케줄러 시작", LOG_PREFIX);
 
         try {
             alertMonitoringService.checkAndCreateAlerts();
-            log.info("{} 알림 모니터링 스케줄러 완료", LOG_PREFIX);
+            log.debug("{} 알림 모니터링 스케줄러 완료", LOG_PREFIX);
         } catch (Exception e) {
             log.error("{} 알림 모니터링 스케줄러 실행 중 오류 발생", LOG_PREFIX, e);
         }
