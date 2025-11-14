@@ -5,6 +5,9 @@ import InitialMessages from '@/components/InitialMessages';
 import ChatInput from '@/components/ChatInput';
 import { API_PATH } from '@/constants/api-path';
 import { useAuthStore } from '@/stores/authStore';
+import { FileDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { exportChatToPDF } from '@/utils/pdfExport';
 
 const ChatbotPage = () => {
   const { projectUuid } = useParams<{ projectUuid: string }>();
@@ -210,8 +213,18 @@ const ChatbotPage = () => {
     handleSendMessage(question);
   };
 
+  // PDF 다운로드 핸들러
+  const handleDownloadPDF = async () => {
+    await exportChatToPDF(messages);
+  };
+
+  // 첫 번째 AI 답변이 완료되었는지 확인
+  const hasCompletedAIResponse = messages.some(
+    msg => msg.role === 'assistant' && msg.isComplete,
+  );
+
   return (
-    <div className="flex h-full flex-col gap-4">
+    <div className="relative flex h-full flex-col gap-4">
       {/* 채팅 영역 */}
       <div className="flex-1 overflow-hidden rounded-lg bg-sky-50 p-4">
         <div className="h-full overflow-y-auto">
@@ -256,6 +269,27 @@ const ChatbotPage = () => {
       <div className="shrink-0">
         <ChatInput onSendMessage={handleSendMessage} disabled={isStreaming} />
       </div>
+
+      {/* 플로팅 PDF 다운로드 버튼 */}
+      {hasCompletedAIResponse && (
+        <div className="group fixed right-6 bottom-24">
+          <Button
+            onClick={handleDownloadPDF}
+            className="h-14 w-14 rounded-full p-0 shadow-lg transition-all hover:scale-110 hover:shadow-xl"
+          >
+            <FileDown className="h-6 w-6" />
+          </Button>
+          {/* 툴팁 */}
+          <div className="pointer-events-none absolute top-1/2 right-full mr-3 -translate-y-1/2 whitespace-nowrap opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="rounded-lg bg-gray-900 px-3 py-2 text-sm text-white shadow-lg">
+              AI 답변 PDF로 저장
+              <div className="absolute top-1/2 right-0 translate-x-full -translate-y-1/2">
+                <div className="border-8 border-transparent border-l-gray-900"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
