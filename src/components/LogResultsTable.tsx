@@ -90,9 +90,9 @@ const LogResultsTable = memo(
               )}
 
               {!loading &&
-                rows.map(row => (
+                rows.map((row, index) => (
                   <tr
-                    key={row.id + row.date}
+                    key={`${row.id}-${row.date}-${index}`}
                     className={`border-t border-slate-100 ${onRowClick ? 'cursor-pointer hover:bg-slate-50' : ''}`}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                   >

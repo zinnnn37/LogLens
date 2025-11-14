@@ -206,222 +206,222 @@ const DetailLogSearchBox = ({
   return (
     <div className="space-y-3">
       <div className="flex w-full flex-nowrap items-center gap-2 rounded-lg border bg-white p-4 shadow-sm">
-      {/* 검색 타입 */}
-      <div className="relative min-w-[350px] flex-1">
-        <SearchIcon className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <Input
-          type="text"
-          placeholder={placeholder}
-          className="pr-[120px] pl-10"
-          value={searchValue}
-          onChange={e => setSearchValue(e.target.value)}
-        />
-        <div className="absolute top-0 right-2 flex h-full items-center">
-          <Select
-            value={searchType}
-            onValueChange={(v: 'traceId' | 'keyword') => setSearchType(v)}
-          >
-            <SelectTrigger className="w-auto border-0 bg-transparent text-xs text-gray-600 shadow-none focus:ring-0">
-              <SelectValue placeholder="검색 타입" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="traceId">TraceID</SelectItem>
-              <SelectItem value="keyword">Keyword</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* 시스템 필터 */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            className="w-auto min-w-[120px] justify-between"
-          >
-            <span>{getDropdownButtonText('시스템', sourceType)}</span>
-            <ChevronDown className="h-4 w-4 opacity-50" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-[140px]">
-          {SOURCE_TYPE_OPTIONS.map(option => (
-            <DropdownMenuCheckboxItem
-              key={option.id}
-              checked={sourceType.includes(option.id)}
-              onCheckedChange={(checked: boolean) => {
-                setSourceType(prev =>
-                  checked
-                    ? [...prev, option.id]
-                    : prev.filter(id => id !== option.id),
-                );
-              }}
-              onSelect={e => e.preventDefault()}
+        {/* 검색 타입 */}
+        <div className="relative min-w-[350px] flex-1">
+          <SearchIcon className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            type="text"
+            placeholder={placeholder}
+            className="pr-[120px] pl-10"
+            value={searchValue}
+            onChange={e => setSearchValue(e.target.value)}
+          />
+          <div className="absolute top-0 right-2 flex h-full items-center">
+            <Select
+              value={searchType}
+              onValueChange={(v: 'traceId' | 'keyword') => setSearchType(v)}
             >
-              {option.label}
-            </DropdownMenuCheckboxItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* 레벨 필터 */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            className="w-auto min-w-[120px] justify-between"
-          >
-            <span>{getDropdownButtonText('레벨', logLevel)}</span>
-            <ChevronDown className="h-4 w-4 opacity-50" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-[140px]">
-          {LOG_LEVEL_OPTIONS.map(option => (
-            <DropdownMenuCheckboxItem
-              key={option.id}
-              checked={logLevel.includes(option.id)}
-              onCheckedChange={(checked: boolean) => {
-                setLogLevel(prev =>
-                  checked
-                    ? [...prev, option.id]
-                    : prev.filter(id => id !== option.id),
-                );
-              }}
-              onSelect={e => e.preventDefault()}
-            >
-              {option.label}
-            </DropdownMenuCheckboxItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* 기간 설정 */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            className="w-auto min-w-[160px] justify-between"
-          >
-            <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
-            <span>
-              {startDate || startClock || endDate || endClock
-                ? '기간 설정됨'
-                : '기간 설정'}
-            </span>
-          </Button>
-        </DropdownMenuTrigger>
-
-        <DropdownMenuContent
-          className="relative w-auto p-4"
-          onSelect={e => e.preventDefault()}
-        >
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground absolute top-2 right-2 h-auto px-2 py-1 text-xs"
-            onClick={() => {
-              setStartDate('');
-              setStartClock('');
-              setEndDate('');
-              setEndClock('');
-            }}
-          >
-            <RotateCw className="mr-1 h-3 w-3" />
-            초기화
-          </Button>
-
-          <div className="mt-6 grid gap-4">
-            {/* 시작 */}
-            <div className="grid w-full max-w-sm gap-1.5">
-              <Label htmlFor="startDate" className="text-sm font-medium">
-                시작 시간
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
-                  className="w-[150px]"
-                />
-                <div className="relative w-[130px]">
-                  <IMaskInput
-                    mask="HH:mm:ss"
-                    blocks={{
-                      HH: { mask: '00', placeholderChar: '_' },
-                      mm: { mask: '00', placeholderChar: '_' },
-                      ss: { mask: '00', placeholderChar: '_' },
-                    }}
-                    id="startClock"
-                    placeholder="HH:mm:ss"
-                    className={cn(
-                      'border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
-                      'pl-8',
-                    )}
-                    value={startClock}
-                    onAccept={value => setStartClock(value as string)}
-                  />
-                  <Clock className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                </div>
-              </div>
-            </div>
-
-            {/* 종료 */}
-            <div className="grid w-full max-w-sm gap-1.5">
-              <Label htmlFor="endDate" className="text-sm font-medium">
-                종료 시간
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
-                  className="w-[150px]"
-                />
-                <div className="relative w-[130px]">
-                  <IMaskInput
-                    mask="HH:mm:ss"
-                    blocks={{
-                      HH: { mask: '00', placeholderChar: '_' },
-                      mm: { mask: '00', placeholderChar: '_' },
-                      ss: { mask: '00', placeholderChar: '_' },
-                    }}
-                    id="endClock"
-                    placeholder="HH:mm:ss"
-                    className={cn(
-                      'border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
-                      'pl-8',
-                    )}
-                    value={endClock}
-                    onAccept={value => setEndClock(value as string)}
-                  />
-                  <Clock className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                </div>
-              </div>
-            </div>
+              <SelectTrigger className="w-auto border-0 bg-transparent text-xs text-gray-600 shadow-none focus:ring-0">
+                <SelectValue placeholder="검색 타입" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="traceId">TraceID</SelectItem>
+                <SelectItem value="keyword">Keyword</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </div>
 
-      {/* 정렬 */}
-      <Select value={sort} onValueChange={setSort}>
-        <SelectTrigger className="w-auto min-w-[140px]">
-          <ArrowDownUp className="mr-2 h-4 w-4 text-gray-500" />
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="TIMESTAMP,DESC">최신순</SelectItem>
-          <SelectItem value="TIMESTAMP,ASC">오래된순</SelectItem>
-        </SelectContent>
-      </Select>
+        {/* 시스템 필터 */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              className="w-auto min-w-[120px] justify-between"
+            >
+              <span>{getDropdownButtonText('시스템', sourceType)}</span>
+              <ChevronDown className="h-4 w-4 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-[140px]">
+            {SOURCE_TYPE_OPTIONS.map(option => (
+              <DropdownMenuCheckboxItem
+                key={option.id}
+                checked={sourceType.includes(option.id)}
+                onCheckedChange={(checked: boolean) => {
+                  setSourceType(prev =>
+                    checked
+                      ? [...prev, option.id]
+                      : prev.filter(id => id !== option.id),
+                  );
+                }}
+                onSelect={e => e.preventDefault()}
+              >
+                {option.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-      {/* 검색 버튼 */}
-      <Button
-        onClick={handleSearch}
-        className="bg-primary text-white hover:bg-blue-500"
-      >
-        검색
-      </Button>
+        {/* 레벨 필터 */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              className="w-auto min-w-[120px] justify-between"
+            >
+              <span>{getDropdownButtonText('레벨', logLevel)}</span>
+              <ChevronDown className="h-4 w-4 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-[140px]">
+            {LOG_LEVEL_OPTIONS.map(option => (
+              <DropdownMenuCheckboxItem
+                key={option.id}
+                checked={logLevel.includes(option.id)}
+                onCheckedChange={(checked: boolean) => {
+                  setLogLevel(prev =>
+                    checked
+                      ? [...prev, option.id]
+                      : prev.filter(id => id !== option.id),
+                  );
+                }}
+                onSelect={e => e.preventDefault()}
+              >
+                {option.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* 기간 설정 */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              className="w-auto min-w-[160px] justify-between"
+            >
+              <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+              <span>
+                {startDate || startClock || endDate || endClock
+                  ? '기간 설정됨'
+                  : '기간 설정'}
+              </span>
+            </Button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent
+            className="relative w-auto p-4"
+            onSelect={e => e.preventDefault()}
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground absolute top-2 right-2 h-auto px-2 py-1 text-xs"
+              onClick={() => {
+                setStartDate('');
+                setStartClock('');
+                setEndDate('');
+                setEndClock('');
+              }}
+            >
+              <RotateCw className="mr-1 h-3 w-3" />
+              초기화
+            </Button>
+
+            <div className="mt-6 grid gap-4">
+              {/* 시작 */}
+              <div className="grid w-full max-w-sm gap-1.5">
+                <Label htmlFor="startDate" className="text-sm font-medium">
+                  시작 시간
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                    className="w-[150px]"
+                  />
+                  <div className="relative w-[130px]">
+                    <IMaskInput
+                      mask="HH:mm:ss"
+                      blocks={{
+                        HH: { mask: '00', placeholderChar: '_' },
+                        mm: { mask: '00', placeholderChar: '_' },
+                        ss: { mask: '00', placeholderChar: '_' },
+                      }}
+                      id="startClock"
+                      placeholder="HH:mm:ss"
+                      className={cn(
+                        'border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+                        'pl-8',
+                      )}
+                      value={startClock}
+                      onAccept={value => setStartClock(value as string)}
+                    />
+                    <Clock className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  </div>
+                </div>
+              </div>
+
+              {/* 종료 */}
+              <div className="grid w-full max-w-sm gap-1.5">
+                <Label htmlFor="endDate" className="text-sm font-medium">
+                  종료 시간
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                    className="w-[150px]"
+                  />
+                  <div className="relative w-[130px]">
+                    <IMaskInput
+                      mask="HH:mm:ss"
+                      blocks={{
+                        HH: { mask: '00', placeholderChar: '_' },
+                        mm: { mask: '00', placeholderChar: '_' },
+                        ss: { mask: '00', placeholderChar: '_' },
+                      }}
+                      id="endClock"
+                      placeholder="HH:mm:ss"
+                      className={cn(
+                        'border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+                        'pl-8',
+                      )}
+                      value={endClock}
+                      onAccept={value => setEndClock(value as string)}
+                    />
+                    <Clock className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* 정렬 */}
+        <Select value={sort} onValueChange={setSort}>
+          <SelectTrigger className="w-auto min-w-[140px]">
+            <ArrowDownUp className="mr-2 h-4 w-4 text-gray-500" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="TIMESTAMP,DESC">최신순</SelectItem>
+            <SelectItem value="TIMESTAMP,ASC">오래된순</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* 검색 버튼 */}
+        <Button
+          onClick={handleSearch}
+          className="bg-primary text-white hover:bg-blue-500"
+        >
+          검색
+        </Button>
       </div>
 
       {/* 선택된 필터 태그 표시 */}
