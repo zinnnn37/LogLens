@@ -19,10 +19,7 @@ import org.opensearch.client.opensearch.core.SearchResponse;
 import org.opensearch.client.json.JsonData;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.*;
 
 import static S13P31A306.loglens.global.constants.GlobalErrorCode.OPENSEARCH_OPERATION_FAILED;
@@ -51,14 +48,22 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
         try {
             String indexPattern = getProjectIndexPattern(project.getProjectUuid());
 
+            // 1. LogMetrics 집계
             SearchRequest logMetricsRequest = buildLogMetricsRequest(indexPattern, from, to);
             SearchResponse<Void> logMetricsResponse = openSearchClient.search(logMetricsRequest, Void.class);
             LogMetrics metrics = calculateCumulativeMetrics(logMetricsResponse, project, to, previous);
 
+            // 2. HeatmapMetrics 집계
             SearchRequest heatmapRequest = buildHeatmapRequest(indexPattern, from, to, project.getId());
             SearchResponse<Void> heatmapResponse = openSearchClient.search(heatmapRequest, Void.class);
+
+            log.info("{} HeatmapMetrics aggregation response received", LOG_PREFIX);
+
             List<HeatmapMetrics> heatmapMetrics = calculateHeatmapMetrics(heatmapResponse, project, to);
 
+            log.info("{} Calculated {} heatmap cells", LOG_PREFIX, heatmapMetrics.size());
+
+            // 3. 저장
             transactionHelper.saveMetrics(metrics, heatmapMetrics);
 
             long elapsed = System.currentTimeMillis() - startTime;
@@ -122,39 +127,22 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
         return SearchRequest.of(s -> s
                 .index(indexPattern)
                 .size(0)
-                .query(q -> q.bool(b -> {
-                    b.must(m -> m.term(t -> t.field("project_id").value(FieldValue.of(projectId))));
-                    b.must(m -> m.range(r -> r
-                            .field("timestamp")
-                            .gte(JsonData.of(from.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
-                            .lt(JsonData.of(to.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
-                    ));
-                    return b;
-                }))
-                .aggregations("by_date_and_hour", a -> a
-                        .composite(c -> {
-                            Map<String, CompositeAggregationSource> sources = new LinkedHashMap<>();
-                            sources.put("date", CompositeAggregationSource.of(cas -> cas
-                                    .dateHistogram(dh -> dh
-                                            .field("timestamp")
-                                            .fixedInterval(fi -> fi.time("1d"))
-                                            .timeZone(DEFAULT_TIMEZONE)
-                                    )
-                            ));
-                            sources.put("hour", CompositeAggregationSource.of(cas -> cas
-                                    .terms(t -> t.script(script -> script
-                                            .inline(i -> i.source(
-                                                    "doc['timestamp'].value.withZoneSameInstant(ZoneId.of('" + DEFAULT_TIMEZONE + "')).getHour()"
-                                            ))
-                                    ))
-                            ));
-                            return c.size(HEATMAP_AGGREGATION_SIZE).sources(sources);
-                        })
-                        .aggregations("total_count", agg -> agg
-                                .valueCount(v -> v.field("_id"))
+                .query(q -> q
+                        .range(r -> r
+                                .field("timestamp")
+                                .gte(JsonData.of(from.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
+                                .lt(JsonData.of(to.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
+                        )
+                )
+                .aggregations("by_hour", a -> a
+                        .dateHistogram(dh -> dh
+                                .field("timestamp")
+                                .fixedInterval(fi -> fi.time("1h"))
+                                .timeZone(DEFAULT_TIMEZONE)
+                                .format("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")  // 추가
                         )
                         .aggregations("by_level", agg -> agg
-                                .terms(t -> t.field("log_level.keyword"))
+                                .terms(t -> t.field("log_level"))
                         )
                 )
         );
@@ -167,39 +155,73 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
 
         List<HeatmapMetrics> result = new ArrayList<>();
 
-        Aggregate byDateAndHour = response.aggregations().get("by_date_and_hour");
-        if (Objects.isNull(byDateAndHour) || Objects.isNull(byDateAndHour.composite())) {
+        Aggregate byHour = response.aggregations().get("by_hour");
+        if (Objects.isNull(byHour)) {
+            log.warn("{} by_hour aggregation not found", LOG_PREFIX);
             return result;
         }
 
-        for (CompositeBucket bucket : byDateAndHour.composite().buckets().array()) {
-            long dateMillis = Long.parseLong(bucket.key().get("date").toString());
-            LocalDate date = Instant.ofEpochMilli(dateMillis)
-                    .atZone(ZoneId.of(DEFAULT_TIMEZONE))
-                    .toLocalDate();
-
-            Integer hour = Integer.parseInt(bucket.key().get("hour").toString());
-
-            Double totalCountDouble = bucket.aggregations().get("total_count").valueCount().value();
-            Integer totalCount = (totalCountDouble != null && !totalCountDouble.isNaN())
-                    ? totalCountDouble.intValue() : 0;
-
-            Map<String, Integer> levelCounts = parseLevelCounts(bucket.aggregations().get("by_level"));
-
-            HeatmapMetrics heatmap = HeatmapMetrics.builder()
-                    .project(project)
-                    .date(date)
-                    .hour(hour)
-                    .totalCount(totalCount)
-                    .errorCount(levelCounts.getOrDefault("ERROR", 0))
-                    .warnCount(levelCounts.getOrDefault("WARN", 0))
-                    .infoCount(levelCounts.getOrDefault("INFO", 0))
-                    .aggregatedAt(aggregatedAt)
-                    .build();
-
-            result.add(heatmap);
+        if (Objects.isNull(byHour.dateHistogram())) {
+            log.warn("{} dateHistogram is null", LOG_PREFIX);
+            return result;
         }
 
+        var buckets = byHour.dateHistogram().buckets().array();
+        log.info("{} Processing {} buckets from date_histogram", LOG_PREFIX, buckets.size());
+
+        for (var bucket : buckets) {
+            try {
+                // keyAsString을 사용 (ISO 8601 형식)
+                String keyAsString = bucket.keyAsString();
+                if (keyAsString == null) {
+                    log.warn("{} keyAsString is null for bucket, using key: {}", LOG_PREFIX, bucket.key());
+                    continue;
+                }
+
+                // "2025-11-13T02:00:00.000+09:00" 형식 파싱
+                ZonedDateTime zdt = ZonedDateTime.parse(keyAsString);
+                LocalDate date = zdt.toLocalDate();
+                Integer hour = zdt.getHour();
+
+                int totalCount = (int) bucket.docCount();
+
+                // by_level aggregation 파싱
+                Map<String, Integer> levelCounts = new HashMap<>();
+                Aggregate byLevel = bucket.aggregations().get("by_level");
+
+                if (byLevel != null && byLevel.sterms() != null) {
+                    for (var levelBucket : byLevel.sterms().buckets().array()) {
+                        String level = levelBucket.key();
+                        int count = (int) levelBucket.docCount();
+                        levelCounts.put(level, count);
+                    }
+                }
+
+                HeatmapMetrics heatmap = HeatmapMetrics.builder()
+                        .project(project)
+                        .date(date)
+                        .hour(hour)
+                        .totalCount(totalCount)
+                        .errorCount(levelCounts.getOrDefault("ERROR", 0))
+                        .warnCount(levelCounts.getOrDefault("WARN", 0))
+                        .infoCount(levelCounts.getOrDefault("INFO", 0))
+                        .aggregatedAt(aggregatedAt)
+                        .build();
+
+                result.add(heatmap);
+
+                if (result.size() <= 3) {
+                    log.debug("{} Created heatmap: date={}, hour={}, total={}",
+                            LOG_PREFIX, date, hour, totalCount);
+                }
+
+            } catch (Exception e) {
+                log.error("{} Failed to parse bucket: key={}, error={}",
+                        LOG_PREFIX, bucket.key(), e.getMessage(), e);
+            }
+        }
+
+        log.info("{} Successfully created {} HeatmapMetrics", LOG_PREFIX, result.size());
         return result;
     }
 

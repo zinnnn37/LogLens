@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Table(
         name = "heatmap_metrics",
         uniqueConstraints = @UniqueConstraint(
-                columnNames = {"project_id", "date", "hour"}
+                columnNames = {"project_id", "date", "`hour`"}
         )
 )
 @Getter
@@ -31,7 +31,7 @@ public class HeatmapMetrics extends BaseTimeEntity {
     @Column(name = "date", nullable = false)
     private LocalDate date;
 
-    @Column(name = "hour", nullable = false)
+    @Column(name = "`hour`", nullable = false)
     private Integer hour;
 
     @Column(name = "total_count", nullable = false)
