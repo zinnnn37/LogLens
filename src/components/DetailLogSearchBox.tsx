@@ -125,6 +125,30 @@ const DetailLogSearchBox = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInitialized]);
 
+  // 시스템, 레벨, 정렬 필터 변경 시 자동 검색 (초기 렌더링 제외)
+  const [isFirstRender, setIsFirstRender] = useState(true);
+
+  useEffect(() => {
+    if (isFirstRender) {
+      setIsFirstRender(false);
+      return;
+    }
+
+    const startISO = composeISO(startDate, startClock);
+    const endISO = composeISO(endDate, endClock);
+
+    onSearch({
+      traceId: searchType === 'traceId' ? searchValue : '',
+      keyword: searchType === 'keyword' ? searchValue : '',
+      sourceType,
+      logLevel,
+      startTime: startISO,
+      endTime: endISO,
+      sort,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceType, logLevel, sort]);
+
   // ===== helpers =====
   // date + clock → 'YYYY-MM-DDTHH:mm:ss'
   const composeISO = (date: string, clock: string) => {
