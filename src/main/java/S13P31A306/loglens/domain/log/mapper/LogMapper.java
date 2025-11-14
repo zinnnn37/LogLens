@@ -33,7 +33,6 @@ public interface LogMapper {
 
         java.util.List<String> duplicateFields = java.util.List.of(
                 "execution_time",  // duration과 중복
-                "stacktrace",      // stackTrace와 중복
                 "class_name",      // className과 중복
                 "method_name",     // methodName과 중복
                 "method",          // methodName과 중복
