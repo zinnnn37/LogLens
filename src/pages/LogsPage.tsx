@@ -5,7 +5,7 @@ import { searchLogs } from '@/services/logService'; // connectLogStream 추가�
 import { createJiraIssue } from '@/services/jiraService';
 import type { LogData, LogSearchParams } from '@/types/log';
 
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { toast } from 'sonner';
@@ -36,6 +36,7 @@ import {
 const LogsPage = () => {
   const { projectUuid: uuidFromParams } = useParams<{ projectUuid: string }>();
   const projectUuid = uuidFromParams;
+  const [searchParams] = useSearchParams();
 
   // const { accessToken } = useAuthStore();
 
@@ -45,6 +46,8 @@ const LogsPage = () => {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
 
   const [criteria, setCriteria] = useState<SearchCriteria | null>(null);
+  const [initialKeyword, setInitialKeyword] = useState<string | null>(null);
+  const [initialLogLevel, setInitialLogLevel] = useState<string[]>([]);
 
   // 모달 상태 관리
   const [selectedLog, setSelectedLog] = useState<LogData | null>(null);
@@ -104,13 +107,31 @@ const LogsPage = () => {
     [projectUuid, cursor, hasMore, loading],
   );
 
+  // --- URL 파라미터에서 keyword와 logLevel 확인 ---
+  useEffect(() => {
+    const keyword = searchParams.get('keyword');
+    const logLevel = searchParams.get('logLevel');
+
+    if (keyword) {
+      setInitialKeyword(keyword);
+    }
+
+    if (logLevel) {
+      setInitialLogLevel([logLevel]);
+    }
+  }, [searchParams]);
+
   // --- 최초 로드 ---
   useEffect(() => {
-    if (projectUuid) {
+    // URL 파라미터가 있으면 DetailLogSearchBox의 자동 검색에 맡기고, 없으면 기본 로그 조회
+    const keyword = searchParams.get('keyword');
+    const logLevel = searchParams.get('logLevel');
+
+    if (projectUuid && !keyword && !logLevel) {
       fetchLogs(true, null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectUuid]);
+  }, [projectUuid, searchParams]);
 
   // --- 실시간 로그 스트리밍 (SSE) ---
   // irregular whitespace 때문에 잠시 주석만 유지하고, 안쪽 공백은 전부 일반 공백으로 정리함.
@@ -363,7 +384,11 @@ const LogsPage = () => {
 
         {/* 검색창 */}
         <div>
-          <DetailLogSearchBox onSearch={handleSearch} />
+          <DetailLogSearchBox
+            onSearch={handleSearch}
+            initialKeyword={initialKeyword}
+            initialLogLevel={initialLogLevel}
+          />
         </div>
 
         {/* 검색 결과 */}

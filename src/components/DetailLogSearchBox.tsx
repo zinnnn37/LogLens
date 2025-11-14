@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Search,
   ChevronDown,
@@ -39,6 +39,8 @@ export interface SearchCriteria {
 
 interface DetailLogSearchBoxProps {
   onSearch: (criteria: SearchCriteria) => void;
+  initialKeyword?: string | null;
+  initialLogLevel?: string[];
 }
 
 // ===== 옵션 =====
@@ -54,7 +56,11 @@ const LOG_LEVEL_OPTIONS = [
   { id: 'ERROR', label: 'ERROR' },
 ];
 
-const DetailLogSearchBox = ({ onSearch }: DetailLogSearchBoxProps) => {
+const DetailLogSearchBox = ({
+  onSearch,
+  initialKeyword,
+  initialLogLevel,
+}: DetailLogSearchBoxProps) => {
   // 검색어/타입
   const [searchType, setSearchType] = useState<'traceId' | 'keyword'>(
     'traceId',
@@ -73,6 +79,50 @@ const DetailLogSearchBox = ({ onSearch }: DetailLogSearchBoxProps) => {
 
   // 정렬
   const [sort, setSort] = useState('TIMESTAMP,DESC');
+
+  // 초기값 설정 여부 추적
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // initialKeyword와 initialLogLevel로 상태 초기화
+  useEffect(() => {
+    if (
+      !isInitialized &&
+      (initialKeyword || (initialLogLevel && initialLogLevel.length > 0))
+    ) {
+      if (initialKeyword) {
+        setSearchType('keyword');
+        setSearchValue(initialKeyword);
+      }
+
+      if (initialLogLevel && initialLogLevel.length > 0) {
+        setLogLevel(initialLogLevel);
+      }
+
+      setIsInitialized(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialKeyword, initialLogLevel]);
+
+  // 상태가 초기화된 후 검색 실행
+  useEffect(() => {
+    if (isInitialized) {
+      const startISO = composeISO(startDate, startClock);
+      const endISO = composeISO(endDate, endClock);
+
+      onSearch({
+        traceId: searchType === 'traceId' ? searchValue : '',
+        keyword: searchType === 'keyword' ? searchValue : '',
+        sourceType,
+        logLevel,
+        startTime: startISO,
+        endTime: endISO,
+        sort,
+      });
+
+      setIsInitialized(false); // 한 번만 실행되도록
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInitialized]);
 
   // ===== helpers =====
   // date + clock → 'YYYY-MM-DDTHH:mm:ss'
