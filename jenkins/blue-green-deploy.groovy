@@ -148,7 +148,9 @@ pipeline {
                         fi
                         mkdir -p ~/loglens/logs/infra/mysql
                         
-                        # 권한 설정
+                        # ✅ 권한 설정 (1000:1000은 컨테이너의 spring 사용자)
+                        echo "🔐 Setting permissions for container user..."
+                        chown -R 1000:1000 ~/loglens/logs/be ~/loglens/logs/fe
                         chmod -R 755 ~/loglens/logs
                         
                         echo "✅ Log directories initialized"
@@ -185,10 +187,11 @@ pipeline {
                         docker inspect ${containerName} --format='{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'
                         
                         # 로그 파일 생성 대기 및 확인
-                        echo "⏳ Waiting for log files to be created..."
+                        echo "⏳ Waiting for application to start..."
                         sleep 10
                         
                         echo "📋 Checking log files in container..."
+                        docker exec ${containerName} ls -lh /app/logs/ 2>/dev/null || echo "  ⚠️  Logs directory not accessible"
                         docker exec ${containerName} ls -lh /app/logs/be/ 2>/dev/null || echo "  ⚠️  BE logs directory not accessible"
                         docker exec ${containerName} ls -lh /app/logs/fe/ 2>/dev/null || echo "  ⚠️  FE logs directory not accessible"
                         
