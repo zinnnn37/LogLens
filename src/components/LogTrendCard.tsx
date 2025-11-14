@@ -1,15 +1,15 @@
 // src/components/LogTrendCard.tsx
 
-import React, { useState, useEffect, useMemo } from 'react'; 
-import { useParams } from 'react-router-dom'; 
-import { getLogTrend } from '@/services/logService'; 
-import type { LogTrendResponse } from '@/types/log'; 
+import { useState, useEffect, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
+import { getLogTrend } from '@/services/logService';
+import type { LogTrendResponse } from '@/types/log';
 
 import InfoIcon from '@/assets/images/InfoIcon.png';
 import WarnIcon from '@/assets/images/WarnIcon.png';
 import ErrorIcon from '@/assets/images/ErrorIcon.png';
+import LogTrendGraph from './LogTrendGraph';
 
-// import { LogLineChart } from '@/components/charts/LogLineChart';
 
 const CardSkeleton = () => (
   <div className="rounded-lg border bg-white p-6 shadow-sm animate-pulse">
@@ -37,7 +37,7 @@ const LogTrendCard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const { projectUuid } = useParams<{ projectUuid: string }>(); 
+  const { projectUuid } = useParams<{ projectUuid: string }>();
 
   // API 호출
   useEffect(() => {
@@ -60,9 +60,9 @@ const LogTrendCard = () => {
     };
 
     fetchTrendData();
-  }, [projectUuid]); 
+  }, [projectUuid]);
 
- 
+
   const logCounts = useMemo(() => {
     if (!trendData) { return { INFO: 0, WARN: 0, ERROR: 0 }; }
 
@@ -76,7 +76,7 @@ const LogTrendCard = () => {
       },
       { INFO: 0, WARN: 0, ERROR: 0 },
     );
-  }, [trendData]); 
+  }, [trendData]);
 
   // UI 렌더링을 위한 데이터 배열 
   const logLevels = [
@@ -116,7 +116,7 @@ const LogTrendCard = () => {
   return (
     <div className="rounded-lg border bg-white p-6 shadow-sm">
       {/* 카드 제목 */}
-      <h2 className="mb-4 text-base font-semibold">로그 발생 추이 (24H)</h2>
+      <h2 className="mb-4 text-base font-semibold">로그 발생 추이 </h2>
 
       {/* 카드 본문 */}
       <div className="flex flex-col space-y-6 sm:flex-row sm:space-y-0 sm:space-x-6">
@@ -141,11 +141,7 @@ const LogTrendCard = () => {
 
         {/* 그래프 영역 */}
         <div className="flex min-h-[250px] flex-1 items-center justify-center rounded-md bg-gray-50 text-sm text-gray-400">
-          {/*
-            <LogLineChart data={trendData.dataPoints} />
-          */}
-          {/* TODO: 여기에 실제 차트 컴포넌트를 넣고 data={trendData.dataPoints}를 전달하세요. */}
-          <p>그래프 영역 (데이터 로드 성공)</p>
+          <LogTrendGraph dataPoints={trendData.dataPoints} />
         </div>
       </div>
     </div>
