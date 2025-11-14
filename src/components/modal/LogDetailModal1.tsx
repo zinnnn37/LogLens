@@ -214,6 +214,7 @@ const LogDetailModal1 = ({
             <InfoRow label="Logger" value={log.logger} />
             <InfoRow label="Layer" value={log.layer} />
             <InfoRow label="Service" value={log.serviceName} />
+            <InfoRow label="Component" value={log.componentName} />
             <InfoRow label="Method" value={log.methodName || 'N/A'} />
             <InfoRow label="Thread" value={log.threadName} />
             <InfoRow label="IP" value={log.requesterIp} />
@@ -221,6 +222,19 @@ const LogDetailModal1 = ({
               label="Duration"
               value={log.duration !== null ? `${log.duration}ms` : 'N/A'}
             />
+            {log.logDetails && (
+              <InfoRow
+                label="LogDetail"
+                value={
+                  <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                    {JSON.stringify(log.logDetails, null, 2)
+                      .slice(1, -1)
+                      .replace(/"/g, '')
+                      .trim()}
+                  </pre>
+                }
+              />
+            )}
           </InfoSection>
 
           {!analysis && !isAnalysisLoading && !error && (

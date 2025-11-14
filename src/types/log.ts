@@ -30,6 +30,7 @@ export interface LogData {
   threadName: string;
   duration: number | null;
   componentName: string;
+  logDetails: Record<string, unknown> | null;
 }
 
 /**
