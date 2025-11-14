@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import LogSearchBox from '@/components/LogSearchBox';
 import FloatingChecklist from '@/components/FloatingChecklist';
@@ -18,8 +18,17 @@ const RequestFlowPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [traceData, setTraceData] = useState<TraceLogsResponse | null>(null);
   const [flowData, setFlowData] = useState<TraceFlowResponse | null>(null);
+  const [currentSeq, setCurrentSeq] = useState(0); // 현재 시퀀스
 
   const flowSimulationRef = useRef<HTMLDivElement>(null);
+
+  // URL에 traceId가 있으면 자동으로 검색 실행
+  useEffect(() => {
+    if (initialTraceId && projectUuid) {
+      handleSearchSubmit(initialTraceId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTraceId, projectUuid]);
 
   const handleSearchSubmit = async (traceId: string) => {
     if (!projectUuid) {
@@ -202,7 +211,97 @@ const RequestFlowPage = () => {
       {/* Flow Simulation*/}
       {flowData && (
         <div ref={flowSimulationRef} className="mt-6">
-          <FlowSimulation flowData={flowData} />
+          <FlowSimulation flowData={flowData} onSeqChange={setCurrentSeq} />
+        </div>
+      )}
+
+      {/* 로그 상세 정보 */}
+      {flowData && currentSeq < flowData.timeline.length && (
+        <div className="mt-6">
+          {flowData.timeline[currentSeq].logs.map((log, idx) => (
+            <div
+              key={idx}
+              className="mb-4 overflow-hidden rounded-2xl bg-white shadow-sm"
+            >
+              <div className="flex items-center justify-between border-b bg-gray-50 px-4 py-3">
+                <div className="text-primary">
+                  <div className="text-base font-semibold">
+                    단계 {currentSeq + 1} -{' '}
+                    {flowData.timeline[currentSeq].componentName}
+                  </div>
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="mb-3 flex items-center gap-3">
+                  <span
+                    className={`rounded px-2 py-1 text-xs font-semibold ${
+                      log.logLevel === 'ERROR'
+                        ? 'bg-red-100 text-red-700'
+                        : log.logLevel === 'WARN'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-blue-100 text-blue-700'
+                    }`}
+                  >
+                    {log.logLevel}
+                  </span>
+                  {log.sourceType && (
+                    <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
+                      {log.sourceType}
+                    </span>
+                  )}
+                  {log.timestamp && (
+                    <span className="text-xs text-gray-500">
+                      {new Date(log.timestamp).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+
+                {log.message && (
+                  <p className="mb-3 text-sm font-medium text-gray-800">
+                    {log.message}
+                  </p>
+                )}
+
+                <div className="mb-3 grid grid-cols-1 gap-2 text-xs text-gray-600 md:grid-cols-2">
+                  {log.logger && (
+                    <div>
+                      <span className="font-semibold">Logger:</span>{' '}
+                      {log.logger}
+                    </div>
+                  )}
+                  {log.methodName && (
+                    <div>
+                      <span className="font-semibold">Method:</span>{' '}
+                      {log.methodName}
+                    </div>
+                  )}
+                  {log.requesterIp && (
+                    <div>
+                      <span className="font-semibold">IP:</span>{' '}
+                      {log.requesterIp}
+                    </div>
+                  )}
+                  {log.duration !== null && log.duration !== undefined && (
+                    <div>
+                      <span className="font-semibold">Duration:</span>{' '}
+                      {log.duration}ms
+                    </div>
+                  )}
+                </div>
+
+                {log.logDetails && (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    <h4 className="mb-2 text-xs font-semibold text-gray-700">
+                      Log Details
+                    </h4>
+                    <pre className="overflow-x-auto rounded bg-white p-2 text-xs">
+                      {JSON.stringify(log.logDetails, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
