@@ -8,6 +8,7 @@ import S13P31A306.loglens.domain.log.dto.request.LogSearchRequest;
 import S13P31A306.loglens.domain.log.dto.response.LogSummaryResponse;
 import S13P31A306.loglens.domain.log.entity.Log;
 import S13P31A306.loglens.domain.log.repository.LogRepository;
+import S13P31A306.loglens.domain.statistics.dto.internal.LogTrendAggregation;
 import S13P31A306.loglens.global.constants.GlobalErrorCode;
 import S13P31A306.loglens.global.exception.BusinessException;
 import S13P31A306.loglens.global.utils.OpenSearchUtils;
@@ -15,10 +16,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -30,7 +34,10 @@ import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.FieldValue;
 import org.opensearch.client.opensearch._types.SortOptions;
 import org.opensearch.client.opensearch._types.SortOrder;
+import org.opensearch.client.opensearch._types.Time;
 import org.opensearch.client.opensearch._types.aggregations.Aggregate;
+import org.opensearch.client.opensearch._types.aggregations.CalendarInterval;
+import org.opensearch.client.opensearch._types.aggregations.DateHistogramBucket;
 import org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
@@ -688,5 +695,126 @@ public class LogRepositoryImpl implements LogRepository {
             log.error("{} ERROR 로그 개수 조회 실패: projectUuid={}", LOG_PREFIX, projectUuid, e);
             throw new BusinessException(GlobalErrorCode.OPENSEARCH_OPERATION_FAILED, null, e);
         }
+    }
+
+    @Override
+    public List<LogTrendAggregation> aggregateLogTrendByTimeRange(
+            String projectUuid,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            String interval
+    ) {
+        log.info("{} 로그 추이 집계 시작: projectUuid={}, start={}, end={}, interval={}",
+                LOG_PREFIX, projectUuid, startTime, endTime, interval);
+
+        try {
+            // OpenSearchUtils로 인덱스 패턴 생성
+            String indexPattern = OpenSearchUtils.getProjectIndexPattern(projectUuid);
+            log.debug("{} 인덱스 패턴: {}", LOG_PREFIX, indexPattern);
+
+            // SearchRequest 생성
+            SearchRequest searchRequest = SearchRequest.of(s -> s
+                    .index(indexPattern)
+                    .size(0)  // 집계만 수행
+                    .query(q -> q.bool(b -> b
+                            // project_uuid 필터 (불필요하지만 명시적으로 추가)
+                            .filter(f -> f.term(t -> t
+                                    .field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
+                                    .value(FieldValue.of(projectUuid))
+                            ))
+                            // 시간 범위 필터
+                            .filter(f -> f.range(r -> r
+                                    .field(TIMESTAMP_FIELD)
+                                    .gte(JsonData.of(startTime.atZone(ZoneId.of("Asia/Seoul")).toInstant().toString()))
+                                    .lt(JsonData.of(endTime.atZone(ZoneId.of("Asia/Seoul")).toInstant().toString()))
+                            ))
+                    ))
+                    .aggregations("logs_over_time", a -> a
+                            // Date Histogram aggregation
+                            .dateHistogram(dh -> dh
+                                    .field(TIMESTAMP_FIELD)
+                                    .fixedInterval(Time.of(t -> t.time(interval)))
+                                    .timeZone("Asia/Seoul")
+                                    .minDocCount(0)  // 로그가 없는 시간대도 포함
+                            )
+                            // log_level별 집계 (sub-aggregation)
+                            .aggregations("by_level", sub -> sub
+                                    .terms(t -> t
+                                            .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                                    )
+                            )
+                    )
+            );
+
+            // OpenSearch 쿼리 실행
+            SearchResponse<Void> response = openSearchClient.search(searchRequest, Void.class);
+
+            // 결과 파싱
+            List<LogTrendAggregation> result = parseLogTrendAggregation(response);
+
+            log.info("{} 로그 추이 집계 완료: projectUuid={}, 결과개수={}",
+                    LOG_PREFIX, projectUuid, result.size());
+
+            return result;
+
+        } catch (IOException e) {
+            log.error("{} 로그 추이 집계 중 오류 발생: projectUuid={}", LOG_PREFIX, projectUuid, e);
+            throw new BusinessException(GlobalErrorCode.OPENSEARCH_OPERATION_FAILED, null, e);
+        }
+    }
+
+    /**
+     * OpenSearch 집계 결과를 LogTrendAggregation 리스트로 파싱
+     */
+    private List<LogTrendAggregation> parseLogTrendAggregation(SearchResponse<Void> response) {
+        List<LogTrendAggregation> result = new ArrayList<>();
+
+        Aggregate logsOverTime = response.aggregations().get("logs_over_time");
+        if (Objects.isNull(logsOverTime) || Objects.isNull(logsOverTime.dateHistogram())) {
+            return result;
+        }
+
+        for (DateHistogramBucket bucket : logsOverTime.dateHistogram().buckets().array()) {
+            // 타임스탬프 파싱
+            String timestampStr = bucket.keyAsString();
+            LocalDateTime timestamp = LocalDateTime.parse(
+                    timestampStr,
+                    DateTimeFormatter.ISO_OFFSET_DATE_TIME
+            );
+
+            // 전체 로그 수
+            int totalCount = (int) bucket.docCount();
+
+            // log_level별 집계 파싱
+            Map<String, Integer> levelCounts = parseLevelCountsForTrend(bucket.aggregations().get("by_level"));
+
+            LogTrendAggregation aggregation = new LogTrendAggregation(
+                    timestamp,
+                    totalCount,
+                    levelCounts.getOrDefault("INFO", 0),
+                    levelCounts.getOrDefault("WARN", 0),
+                    levelCounts.getOrDefault("ERROR", 0)
+            );
+
+            result.add(aggregation);
+        }
+
+        return result;
+    }
+
+    /**
+     * log_level별 집계 결과 파싱 (로그 추이용)
+     */
+    private Map<String, Integer> parseLevelCountsForTrend(Aggregate byLevel) {
+        Map<String, Integer> counts = new HashMap<>();
+        if (Objects.isNull(byLevel) || Objects.isNull(byLevel.sterms())) {
+            return counts;
+        }
+
+        for (StringTermsBucket bucket : byLevel.sterms().buckets().array()) {
+            counts.put(bucket.key(), (int) bucket.docCount());
+        }
+
+        return counts;
     }
 }

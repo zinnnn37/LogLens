@@ -206,3 +206,4 @@ $RECYCLE.BIN/
 .claude
 application-test-external.yml
 run-external-test.sh
+LOG_TREND_API_TDD_PLAN.md
