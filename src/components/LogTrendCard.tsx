@@ -10,9 +10,8 @@ import WarnIcon from '@/assets/images/WarnIcon.png';
 import ErrorIcon from '@/assets/images/ErrorIcon.png';
 import LogTrendGraph from './LogTrendGraph';
 
-
 const CardSkeleton = () => (
-  <div className="rounded-lg border bg-white p-6 shadow-sm animate-pulse">
+  <div className="animate-pulse rounded-lg border bg-white p-6 shadow-sm">
     <h2 className="mb-4 h-6 w-1/3 rounded bg-gray-200"></h2>
     <div className="flex flex-col space-y-6 sm:flex-row sm:space-y-0 sm:space-x-6">
       <div className="space-y-4">
@@ -62,9 +61,10 @@ const LogTrendCard = () => {
     fetchTrendData();
   }, [projectUuid]);
 
-
   const logCounts = useMemo(() => {
-    if (!trendData) { return { INFO: 0, WARN: 0, ERROR: 0 }; }
+    if (!trendData) {
+      return { INFO: 0, WARN: 0, ERROR: 0 };
+    }
 
     // dataPoints 배열을 순회하며 각 레벨의 총합을 구함
     return trendData.dataPoints.reduce(
@@ -78,7 +78,7 @@ const LogTrendCard = () => {
     );
   }, [trendData]);
 
-  // UI 렌더링을 위한 데이터 배열 
+  // UI 렌더링을 위한 데이터 배열
   const logLevels = [
     { level: 'INFO', label: 'info', icon: InfoIcon, count: logCounts.INFO },
     { level: 'WARN', label: 'warn', icon: WarnIcon, count: logCounts.WARN },
@@ -130,7 +130,7 @@ const LogTrendCard = () => {
                 className="h-8 w-8 flex-shrink-0"
               />
               <div>
-                <p className="text-sm uppercase text-gray-500">{item.label}</p>
+                <p className="text-sm text-gray-500 uppercase">{item.label}</p>
                 <p className="text-2xl font-bold">
                   {item.count.toLocaleString()}
                 </p>

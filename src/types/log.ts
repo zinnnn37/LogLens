@@ -239,12 +239,12 @@ export interface LogTrendSummary {
 }
 
 /**
- * /api/statistics/log-trend 응답 
+ * /api/statistics/log-trend 응답
  */
 export interface LogTrendResponse {
   projectUuid: string;
   period: LogPeriod;
-  interval: string; 
+  interval: string;
   dataPoints: LogDataPoint[];
-  summary: LogTrendSummary; 
+  summary: LogTrendSummary;
 }
