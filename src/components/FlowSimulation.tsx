@@ -120,7 +120,7 @@ const getLogLevelColor = (logLevel: string) => {
 const FlowSimulation = ({
   flowData,
   width = 1200,
-  height = 680,
+  height = 400,
   autoPlay = true,
   speed = 1,
 }: Props) => {
@@ -620,10 +620,10 @@ const FlowSimulation = ({
 
   return (
     <div className="overflow-hidden rounded-2xl border bg-white shadow">
-      <div className="flex items-center justify-between border-b bg-slate-950 px-4 py-3">
-        <div className="text-white">
+      <div className="flex items-center justify-between border-b bg-gray-50 px-4 py-3">
+        <div className="text-primary">
           <div className="text-base font-semibold">요청 흐름 시뮬레이션</div>
-          <div className="text-xs text-slate-300">
+          <div className="text-xs text-gray-600">
             {seq === 0 ? (
               <>시작: {flowData.timeline[0].componentName}</>
             ) : seq < flowData.timeline.length ? (
@@ -639,19 +639,19 @@ const FlowSimulation = ({
         <div className="flex items-center gap-2">
           <button
             onClick={toggle}
-            className="rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-white"
+            className="bg-secondary rounded-md border border-white px-3 py-1.5 text-sm text-white"
           >
             {paused ? '재생' : '일시정지'}
           </button>
           <button
             onClick={reset}
-            className="rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-white"
+            className="bg-secondary rounded-md border border-white px-3 py-1.5 text-sm text-white"
           >
             다시보기
           </button>
         </div>
       </div>
-      <div className="relative h-[680px] bg-white">
+      <div className="relative h-[400px] bg-white">
         <svg
           ref={svgRef}
           viewBox={`0 0 ${width} ${height}`}
