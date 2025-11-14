@@ -2,13 +2,7 @@
 import { useEffect, useState } from 'react';
 import type { ComponentProps } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import {
-  PlusSquare,
-  MessageSquare,
-  LogOut,
-  BookOpen,
-  Folder,
-} from 'lucide-react';
+import { PlusSquare, LogOut, BookOpen, Folder } from 'lucide-react';
 
 import ProjectCreateModal from '@/components/modal/ProjectCreateModal';
 import DocsTOC from '@/components/DocsTOC';
@@ -91,20 +85,6 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
   // 프로젝트 선택 핸들러
   const handleProjectSelect = (selectedProjectUuid: string) => {
     navigate(createProjectPath(selectedProjectUuid, 'dashboard'));
-  };
-
-  // AI Chat 버튼 핸들러
-  const handleAIChatClick = () => {
-    if (projectUuid) {
-      // 현재 프로젝트가 선택되어 있으면 해당 프로젝트의 챗봇으로 이동
-      navigate(createProjectPath(projectUuid, 'chatbot'));
-    } else if (projects.length > 0) {
-      // 프로젝트가 선택되지 않았지만 프로젝트 목록이 있으면 첫 번째 프로젝트의 챗봇으로 이동
-      navigate(createProjectPath(projects[0].projectUuid, 'chatbot'));
-    } else {
-      // 프로젝트가 없으면 메인 페이지로 이동
-      navigate(ROUTE_PATH.MAIN);
-    }
   };
 
   // 로그아웃 핸들러
@@ -215,11 +195,8 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
 
       {/* 하단 그룹 */}
       <div className="flex-shrink-0">
-        <hr className="border-sidebar-border my-4" />
-        <nav className="font-godoM flex flex-col gap-1">
-          <NavButton icon={MessageSquare} onClick={handleAIChatClick}>
-            AI Chat
-          </NavButton>
+        <hr className="border-sidebar-border my-2" />
+        <nav className="font-godoM flex flex-col">
           <NavButton icon={LogOut} onClick={handleLogout}>
             Log out
           </NavButton>

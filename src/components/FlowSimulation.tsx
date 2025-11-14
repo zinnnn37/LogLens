@@ -1,34 +1,17 @@
 // src/components/FlowSimulation.tsx
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
+import type { TraceFlowResponse } from '@/types/log';
 
-interface FlowData {
-  summary: {
-    totalDuration: number;
-    status: string;
-    startTime: string;
-    endTime: string;
-  };
-  timeline: {
-    sequence: number;
-    componentId: number;
-    componentName: string;
-    layer: 'CONTROLLER' | 'SERVICE' | 'REPOSITORY' | string;
-    startTime: string;
-    endTime: string;
-    duration: number;
-    logs: { logLevel: 'INFO' | 'WARN' | 'ERROR' | string }[];
-  }[];
-  components: { id: number; name: string; layer: string }[];
-  graph: { edges: { from: number; to: number }[] };
-}
+type FlowData = TraceFlowResponse;
 
 interface Props {
   flowData: FlowData; // 호출부: flowData={response.data.data}
   height?: number;
   width?: number;
-  autoPlay?: boolean;
   speed?: 0.5 | 1 | 2 | 4;
+  onClose?: () => void;
+  onSeqChange?: (seq: number) => void; // 시퀀스 변경 콜백
 }
 
 interface D3Node extends d3.SimulationNodeDatum {
@@ -120,13 +103,70 @@ const getLogLevelColor = (logLevel: string) => {
 const FlowSimulation = ({
   flowData,
   width = 1200,
-  height = 680,
-  autoPlay = true,
+  height = 400,
   speed = 1,
+  onClose,
+  onSeqChange,
 }: Props) => {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [seq, setSeq] = useState(0);
-  const [paused, setPaused] = useState(!autoPlay);
+  const [seq, setSeq] = useState(0); // 0부터 시작 (timeline 인덱스)
+
+  // seq가 변경될 때마다 부모에게 알림
+  useEffect(() => {
+    onSeqChange?.(seq);
+  }, [seq, onSeqChange]);
+
+  // 다음/이전 단계로 이동
+  const nextStep = () => {
+    if (seq < flowData.timeline.length - 1) {
+      setSeq(s => s + 1);
+    } else {
+      // 마지막 단계에서 다음 버튼 누르면 처음으로
+      setSeq(0);
+    }
+  };
+
+  const prevStep = () => {
+    if (seq > 0) {
+      setSeq(s => s - 1);
+    }
+  };
+
+  // 키보드 이벤트 (스페이스바: 다음, 백스페이스/왼쪽 화살표: 이전)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setSeq(s => {
+          if (s < flowData.timeline.length - 1) {
+            return s + 1;
+          }
+          // 마지막 단계에서 스페이스바 누르면 처음으로
+          return 0;
+        });
+      } else if (e.code === 'ArrowLeft' || e.code === 'Backspace') {
+        e.preventDefault();
+        setSeq(s => {
+          if (s > 0) {
+            return s - 1;
+          }
+          return s;
+        });
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        setSeq(s => {
+          if (s < flowData.timeline.length - 1) {
+            return s + 1;
+          }
+          // 마지막 단계에서 오른쪽 화살표 누르면 처음으로
+          return 0;
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [flowData.timeline.length]);
 
   // -----------------------------
   // 1) 초기 그래프 구축 (Hook은 최상단, 내부에서만 가드)
@@ -210,21 +250,27 @@ const FlowSimulation = ({
       nodeMetrics.set(t.componentId, existing);
     });
 
-    const nodes: D3Node[] = components.map(c => {
-      const metrics = nodeMetrics.get(c.id) || {
-        totalDuration: 0,
-        callCount: 0,
-        errorCount: 0,
-        warnCount: 0,
-        infoCount: 0,
-      };
-      return {
-        id: c.id,
-        name: c.name,
-        layer: c.layer ?? 'UNKNOWN',
-        ...metrics,
-      };
-    });
+    // timeline에 실제로 등장한 컴포넌트만 표시
+    const timelineComponentIds = new Set(timeline.map(t => t.componentId));
+    const nodes: D3Node[] = components
+      .filter(c => timelineComponentIds.has(c.id))
+      .map(c => {
+        const metrics = nodeMetrics.get(c.id) || {
+          totalDuration: 0,
+          callCount: 0,
+          errorCount: 0,
+          warnCount: 0,
+          infoCount: 0,
+        };
+        return {
+          id: c.id,
+          name: c.name,
+          layer: c.layer ?? 'UNKNOWN',
+          ...metrics,
+        };
+      })
+      .filter(n => n.name && n.name.trim().length > 0); // 이름이 없는 노드 제거
+
     const nodeIds = new Set(nodes.map(n => n.id));
 
     // 무방향 키
@@ -468,16 +514,35 @@ const FlowSimulation = ({
       return;
     }
 
-    // 현재 노드만 살짝 강조(outer glow만)
+    // 현재 노드 강조
     const cur = timeline[seq];
-    svg.selectAll('.nodes g rect:first-of-type').attr('opacity', 0.18);
+
+    // 모든 노드를 기본 상태로
+    svg.selectAll('.nodes g').attr('opacity', 1);
+    svg.selectAll('.nodes g .glow-rect').attr('opacity', 0.18);
+
+    // 모든 노드 배경을 두 톤 밝게 (비활성화 느낌)
     svg
+      .selectAll<SVGGElement, D3Node>('.nodes g .main-rect')
+      .attr('fill', '#475569'); // #1e293b에서 두 톤 밝게
+
+    // 현재 노드만 강한 glow + 원래 어두운 배경으로
+    const currentNode = svg
       .selectAll<SVGGElement, D3Node>('.nodes g')
-      .filter(d => d.id === cur.componentId)
-      .select('rect:first-of-type')
+      .filter(d => d.id === cur.componentId);
+
+    currentNode
+      .select('.glow-rect')
       .transition()
       .duration(180 / speed)
-      .attr('opacity', 0.32);
+      .attr('opacity', 0.8);
+
+    // 현재 노드 배경을 원래 어두운 색으로 (활성화 느낌)
+    currentNode
+      .select('.main-rect')
+      .transition()
+      .duration(180 / speed)
+      .attr('fill', '#1e293b'); // 원래 기본 색상
 
     // 링크 selection
     const linkSel = (svg.node() as SVGNodeWithData).__linkSel__;
@@ -485,9 +550,9 @@ const FlowSimulation = ({
       return;
     }
 
-    // 한 스텝 ahead가 있다면 해당 간선 위로 particle 이동
-    if (seq < timeline.length - 1) {
-      const nxt = timeline[seq + 1];
+    // seq > 0이면 이전 단계에서 현재 단계로 오는 particle 표시
+    if (seq > 0) {
+      const prev = timeline[seq - 1];
 
       // 무방향 매칭: (a,b) 또는 (b,a)
       const edgeSel = linkSel.filter((d: D3Link) => {
@@ -496,8 +561,8 @@ const FlowSimulation = ({
         const sid = typeof source === 'object' ? source.id : source;
         const tid = typeof target === 'object' ? target.id : target;
         return (
-          (sid === cur.componentId && tid === nxt.componentId) ||
-          (sid === nxt.componentId && tid === cur.componentId)
+          (sid === prev.componentId && tid === cur.componentId) ||
+          (sid === cur.componentId && tid === prev.componentId)
         );
       });
 
@@ -529,6 +594,11 @@ const FlowSimulation = ({
       ) => {
         const L = edge.getTotalLength();
 
+        // path가 비어있거나 길이가 0이면 particle 생성하지 않음
+        if (!L || L === 0) {
+          return;
+        }
+
         // 사각형 particle 생성
         const particle = d3
           .select(edge.parentNode as SVGGElement)
@@ -544,10 +614,6 @@ const FlowSimulation = ({
 
         const t0 = performance.now();
         const loop = (now: number) => {
-          if (paused) {
-            requestAnimationFrame(loop);
-            return;
-          }
           const t = Math.min(1, (now - t0) / (ms / speed));
           const len = forward ? t * L : (1 - t) * L;
           const pt = edge.getPointAtLength(Math.max(0, Math.min(L, len)));
@@ -578,31 +644,21 @@ const FlowSimulation = ({
           return;
         }
         const edgeElement = edge as EdgeElement;
-        // 방향 판단: 저장된 path는 (minId -> maxId)
+        // 방향 판단: 이전 단계에서 현재 단계로
         const source = edgeElement.__data__.source;
         const target = edgeElement.__data__.target;
         const sid = source.id;
         const tid = target.id;
         const forward =
           sid <= tid
-            ? cur.componentId <= nxt.componentId
-            : cur.componentId >= nxt.componentId;
+            ? prev.componentId < cur.componentId
+            : prev.componentId > cur.componentId;
 
         // 1개의 particle만 발사 (로그 레벨에 따른 색상)
         shootParticle(edgeElement, forward, particleColor, 900);
       });
     }
-
-    const timer = setTimeout(() => {
-      if (!paused) {
-        setSeq(s => s + 1);
-      }
-    }, 1100 / speed);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [seq, flowData, paused, speed]);
+  }, [seq, flowData, speed]);
 
   // -----------------------------
   // 3) 렌더 (데이터 없을 때만 분기)
@@ -616,19 +672,16 @@ const FlowSimulation = ({
   }
 
   const reset = () => setSeq(0);
-  const toggle = () => setPaused(p => !p);
 
   return (
     <div className="overflow-hidden rounded-2xl border bg-white shadow">
-      <div className="flex items-center justify-between border-b bg-slate-950 px-4 py-3">
-        <div className="text-white">
+      <div className="flex items-center justify-between border-b bg-gray-50 px-4 py-3">
+        <div className="text-primary">
           <div className="text-base font-semibold">요청 흐름 시뮬레이션</div>
-          <div className="text-xs text-slate-300">
-            {seq === 0 ? (
-              <>시작: {flowData.timeline[0].componentName}</>
-            ) : seq < flowData.timeline.length ? (
+          <div className="text-xs text-gray-600">
+            {seq < flowData.timeline.length ? (
               <>
-                이동 {seq} / {flowData.timeline.length - 1} →{' '}
+                단계 {seq + 1} / {flowData.timeline.length} →{' '}
                 {flowData.timeline[seq].componentName}
               </>
             ) : (
@@ -638,20 +691,74 @@ const FlowSimulation = ({
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={toggle}
-            className="rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-white"
+            onClick={reset}
+            className="bg-secondary flex h-9 w-9 items-center justify-center rounded-md border border-white text-white hover:opacity-90"
+            title="처음으로"
           >
-            {paused ? '재생' : '일시정지'}
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
           </button>
           <button
-            onClick={reset}
-            className="rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-white"
+            onClick={prevStep}
+            disabled={seq === 0}
+            className="bg-secondary flex h-9 w-9 items-center justify-center rounded-md border border-white text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            title="이전 단계 (← 또는 Backspace)"
           >
-            다시보기
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
           </button>
+          <button
+            onClick={nextStep}
+            className="bg-secondary flex h-9 w-9 items-center justify-center rounded-md border border-white text-white hover:opacity-90"
+            title="다음 단계 (→ 또는 Space) - 마지막에서 누르면 처음으로"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="ml-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              닫기
+            </button>
+          )}
         </div>
       </div>
-      <div className="relative h-[680px] bg-white">
+      <div className="relative h-[350px] bg-white">
         <svg
           ref={svgRef}
           viewBox={`0 0 ${width} ${height}`}
