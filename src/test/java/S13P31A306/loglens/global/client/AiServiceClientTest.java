@@ -1,17 +1,26 @@
 package S13P31A306.loglens.global.client;
 
+import S13P31A306.loglens.domain.analysis.constants.DocumentFormat;
+import S13P31A306.loglens.domain.analysis.constants.DocumentType;
+import S13P31A306.loglens.domain.analysis.dto.ai.AiDocumentMetadata;
+import S13P31A306.loglens.domain.analysis.dto.ai.AiHtmlDocumentRequest;
+import S13P31A306.loglens.domain.analysis.dto.ai.AiHtmlDocumentResponse;
+import S13P31A306.loglens.domain.analysis.dto.ai.AiValidationStatus;
 import S13P31A306.loglens.domain.log.dto.ai.AiAnalysisDto;
 import S13P31A306.loglens.domain.log.dto.ai.AiAnalysisResponse;
-import okhttp3.mockwebserver .MockResponse;
+import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -174,5 +183,275 @@ class AiServiceClientTest {
 
         // then
         assertThat(response).isNull();
+    }
+
+    @Nested
+    @DisplayName("프로젝트 분석 HTML 생성 테스트")
+    class GenerateProjectAnalysisHtmlTest {
+
+        @Test
+        @DisplayName("프로젝트_분석_HTML_생성_성공_시_AiHtmlDocumentResponse를_반환한다")
+        void 프로젝트_분석_HTML_생성_성공_시_AiHtmlDocumentResponse를_반환한다() {
+            // given
+            String projectUuid = "test-project-uuid";
+            Map<String, Object> data = new HashMap<>();
+            data.put("projectInfo", Map.of("name", "TestProject"));
+
+            AiHtmlDocumentRequest request = AiHtmlDocumentRequest.builder()
+                    .projectUuid(projectUuid)
+                    .documentType(DocumentType.PROJECT_ANALYSIS)
+                    .format(DocumentFormat.HTML)
+                    .data(data)
+                    .build();
+
+            String responseBody = """
+                    {
+                      "htmlContent": "<!DOCTYPE html><html><head><title>Test</title></head><body><h1>Report</h1></body></html>",
+                      "metadata": {
+                        "wordCount": 1500,
+                        "estimatedReadingTime": "5분",
+                        "sectionsGenerated": ["executive_summary", "metrics_overview"],
+                        "chartsIncluded": ["error_timeline"],
+                        "cssLibrariesUsed": ["tailwindcss"],
+                        "jsLibrariesUsed": ["chartjs"],
+                        "generationTime": 8.5,
+                        "healthScore": 85,
+                        "criticalIssues": 2,
+                        "totalIssues": 10,
+                        "recommendations": 5
+                      },
+                      "validationStatus": {
+                        "isValidHtml": true,
+                        "hasRequiredSections": true,
+                        "warnings": []
+                      }
+                    }
+                    """;
+
+            mockWebServer.enqueue(new MockResponse()
+                    .setBody(responseBody)
+                    .addHeader("Content-Type", "application/json")
+                    .setResponseCode(200));
+
+            // when
+            AiHtmlDocumentResponse response = aiServiceClient.generateProjectAnalysisHtml(request);
+
+            // then
+            assertThat(response).isNotNull();
+            assertThat(response.getHtmlContent()).contains("<!DOCTYPE html>");
+            assertThat(response.getMetadata()).isNotNull();
+            assertThat(response.getMetadata().getHealthScore()).isEqualTo(85);
+            assertThat(response.getMetadata().getSectionsGenerated()).contains("executive_summary");
+            assertThat(response.getValidationStatus().getIsValidHtml()).isTrue();
+        }
+
+        @Test
+        @DisplayName("프로젝트_분석_HTML_생성_404_응답_시_null을_반환한다")
+        void 프로젝트_분석_HTML_생성_404_응답_시_null을_반환한다() {
+            // given
+            AiHtmlDocumentRequest request = AiHtmlDocumentRequest.builder()
+                    .projectUuid("invalid-uuid")
+                    .documentType(DocumentType.PROJECT_ANALYSIS)
+                    .format(DocumentFormat.HTML)
+                    .build();
+
+            mockWebServer.enqueue(new MockResponse()
+                    .setResponseCode(404)
+                    .setBody("{\"error\": \"Project not found\"}"));
+
+            // when
+            AiHtmlDocumentResponse response = aiServiceClient.generateProjectAnalysisHtml(request);
+
+            // then
+            assertThat(response).isNull();
+        }
+
+        @Test
+        @DisplayName("프로젝트_분석_HTML_생성_500_응답_시_null을_반환한다")
+        void 프로젝트_분석_HTML_생성_500_응답_시_null을_반환한다() {
+            // given
+            AiHtmlDocumentRequest request = AiHtmlDocumentRequest.builder()
+                    .projectUuid("test-uuid")
+                    .documentType(DocumentType.PROJECT_ANALYSIS)
+                    .format(DocumentFormat.HTML)
+                    .build();
+
+            mockWebServer.enqueue(new MockResponse()
+                    .setResponseCode(500)
+                    .setBody("{\"error\": \"AI service error\"}"));
+
+            // when
+            AiHtmlDocumentResponse response = aiServiceClient.generateProjectAnalysisHtml(request);
+
+            // then
+            assertThat(response).isNull();
+        }
+    }
+
+    @Nested
+    @DisplayName("에러 분석 HTML 생성 테스트")
+    class GenerateErrorAnalysisHtmlTest {
+
+        @Test
+        @DisplayName("에러_분석_HTML_생성_성공_시_AiHtmlDocumentResponse를_반환한다")
+        void 에러_분석_HTML_생성_성공_시_AiHtmlDocumentResponse를_반환한다() {
+            // given
+            Long logId = 12345L;
+            Map<String, Object> errorData = new HashMap<>();
+            errorData.put("errorLog", Map.of("message", "NullPointerException"));
+
+            AiHtmlDocumentRequest request = AiHtmlDocumentRequest.builder()
+                    .logId(logId)
+                    .documentType(DocumentType.ERROR_ANALYSIS)
+                    .format(DocumentFormat.HTML)
+                    .data(errorData)
+                    .build();
+
+            String responseBody = """
+                    {
+                      "htmlContent": "<!DOCTYPE html><html><head><title>Error Analysis</title></head><body><h1>Error Report</h1></body></html>",
+                      "metadata": {
+                        "wordCount": 800,
+                        "estimatedReadingTime": "3분",
+                        "sectionsGenerated": ["root_cause", "solutions"],
+                        "chartsIncluded": [],
+                        "cssLibrariesUsed": ["tailwindcss"],
+                        "jsLibrariesUsed": [],
+                        "generationTime": 5.2,
+                        "severity": "HIGH",
+                        "rootCause": "Null pointer dereference",
+                        "affectedUsers": 150
+                      },
+                      "validationStatus": {
+                        "isValidHtml": true,
+                        "hasRequiredSections": true,
+                        "warnings": []
+                      }
+                    }
+                    """;
+
+            mockWebServer.enqueue(new MockResponse()
+                    .setBody(responseBody)
+                    .addHeader("Content-Type", "application/json")
+                    .setResponseCode(200));
+
+            // when
+            AiHtmlDocumentResponse response = aiServiceClient.generateErrorAnalysisHtml(request);
+
+            // then
+            assertThat(response).isNotNull();
+            assertThat(response.getHtmlContent()).contains("Error Report");
+            assertThat(response.getMetadata().getSeverity()).isEqualTo("HIGH");
+            assertThat(response.getMetadata().getRootCause()).isEqualTo("Null pointer dereference");
+            assertThat(response.getMetadata().getAffectedUsers()).isEqualTo(150);
+        }
+
+        @Test
+        @DisplayName("에러_분석_HTML_생성_404_응답_시_null을_반환한다")
+        void 에러_분석_HTML_생성_404_응답_시_null을_반환한다() {
+            // given
+            AiHtmlDocumentRequest request = AiHtmlDocumentRequest.builder()
+                    .logId(99999L)
+                    .documentType(DocumentType.ERROR_ANALYSIS)
+                    .format(DocumentFormat.HTML)
+                    .build();
+
+            mockWebServer.enqueue(new MockResponse()
+                    .setResponseCode(404)
+                    .setBody("{\"error\": \"Log not found\"}"));
+
+            // when
+            AiHtmlDocumentResponse response = aiServiceClient.generateErrorAnalysisHtml(request);
+
+            // then
+            assertThat(response).isNull();
+        }
+    }
+
+    @Nested
+    @DisplayName("HTML 재생성 테스트")
+    class RegenerateWithFeedbackTest {
+
+        @Test
+        @DisplayName("프로젝트_분석_재생성_시_피드백이_포함된다")
+        void 프로젝트_분석_재생성_시_피드백이_포함된다() {
+            // given
+            AiHtmlDocumentRequest request = AiHtmlDocumentRequest.builder()
+                    .projectUuid("test-uuid")
+                    .documentType(DocumentType.PROJECT_ANALYSIS)
+                    .format(DocumentFormat.HTML)
+                    .data(new HashMap<>())
+                    .build();
+
+            List<String> validationErrors = List.of("Missing <title> tag", "Missing <body> tag");
+
+            String responseBody = """
+                    {
+                      "htmlContent": "<!DOCTYPE html><html><head><title>Fixed</title></head><body>Content</body></html>",
+                      "metadata": {
+                        "wordCount": 500,
+                        "generationTime": 3.0
+                      },
+                      "validationStatus": {
+                        "isValidHtml": true,
+                        "hasRequiredSections": true,
+                        "warnings": []
+                      }
+                    }
+                    """;
+
+            mockWebServer.enqueue(new MockResponse()
+                    .setBody(responseBody)
+                    .addHeader("Content-Type", "application/json")
+                    .setResponseCode(200));
+
+            // when
+            AiHtmlDocumentResponse response = aiServiceClient.regenerateWithFeedback(request, validationErrors);
+
+            // then
+            assertThat(response).isNotNull();
+            assertThat(request.getRegenerationFeedback()).isEqualTo(validationErrors);
+            assertThat(response.getHtmlContent()).contains("<title>");
+        }
+
+        @Test
+        @DisplayName("에러_분석_재생성_시_generateErrorAnalysisHtml이_호출된다")
+        void 에러_분석_재생성_시_generateErrorAnalysisHtml이_호출된다() {
+            // given
+            AiHtmlDocumentRequest request = AiHtmlDocumentRequest.builder()
+                    .logId(123L)
+                    .documentType(DocumentType.ERROR_ANALYSIS)
+                    .format(DocumentFormat.HTML)
+                    .data(new HashMap<>())
+                    .build();
+
+            List<String> validationErrors = List.of("Missing sections");
+
+            String responseBody = """
+                    {
+                      "htmlContent": "<!DOCTYPE html><html><body>Fixed Error Report</body></html>",
+                      "metadata": {
+                        "severity": "MEDIUM"
+                      },
+                      "validationStatus": {
+                        "isValidHtml": true,
+                        "hasRequiredSections": true,
+                        "warnings": []
+                      }
+                    }
+                    """;
+
+            mockWebServer.enqueue(new MockResponse()
+                    .setBody(responseBody)
+                    .addHeader("Content-Type", "application/json")
+                    .setResponseCode(200));
+
+            // when
+            AiHtmlDocumentResponse response = aiServiceClient.regenerateWithFeedback(request, validationErrors);
+
+            // then
+            assertThat(response).isNotNull();
+            assertThat(response.getHtmlContent()).contains("Fixed Error Report");
+        }
     }
 }

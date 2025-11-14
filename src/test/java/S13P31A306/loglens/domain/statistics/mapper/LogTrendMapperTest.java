@@ -93,8 +93,17 @@ class LogTrendMapperTest {
         // then
         assertThat(response).isNotNull();
         assertThat(response.projectUuid()).isEqualTo(projectUuid);
-        assertThat(response.dataPoints()).hasSize(2);
+        assertThat(response.dataPoints()).hasSize(8);  // 24시간 / 3시간 간격 = 8개 고정
         assertThat(response.interval()).isEqualTo("3h");
+
+        // 실제 데이터가 있는 시간대 검증
+        assertThat(response.dataPoints().get(0).totalCount()).isEqualTo(1523);  // 15:00 실제 데이터
+        assertThat(response.dataPoints().get(1).totalCount()).isEqualTo(1820);  // 18:00 실제 데이터
+
+        // 빈 데이터가 0으로 채워졌는지 검증
+        assertThat(response.dataPoints().get(2).totalCount()).isEqualTo(0);     // 21:00 빈 데이터
+        assertThat(response.dataPoints().get(7).totalCount()).isEqualTo(0);     // 12:00 빈 데이터
+
         assertThat(response.summary()).isNotNull();
         assertThat(response.summary().totalLogs()).isEqualTo(3343); // 1523 + 1820
     }

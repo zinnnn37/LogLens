@@ -1,7 +1,10 @@
 package S13P31A306.loglens.global.client;
 
+import S13P31A306.loglens.domain.analysis.dto.ai.AiHtmlDocumentRequest;
+import S13P31A306.loglens.domain.analysis.dto.ai.AiHtmlDocumentResponse;
 import S13P31A306.loglens.domain.log.dto.ai.AiAnalysisResponse;
 import java.time.Duration;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -22,6 +25,8 @@ public class AiServiceClient {
 
     private static final String LOG_PREFIX = "[AiServiceClient]";
     private static final String AI_API_V2_LANGGRAPH_LOGS_PATH = "/api/v2-langgraph/logs";
+    private static final String AI_API_V2_LANGGRAPH_ANALYSIS_PATH = "/api/v2-langgraph/analysis";
+    private static final int DOCUMENT_GENERATION_TIMEOUT = 60000; // 60초
 
     private final WebClient webClient;
     private final int timeout;
@@ -80,5 +85,106 @@ public class AiServiceClient {
             log.error("{} 🔴 AI 분석 중 예외 발생: logId={}, error={}", LOG_PREFIX, logId, e.getMessage(), e);
             return null;
         }
+    }
+
+    /**
+     * 프로젝트 분석 HTML 문서 생성 요청
+     *
+     * @param request AI 문서 생성 요청 DTO
+     * @return AI 생성 HTML 문서 응답, 실패 시 null
+     */
+    public AiHtmlDocumentResponse generateProjectAnalysisHtml(AiHtmlDocumentRequest request) {
+        log.debug("{} 🤖 프로젝트 분석 HTML 문서 생성 요청: projectUuid={}, format={}",
+                LOG_PREFIX, request.getProjectUuid(), request.getFormat());
+
+        try {
+            AiHtmlDocumentResponse response = webClient.post()
+                    .uri(AI_API_V2_LANGGRAPH_ANALYSIS_PATH + "/projects/html-document")
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(AiHtmlDocumentResponse.class)
+                    .timeout(Duration.ofMillis(DOCUMENT_GENERATION_TIMEOUT))
+                    .block();
+
+            if (response != null) {
+                log.info("{} ✅ 프로젝트 분석 HTML 생성 완료: projectUuid={}, sections={}, generationTime={}s",
+                        LOG_PREFIX, request.getProjectUuid(),
+                        response.getMetadata() != null ? response.getMetadata().getSectionsGenerated() : null,
+                        response.getMetadata() != null ? response.getMetadata().getGenerationTime() : null);
+            }
+            return response;
+
+        } catch (WebClientResponseException e) {
+            log.error("{} 🔴 프로젝트 분석 HTML 생성 실패: projectUuid={}, status={}, body={}",
+                    LOG_PREFIX, request.getProjectUuid(), e.getStatusCode(), e.getResponseBodyAsString());
+            return null;
+
+        } catch (Exception e) {
+            log.error("{} 🔴 프로젝트 분석 HTML 생성 중 예외 발생: projectUuid={}, error={}",
+                    LOG_PREFIX, request.getProjectUuid(), e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * 에러 분석 HTML 문서 생성 요청
+     *
+     * @param request AI 문서 생성 요청 DTO
+     * @return AI 생성 HTML 문서 응답, 실패 시 null
+     */
+    public AiHtmlDocumentResponse generateErrorAnalysisHtml(AiHtmlDocumentRequest request) {
+        log.debug("{} 🤖 에러 분석 HTML 문서 생성 요청: logId={}, format={}",
+                LOG_PREFIX, request.getLogId(), request.getFormat());
+
+        try {
+            AiHtmlDocumentResponse response = webClient.post()
+                    .uri(AI_API_V2_LANGGRAPH_ANALYSIS_PATH + "/errors/html-document")
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(AiHtmlDocumentResponse.class)
+                    .timeout(Duration.ofMillis(DOCUMENT_GENERATION_TIMEOUT))
+                    .block();
+
+            if (response != null) {
+                log.info("{} ✅ 에러 분석 HTML 생성 완료: logId={}, severity={}, generationTime={}s",
+                        LOG_PREFIX, request.getLogId(),
+                        response.getMetadata() != null ? response.getMetadata().getSeverity() : null,
+                        response.getMetadata() != null ? response.getMetadata().getGenerationTime() : null);
+            }
+            return response;
+
+        } catch (WebClientResponseException e) {
+            log.error("{} 🔴 에러 분석 HTML 생성 실패: logId={}, status={}, body={}",
+                    LOG_PREFIX, request.getLogId(), e.getStatusCode(), e.getResponseBodyAsString());
+            return null;
+
+        } catch (Exception e) {
+            log.error("{} 🔴 에러 분석 HTML 생성 중 예외 발생: logId={}, error={}",
+                    LOG_PREFIX, request.getLogId(), e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * HTML 검증 실패 피드백과 함께 문서 재생성 요청
+     *
+     * @param request            원본 요청
+     * @param validationErrors   검증 에러 목록
+     * @return 재생성된 HTML 문서 응답
+     */
+    public AiHtmlDocumentResponse regenerateWithFeedback(
+            AiHtmlDocumentRequest request,
+            List<String> validationErrors
+    ) {
+        log.info("{} 🔄 HTML 검증 실패로 재생성 요청: errors={}", LOG_PREFIX, validationErrors);
+
+        // 재생성 피드백 추가
+        request.setRegenerationFeedback(validationErrors);
+
+        // 문서 타입에 따라 적절한 메서드 호출
+        return switch (request.getDocumentType()) {
+            case PROJECT_ANALYSIS -> generateProjectAnalysisHtml(request);
+            case ERROR_ANALYSIS -> generateErrorAnalysisHtml(request);
+        };
     }
 }

@@ -12,7 +12,12 @@ import org.mapstruct.ReportingPolicy;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static S13P31A306.loglens.domain.statistics.constants.StatisticsConstants.*;
 
 /**
  * Traffic 관련 Mapper
@@ -36,8 +41,19 @@ public interface TrafficMapper {
             LocalDateTime endTime,
             List<TrafficAggregation> aggregations
     ) {
-        // DataPoint 변환
-        List<DataPoint> dataPoints = aggregations.stream()
+        // 전체 시간 슬롯 생성 (24시간 / 3시간 = 8개)
+        List<LocalDateTime> timeSlots = generateTimeSlots(startTime, INTERVAL_HOURS, TREND_HOURS / INTERVAL_HOURS);
+
+        // OpenSearch 결과를 Map으로 변환 (timestamp -> aggregation)
+        Map<LocalDateTime, TrafficAggregation> aggMap = aggregations.stream()
+                .collect(Collectors.toMap(
+                        TrafficAggregation::timestamp,
+                        agg -> agg
+                ));
+
+        // 각 시간 슬롯에 대해 데이터 있으면 사용, 없으면 0으로 채움
+        List<DataPoint> dataPoints = timeSlots.stream()
+                .map(ts -> aggMap.getOrDefault(ts, createEmptyAggregation(ts)))
                 .map(this::toDataPoint)
                 .toList();
 
@@ -53,10 +69,36 @@ public interface TrafficMapper {
         return new TrafficResponse(
                 projectUuid,
                 period,
-                "3h",
+                INTERVAL_HOURS + "h",
                 dataPoints,
                 summary
         );
+    }
+
+    /**
+     * 시간 슬롯 생성
+     *
+     * @param startTime 시작 시간
+     * @param intervalHours 간격 (시간)
+     * @param count 생성할 슬롯 개수
+     * @return 시간 슬롯 리스트
+     */
+    default List<LocalDateTime> generateTimeSlots(LocalDateTime startTime, int intervalHours, int count) {
+        List<LocalDateTime> timeSlots = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            timeSlots.add(startTime.plusHours((long) i * intervalHours));
+        }
+        return timeSlots;
+    }
+
+    /**
+     * 빈 집계 결과 생성
+     *
+     * @param timestamp 타임스탬프
+     * @return 0으로 채워진 TrafficAggregation
+     */
+    default TrafficAggregation createEmptyAggregation(LocalDateTime timestamp) {
+        return new TrafficAggregation(timestamp, 0, 0, 0);
     }
 
     /**

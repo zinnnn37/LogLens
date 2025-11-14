@@ -89,6 +89,17 @@ dependencies {
 
 	// Apache HttpClient 5 (HTTP/1.1, HTTP/2 클라이언트)
 	implementation 'org.apache.httpcomponents.client5:httpclient5:5.5.1'
+
+	// PDF 생성 (HTML to PDF)
+	implementation 'com.openhtmltopdf:openhtmltopdf-core:1.0.10'
+	implementation 'com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10'
+
+	// Markdown 생성
+	implementation 'com.vladsch.flexmark:flexmark-all:0.64.8'
+
+	// HTML 검증 및 Sanitization
+	implementation 'org.jsoup:jsoup:1.17.2'
+	implementation 'org.owasp.encoder:encoder:1.2.3'
 }
 
 tasks.named('test') {
