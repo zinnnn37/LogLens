@@ -60,4 +60,21 @@ public class LogMetrics extends BaseTimeEntity {
         this.aggregatedAt = aggregatedAt;
     }
 
+    public void updateMetrics(
+            Integer totalLogs,
+            Integer errorLogs,
+            Integer warnLogs,
+            Integer infoLogs,
+            Long sumResponseTime,
+            Integer avgResponseTime,
+            LocalDateTime aggregatedAt) {
+        this.totalLogs = totalLogs;
+        this.errorLogs = errorLogs;
+        this.warnLogs = warnLogs;
+        this.infoLogs = infoLogs;
+        this.sumResponseTime = sumResponseTime;
+        this.avgResponseTime = avgResponseTime;
+        this.aggregatedAt = aggregatedAt;
+    }
+
 }

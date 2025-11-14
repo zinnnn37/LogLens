@@ -49,4 +49,17 @@ public class HeatmapMetrics extends BaseTimeEntity {
     @Column(name = "aggregated_at", nullable = false)
     private LocalDateTime aggregatedAt;
 
+    public void updateMetrics(
+            Integer totalCount,
+            Integer errorCount,
+            Integer warnCount,
+            Integer infoCount,
+            LocalDateTime aggregatedAt) {
+        this.totalCount = totalCount;
+        this.errorCount = errorCount;
+        this.warnCount = warnCount;
+        this.infoCount = infoCount;
+        this.aggregatedAt = aggregatedAt;
+    }
+
 }

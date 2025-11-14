@@ -24,26 +24,28 @@ public class LogMetricsTransactionHelper {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void saveMetrics(LogMetrics logMetrics, List<HeatmapMetrics> heatmapMetrics) {
 
+        // LogMetrics 처리
         Optional<LogMetrics> existingLogMetrics = logMetricsRepository
                 .findTopByProjectIdOrderByAggregatedAtDesc(logMetrics.getProject().getId());
 
         if (existingLogMetrics.isPresent()) {
-            LogMetrics merged = LogMetrics.builder()
-                    .id(existingLogMetrics.get().getId())
-                    .project(logMetrics.getProject())
-                    .totalLogs(logMetrics.getTotalLogs())
-                    .errorLogs(logMetrics.getErrorLogs())
-                    .warnLogs(logMetrics.getWarnLogs())
-                    .infoLogs(logMetrics.getInfoLogs())
-                    .sumResponseTime(logMetrics.getSumResponseTime())
-                    .avgResponseTime(logMetrics.getAvgResponseTime())
-                    .aggregatedAt(logMetrics.getAggregatedAt())
-                    .build();
-            logMetricsRepository.save(merged);
+            LogMetrics existing = existingLogMetrics.get();
+            // 기존 엔티티를 직접 수정 (더티 체킹 활용)
+            existing.updateMetrics(
+                    logMetrics.getTotalLogs(),
+                    logMetrics.getErrorLogs(),
+                    logMetrics.getWarnLogs(),
+                    logMetrics.getInfoLogs(),
+                    logMetrics.getSumResponseTime(),
+                    logMetrics.getAvgResponseTime(),
+                    logMetrics.getAggregatedAt()
+            );
+            // save 호출 불필요 (더티 체킹으로 자동 업데이트)
         } else {
             logMetricsRepository.save(logMetrics);
         }
 
+        // HeatmapMetrics 처리
         for (HeatmapMetrics heatmap : heatmapMetrics) {
             Optional<HeatmapMetrics> existingHeatmap = heatmapMetricsRepository
                     .findByProjectIdAndDateAndHour(
@@ -53,8 +55,14 @@ public class LogMetricsTransactionHelper {
                     );
 
             if (existingHeatmap.isPresent()) {
-                HeatmapMetrics merged = mergeHeatmapMetrics(existingHeatmap.get(), heatmap);
-                heatmapMetricsRepository.save(merged);
+                HeatmapMetrics existing = existingHeatmap.get();
+                existing.updateMetrics(
+                        existing.getTotalCount() + heatmap.getTotalCount(),
+                        existing.getErrorCount() + heatmap.getErrorCount(),
+                        existing.getWarnCount() + heatmap.getWarnCount(),
+                        existing.getInfoCount() + heatmap.getInfoCount(),
+                        heatmap.getAggregatedAt()
+                );
             } else {
                 heatmapMetricsRepository.save(heatmap);
             }
