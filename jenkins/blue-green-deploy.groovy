@@ -117,7 +117,6 @@ pipeline {
                             docker rm ${containerName} || true
                         fi
                         
-                        # ✅ 여기에 로그 디렉토리 백업 및 초기화 추가 ✅
                         # 로그 디렉토리 백업 및 초기화
                         echo "📁 Initializing log directories..."
                         BACKUP_DIR=~/loglens/logs/backup/\$(date +%Y%m%d_%H%M%S)
@@ -167,9 +166,7 @@ pipeline {
                             fi
                         fi
                         
-                        # ✅ 여기까지 추가 ✅
-                        
-                        # 새 컨테이너 배포 (볼륨 마운트 추가)
+                        # 새 컨테이너 배포 (logs 전체 디렉토리 마운트)
                         echo "🚀 Deploying ${containerName} on port ${port}"
                         docker run -d \
                             --name ${containerName} \
@@ -177,8 +174,7 @@ pipeline {
                             -p ${port}:8080 \
                             --env-file ${WORKSPACE}/.env \
                             --restart unless-stopped \
-                            -v ~/loglens/logs/be:/app/logs/be \
-                            -v ~/loglens/logs/fe:/app/logs/fe \
+                            -v ~/loglens/logs:/app/logs \
                             ${IMAGE_NAME}
                         
                         echo "✅ ${containerName} deployed successfully"
@@ -187,6 +183,18 @@ pipeline {
                         # 볼륨 마운트 확인
                         echo "📋 Verifying volume mounts..."
                         docker inspect ${containerName} --format='{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'
+                        
+                        # 로그 파일 생성 대기 및 확인
+                        echo "⏳ Waiting for log files to be created..."
+                        sleep 10
+                        
+                        echo "📋 Checking log files in container..."
+                        docker exec ${containerName} ls -lh /app/logs/be/ 2>/dev/null || echo "  ⚠️  BE logs directory not accessible"
+                        docker exec ${containerName} ls -lh /app/logs/fe/ 2>/dev/null || echo "  ⚠️  FE logs directory not accessible"
+                        
+                        echo "📋 Checking log files on host..."
+                        ls -lh ~/loglens/logs/be/ 2>/dev/null || echo "  ⚠️  BE logs not visible on host"
+                        ls -lh ~/loglens/logs/fe/ 2>/dev/null || echo "  ⚠️  FE logs not visible on host"
                     """
                 }
             }
