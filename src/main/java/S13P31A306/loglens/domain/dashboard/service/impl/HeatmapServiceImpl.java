@@ -6,29 +6,20 @@ import S13P31A306.loglens.domain.dashboard.dto.HeatmapAggregation;
 import S13P31A306.loglens.domain.dashboard.dto.response.HeatmapResponse;
 import S13P31A306.loglens.domain.dashboard.service.HeatmapService;
 import S13P31A306.loglens.domain.dashboard.validator.DashboardValidator;
+import S13P31A306.loglens.domain.project.entity.HeatmapMetrics;
+import S13P31A306.loglens.domain.project.repository.HeatmapMetricsRepository;
 import S13P31A306.loglens.domain.project.validator.ProjectValidator;
-import S13P31A306.loglens.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.opensearch.client.json.JsonData;
-import org.opensearch.client.opensearch._types.FieldValue;
-import org.opensearch.client.opensearch._types.aggregations.CompositeAggregationSource;
-import org.opensearch.client.opensearch.core.SearchRequest;
-import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.client.opensearch._types.Script;
-import org.opensearch.client.opensearch._types.aggregations.*;
-import org.opensearch.client.opensearch.core.SearchResponse;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static S13P31A306.loglens.domain.dashboard.constants.DashboardConstants.*;
-import static S13P31A306.loglens.global.constants.GlobalErrorCode.OPENSEARCH_OPERATION_FAILED;
 
 @Slf4j
 @Service
@@ -36,12 +27,11 @@ import static S13P31A306.loglens.global.constants.GlobalErrorCode.OPENSEARCH_OPE
 public class HeatmapServiceImpl implements HeatmapService {
 
     private static final String LOG_PREFIX = "[HeatmapService]";
-    private static final String INDEX_PATTERN = "logs-*";
 
-    private final OpenSearchClient openSearchClient;
     private final ProjectValidator projectValidator;
     private final DashboardValidator dashboardValidator;
     private final AuthenticationHelper authHelper;
+    private final HeatmapMetricsRepository heatmapMetricsRepository;
 
     @Override
     public HeatmapResponse getLogHeatmap(String projectUuid, String startTime, String endTime, String logLevel) {
@@ -49,14 +39,9 @@ public class HeatmapServiceImpl implements HeatmapService {
                 LOG_PREFIX, projectUuid, logLevel, startTime, endTime);
 
         Integer userId = authHelper.getCurrentUserId();
-
-        // 프로젝트 조회
         Integer projectId = projectValidator.validateProjectExists(projectUuid).getId();
-
-        // 사용자가 프로젝트에 존재하는지 확인
         projectValidator.validateMemberExists(projectId, userId);
 
-        // 시간 범위 설정
         LocalDateTime parsedEnd = dashboardValidator.validateAndParseTime(endTime);
         LocalDateTime parsedStart = dashboardValidator.validateAndParseTime(startTime);
 
@@ -72,20 +57,50 @@ public class HeatmapServiceImpl implements HeatmapService {
 
         dashboardValidator.validateTimeRange(start, end, HEATMAP_MAX_DAYS);
 
-        // set default log level
         String level = dashboardValidator.validateLogLevel(logLevel);
 
-        // Query
-        Map<String, HeatmapAggregation> aggregations = aggregateLogsByDayAndHour(
-                projectId, start, end, level
-        );
+        List<HeatmapMetrics> heatmapMetrics = heatmapMetricsRepository
+                .findByProjectIdAndDateBetween(projectId, start.toLocalDate(), end.toLocalDate());
 
-        return buildHeatmapResponse(projectId, start, end, level, aggregations);
+        return buildHeatmapResponse(projectId, start, end, level, heatmapMetrics);
     }
 
-    private HeatmapResponse buildHeatmapResponse(Integer projectId, LocalDateTime start,
-                                                 LocalDateTime end, String logLevel,
-                                                 Map<String, HeatmapAggregation> aggregations) {
+    private HeatmapResponse buildHeatmapResponse(
+            Integer projectId,
+            LocalDateTime start,
+            LocalDateTime end,
+            String logLevel,
+            List<HeatmapMetrics> heatmapMetrics) {
+
+        // date 포함한 고유 키 사용
+        Map<String, HeatmapAggregation> aggregations = new HashMap<>();
+
+        for (HeatmapMetrics metric : heatmapMetrics) {
+            int dayOfWeek = metric.getDate().getDayOfWeek().getValue();
+            // date를 키에 포함 → 날짜별로 구분됨
+            String key = metric.getDate() + "_" + metric.getHour();
+
+            int count;
+            if ("ERROR".equalsIgnoreCase(logLevel)) {
+                count = metric.getErrorCount();
+            } else if ("WARN".equalsIgnoreCase(logLevel)) {
+                count = metric.getWarnCount();
+            } else if ("INFO".equalsIgnoreCase(logLevel)) {
+                count = metric.getInfoCount();
+            } else {
+                count = metric.getTotalCount();
+            }
+
+            aggregations.put(key, new HeatmapAggregation(
+                    dayOfWeek,
+                    metric.getHour(),
+                    count,
+                    metric.getErrorCount(),
+                    metric.getWarnCount(),
+                    metric.getInfoCount()
+            ));
+        }
+
         int maxCount = aggregations.values().stream()
                 .mapToInt(HeatmapAggregation::totalCount)
                 .max()
@@ -177,107 +192,4 @@ public class HeatmapServiceImpl implements HeatmapService {
                 avgDailyCount
         );
     }
-
-    private Map<String, HeatmapAggregation> aggregateLogsByDayAndHour(
-            Integer projectId,
-            LocalDateTime startTime,
-            LocalDateTime endTime,
-            String logLevel
-    ) {
-        log.info("{} OpenSearch 쿼리 실행: projId={}", LOG_PREFIX, projectId);
-
-        try {
-            SearchRequest searchRequest = SearchRequest.of(s -> s
-                    .index(INDEX_PATTERN)
-                    .size(0)
-                    .query(q -> q.bool(b -> {
-                        b.must(m -> m.term(t -> t.field("project_id").value(FieldValue.of(projectId))));
-                        b.must(m -> m.range(r -> r
-                                .field("timestamp")
-                                .gte(JsonData.of(startTime.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
-                                .lte(JsonData.of(endTime.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
-                        ));
-
-                        if (!"ALL".equalsIgnoreCase(logLevel)) {
-                            b.must(m -> m.term(t -> t.field("log_level").value(FieldValue.of(logLevel))));
-                        }
-
-                        return b;
-                    }))
-                    .aggregations("by_day_and_hour", a -> a
-                            .composite(c -> {
-                                Map<String, CompositeAggregationSource> sources = new LinkedHashMap<>();
-                                sources.put("day_of_week", CompositeAggregationSource.of(cas -> cas
-                                        .terms(t -> t.script(Script.of(sc -> sc
-                                                .inline(i -> i.source(
-                                                        "doc['timestamp'].value.withZoneSameInstant(ZoneId.of('" + DEFAULT_TIMEZONE + "')).getDayOfWeek()"
-                                                ))
-                                        )))
-                                ));
-                                sources.put("hour_of_day", CompositeAggregationSource.of(cas -> cas
-                                        .terms(t -> t.script(Script.of(sc -> sc
-                                                .inline(i -> i.source(
-                                                        "doc['timestamp'].value.withZoneSameInstant(ZoneId.of('" + DEFAULT_TIMEZONE + "')).getHour()"
-                                                ))
-                                        )))
-                                ));
-
-                                return c.size(HEATMAP_AGGREGATION_SIZE).sources(sources);
-                            })
-                            .aggregations("total_count", agg -> agg
-                                    .valueCount(v -> v.field("_id"))
-                            )
-                            .aggregations("by_level", agg -> agg
-                                    .terms(t -> t.field("log_level.keyword"))
-                            )
-                    )
-            );
-
-            SearchResponse<Void> response = openSearchClient.search(searchRequest, Void.class);
-            return parseAggregationResponse(response);
-        } catch (Exception e) {
-            log.error("{} OpenSearch 쿼리 실행 중 오류 발생: e", LOG_PREFIX, e);
-            throw new BusinessException(OPENSEARCH_OPERATION_FAILED);
-        }
-    }
-
-    private Map<String, HeatmapAggregation> parseAggregationResponse(SearchResponse<Void> response) {
-        Map<String, HeatmapAggregation> resultMap = new HashMap<>();
-
-        Aggregate byDayAndHour = response.aggregations().get("by_day_and_hour");
-        if (Objects.isNull(byDayAndHour) || Objects.isNull(byDayAndHour.composite())) {
-            return resultMap;
-        }
-
-        for (CompositeBucket bucket : byDayAndHour.composite().buckets().array()) {
-            Integer dayOfWeek = Integer.parseInt(bucket.key().get("day_of_week").toString());
-            Integer hour = Integer.parseInt(bucket.key().get("hour_of_day").toString());
-            Integer totalCount = bucket.aggregations().get("total_count").valueCount().value().intValue();
-
-            Map<String, Integer> levelCounts = parseLevelCounts(bucket.aggregations().get("by_level"));
-
-            HeatmapAggregation aggregation = new HeatmapAggregation(
-                    dayOfWeek, hour, totalCount,
-                    levelCounts.getOrDefault("ERROR", 0),
-                    levelCounts.getOrDefault("WARN", 0),
-                    levelCounts.getOrDefault("INFO", 0)
-            );
-
-            resultMap.put(dayOfWeek + "_" + hour, aggregation);
-        }
-
-        return resultMap;
-    }
-
-    private Map<String, Integer> parseLevelCounts(Aggregate byLevel) {
-        Map<String, Integer> counts = new HashMap<>();
-        if (Objects.isNull(byLevel) || Objects.isNull(byLevel.sterms())) {
-            return counts;
-        }
-        for (StringTermsBucket bucket : byLevel.sterms().buckets().array()) {
-            counts.put(bucket.key(), (int) bucket.docCount());
-        }
-        return counts;
-    }
-
 }

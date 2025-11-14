@@ -101,12 +101,12 @@ public class DashboardController implements DashboardApi {
     }
 
     @Override
-    @GetMapping("/statistics/logs/heatmap/{projectUuid}")
+    @GetMapping("/statistics/logs/heatmap")
     public ResponseEntity<? extends BaseResponse> getHeatmap(
-            @PathVariable String projectUuid,
+            @ValidUuid @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime,
-            @RequestParam(defaultValue = "ALL") String logLevel
+            @RequestParam(required = false) String logLevel
     ) {
         log.info("{} 히트맵 통계 호출: projectUuid={}", LOG_PREFIX, projectUuid);
 

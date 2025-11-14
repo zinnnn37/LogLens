@@ -9,8 +9,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.FieldValue;
-import org.opensearch.client.opensearch._types.Script;
 import org.opensearch.client.opensearch._types.aggregations.Aggregate;
+import org.opensearch.client.opensearch._types.aggregations.CalendarInterval;
 import org.opensearch.client.opensearch._types.aggregations.CompositeAggregationSource;
 import org.opensearch.client.opensearch._types.aggregations.CompositeBucket;
 import org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
@@ -19,16 +19,11 @@ import org.opensearch.client.opensearch.core.SearchResponse;
 import org.opensearch.client.json.JsonData;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.*;
 
 import static S13P31A306.loglens.global.constants.GlobalErrorCode.OPENSEARCH_OPERATION_FAILED;
 
-/**
- * 로그 메트릭 집계의 트랜잭션 처리를 담당하는 서비스
- * OpenSearch 조회는 트랜잭션 밖에서 수행하고, DB 저장만 트랜잭션으로 처리
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -36,7 +31,7 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
 
     private static final String LOG_PREFIX = "[LogMetricsTransactionalService]";
     private static final String DEFAULT_TIMEZONE = "Asia/Seoul";
-    private static final int HEATMAP_AGGREGATION_SIZE = 168;  // 7일 * 24시간
+    private static final int HEATMAP_AGGREGATION_SIZE = 200;
 
     private final OpenSearchClient openSearchClient;
     private final LogMetricsTransactionHelper transactionHelper;
@@ -61,9 +56,14 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
             // 2. HeatmapMetrics 집계
             SearchRequest heatmapRequest = buildHeatmapRequest(indexPattern, from, to, project.getId());
             SearchResponse<Void> heatmapResponse = openSearchClient.search(heatmapRequest, Void.class);
+
+            log.info("{} HeatmapMetrics aggregation response received", LOG_PREFIX);
+
             List<HeatmapMetrics> heatmapMetrics = calculateHeatmapMetrics(heatmapResponse, project, to);
 
-            // 3. DB 저장 (한 번에)
+            log.info("{} Calculated {} heatmap cells", LOG_PREFIX, heatmapMetrics.size());
+
+            // 3. 저장
             transactionHelper.saveMetrics(metrics, heatmapMetrics);
 
             long elapsed = System.currentTimeMillis() - startTime;
@@ -79,9 +79,6 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
         }
     }
 
-    /**
-     * LogMetrics용 OpenSearch 검색 요청 생성
-     */
     private SearchRequest buildLogMetricsRequest(String indexPattern, LocalDateTime from, LocalDateTime to) {
         return SearchRequest.of(s -> s
                 .index(indexPattern)
@@ -126,54 +123,31 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
         );
     }
 
-    /**
-     * HeatmapMetrics용 OpenSearch 검색 요청 생성
-     */
     private SearchRequest buildHeatmapRequest(String indexPattern, LocalDateTime from, LocalDateTime to, Integer projectId) {
         return SearchRequest.of(s -> s
                 .index(indexPattern)
                 .size(0)
-                .query(q -> q.bool(b -> {
-                    b.must(m -> m.term(t -> t.field("project_id").value(FieldValue.of(projectId))));
-                    b.must(m -> m.range(r -> r
-                            .field("timestamp")
-                            .gte(JsonData.of(from.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
-                            .lt(JsonData.of(to.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
-                    ));
-                    return b;
-                }))
-                .aggregations("by_day_and_hour", a -> a
-                        .composite(c -> {
-                            Map<String, CompositeAggregationSource> sources = new LinkedHashMap<>();
-                            sources.put("day_of_week", CompositeAggregationSource.of(cas -> cas
-                                    .terms(t -> t.script(Script.of(sc -> sc
-                                            .inline(i -> i.source(
-                                                    "doc['timestamp'].value.withZoneSameInstant(ZoneId.of('" + DEFAULT_TIMEZONE + "')).getDayOfWeek()"
-                                            ))
-                                    )))
-                            ));
-                            sources.put("hour_of_day", CompositeAggregationSource.of(cas -> cas
-                                    .terms(t -> t.script(Script.of(sc -> sc
-                                            .inline(i -> i.source(
-                                                    "doc['timestamp'].value.withZoneSameInstant(ZoneId.of('" + DEFAULT_TIMEZONE + "')).getHour()"
-                                            ))
-                                    )))
-                            ));
-                            return c.size(HEATMAP_AGGREGATION_SIZE).sources(sources);
-                        })
-                        .aggregations("total_count", agg -> agg
-                                .valueCount(v -> v.field("_id"))
+                .query(q -> q
+                        .range(r -> r
+                                .field("timestamp")
+                                .gte(JsonData.of(from.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
+                                .lt(JsonData.of(to.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
+                        )
+                )
+                .aggregations("by_hour", a -> a
+                        .dateHistogram(dh -> dh
+                                .field("timestamp")
+                                .fixedInterval(fi -> fi.time("1h"))
+                                .timeZone(DEFAULT_TIMEZONE)
+                                .format("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")  // 추가
                         )
                         .aggregations("by_level", agg -> agg
-                                .terms(t -> t.field("log_level.keyword"))
+                                .terms(t -> t.field("log_level"))
                         )
                 )
         );
     }
 
-    /**
-     * HeatmapMetrics 계산
-     */
     private List<HeatmapMetrics> calculateHeatmapMetrics(
             SearchResponse<Void> response,
             Project project,
@@ -181,41 +155,76 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
 
         List<HeatmapMetrics> result = new ArrayList<>();
 
-        Aggregate byDayAndHour = response.aggregations().get("by_day_and_hour");
-        if (Objects.isNull(byDayAndHour) || Objects.isNull(byDayAndHour.composite())) {
+        Aggregate byHour = response.aggregations().get("by_hour");
+        if (Objects.isNull(byHour)) {
+            log.warn("{} by_hour aggregation not found", LOG_PREFIX);
             return result;
         }
 
-        for (CompositeBucket bucket : byDayAndHour.composite().buckets().array()) {
-            Integer dayOfWeek = Integer.parseInt(bucket.key().get("day_of_week").toString());
-            Integer hour = Integer.parseInt(bucket.key().get("hour_of_day").toString());
-
-            Double totalCountDouble = bucket.aggregations().get("total_count").valueCount().value();
-            Integer totalCount = (totalCountDouble != null && !totalCountDouble.isNaN())
-                    ? totalCountDouble.intValue() : 0;
-
-            Map<String, Integer> levelCounts = parseLevelCounts(bucket.aggregations().get("by_level"));
-
-            HeatmapMetrics heatmap = HeatmapMetrics.builder()
-                    .project(project)
-                    .dayOfWeek(dayOfWeek)
-                    .hour(hour)
-                    .totalCount(totalCount)
-                    .errorCount(levelCounts.getOrDefault("ERROR", 0))
-                    .warnCount(levelCounts.getOrDefault("WARN", 0))
-                    .infoCount(levelCounts.getOrDefault("INFO", 0))
-                    .aggregatedAt(aggregatedAt)
-                    .build();
-
-            result.add(heatmap);
+        if (Objects.isNull(byHour.dateHistogram())) {
+            log.warn("{} dateHistogram is null", LOG_PREFIX);
+            return result;
         }
 
+        var buckets = byHour.dateHistogram().buckets().array();
+        log.info("{} Processing {} buckets from date_histogram", LOG_PREFIX, buckets.size());
+
+        for (var bucket : buckets) {
+            try {
+                // keyAsString을 사용 (ISO 8601 형식)
+                String keyAsString = bucket.keyAsString();
+                if (keyAsString == null) {
+                    log.warn("{} keyAsString is null for bucket, using key: {}", LOG_PREFIX, bucket.key());
+                    continue;
+                }
+
+                // "2025-11-13T02:00:00.000+09:00" 형식 파싱
+                ZonedDateTime zdt = ZonedDateTime.parse(keyAsString);
+                LocalDate date = zdt.toLocalDate();
+                Integer hour = zdt.getHour();
+
+                int totalCount = (int) bucket.docCount();
+
+                // by_level aggregation 파싱
+                Map<String, Integer> levelCounts = new HashMap<>();
+                Aggregate byLevel = bucket.aggregations().get("by_level");
+
+                if (byLevel != null && byLevel.sterms() != null) {
+                    for (var levelBucket : byLevel.sterms().buckets().array()) {
+                        String level = levelBucket.key();
+                        int count = (int) levelBucket.docCount();
+                        levelCounts.put(level, count);
+                    }
+                }
+
+                HeatmapMetrics heatmap = HeatmapMetrics.builder()
+                        .project(project)
+                        .date(date)
+                        .hour(hour)
+                        .totalCount(totalCount)
+                        .errorCount(levelCounts.getOrDefault("ERROR", 0))
+                        .warnCount(levelCounts.getOrDefault("WARN", 0))
+                        .infoCount(levelCounts.getOrDefault("INFO", 0))
+                        .aggregatedAt(aggregatedAt)
+                        .build();
+
+                result.add(heatmap);
+
+                if (result.size() <= 3) {
+                    log.debug("{} Created heatmap: date={}, hour={}, total={}",
+                            LOG_PREFIX, date, hour, totalCount);
+                }
+
+            } catch (Exception e) {
+                log.error("{} Failed to parse bucket: key={}, error={}",
+                        LOG_PREFIX, bucket.key(), e.getMessage(), e);
+            }
+        }
+
+        log.info("{} Successfully created {} HeatmapMetrics", LOG_PREFIX, result.size());
         return result;
     }
 
-    /**
-     * 로그 레벨별 카운트 파싱
-     */
     private Map<String, Integer> parseLevelCounts(Aggregate byLevel) {
         Map<String, Integer> counts = new HashMap<>();
         if (Objects.isNull(byLevel) || Objects.isNull(byLevel.sterms())) {

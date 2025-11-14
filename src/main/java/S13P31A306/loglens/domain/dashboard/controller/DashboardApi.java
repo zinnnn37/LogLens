@@ -753,164 +753,39 @@ public interface DashboardApi {
             summary = "로그 히트맵 조회",
             description = "특정 프로젝트의 로그 발생 패턴을 요일별, 시간대별로 집계하여 히트맵 데이터를 제공합니다.",
             security = @SecurityRequirement(name = "bearerAuth"),
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "히트맵 데이터 조회 성공",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = HeatmapResponse.class),
-                                    examples = @ExampleObject(
-                                            name = "HeatmapRetrieved",
-                                            summary = "히트맵 조회 성공 예시",
-                                            value = """
-                                                {
-                                                    "code": "DB200-1",
-                                                    "message": "요일별 로그 히트맵 조회가 완료되었습니다.",
-                                                    "status": 200,
-                                                    "data": {
-                                                        "projectId": 12345,
-                                                        "period": {
-                                                            "startTime": "2025-10-10T00:00:00Z",
-                                                            "endTime": "2025-10-17T23:59:59Z"
-                                                        },
-                                                        "heatmap": [
-                                                            {
-                                                                "dayOfWeek": "MONDAY",
-                                                                "dayName": "월요일",
-                                                                "hourlyData": [
-                                                                    {
-                                                                        "hour": 0,
-                                                                        "count": 1234,
-                                                                        "errorCount": 45,
-                                                                        "warnCount": 120,
-                                                                        "infoCount": 1069,
-                                                                        "intensity": 0.62
-                                                                    }
-                                                                ],
-                                                                "totalCount": 28945
-                                                            }
-                                                        ],
-                                                        "summary": {
-                                                            "totalLogs": 185643,
-                                                            "peakDay": "WEDNESDAY",
-                                                            "peakHour": 14,
-                                                            "peakCount": 4567,
-                                                            "avgDailyCount": 26520
-                                                        },
-                                                        "metadata": {
-                                                            "logLevel": "ALL",
-                                                            "timezone": "Asia/Seoul"
-                                                        }
-                                                    },
-                                                    "timestamp": "2025-10-17T15:30:45Z"
-                                                }
-                                                """
-                                    )
-                            )
+            parameters = {
+                    @Parameter(
+                            in = ParameterIn.QUERY,  // 수정: PATH → QUERY
+                            name = "projectUuid",
+                            description = "프로젝트 UUID",
+                            required = true,
+                            schema = @Schema(type = "string", example = "48d96cd7-bf8d-38f5-891c-9c2f6430d871")
                     ),
-                    @ApiResponse(
-                            responseCode = "400",
-                            description = "잘못된 요청 파라미터",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ErrorResponse.class),
-                                    examples = {
-                                            @ExampleObject(
-                                                    name = "InvalidTimeFormat",
-                                                    summary = "잘못된 시간 형식",
-                                                    value = """
-                                                        {
-                                                            "code": "DB400-1",
-                                                            "message": "유효하지 않은 시간 형식입니다.",
-                                                            "status": 400,
-                                                            "timestamp": "2025-10-17T15:30:45Z"
-                                                        }
-                                                        """
-                                            ),
-                                            @ExampleObject(
-                                                    name = "InvalidTimeRange",
-                                                    summary = "잘못된 시간 범위",
-                                                    value = """
-                                                        {
-                                                            "code": "DB400-2",
-                                                            "message": "종료 시간은 시작 시간보다 늦어야 합니다.",
-                                                            "status": 400,
-                                                            "timestamp": "2025-10-17T15:30:45Z"
-                                                        }
-                                                        """
-                                            ),
-                                            @ExampleObject(
-                                                    name = "InvalidLogLevel",
-                                                    summary = "잘못된 로그 레벨",
-                                                    value = """
-                                                        {
-                                                            "code": "DB400-3",
-                                                            "message": "유효하지 않은 로그 레벨입니다.",
-                                                            "status": 400,
-                                                            "timestamp": "2025-10-17T15:30:45Z"
-                                                        }
-                                                        """
-                                            ),
-                                            @ExampleObject(
-                                                    name = "PeriodExceedsLimit",
-                                                    summary = "조회 기간 초과",
-                                                    value = """
-                                                        {
-                                                            "code": "DB400-4",
-                                                            "message": "조회 기간은 최대 90일을 초과할 수 없습니다.",
-                                                            "status": 400,
-                                                            "timestamp": "2025-10-17T15:30:45Z"
-                                                        }
-                                                        """
-                                            )
-                                    }
-                            )
+                    @Parameter(
+                            in = ParameterIn.QUERY,
+                            name = "startTime",
+                            description = "조회 시작 시간 (ISO 8601 형식). 미입력 시 7일 전",
+                            required = false,
+                            schema = @Schema(type = "string", format = "date-time", example = "2025-10-10T00:00:00Z")
                     ),
-                    @ApiResponse(
-                            responseCode = "403",
-                            description = "프로젝트 접근 권한 없음",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ErrorResponse.class),
-                                    examples = @ExampleObject(
-                                            name = "ProjectAccessForbidden",
-                                            summary = "프로젝트 접근 권한 없음",
-                                            value = """
-                                                {
-                                                    "code": "PJ403-1",
-                                                    "message": "해당 프로젝트에 대한 접근 권한이 없습니다.",
-                                                    "status": 403,
-                                                    "timestamp": "2025-10-17T15:30:45Z"
-                                                }
-                                                """
-                                    )
-                            )
+                    @Parameter(
+                            in = ParameterIn.QUERY,
+                            name = "endTime",
+                            description = "조회 종료 시간 (ISO 8601 형식). 미입력 시 현재 시간",
+                            required = false,
+                            schema = @Schema(type = "string", format = "date-time", example = "2025-10-17T23:59:59Z")
                     ),
-                    @ApiResponse(
-                            responseCode = "404",
-                            description = "프로젝트를 찾을 수 없음",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    schema = @Schema(implementation = ErrorResponse.class),
-                                    examples = @ExampleObject(
-                                            name = "ProjectNotFound",
-                                            summary = "존재하지 않는 프로젝트",
-                                            value = """
-                                                {
-                                                    "code": "PJ404-1",
-                                                    "message": "해당 프로젝트를 찾을 수 없습니다.",
-                                                    "status": 404,
-                                                    "timestamp": "2025-10-17T15:30:45Z"
-                                                }
-                                                """
-                                    )
-                            )
+                    @Parameter(
+                            in = ParameterIn.QUERY,
+                            name = "logLevel",
+                            description = "로그 레벨 필터 (INFO, WARN, ERROR, ALL)",
+                            required = false,
+                            schema = @Schema(type = "string", allowableValues = {"INFO", "WARN", "ERROR", "ALL"}, defaultValue = "ALL", example = "ALL")
                     )
             }
     )
     ResponseEntity<? extends BaseResponse> getHeatmap(
-            @PathVariable String projectUuid,
+            @ValidUuid @RequestParam String projectUuid,  // 수정: @PathVariable → @RequestParam
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime,
             @RequestParam(defaultValue = "ALL") String logLevel
