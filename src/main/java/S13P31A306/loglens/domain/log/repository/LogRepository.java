@@ -5,6 +5,7 @@ import S13P31A306.loglens.domain.log.dto.internal.TraceLogSearchResult;
 import S13P31A306.loglens.domain.log.dto.request.LogSearchRequest;
 import S13P31A306.loglens.domain.log.entity.Log;
 import S13P31A306.loglens.domain.statistics.dto.internal.LogTrendAggregation;
+import S13P31A306.loglens.domain.statistics.dto.internal.TrafficAggregation;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -59,6 +60,23 @@ public interface LogRepository {
      * @return 시계열 집계 결과 리스트
      */
     List<LogTrendAggregation> aggregateLogTrendByTimeRange(
+            String projectUuid,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            String interval
+    );
+
+    /**
+     * 시간 범위별 Traffic(FE/BE) 집계
+     * Statistics 도메인에서 Traffic 그래프를 위해 사용
+     *
+     * @param projectUuid 프로젝트 UUID
+     * @param startTime   조회 시작 시간
+     * @param endTime     조회 종료 시간
+     * @param interval    시간 간격 (예: "3h")
+     * @return 시계열 집계 결과 리스트
+     */
+    List<TrafficAggregation> aggregateTrafficByTimeRange(
             String projectUuid,
             LocalDateTime startTime,
             LocalDateTime endTime,
