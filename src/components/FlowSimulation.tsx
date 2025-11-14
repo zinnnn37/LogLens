@@ -1,27 +1,9 @@
 // src/components/FlowSimulation.tsx
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
+import type { TraceFlowResponse } from '@/types/log';
 
-interface FlowData {
-  summary: {
-    totalDuration: number;
-    status: string;
-    startTime: string;
-    endTime: string;
-  };
-  timeline: {
-    sequence: number;
-    componentId: number;
-    componentName: string;
-    layer: 'CONTROLLER' | 'SERVICE' | 'REPOSITORY' | string;
-    startTime: string;
-    endTime: string;
-    duration: number;
-    logs: { logLevel: 'INFO' | 'WARN' | 'ERROR' | string }[];
-  }[];
-  components: { id: number; name: string; layer: string }[];
-  graph: { edges: { from: number; to: number }[] };
-}
+type FlowData = TraceFlowResponse;
 
 interface Props {
   flowData: FlowData; // 호출부: flowData={response.data.data}
@@ -120,7 +102,7 @@ const getLogLevelColor = (logLevel: string) => {
 const FlowSimulation = ({
   flowData,
   width = 1200,
-  height = 680,
+  height = 400,
   autoPlay = true,
   speed = 1,
 }: Props) => {
@@ -210,21 +192,27 @@ const FlowSimulation = ({
       nodeMetrics.set(t.componentId, existing);
     });
 
-    const nodes: D3Node[] = components.map(c => {
-      const metrics = nodeMetrics.get(c.id) || {
-        totalDuration: 0,
-        callCount: 0,
-        errorCount: 0,
-        warnCount: 0,
-        infoCount: 0,
-      };
-      return {
-        id: c.id,
-        name: c.name,
-        layer: c.layer ?? 'UNKNOWN',
-        ...metrics,
-      };
-    });
+    // timeline에 실제로 등장한 컴포넌트만 표시
+    const timelineComponentIds = new Set(timeline.map(t => t.componentId));
+    const nodes: D3Node[] = components
+      .filter(c => timelineComponentIds.has(c.id))
+      .map(c => {
+        const metrics = nodeMetrics.get(c.id) || {
+          totalDuration: 0,
+          callCount: 0,
+          errorCount: 0,
+          warnCount: 0,
+          infoCount: 0,
+        };
+        return {
+          id: c.id,
+          name: c.name,
+          layer: c.layer ?? 'UNKNOWN',
+          ...metrics,
+        };
+      })
+      .filter(n => n.name && n.name.trim().length > 0); // 이름이 없는 노드 제거
+
     const nodeIds = new Set(nodes.map(n => n.id));
 
     // 무방향 키
@@ -468,16 +456,35 @@ const FlowSimulation = ({
       return;
     }
 
-    // 현재 노드만 살짝 강조(outer glow만)
+    // 현재 노드 강조
     const cur = timeline[seq];
-    svg.selectAll('.nodes g rect:first-of-type').attr('opacity', 0.18);
+
+    // 모든 노드를 기본 상태로
+    svg.selectAll('.nodes g').attr('opacity', 1);
+    svg.selectAll('.nodes g .glow-rect').attr('opacity', 0.18);
+
+    // 모든 노드 배경을 두 톤 밝게 (비활성화 느낌)
     svg
+      .selectAll<SVGGElement, D3Node>('.nodes g .main-rect')
+      .attr('fill', '#475569'); // #1e293b에서 두 톤 밝게
+
+    // 현재 노드만 강한 glow + 원래 어두운 배경으로
+    const currentNode = svg
       .selectAll<SVGGElement, D3Node>('.nodes g')
-      .filter(d => d.id === cur.componentId)
-      .select('rect:first-of-type')
+      .filter(d => d.id === cur.componentId);
+
+    currentNode
+      .select('.glow-rect')
       .transition()
       .duration(180 / speed)
-      .attr('opacity', 0.32);
+      .attr('opacity', 0.8);
+
+    // 현재 노드 배경을 원래 어두운 색으로 (활성화 느낌)
+    currentNode
+      .select('.main-rect')
+      .transition()
+      .duration(180 / speed)
+      .attr('fill', '#1e293b'); // 원래 기본 색상
 
     // 링크 selection
     const linkSel = (svg.node() as SVGNodeWithData).__linkSel__;
@@ -528,6 +535,11 @@ const FlowSimulation = ({
         ms = 900,
       ) => {
         const L = edge.getTotalLength();
+
+        // path가 비어있거나 길이가 0이면 particle 생성하지 않음
+        if (!L || L === 0) {
+          return;
+        }
 
         // 사각형 particle 생성
         const particle = d3
@@ -620,10 +632,10 @@ const FlowSimulation = ({
 
   return (
     <div className="overflow-hidden rounded-2xl border bg-white shadow">
-      <div className="flex items-center justify-between border-b bg-slate-950 px-4 py-3">
-        <div className="text-white">
+      <div className="flex items-center justify-between border-b bg-gray-50 px-4 py-3">
+        <div className="text-primary">
           <div className="text-base font-semibold">요청 흐름 시뮬레이션</div>
-          <div className="text-xs text-slate-300">
+          <div className="text-xs text-gray-600">
             {seq === 0 ? (
               <>시작: {flowData.timeline[0].componentName}</>
             ) : seq < flowData.timeline.length ? (
@@ -639,24 +651,115 @@ const FlowSimulation = ({
         <div className="flex items-center gap-2">
           <button
             onClick={toggle}
-            className="rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-white"
+            className="bg-secondary rounded-md border border-white px-3 py-1.5 text-sm text-white"
           >
             {paused ? '재생' : '일시정지'}
           </button>
           <button
             onClick={reset}
-            className="rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-white"
+            className="bg-secondary rounded-md border border-white px-3 py-1.5 text-sm text-white"
           >
             다시보기
           </button>
         </div>
       </div>
-      <div className="relative h-[680px] bg-white">
+      <div className="relative h-[350px] bg-white">
         <svg
           ref={svgRef}
           viewBox={`0 0 ${width} ${height}`}
           className="h-full w-full"
         />
+      </div>
+
+      {/* 로그 상세 정보 */}
+      <div className="h-[500px] overflow-y-auto border-t bg-gray-50 p-4">
+        <div className="mx-auto max-w-6xl">
+          {seq < flowData.timeline.length ? (
+            <>
+              <h3 className="mb-3 text-sm font-semibold text-gray-700">
+                현재 실행 중인 로그 상세 정보
+              </h3>
+              {flowData.timeline[seq].logs.map((log, idx) => (
+                <div
+                  key={idx}
+                  className="mb-3 rounded-lg border bg-white p-4 shadow-sm"
+                >
+                  <div className="mb-2 flex items-center gap-3">
+                    <span
+                      className={`rounded px-2 py-1 text-xs font-semibold ${
+                        log.logLevel === 'ERROR'
+                          ? 'bg-red-100 text-red-700'
+                          : log.logLevel === 'WARN'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-blue-100 text-blue-700'
+                      }`}
+                    >
+                      {log.logLevel}
+                    </span>
+                    {log.sourceType && (
+                      <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
+                        {log.sourceType}
+                      </span>
+                    )}
+                    {log.timestamp && (
+                      <span className="text-xs text-gray-500">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+
+                  {log.message && (
+                    <p className="mb-2 text-sm font-medium text-gray-800">
+                      {log.message}
+                    </p>
+                  )}
+
+                  <div className="grid grid-cols-1 gap-2 text-xs text-gray-600 md:grid-cols-2">
+                    {log.logger && (
+                      <div>
+                        <span className="font-semibold">Logger:</span>{' '}
+                        {log.logger}
+                      </div>
+                    )}
+                    {log.methodName && (
+                      <div>
+                        <span className="font-semibold">Method:</span>{' '}
+                        {log.methodName}
+                      </div>
+                    )}
+                    {log.requesterIp && (
+                      <div>
+                        <span className="font-semibold">IP:</span>{' '}
+                        {log.requesterIp}
+                      </div>
+                    )}
+                    {log.duration !== null && log.duration !== undefined && (
+                      <div>
+                        <span className="font-semibold">Duration:</span>{' '}
+                        {log.duration}ms
+                      </div>
+                    )}
+                  </div>
+
+                  {log.logDetails && (
+                    <div className="mt-3 rounded border border-gray-200 bg-gray-50 p-3">
+                      <h4 className="mb-2 text-xs font-semibold text-gray-700">
+                        Log Details
+                      </h4>
+                      <pre className="overflow-x-auto rounded bg-gray-100 p-2 text-xs">
+                        {JSON.stringify(log.logDetails, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          ) : (
+            <div className="flex h-[450px] items-center justify-center text-sm text-gray-500">
+              시뮬레이션이 완료되었습니다.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
