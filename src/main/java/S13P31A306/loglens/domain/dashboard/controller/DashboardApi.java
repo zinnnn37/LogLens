@@ -1241,7 +1241,7 @@ public interface DashboardApi {
                             name = "projectUuid",
                             description = "프로젝트 UUID",
                             required = true,
-                            schema = @Schema(type = "string", example = "48d96cd7-bf8d-38f5-891c-9c2f6430d871")
+                            schema = @Schema(type = "string", example = "9911573f-8a1d-3b96-98b4-5a0def93513b")
                     )
             },
             responses = {
@@ -1253,7 +1253,7 @@ public interface DashboardApi {
                                     examples = @ExampleObject(
                                             name = "AggregationSuccess",
                                             summary = "집계 성공",
-                                            value = "집계 완료: 48d96cd7-bf8d-38f5-891c-9c2f6430d871"
+                                            value = "집계 완료: 9911573f-8a1d-3b96-98b4-5a0def93513b"
                                     )
                             )
                     ),

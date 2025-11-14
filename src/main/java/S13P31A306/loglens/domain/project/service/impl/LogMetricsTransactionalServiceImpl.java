@@ -33,6 +33,7 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
     private final OpenSearchClient openSearchClient;
     private final LogMetricsTransactionHelper transactionHelper;
 
+
     @Override
     public void aggregateProjectMetricsIncremental(
             Project project,
@@ -63,7 +64,7 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
 
             log.info("{} Calculated {} heatmap cells", LOG_PREFIX, heatmapMetrics.size());
 
-            // 3. 독립적으로 저장 (외부 호출)
+            // 3. 독립적으로 저장
             boolean logMetricsSuccess = false;
             boolean heatmapMetricsSuccess = false;
 
@@ -74,7 +75,7 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
                     heatmapMetricsSuccess = true;
                     log.info("{} ✅ HeatmapMetrics 저장 성공: {} cells", LOG_PREFIX, heatmapMetrics.size());
                 } catch (Exception e) {
-                    log.error("{} ❌ HeatmapMetrics 저장 실패", LOG_PREFIX, e);
+                    log.error("{} ❌ HeatmapMetrics 저장 실패: projectId={}", LOG_PREFIX, project.getId(), e);
                 }
             } else {
                 heatmapMetricsSuccess = true;
@@ -87,9 +88,11 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
                     logMetricsSuccess = true;
                     log.info("{} ✅ LogMetrics 저장 성공: totalLogs={}", LOG_PREFIX, metrics.getTotalLogs());
                 } catch (Exception e) {
-                    log.error("{} ❌ LogMetrics 저장 실패", LOG_PREFIX, e);
+                    log.error("{} ❌ LogMetrics 저장 실패: projectId={}, totalLogs={}",
+                            LOG_PREFIX, project.getId(), metrics.getTotalLogs(), e);
                 }
             } else {
+                log.debug("{} LogMetrics totalLogs=0, 저장 스킵", LOG_PREFIX);
                 logMetricsSuccess = true;
             }
 
@@ -98,12 +101,12 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
                     LOG_PREFIX, project.getId(), elapsed,
                     metrics.getTotalLogs() - (previous != null ? previous.getTotalLogs() : 0),
                     heatmapMetrics.size(),
-                    logMetricsSuccess ? "성공" : "실패",
-                    heatmapMetricsSuccess ? "성공" : "실패");
+                    logMetricsSuccess ? "✅" : "❌",
+                    heatmapMetricsSuccess ? "✅" : "❌");
 
         } catch (Exception e) {
-            log.error("{} OpenSearch 집계 실패: projectId={}, from={}, to={}",
-                    LOG_PREFIX, project.getId(), from, to, e);
+            log.error("{} OpenSearch 집계 실패: projectId={}, from={}, to={}, 에러상세: {}",
+                    LOG_PREFIX, project.getId(), from, to, e.getMessage(), e);  // ← e 추가!
         }
     }
 
