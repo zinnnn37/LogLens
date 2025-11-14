@@ -13,6 +13,11 @@ import S13P31A306.loglens.domain.dashboard.service.ApiEndpointService;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
 import S13P31A306.loglens.domain.dashboard.service.HeatmapService;
 import S13P31A306.loglens.domain.dashboard.service.TopFrequentErrorsService;
+import S13P31A306.loglens.domain.project.entity.LogMetrics;
+import S13P31A306.loglens.domain.project.entity.Project;
+import S13P31A306.loglens.domain.project.repository.LogMetricsRepository;
+import S13P31A306.loglens.domain.project.repository.ProjectRepository;
+import S13P31A306.loglens.domain.project.service.LogMetricsTransactionalService;
 import S13P31A306.loglens.global.annotation.ValidUuid;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
@@ -27,6 +32,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
+
 @Slf4j
 @RestController
 @RequestMapping("/api")
@@ -39,6 +46,11 @@ public class DashboardController implements DashboardApi {
     private final TopFrequentErrorsService topFrequentErrorsService;
     private final ApiEndpointService apiEndpointService;
     private final HeatmapService heatmapService;
+
+    // TODO: 추후 삭제
+    private final ProjectRepository projectRepository;
+    private final LogMetricsRepository logMetricsRepository;
+    private final LogMetricsTransactionalService logMetricsTransactionalService;
 
     /**
      * 통계 개요 조회
@@ -179,6 +191,38 @@ public class DashboardController implements DashboardApi {
     ) {
         // PageResponse<AlertResponse> response = dashboardService.getAlertFeed(projectId, severity, isRead, page, size);
         return null;
+    }
+
+    /**
+     * [임시] 수동 메트릭 집계 - 배포 후 삭제 예정
+     */
+    @PostMapping("/admin/aggregate/{projectUuid}")
+    public ResponseEntity<String> manualAggregate(
+            @PathVariable String projectUuid
+    ) {
+        log.info("{} [임시] 수동 집계 시작: projectUuid={}", LOG_PREFIX, projectUuid);
+
+        try {
+            Project project = projectRepository.findByProjectUuid(projectUuid)
+                    .orElseThrow(() -> new RuntimeException("프로젝트 없음"));
+
+            LocalDateTime to = LocalDateTime.now();
+            LocalDateTime from = to.minusDays(90);
+
+            LogMetrics previous = logMetricsRepository
+                    .findTopByProjectIdOrderByAggregatedAtDesc(project.getId())
+                    .orElse(null);
+
+            logMetricsTransactionalService.aggregateProjectMetricsIncremental(
+                    project, from, to, previous
+            );
+
+            return ResponseEntity.ok("집계 완료: " + projectUuid);
+
+        } catch (Exception e) {
+            log.error("{} 집계 실패", LOG_PREFIX, e);
+            return ResponseEntity.status(500).body("실패: " + e.getMessage());
+        }
     }
 
 }

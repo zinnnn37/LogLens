@@ -76,37 +76,28 @@ public class DashboardServiceImpl implements DashboardService {
         }
 
         // 로그 수 집계
-        List<LogMetrics> logMetrics = logMetricsRepository.findByProjectIdAndAggregatedAtBetween(
-                projectId,
-                start,
-                end
-        );
+        LogMetrics latestMetrics = logMetricsRepository
+                .findTopByProjectIdOrderByAggregatedAtDesc(projectId)
+                .orElse(null);
 
-        int totalLogs = logMetrics.stream()
-                .mapToInt(LogMetrics::getTotalLogs)
-                .sum();
+        int totalLogs = 0;
+        int infoLogs = 0;
+        int warnLogs = 0;
+        int errorLogs = 0;
+        int avgResponseTime = 0;
 
-        int infoLogs = logMetrics.stream()
-                .mapToInt(LogMetrics::getInfoLogs)
-                .sum();
+        if (Objects.isNull(latestMetrics)) {
+            log.warn("{} 대시보드 통계 정보가 없습니다",  LOG_PREFIX);
+        } else {
+            totalLogs = latestMetrics.getTotalLogs();
+            infoLogs = latestMetrics.getInfoLogs();
+            warnLogs = latestMetrics.getWarnLogs();
+            errorLogs = latestMetrics.getErrorLogs();
+            avgResponseTime = latestMetrics.getAvgResponseTime();
 
-        int warnLogs = logMetrics.stream()
-                .mapToInt(LogMetrics::getWarnLogs)
-                .sum();
-
-        int errorLogs = logMetrics.stream()
-                .mapToInt(LogMetrics::getErrorLogs)
-                .sum();
-
-        // 평균 응답 시간
-        int avgResponseTime = (int) logMetrics.stream()
-                .mapToInt(LogMetrics::getAvgResponseTime)
-                .filter(time -> time > 0)
-                .average()
-                .orElse(0.0);
-
-        log.info("{} 대시보드 통계 개요 조회 완료: totalLogs={}, errorLogs={}, avgResponseTime={}",
-                LOG_PREFIX, totalLogs, errorLogs, avgResponseTime);
+            log.info("{} 대시보드 통계 개요 조회 완료: totalLogs={}, errorLogs={}, avgResponseTime={}",
+                    LOG_PREFIX, totalLogs, errorLogs, avgResponseTime);
+        }
 
         return DashboardOverviewResponse.builder()
                 .projectUuid(projectUuid)
