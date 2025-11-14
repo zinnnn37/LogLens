@@ -145,12 +145,18 @@ class LogCollector {
     const ipAddress = await getClientIp();
 
     try {
+      const headers: Record<string, string> = {
+        'LogLens-IP': ipAddress || '',
+        'Content-Type': 'application/json',
+      };
+
+      if (logsToSend[0]?.traceId) {
+        headers['X-Trace-Id'] = logsToSend[0].traceId;
+      }
+
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'LogLens-IP': ipAddress || '',
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ logs: maskedLogs }),
       });
 
