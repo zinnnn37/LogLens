@@ -9,8 +9,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.FieldValue;
-import org.opensearch.client.opensearch._types.Script;
 import org.opensearch.client.opensearch._types.aggregations.Aggregate;
+import org.opensearch.client.opensearch._types.aggregations.CalendarInterval;
 import org.opensearch.client.opensearch._types.aggregations.CompositeAggregationSource;
 import org.opensearch.client.opensearch._types.aggregations.CompositeBucket;
 import org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
@@ -19,16 +19,14 @@ import org.opensearch.client.opensearch.core.SearchResponse;
 import org.opensearch.client.json.JsonData;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
 
 import static S13P31A306.loglens.global.constants.GlobalErrorCode.OPENSEARCH_OPERATION_FAILED;
 
-/**
- * 로그 메트릭 집계의 트랜잭션 처리를 담당하는 서비스
- * OpenSearch 조회는 트랜잭션 밖에서 수행하고, DB 저장만 트랜잭션으로 처리
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -36,7 +34,7 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
 
     private static final String LOG_PREFIX = "[LogMetricsTransactionalService]";
     private static final String DEFAULT_TIMEZONE = "Asia/Seoul";
-    private static final int HEATMAP_AGGREGATION_SIZE = 168;  // 7일 * 24시간
+    private static final int HEATMAP_AGGREGATION_SIZE = 200;
 
     private final OpenSearchClient openSearchClient;
     private final LogMetricsTransactionHelper transactionHelper;
@@ -53,17 +51,14 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
         try {
             String indexPattern = getProjectIndexPattern(project.getProjectUuid());
 
-            // 1. LogMetrics 집계
             SearchRequest logMetricsRequest = buildLogMetricsRequest(indexPattern, from, to);
             SearchResponse<Void> logMetricsResponse = openSearchClient.search(logMetricsRequest, Void.class);
             LogMetrics metrics = calculateCumulativeMetrics(logMetricsResponse, project, to, previous);
 
-            // 2. HeatmapMetrics 집계
             SearchRequest heatmapRequest = buildHeatmapRequest(indexPattern, from, to, project.getId());
             SearchResponse<Void> heatmapResponse = openSearchClient.search(heatmapRequest, Void.class);
             List<HeatmapMetrics> heatmapMetrics = calculateHeatmapMetrics(heatmapResponse, project, to);
 
-            // 3. DB 저장 (한 번에)
             transactionHelper.saveMetrics(metrics, heatmapMetrics);
 
             long elapsed = System.currentTimeMillis() - startTime;
@@ -79,9 +74,6 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
         }
     }
 
-    /**
-     * LogMetrics용 OpenSearch 검색 요청 생성
-     */
     private SearchRequest buildLogMetricsRequest(String indexPattern, LocalDateTime from, LocalDateTime to) {
         return SearchRequest.of(s -> s
                 .index(indexPattern)
@@ -126,9 +118,6 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
         );
     }
 
-    /**
-     * HeatmapMetrics용 OpenSearch 검색 요청 생성
-     */
     private SearchRequest buildHeatmapRequest(String indexPattern, LocalDateTime from, LocalDateTime to, Integer projectId) {
         return SearchRequest.of(s -> s
                 .index(indexPattern)
@@ -142,22 +131,22 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
                     ));
                     return b;
                 }))
-                .aggregations("by_day_and_hour", a -> a
+                .aggregations("by_date_and_hour", a -> a
                         .composite(c -> {
                             Map<String, CompositeAggregationSource> sources = new LinkedHashMap<>();
-                            sources.put("day_of_week", CompositeAggregationSource.of(cas -> cas
-                                    .terms(t -> t.script(Script.of(sc -> sc
-                                            .inline(i -> i.source(
-                                                    "doc['timestamp'].value.withZoneSameInstant(ZoneId.of('" + DEFAULT_TIMEZONE + "')).getDayOfWeek()"
-                                            ))
-                                    )))
+                            sources.put("date", CompositeAggregationSource.of(cas -> cas
+                                    .dateHistogram(dh -> dh
+                                            .field("timestamp")
+                                            .fixedInterval(fi -> fi.time("1d"))
+                                            .timeZone(DEFAULT_TIMEZONE)
+                                    )
                             ));
-                            sources.put("hour_of_day", CompositeAggregationSource.of(cas -> cas
-                                    .terms(t -> t.script(Script.of(sc -> sc
+                            sources.put("hour", CompositeAggregationSource.of(cas -> cas
+                                    .terms(t -> t.script(script -> script
                                             .inline(i -> i.source(
                                                     "doc['timestamp'].value.withZoneSameInstant(ZoneId.of('" + DEFAULT_TIMEZONE + "')).getHour()"
                                             ))
-                                    )))
+                                    ))
                             ));
                             return c.size(HEATMAP_AGGREGATION_SIZE).sources(sources);
                         })
@@ -171,9 +160,6 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
         );
     }
 
-    /**
-     * HeatmapMetrics 계산
-     */
     private List<HeatmapMetrics> calculateHeatmapMetrics(
             SearchResponse<Void> response,
             Project project,
@@ -181,14 +167,18 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
 
         List<HeatmapMetrics> result = new ArrayList<>();
 
-        Aggregate byDayAndHour = response.aggregations().get("by_day_and_hour");
-        if (Objects.isNull(byDayAndHour) || Objects.isNull(byDayAndHour.composite())) {
+        Aggregate byDateAndHour = response.aggregations().get("by_date_and_hour");
+        if (Objects.isNull(byDateAndHour) || Objects.isNull(byDateAndHour.composite())) {
             return result;
         }
 
-        for (CompositeBucket bucket : byDayAndHour.composite().buckets().array()) {
-            Integer dayOfWeek = Integer.parseInt(bucket.key().get("day_of_week").toString());
-            Integer hour = Integer.parseInt(bucket.key().get("hour_of_day").toString());
+        for (CompositeBucket bucket : byDateAndHour.composite().buckets().array()) {
+            long dateMillis = Long.parseLong(bucket.key().get("date").toString());
+            LocalDate date = Instant.ofEpochMilli(dateMillis)
+                    .atZone(ZoneId.of(DEFAULT_TIMEZONE))
+                    .toLocalDate();
+
+            Integer hour = Integer.parseInt(bucket.key().get("hour").toString());
 
             Double totalCountDouble = bucket.aggregations().get("total_count").valueCount().value();
             Integer totalCount = (totalCountDouble != null && !totalCountDouble.isNaN())
@@ -198,7 +188,7 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
 
             HeatmapMetrics heatmap = HeatmapMetrics.builder()
                     .project(project)
-                    .dayOfWeek(dayOfWeek)
+                    .date(date)
                     .hour(hour)
                     .totalCount(totalCount)
                     .errorCount(levelCounts.getOrDefault("ERROR", 0))
@@ -213,9 +203,6 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
         return result;
     }
 
-    /**
-     * 로그 레벨별 카운트 파싱
-     */
     private Map<String, Integer> parseLevelCounts(Aggregate byLevel) {
         Map<String, Integer> counts = new HashMap<>();
         if (Objects.isNull(byLevel) || Objects.isNull(byLevel.sterms())) {

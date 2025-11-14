@@ -18,7 +18,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 로그 메트릭 집계를 관리하는 서비스
- * 동시성 제어 및 집계 조건 검증을 담당합니다.
  */
 @Slf4j
 @Service
@@ -27,7 +26,6 @@ public class LogMetricsServiceImpl implements LogMetricsService {
 
     private static final String LOG_PREFIX = "[LogMetricsService]";
 
-    private final ProjectRepository projectRepository;
     private final LogMetricsRepository logMetricsRepository;
     private final LogMetricsTransactionalService transactionalService;
     private final ProjectValidator projectValidator;
@@ -39,7 +37,7 @@ public class LogMetricsServiceImpl implements LogMetricsService {
         ReentrantLock lock = projectLocks.computeIfAbsent(projectId, k -> new ReentrantLock());
 
         if (!lock.tryLock()) {
-            log.info("{} Project {} is already being aggregated, skipping", LOG_PREFIX, projectId);
+            log.info("{} 프로젝트 이미 집계 중, 스킵: projectId={}", LOG_PREFIX, projectId);
             return;
         }
 
@@ -56,19 +54,26 @@ public class LogMetricsServiceImpl implements LogMetricsService {
 
             LocalDateTime now = LocalDateTime.now();
 
-            // 1분 이상 차이나면 업데이트
+            // 1분 이상 경과 시에만 증분 집계
             if (lastAggregatedAt.isBefore(now.minusMinutes(1))) {
-                transactionalService.aggregateProjectMetricsIncremental(project, lastAggregatedAt, now, previous);
-                log.info("{} Incremental aggregation completed for project {} (from: {}, to: {})",
+                log.info("{} 온디맨드 증분 집계 시작: projectId={}, from={}, to={}",
                         LOG_PREFIX, projectId, lastAggregatedAt, now);
+
+                transactionalService.aggregateProjectMetricsIncremental(
+                        project, lastAggregatedAt, now, previous
+                );
+
+                log.info("{} 온디맨드 증분 집계 완료: projectId={}", LOG_PREFIX, projectId);
             } else {
-                log.debug("{} Project {} was recently aggregated, skipping", LOG_PREFIX, projectId);
+                log.debug("{} 최근 집계됨, 스킵: projectId={}, lastAggregatedAt={}",
+                        LOG_PREFIX, projectId, lastAggregatedAt);
             }
 
         } catch (Exception e) {
-            log.error("{} Failed to aggregate metrics for project {}", LOG_PREFIX, projectId, e);
+            log.error("{} 온디맨드 집계 실패: projectId={}", LOG_PREFIX, projectId, e);
         } finally {
             lock.unlock();
         }
     }
+
 }
