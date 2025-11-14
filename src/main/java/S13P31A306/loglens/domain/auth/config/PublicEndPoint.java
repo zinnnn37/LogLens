@@ -35,6 +35,11 @@ public enum PublicEndPoint {
     DEPENDENCY("/api/dependencies/**"),
     H2("/h2-console/**"),
 
+    SUB_DOMAIN("https://*.loglens.co.kr"),
+    ALB_DOMAIN("https://*.ap-northeast-2.elb.amazonaws.com"),
+    BLUE_PORT("http://localhost:8080"),
+    GREEN_PORT("http://localhost:8081"),
+
     // Root
     ROOT("/");
 
