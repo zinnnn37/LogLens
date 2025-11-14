@@ -115,10 +115,9 @@ export const getLogTrend = async (
   params: LogTrendParams,
 ): Promise<LogTrendResponse> => {
   const response = await apiClient.get<LogTrendResponse>(
-    '/statistics/log-trend',
-    {
-      params,
-    },
+    API_PATH.LOGS_TREND,
+
+    params,
   );
 
   return response;
