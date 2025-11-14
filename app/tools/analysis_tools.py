@@ -873,3 +873,154 @@ async def analyze_single_log(
 
     except Exception as e:
         return f"❌ 예상치 못한 오류 발생: {str(e)}\n\n로그 분석 서비스에 일시적인 문제가 발생했을 수 있습니다. 잠시 후 다시 시도해주세요."
+
+
+@tool
+async def analyze_request_patterns(
+    project_uuid: str,
+    api_path: str,
+    time_hours: int = 24,
+    only_errors: bool = True
+) -> str:
+    """
+    요청 바디 패턴을 분석하여 공통 에러 원인을 찾습니다.
+
+    사용 시나리오: "이 API는 어떤 요청에서 에러나?", "특정 파라미터 값이 문제인가?", "null 값 때문에 에러나는 필드"
+    ⚠️ 1회 호출로 충분합니다. request_body가 없으면 분석 불가합니다.
+
+    Args:
+        api_path: API 경로 (필수, 예: "/api/users")
+        time_hours: 분석 기간 (기본 24시간)
+        only_errors: 에러만 분석 (기본 True)
+    """
+    index_pattern = f"{project_uuid.replace('-', '_')}_*"
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(hours=time_hours)
+
+    must_clauses = [
+        {"term": {"log_details.request_uri": api_path}},
+        {"exists": {"field": "log_details.request_body"}},
+        {"range": {"timestamp": {"gte": start_time.isoformat() + "Z", "lte": end_time.isoformat() + "Z"}}}
+    ]
+
+    if only_errors:
+        must_clauses.append({"term": {"level": "ERROR"}})
+
+    try:
+        results = opensearch_client.search(
+            index=index_pattern,
+            body={"size": 100, "query": {"bool": {"must": must_clauses}}, "sort": [{"timestamp": "desc"}],
+                  "_source": ["log_details.request_body", "log_details.http_method", "level", "message"]}
+        )
+
+        hits = results.get("hits", {}).get("hits", [])
+        if not hits:
+            return f"{api_path} API의 요청 데이터가 최근 {time_hours}시간 동안 없습니다.\n\n💡 확인: API 경로 정확성, request_body 로그 포함 여부"
+
+        # 필드별 null/값 분석
+        field_stats = {}
+        for hit in hits:
+            req_body = hit["_source"].get("log_details", {}).get("request_body")
+            if isinstance(req_body, dict):
+                for key, value in req_body.items():
+                    if key not in field_stats:
+                        field_stats[key] = {"total": 0, "null": 0, "values": []}
+                    field_stats[key]["total"] += 1
+                    if value is None or value == "":
+                        field_stats[key]["null"] += 1
+                    else:
+                        field_stats[key]["values"].append(str(value)[:50])
+
+        lines = [f"## 📋 {api_path} 요청 패턴 분석", f"**분석 샘플:** {len(hits)}건", ""]
+        if field_stats:
+            lines.extend(["### 필드별 통계", "", "| 필드 | 샘플 수 | Null 비율 |", "|------|---------|-----------|"])
+            for field, stats in sorted(field_stats.items()):
+                null_pct = (stats["null"] / stats["total"] * 100) if stats["total"] > 0 else 0
+                lines.append(f"| {field} | {stats['total']} | **{null_pct:.1f}%** |")
+            lines.append("")
+
+        lines.append("### ✅ 권장 조치\n")
+        high_null = [f for f, s in field_stats.items() if (s["null"]/s["total"]*100) > 30]
+        if high_null:
+            lines.append(f"1. **Null 검증 추가:** {', '.join(high_null[:3])}")
+        return "\n".join(lines)
+
+    except Exception as e:
+        return f"요청 패턴 분석 중 오류: {str(e)}"
+
+
+@tool
+async def analyze_response_failures(
+    project_uuid: str,
+    api_path: str,
+    time_hours: int = 24,
+    status_code_filter: Optional[int] = None
+) -> str:
+    """
+    응답 바디의 에러 메시지 패턴을 분석합니다.
+
+    사용 시나리오: "이 API는 주로 어떤 에러 메시지를 반환해?", "validation 에러 종류", "가장 많은 실패 원인"
+    ⚠️ 1회 호출로 충분합니다. response_body가 없으면 분석 불가합니다.
+
+    Args:
+        api_path: API 경로 (필수)
+        time_hours: 분석 기간 (기본 24시간)
+        status_code_filter: HTTP 상태 코드 필터 (선택)
+    """
+    index_pattern = f"{project_uuid.replace('-', '_')}_*"
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(hours=time_hours)
+
+    must_clauses = [
+        {"term": {"log_details.request_uri": api_path}},
+        {"exists": {"field": "log_details.response_body"}},
+        {"range": {"log_details.response_status": {"gte": 400}}},  # 에러 응답만
+        {"range": {"timestamp": {"gte": start_time.isoformat() + "Z", "lte": end_time.isoformat() + "Z"}}}
+    ]
+
+    if status_code_filter:
+        must_clauses.append({"term": {"log_details.response_status": status_code_filter}})
+
+    try:
+        results = opensearch_client.search(
+            index=index_pattern,
+            body={"size": 100, "query": {"bool": {"must": must_clauses}}, "sort": [{"timestamp": "desc"}],
+                  "_source": ["log_details.response_body", "log_details.response_status", "timestamp"]}
+        )
+
+        hits = results.get("hits", {}).get("hits", [])
+        if not hits:
+            return f"{api_path} API의 에러 응답 데이터가 최근 {time_hours}시간 동안 없습니다.\n\n💡 확인: 4xx/5xx 에러 발생 여부"
+
+        # 에러 메시지 집계
+        error_messages = {}
+        for hit in hits:
+            res_body = hit["_source"].get("log_details", {}).get("response_body")
+            status = hit["_source"].get("log_details", {}).get("response_status", 0)
+
+            error_msg = "Unknown"
+            if isinstance(res_body, dict):
+                # 다양한 에러 메시지 필드 탐색
+                for key in ["error", "message", "error_message", "detail", "errorMessage"]:
+                    if key in res_body:
+                        error_msg = str(res_body[key])[:200]
+                        break
+
+            key = f"{status}: {error_msg}"
+            error_messages[key] = error_messages.get(key, 0) + 1
+
+        lines = [f"## 🔴 {api_path} 실패 응답 분석", f"**분석 샘플:** {len(hits)}건", ""]
+        if error_messages:
+            lines.extend(["### 에러 메시지 빈도", "", "| 에러 메시지 | 빈도 |", "|-------------|------|"])
+            for msg, count in sorted(error_messages.items(), key=lambda x: x[1], reverse=True)[:15]:
+                lines.append(f"| {msg[:80]} | **{count}건** |")
+            lines.append("")
+
+        lines.append("### ✅ 권장 조치\n")
+        if error_messages:
+            top_error = max(error_messages.items(), key=lambda x: x[1])
+            lines.append(f"1. **가장 많은 에러 수정:** {top_error[0][:100]} ({top_error[1]}건)")
+        return "\n".join(lines)
+
+    except Exception as e:
+        return f"응답 실패 분석 중 오류: {str(e)}"

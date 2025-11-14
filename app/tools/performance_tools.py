@@ -497,3 +497,48 @@ async def get_traffic_by_time(
 
     except Exception as e:
         return f"트래픽 분석 중 오류 발생: {str(e)}"
+
+
+@tool
+async def analyze_http_error_matrix(
+    project_uuid: str,
+    time_hours: int = 168,
+    group_by_status: bool = True
+) -> str:
+    """HTTP 상태 코드별 엔드포인트 에러 매트릭스. 사용: "어떤 API가 500 에러를 많이 내?", "4xx vs 5xx 분포" ⚠️ 1회 호출 충분"""
+    from datetime import datetime, timedelta
+    from app.core.opensearch import opensearch_client
+    
+    index_pattern = f"{project_uuid.replace('-', '_')}_*"
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(hours=time_hours)
+    
+    try:
+        results = opensearch_client.search(index=index_pattern, body={
+            "size": 0,
+            "query": {"bool": {"must": [
+                {"range": {"timestamp": {"gte": start_time.isoformat()+"Z", "lte": end_time.isoformat()+"Z"}}},
+                {"exists": {"field": "log_details.request_uri"}},
+                {"range": {"log_details.response_status": {"gte": 400}}}]}},
+            "aggs": {"by_api": {"terms": {"field": "log_details.request_uri", "size": 20},
+                "aggs": {
+                    "status_4xx": {"filter": {"range": {"log_details.response_status": {"gte": 400, "lt": 500}}}},
+                    "status_5xx": {"filter": {"range": {"log_details.response_status": {"gte": 500, "lt": 600}}}}
+                }}}})
+        
+        buckets = results.get("aggregations", {}).get("by_api", {}).get("buckets", [])
+        if not buckets: return f"최근 {time_hours}시간 HTTP 에러 없음"
+        
+        lines = [f"## 🌐 HTTP 에러 매트릭스 (최근 {time_hours//24}일)", ""]
+        lines.extend(["| API | 4xx | 5xx | 합계 |", "|-----|-----|-----|------|"])
+        for b in buckets[:15]:
+            api = b.get("key", "")[:40]
+            c4xx = b.get("status_4xx", {}).get("doc_count", 0)
+            c5xx = b.get("status_5xx", {}).get("doc_count", 0)
+            total = c4xx + c5xx
+            emoji = "🔴" if c5xx > c4xx else "🟡"
+            lines.append(f"| {api} | {c4xx} | {c5xx} | {emoji} {total} |")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"HTTP 에러 매트릭스 분석 중 오류: {str(e)}"
+

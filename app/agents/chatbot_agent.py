@@ -12,20 +12,28 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import Tool
 
 from app.tools.search_tools import search_logs_by_keyword, search_logs_by_similarity, search_logs_advanced
-from app.tools.analysis_tools import get_log_statistics, get_recent_errors, correlate_logs, analyze_errors_unified, analyze_single_log
+from app.tools.analysis_tools import (
+    get_log_statistics, get_recent_errors, correlate_logs, analyze_errors_unified, analyze_single_log,
+    analyze_request_patterns, analyze_response_failures  # NEW
+)
 from app.tools.detail_tools import get_log_detail, get_logs_by_trace_id
-from app.tools.performance_tools import get_slowest_apis, get_traffic_by_time
+from app.tools.performance_tools import get_slowest_apis, get_traffic_by_time, analyze_http_error_matrix  # NEW
 from app.tools.monitoring_tools import (
     get_error_rate_trend,
     get_service_health_status,
     get_error_frequency_ranking,
     get_api_error_rates,
     get_affected_users_count,
-    detect_anomalies
+    detect_anomalies,
+    compare_source_types, analyze_logger_activity  # NEW
 )
 from app.tools.comparison_tools import compare_time_periods, detect_cascading_failures
 from app.tools.alert_tools import evaluate_alert_conditions, detect_resource_issues
 from app.tools.deployment_tools import analyze_deployment_impact
+# NEW: 신규 도구 파일 import
+from app.tools.user_tracking_tools import trace_user_session, analyze_parameter_distribution, trace_error_propagation
+from app.tools.architecture_tools import analyze_error_by_layer, trace_component_calls, get_hottest_methods
+from app.tools.pattern_detection_tools import cluster_stack_traces, detect_concurrency_issues, detect_recurring_errors, analyze_error_lifetime
 from app.core.config import settings
 
 
@@ -79,6 +87,21 @@ Final Answer: [Polite Korean explanation: 로그 분석 전문 AI, can help with
    - "연쇄 장애" → detect_cascading_failures
    - "리소스 이슈" → detect_resource_issues
    - "배포 영향" → analyze_deployment_impact
+   - "사용자별", "IP별", "IP 추적" → trace_user_session (NEW: IP 기반 세션)
+   - "레이어별", "Controller vs Service", "계층별" → analyze_error_by_layer (NEW: 아키텍처)
+   - "비슷한 에러", "같은 패턴", "중복 에러" → cluster_stack_traces (NEW: 클러스터링)
+   - "동시성", "데드락", "스레드 문제" → detect_concurrency_issues (NEW: 동시성)
+   - "HTTP 에러 매트릭스", "API 상태 코드" → analyze_http_error_matrix (NEW: HTTP)
+   - "컴포넌트 호출", "호출 순서", "요청 흐름" → trace_component_calls (NEW: trace_id 필요)
+   - "언제부터", "얼마나 오래", "미해결 에러" → analyze_error_lifetime (NEW: 생존 시간)
+   - "주기적", "매일 발생", "배치 에러" → detect_recurring_errors (NEW: 재발 주기)
+   - "핫스팟 메서드", "많이 실행된 메서드" → get_hottest_methods (NEW: 메서드 빈도)
+   - "FE vs BE", "프론트 vs 백엔드" → compare_source_types (NEW: Source Type)
+   - "로그 노이즈", "로거 활동" → analyze_logger_activity (NEW: 로거 분석)
+   - "요청 패턴", "request body" → analyze_request_patterns (NEW: API path 필요)
+   - "응답 패턴", "response error" → analyze_response_failures (NEW: API path 필요)
+   - "파라미터 분포", "파라미터 null" → analyze_parameter_distribution (NEW: class+method 필요)
+   - "에러 전파", "연쇄 에러 경로" → trace_error_propagation (NEW: log_id 필요)
 
 4️⃣ **Efficiency:** Use ONE broad query first → Analyze → If needed, 1-2 more refined calls (max 3-4 total)
 
@@ -448,6 +471,162 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
         params = {**kwargs, "project_uuid": project_uuid}
         return await analyze_single_log.ainvoke(params)
 
+    # NEW: 사용자 추적 도구 래퍼
+    async def _trace_user_session_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in trace_user_session: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await trace_user_session.ainvoke(params)
+
+    async def _analyze_parameter_distribution_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in analyze_parameter_distribution: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await analyze_parameter_distribution.ainvoke(params)
+
+    async def _trace_error_propagation_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in trace_error_propagation: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await trace_error_propagation.ainvoke(params)
+
+    # NEW: 아키텍처 분석 도구 래퍼
+    async def _analyze_error_by_layer_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in analyze_error_by_layer: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await analyze_error_by_layer.ainvoke(params)
+
+    async def _trace_component_calls_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in trace_component_calls: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await trace_component_calls.ainvoke(params)
+
+    async def _get_hottest_methods_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in get_hottest_methods: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await get_hottest_methods.ainvoke(params)
+
+    # NEW: 패턴 탐지 도구 래퍼
+    async def _cluster_stack_traces_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in cluster_stack_traces: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await cluster_stack_traces.ainvoke(params)
+
+    async def _detect_concurrency_issues_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in detect_concurrency_issues: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await detect_concurrency_issues.ainvoke(params)
+
+    async def _detect_recurring_errors_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in detect_recurring_errors: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await detect_recurring_errors.ainvoke(params)
+
+    async def _analyze_error_lifetime_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in analyze_error_lifetime: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await analyze_error_lifetime.ainvoke(params)
+
+    # NEW: 확장된 분석 도구 래퍼
+    async def _analyze_request_patterns_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in analyze_request_patterns: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await analyze_request_patterns.ainvoke(params)
+
+    async def _analyze_response_failures_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in analyze_response_failures: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await analyze_response_failures.ainvoke(params)
+
+    # NEW: 확장된 모니터링 도구 래퍼
+    async def _compare_source_types_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in compare_source_types: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await compare_source_types.ainvoke(params)
+
+    async def _analyze_logger_activity_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in analyze_logger_activity: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await analyze_logger_activity.ainvoke(params)
+
+    # NEW: 확장된 성능 분석 도구 래퍼
+    async def _analyze_http_error_matrix_wrapper(tool_input: str = "", **kwargs):
+        import json
+        if isinstance(tool_input, str) and tool_input:
+            try:
+                kwargs.update(json.loads(tool_input))
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON parsing error in analyze_http_error_matrix: {e}")
+        params = {**kwargs, "project_uuid": project_uuid}
+        return await analyze_http_error_matrix.ainvoke(params)
+
     # Tool 목록 (wrapper 함수 사용)
     tools: List[Tool] = [
         Tool(
@@ -592,6 +771,102 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
             description=analyze_single_log.description,
             func=_dummy_func,
             coroutine=_analyze_single_log_wrapper
+        ),
+        # NEW: 사용자 추적 도구
+        Tool(
+            name="trace_user_session",
+            description=trace_user_session.description,
+            func=_dummy_func,
+            coroutine=_trace_user_session_wrapper
+        ),
+        Tool(
+            name="analyze_parameter_distribution",
+            description=analyze_parameter_distribution.description,
+            func=_dummy_func,
+            coroutine=_analyze_parameter_distribution_wrapper
+        ),
+        Tool(
+            name="trace_error_propagation",
+            description=trace_error_propagation.description,
+            func=_dummy_func,
+            coroutine=_trace_error_propagation_wrapper
+        ),
+        # NEW: 아키텍처 분석 도구
+        Tool(
+            name="analyze_error_by_layer",
+            description=analyze_error_by_layer.description,
+            func=_dummy_func,
+            coroutine=_analyze_error_by_layer_wrapper
+        ),
+        Tool(
+            name="trace_component_calls",
+            description=trace_component_calls.description,
+            func=_dummy_func,
+            coroutine=_trace_component_calls_wrapper
+        ),
+        Tool(
+            name="get_hottest_methods",
+            description=get_hottest_methods.description,
+            func=_dummy_func,
+            coroutine=_get_hottest_methods_wrapper
+        ),
+        # NEW: 패턴 탐지 도구
+        Tool(
+            name="cluster_stack_traces",
+            description=cluster_stack_traces.description,
+            func=_dummy_func,
+            coroutine=_cluster_stack_traces_wrapper
+        ),
+        Tool(
+            name="detect_concurrency_issues",
+            description=detect_concurrency_issues.description,
+            func=_dummy_func,
+            coroutine=_detect_concurrency_issues_wrapper
+        ),
+        Tool(
+            name="detect_recurring_errors",
+            description=detect_recurring_errors.description,
+            func=_dummy_func,
+            coroutine=_detect_recurring_errors_wrapper
+        ),
+        Tool(
+            name="analyze_error_lifetime",
+            description=analyze_error_lifetime.description,
+            func=_dummy_func,
+            coroutine=_analyze_error_lifetime_wrapper
+        ),
+        # NEW: 확장된 분석 도구
+        Tool(
+            name="analyze_request_patterns",
+            description=analyze_request_patterns.description,
+            func=_dummy_func,
+            coroutine=_analyze_request_patterns_wrapper
+        ),
+        Tool(
+            name="analyze_response_failures",
+            description=analyze_response_failures.description,
+            func=_dummy_func,
+            coroutine=_analyze_response_failures_wrapper
+        ),
+        # NEW: 확장된 모니터링 도구
+        Tool(
+            name="compare_source_types",
+            description=compare_source_types.description,
+            func=_dummy_func,
+            coroutine=_compare_source_types_wrapper
+        ),
+        Tool(
+            name="analyze_logger_activity",
+            description=analyze_logger_activity.description,
+            func=_dummy_func,
+            coroutine=_analyze_logger_activity_wrapper
+        ),
+        # NEW: 확장된 성능 분석 도구
+        Tool(
+            name="analyze_http_error_matrix",
+            description=analyze_http_error_matrix.description,
+            func=_dummy_func,
+            coroutine=_analyze_http_error_matrix_wrapper
         ),
     ]
 

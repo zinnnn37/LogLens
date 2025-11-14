@@ -1170,3 +1170,75 @@ async def detect_anomalies(
 
     except Exception as e:
         return f"이상 탐지 분석 중 오류 발생: {str(e)}"
+
+
+@tool
+async def compare_source_types(
+    project_uuid: str,
+    time_hours: int = 24
+) -> str:
+    """FE/BE/INFRA 소스별 에러율 및 로그 분포 비교. 사용: "프론트엔드 vs 백엔드 에러 비교" ⚠️ 1회 호출 충분"""
+    from datetime import datetime, timedelta
+    from app.core.opensearch import opensearch_client
+    
+    index_pattern = f"{project_uuid.replace('-', '_')}_*"
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(hours=time_hours)
+    
+    try:
+        results = opensearch_client.search(index=index_pattern, body={
+            "size": 0, "query": {"range": {"timestamp": {"gte": start_time.isoformat()+"Z", "lte": end_time.isoformat()+"Z"}}},
+            "aggs": {"by_source": {"terms": {"field": "source_type", "size": 5}, 
+                "aggs": {"error_count": {"filter": {"term": {"level": "ERROR"}}}}}}})
+        
+        buckets = results.get("aggregations", {}).get("by_source", {}).get("buckets", [])
+        if not buckets: return f"최근 {time_hours}시간 로그 없음"
+        
+        lines = [f"## 📊 Source Type별 비교 (최근 {time_hours}시간)", ""]
+        lines.extend(["| Source | 총 로그 | 에러 | 에러율 |", "|--------|---------|------|--------|"])
+        for b in buckets:
+            src = b.get("key", "Unknown")
+            total = b.get("doc_count", 0)
+            errors = b.get("error_count", {}).get("doc_count", 0)
+            rate = (errors/total*100) if total > 0 else 0
+            lines.append(f"| {src} | {total} | {errors} | {rate:.1f}% |")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Source Type 비교 중 오류: {str(e)}"
+
+
+@tool
+async def analyze_logger_activity(
+    project_uuid: str,
+    time_hours: int = 24,
+    top_n: int = 10
+) -> str:
+    """로거별 활동량과 에러율을 분석. 사용: "어떤 클래스가 로그를 많이 남겨?", "로그 노이즈 많은 클래스" ⚠️ 1회 호출 충분"""
+    from datetime import datetime, timedelta
+    from app.core.opensearch import opensearch_client
+    
+    index_pattern = f"{project_uuid.replace('-', '_')}_*"
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(hours=time_hours)
+    
+    try:
+        results = opensearch_client.search(index=index_pattern, body={
+            "size": 0, "query": {"range": {"timestamp": {"gte": start_time.isoformat()+"Z", "lte": end_time.isoformat()+"Z"}}},
+            "aggs": {"by_logger": {"terms": {"field": "logger", "size": top_n}, 
+                "aggs": {"errors": {"filter": {"term": {"level": "ERROR"}}}}}}})
+        
+        buckets = results.get("aggregations", {}).get("by_logger", {}).get("buckets", [])
+        if not buckets: return f"최근 {time_hours}시간 로거 데이터 없음"
+        
+        lines = [f"## 📝 로거 활동 TOP {top_n}", ""]
+        lines.extend(["| 로거 | 로그 수 | 에러 | 평가 |", "|------|---------|------|------|"])
+        for b in buckets:
+            logger = b.get("key", "")[:50]
+            count = b.get("doc_count", 0)
+            errors = b.get("errors", {}).get("doc_count", 0)
+            noise = "🔊 높음" if count > 1000 else "낮음"
+            lines.append(f"| {logger} | {count} | {errors} | {noise} |")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"로거 활동 분석 중 오류: {str(e)}"
+
