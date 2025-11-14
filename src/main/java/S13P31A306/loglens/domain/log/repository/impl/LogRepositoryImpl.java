@@ -9,6 +9,7 @@ import S13P31A306.loglens.domain.log.dto.response.LogSummaryResponse;
 import S13P31A306.loglens.domain.log.entity.Log;
 import S13P31A306.loglens.domain.log.repository.LogRepository;
 import S13P31A306.loglens.domain.statistics.dto.internal.LogTrendAggregation;
+import S13P31A306.loglens.domain.statistics.dto.internal.TrafficAggregation;
 import S13P31A306.loglens.global.constants.GlobalErrorCode;
 import S13P31A306.loglens.global.exception.BusinessException;
 import S13P31A306.loglens.global.utils.OpenSearchUtils;
@@ -812,6 +813,126 @@ public class LogRepositoryImpl implements LogRepository {
         }
 
         for (StringTermsBucket bucket : byLevel.sterms().buckets().array()) {
+            counts.put(bucket.key(), (int) bucket.docCount());
+        }
+
+        return counts;
+    }
+
+    @Override
+    public List<TrafficAggregation> aggregateTrafficByTimeRange(
+            String projectUuid,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            String interval
+    ) {
+        log.info("{} Traffic 집계 시작: projectUuid={}, start={}, end={}, interval={}",
+                LOG_PREFIX, projectUuid, startTime, endTime, interval);
+
+        try {
+            // OpenSearchUtils로 인덱스 패턴 생성
+            String indexPattern = OpenSearchUtils.getProjectIndexPattern(projectUuid);
+            log.debug("{} 인덱스 패턴: {}", LOG_PREFIX, indexPattern);
+
+            // SearchRequest 생성
+            SearchRequest searchRequest = SearchRequest.of(s -> s
+                    .index(indexPattern)
+                    .size(0)  // 집계만 수행
+                    .query(q -> q.bool(b -> b
+                            // project_uuid 필터
+                            .filter(f -> f.term(t -> t
+                                    .field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
+                                    .value(FieldValue.of(projectUuid))
+                            ))
+                            // 시간 범위 필터
+                            .filter(f -> f.range(r -> r
+                                    .field(TIMESTAMP_FIELD)
+                                    .gte(JsonData.of(startTime.atZone(ZoneId.of("Asia/Seoul")).toInstant().toString()))
+                                    .lt(JsonData.of(endTime.atZone(ZoneId.of("Asia/Seoul")).toInstant().toString()))
+                            ))
+                    ))
+                    .aggregations("traffic_over_time", a -> a
+                            // Date Histogram aggregation
+                            .dateHistogram(dh -> dh
+                                    .field(TIMESTAMP_FIELD)
+                                    .fixedInterval(Time.of(t -> t.time(interval)))
+                                    .timeZone("Asia/Seoul")
+                                    .minDocCount(0)  // 로그가 없는 시간대도 포함
+                            )
+                            // source_type별 집계 (sub-aggregation)
+                            .aggregations("by_source_type", sub -> sub
+                                    .terms(t -> t
+                                            .field(OpenSearchField.SOURCE_TYPE.getFieldName())
+                                    )
+                            )
+                    )
+            );
+
+            // OpenSearch 쿼리 실행
+            SearchResponse<Void> response = openSearchClient.search(searchRequest, Void.class);
+
+            // 결과 파싱
+            List<TrafficAggregation> result = parseTrafficAggregation(response);
+
+            log.info("{} Traffic 집계 완료: projectUuid={}, 결과개수={}",
+                    LOG_PREFIX, projectUuid, result.size());
+
+            return result;
+
+        } catch (IOException e) {
+            log.error("{} Traffic 집계 중 오류 발생: projectUuid={}", LOG_PREFIX, projectUuid, e);
+            throw new BusinessException(GlobalErrorCode.OPENSEARCH_OPERATION_FAILED, null, e);
+        }
+    }
+
+    /**
+     * OpenSearch 집계 결과를 TrafficAggregation 리스트로 파싱
+     */
+    private List<TrafficAggregation> parseTrafficAggregation(SearchResponse<Void> response) {
+        List<TrafficAggregation> result = new ArrayList<>();
+
+        Aggregate trafficOverTime = response.aggregations().get("traffic_over_time");
+        if (Objects.isNull(trafficOverTime) || Objects.isNull(trafficOverTime.dateHistogram())) {
+            return result;
+        }
+
+        for (DateHistogramBucket bucket : trafficOverTime.dateHistogram().buckets().array()) {
+            // 타임스탬프 파싱
+            String timestampStr = bucket.keyAsString();
+            LocalDateTime timestamp = LocalDateTime.parse(
+                    timestampStr,
+                    DateTimeFormatter.ISO_OFFSET_DATE_TIME
+            );
+
+            // 전체 로그 수
+            int totalCount = (int) bucket.docCount();
+
+            // source_type별 집계 파싱
+            Map<String, Integer> sourceTypeCounts = parseSourceTypeCounts(bucket.aggregations().get("by_source_type"));
+
+            TrafficAggregation aggregation = new TrafficAggregation(
+                    timestamp,
+                    totalCount,
+                    sourceTypeCounts.getOrDefault("FE", 0),
+                    sourceTypeCounts.getOrDefault("BE", 0)
+            );
+
+            result.add(aggregation);
+        }
+
+        return result;
+    }
+
+    /**
+     * source_type별 집계 결과 파싱 (Traffic용)
+     */
+    private Map<String, Integer> parseSourceTypeCounts(Aggregate bySourceType) {
+        Map<String, Integer> counts = new HashMap<>();
+        if (Objects.isNull(bySourceType) || Objects.isNull(bySourceType.sterms())) {
+            return counts;
+        }
+
+        for (StringTermsBucket bucket : bySourceType.sterms().buckets().array()) {
             counts.put(bucket.key(), (int) bucket.docCount());
         }
 
