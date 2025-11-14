@@ -200,3 +200,51 @@ export interface LogDetailResponse {
 
 // 실시간 로그 스트리밍(SSE)
 export type LogStreamParams = LogSearchParams;
+
+// 로그발생추이 요청 파라미터
+export interface LogTrendParams {
+  projectUuid: string;
+}
+
+// 로그발생추이 응답
+
+/**
+ * 3시간 단위의 개별 로그 데이터 포인트
+ */
+export interface LogDataPoint {
+  timestamp: string; // "2025-11-13T15:00:00+09:00"
+  hour: string; // "15:00"
+  totalCount: number;
+  infoCount: number;
+  warnCount: number;
+  errorCount: number;
+}
+
+/**
+ * 조회 기간 (시작/종료)
+ */
+export interface LogPeriod {
+  startTime: string; // "2025-11-13T15:00:00+09:00"
+  endTime: string; // "2025-11-14T15:00:00+09:00"
+}
+
+/**
+ * 로그 추이 데이터 요약
+ */
+export interface LogTrendSummary {
+  totalLogs: number;
+  avgLogsPerInterval: number;
+  peakHour: string; // "12:00"
+  peakCount: number;
+}
+
+/**
+ * /api/statistics/log-trend 응답
+ */
+export interface LogTrendResponse {
+  projectUuid: string;
+  period: LogPeriod;
+  interval: string;
+  dataPoints: LogDataPoint[];
+  summary: LogTrendSummary;
+}

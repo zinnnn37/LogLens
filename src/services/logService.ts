@@ -13,6 +13,8 @@ import type {
   TraceLogsResponse,
   TraceFlowParams,
   TraceFlowResponse,
+  LogTrendParams,
+  LogTrendResponse,
 } from '@/types/log';
 
 /**
@@ -106,4 +108,17 @@ export const connectLogStream = (
   return new EventSourcePolyfill(url, {
     heartbeatTimeout: 3600000,
   });
+};
+
+// 로그 발생 추이 조회
+export const getLogTrend = async (
+  params: LogTrendParams,
+): Promise<LogTrendResponse> => {
+  const response = await apiClient.get<LogTrendResponse>(
+    API_PATH.LOGS_TREND,
+
+    params,
+  );
+
+  return response;
 };
