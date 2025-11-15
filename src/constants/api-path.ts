@@ -81,6 +81,10 @@ export const API_PATH = {
   // 로그 발생 추이 조회
   LOGS_TREND: '/api/statistics/log-trend',
 
+  // 트래픽 그래프
+  TRAFFIC: '/api/statistics/traffic',
+
+
   // 챗봇 스트리밍 API
   CHATBOT_STREAM: '/api/v2/chatbot/ask/stream',
 
