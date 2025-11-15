@@ -16,12 +16,15 @@ import {
   getDashboardOverview,
   getDashboardTopErrors,
   getLogHeatmap,
+  getDashboardApiStats,
 } from '@/services/dashboardService';
 import type {
   DashboardSummary,
   DashboardTopErrorsData,
   HeatmapResponse,
+  DashboardApiStatsData,
 } from '@/types/dashboard';
+import ApiStatsCard from '@/components/ApiStatsCard';
 
 const DashboardPage = () => {
   const { projectUuid } = useParams<{ projectUuid: string }>();
@@ -42,6 +45,11 @@ const DashboardPage = () => {
   const [heatmapData, setHeatmapData] = useState<HeatmapResponse | null>(null);
   const [heatmapLoading, setHeatmapLoading] = useState(true);
   const [heatmapError, setHeatmapError] = useState(false);
+
+  // API 호출 통계 상태
+  const [apiStats, setApiStats] = useState<DashboardApiStatsData | null>(null);
+  const [apiStatsLoading, setApiStatsLoading] = useState(true);
+  const [apiStatsError, setApiStatsError] = useState(false);
 
   useEffect(() => {
     if (!projectUuid) {
@@ -112,10 +120,28 @@ const DashboardPage = () => {
       }
     };
 
+    const fetchApiStats = async () => {
+      setApiStatsLoading(true);
+      setApiStatsError(false);
+      try {
+        const response = await getDashboardApiStats({
+          projectUuid,
+        });
+        setApiStats(response);
+      } catch (e) {
+        console.error('API 호출 통계 조회 실패:', e);
+        toast.error('API 호출 통계 정보를 불러오지 못했습니다.');
+        setApiStatsError(true);
+      } finally {
+        setApiStatsLoading(false);
+      }
+    };
+
     // API 동시 호출
     fetchOverview();
     fetchTopErrors();
     fetchHeatmap();
+    fetchApiStats();
   }, [projectUuid]);
 
   return (
@@ -180,10 +206,24 @@ const DashboardPage = () => {
           </div>
         )}
 
-        {/* 오른쪽 카드 자리 */}
-        <div className="flex min-h-[300px] items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-100">
-          <p className="text-gray-400">오른쪽 카드 예정</p>
-        </div>
+        {/* API 호출 통계 카드 */}
+        {apiStatsLoading ? (
+          <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-gray-500">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            API 호출 통계를 불러오는 중...
+          </div>
+        ) : apiStatsError ? (
+          <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-red-200 bg-red-50 text-red-500">
+            <AlertCircle className="mr-2 h-5 w-5" />
+            API 호출 통계를 불러올 수 없습니다.
+          </div>
+        ) : apiStats ? (
+          <ApiStatsCard data={apiStats} />
+        ) : (
+          <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-gray-500">
+            API 통계 데이터가 없습니다.
+          </div>
+        )}
       </div>
       <FloatingChecklist />
     </div>
