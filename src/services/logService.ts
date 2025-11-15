@@ -131,7 +131,7 @@ export const getTrafficGraph = async (
   params: TrafficGraphParams,
 ): Promise<TrafficGraphResponse> => {
   const response = await apiClient.get<TrafficGraphResponse>(
-    API_PATH.TRAFFIC, 
+    API_PATH.TRAFFIC,
     params,
   );
 

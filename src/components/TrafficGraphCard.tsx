@@ -6,7 +6,7 @@ import type { TrafficGraphResponse } from '@/types/log';
 import TrafficGraph from '@/components/TrafficGraph';
 
 const CardSkeleton = () => (
-  <div className="rounded-lg border bg-white p-6 shadow-sm animate-pulse">
+  <div className="animate-pulse rounded-lg border bg-white p-6 shadow-sm">
     <h2 className="mb-4 h-6 w-1/4 rounded bg-gray-200" />
     <div className="flex min-h-[250px] w-full rounded-md bg-gray-200" />
   </div>
@@ -106,7 +106,6 @@ const TrafficGraphCard: React.FC = () => {
       {/* 그래프 영역 */}
       <div className="flex min-h-[250px] w-full items-center justify-center rounded-md bg-gray-50">
         <TrafficGraph dataPoints={trafficData.dataPoints} />
-
       </div>
     </div>
   );
