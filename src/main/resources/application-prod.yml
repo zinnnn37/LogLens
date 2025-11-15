@@ -52,6 +52,7 @@ logging:
     org.hibernate.SQL: ERROR # Hibernate가 실행하는 SQL 로그 출력
     org.hibernate.type.descriptor.sql: ERROR # SQL 바인딩 파라미터 로그 출력
     org.springframework: INFO
+    a306.dependency_logger_starter: TRACE
   file:
     name: ./logs/be/app.log
 
