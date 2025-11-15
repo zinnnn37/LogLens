@@ -1,6 +1,6 @@
 spring:
   application:
-    name: demo
+    name: Loglens-test
 
   datasource:
     url: jdbc:h2:mem:testdb
@@ -31,7 +31,7 @@ logging:
 
 dependency:
   logger:
-    api-key: 48d96cd7-bf8d-38f5-891c-9c2f6430d871
+    api-key: a07b75f7-de74-3fe5-8039-185d5c59e83f
 
     collector:
       url: https://api.loglens.co.kr
