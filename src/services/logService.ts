@@ -15,6 +15,8 @@ import type {
   TraceFlowResponse,
   LogTrendParams,
   LogTrendResponse,
+  TrafficGraphParams,
+  TrafficGraphResponse,
 } from '@/types/log';
 
 /**
@@ -117,6 +119,19 @@ export const getLogTrend = async (
   const response = await apiClient.get<LogTrendResponse>(
     API_PATH.LOGS_TREND,
 
+    params,
+  );
+
+  return response;
+};
+
+// 트래픽 그래프
+
+export const getTrafficGraph = async (
+  params: TrafficGraphParams,
+): Promise<TrafficGraphResponse> => {
+  const response = await apiClient.get<TrafficGraphResponse>(
+    API_PATH.TRAFFIC, 
     params,
   );
 

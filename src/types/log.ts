@@ -248,3 +248,33 @@ export interface LogTrendResponse {
   dataPoints: LogDataPoint[];
   summary: LogTrendSummary;
 }
+
+// 트래픽 그래프
+export interface TrafficGraphParams{
+  projectUuid:string;
+}
+
+export interface TrafficDataPoint {
+  timestamp: string;
+  hour: string; 
+  totalCount: number;
+  feCount: number;
+  beCount: number;
+}
+
+export interface TrafficSummary {
+  totalLogs: number;
+  totalFeCount: number;
+  totalBeCount: number;
+  avgLogsPerInterval: number;
+  peakHour: string; 
+  peakCount: number;
+}
+
+export interface TrafficGraphResponse {
+  projectUuid: string;
+  period: LogPeriod; 
+  interval: string;
+  dataPoints: TrafficDataPoint[];
+  summary: TrafficSummary;
+}
