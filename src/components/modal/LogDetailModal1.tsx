@@ -41,7 +41,7 @@ const InfoRow = ({
 }) => (
   <div className="grid grid-cols-1 gap-1 md:grid-cols-4 md:gap-4">
     <span className="text-sm font-medium text-gray-500">{label}</span>
-    <span className="col-span-3 break-words font-mono text-sm text-gray-900">
+    <span className="col-span-3 font-mono text-sm break-words text-gray-900">
       {value}
     </span>
   </div>
@@ -56,17 +56,17 @@ const markdownStyles: Components = {
   ),
   li: ({ node, ...props }) => <li className="pl-1" {...props} />,
   h1: ({ node, ...props }) => (
-    <h1 className="mb-2 mt-4 text-xl font-bold" {...props} />
+    <h1 className="mt-4 mb-2 text-xl font-bold" {...props} />
   ),
   h2: ({ node, ...props }) => (
-    <h2 className="mb-2 mt-3 text-lg font-bold" {...props} />
+    <h2 className="mt-3 mb-2 text-lg font-bold" {...props} />
   ),
   h3: ({ node, ...props }) => (
-    <h3 className="text-md mb-1 mt-2 font-bold" {...props} />
+    <h3 className="text-md mt-2 mb-1 font-bold" {...props} />
   ),
   blockquote: ({ node, ...props }) => (
     <blockquote
-      className="border-l-4 border-gray-300 pl-4 italic text-gray-600"
+      className="border-l-4 border-gray-300 pl-4 text-gray-600 italic"
       {...props}
     />
   ),
@@ -162,7 +162,9 @@ const LogDetailModal1 = ({
 
   // LogDetail 마크다운
   const buildLogDetailText = (): string => {
-    if (!log.logDetails) { return ''; }
+    if (!log.logDetails) {
+      return '';
+    }
     return JSON.stringify(log.logDetails, null, 2)
       .slice(1, -1)
       .replace(/"/g, '')
@@ -171,7 +173,9 @@ const LogDetailModal1 = ({
 
   const handleCopyLogDetail = async () => {
     const text = buildLogDetailText();
-    if (!text) { return; }
+    if (!text) {
+      return;
+    }
 
     try {
       await navigator.clipboard.writeText(text);
@@ -256,15 +260,14 @@ const LogDetailModal1 = ({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="absolute right-2 top-2 h-7 w-7 p-0 shadow-none border-none 
-             hover:bg-transparent focus-visible:ring-0 outline-none"
+                      className="absolute top-2 right-2 h-7 w-7 border-none p-0 shadow-none outline-none hover:bg-transparent focus-visible:ring-0"
                       onClick={handleCopyLogDetail}
                     >
                       <Copy className="h-4 w-4 text-gray-600" />
                     </Button>
 
                     {/* 코드블록 */}
-                    <pre className="mt-6 whitespace-pre-wrap font-mono text-xs text-gray-900">
+                    <pre className="mt-6 font-mono text-xs whitespace-pre-wrap text-gray-900">
                       {buildLogDetailText()}
                     </pre>
                   </div>
