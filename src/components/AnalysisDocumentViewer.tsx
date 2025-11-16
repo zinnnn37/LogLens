@@ -1,7 +1,8 @@
 // AI 분석 문서 뷰어 컴포넌트
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { X, Download, Printer } from 'lucide-react';
+import { marked } from 'marked';
 import { exportAnalysisDocumentToPDF } from '@/utils/analysisDocumentPdfExport';
 import type { AnalysisDocumentResponse } from '@/types/analysis';
 
@@ -51,6 +52,54 @@ interface AnalysisDocumentViewerProps {
  * );
  * ```
  */
+// Markdown을 HTML로 변환하는 헬퍼 함수
+const processMarkdownInHtml = (htmlContent: string): string => {
+  // marked 옵션 설정
+  marked.setOptions({
+    breaks: true, // 줄바꿈을 <br>로 변환
+    gfm: true, // GitHub Flavored Markdown 지원
+  });
+
+  // HTML 파서를 사용하여 텍스트 노드에서 Markdown 변환
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlContent, 'text/html');
+
+  // Markdown 패턴을 포함할 수 있는 텍스트 노드 찾기
+  const textWalker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+
+  const nodesToProcess: { node: Text; parent: Element }[] = [];
+
+  let textNode: Text | null;
+  while ((textNode = textWalker.nextNode() as Text | null)) {
+    const text = textNode.textContent || '';
+    // Markdown 패턴 감지: **, ###, - [ ], 등
+    const hasMarkdown =
+      /\*\*[^*]+\*\*|###\s|##\s|#\s|- \[ \]|- \[x\]|\n- /.test(text);
+    if (hasMarkdown && textNode.parentElement) {
+      nodesToProcess.push({ node: textNode, parent: textNode.parentElement });
+    }
+  }
+
+  // Markdown을 HTML로 변환
+  nodesToProcess.forEach(({ node, parent }) => {
+    const markdownText = node.textContent || '';
+    const htmlResult = marked.parse(markdownText) as string;
+
+    // 새 HTML 요소 생성
+    const wrapper = doc.createElement('div');
+    wrapper.innerHTML = htmlResult;
+
+    // 기존 텍스트 노드를 새 HTML로 대체
+    const fragment = doc.createDocumentFragment();
+    while (wrapper.firstChild) {
+      fragment.appendChild(wrapper.firstChild);
+    }
+    parent.replaceChild(fragment, node);
+  });
+
+  return doc.documentElement.outerHTML;
+};
+
 export const AnalysisDocumentViewer: React.FC<AnalysisDocumentViewerProps> = ({
   document,
   onClose,
@@ -58,6 +107,19 @@ export const AnalysisDocumentViewer: React.FC<AnalysisDocumentViewerProps> = ({
 }) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Markdown을 HTML로 변환한 콘텐츠
+  const processedContent = useMemo(() => {
+    if (!document.content) {
+      return '';
+    }
+    try {
+      return processMarkdownInHtml(document.content);
+    } catch (error) {
+      console.error('Markdown 변환 실패:', error);
+      return document.content; // 실패 시 원본 반환
+    }
+  }, [document.content]);
 
   // ESC 키로 닫기
   useEffect(() => {
@@ -73,7 +135,7 @@ export const AnalysisDocumentViewer: React.FC<AnalysisDocumentViewerProps> = ({
 
   // PDF로 다운로드
   const handleDownloadPDF = async () => {
-    if (!document.content) {
+    if (!processedContent) {
       alert('다운로드할 문서 내용이 없습니다.');
       return;
     }
@@ -81,7 +143,7 @@ export const AnalysisDocumentViewer: React.FC<AnalysisDocumentViewerProps> = ({
     setIsDownloading(true);
     try {
       const fileName = `${document.documentMetadata.title.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
-      await exportAnalysisDocumentToPDF(document.content, fileName);
+      await exportAnalysisDocumentToPDF(processedContent, fileName);
     } catch (error) {
       console.error('PDF 다운로드 실패:', error);
       alert('PDF 다운로드 중 오류가 발생했습니다.');
@@ -167,10 +229,10 @@ export const AnalysisDocumentViewer: React.FC<AnalysisDocumentViewerProps> = ({
 
         {/* HTML 콘텐츠 영역 */}
         <div className="flex-1 overflow-hidden">
-          {document.content ? (
+          {processedContent ? (
             <iframe
               ref={iframeRef}
-              srcDoc={document.content}
+              srcDoc={processedContent}
               className="h-full w-full border-0"
               title="분석 문서"
               sandbox="allow-same-origin allow-scripts"
