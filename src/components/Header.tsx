@@ -7,6 +7,7 @@ import {
   Blocks,
   ChartColumnBig,
   Bell,
+  FileText,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { createProjectPath } from '@/router/route-path';
@@ -29,7 +30,13 @@ type HeaderProps = ComponentProps<'header'>;
 interface NavItem {
   label: string;
   icon: React.ElementType;
-  page: 'logs' | 'dashboard' | 'dependency-graph' | 'request-flow' | 'chatbot';
+  page:
+    | 'logs'
+    | 'dashboard'
+    | 'dependency-graph'
+    | 'request-flow'
+    | 'chatbot'
+    | 'documents';
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -42,6 +49,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { label: '요청 흐름', icon: Workflow, page: 'request-flow' },
   { label: 'AI Chat', icon: Bot, page: 'chatbot' },
+  { label: '문서 작성', icon: FileText, page: 'documents' },
 ];
 
 /** 개별 네비게이션 링크 */

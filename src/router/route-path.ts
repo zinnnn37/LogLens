@@ -11,6 +11,8 @@ export const ROUTE_PATH = {
   REQUEST_FLOW: '/project/:projectUuid/request-flow',
   // AI Chat은 프로젝트별로 구분
   AI_CHAT: '/project/:projectUuid/chatbot',
+  // 문서 관리
+  DOCUMENTS: '/project/:projectUuid/documents',
   DOCS: '/docs',
   NOT_FOUND: '*',
 } as const;
@@ -18,7 +20,13 @@ export const ROUTE_PATH = {
 // 동적 경로 생성 헬퍼 함수
 export const createProjectPath = (
   projectUuid: string,
-  page: 'logs' | 'dashboard' | 'dependency-graph' | 'request-flow' | 'chatbot',
+  page:
+    | 'logs'
+    | 'dashboard'
+    | 'dependency-graph'
+    | 'request-flow'
+    | 'chatbot'
+    | 'documents',
 ) => {
   return `/project/${projectUuid}/${page}`;
 };
