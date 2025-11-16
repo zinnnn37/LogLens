@@ -1,3 +1,5 @@
+// src/components/LogHeatmapCard.tsx
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { HeatmapResponse } from '@/types/dashboard';
 import {
@@ -11,8 +13,17 @@ interface LogHeatmapCardProps {
   data: HeatmapResponse;
 }
 
+const DEFAULT_DAYS = [
+  { dayOfWeek: 1, dayName: '월' },
+  { dayOfWeek: 2, dayName: '화' },
+  { dayOfWeek: 3, dayName: '수' },
+  { dayOfWeek: 4, dayName: '목' },
+  { dayOfWeek: 5, dayName: '금' },
+  { dayOfWeek: 6, dayName: '토' },
+  { dayOfWeek: 7, dayName: '일' },
+];
+
 const LogHeatmapCard = ({ data }: LogHeatmapCardProps) => {
-  // intensity 값에 따른 색상 반환
   const getIntensityColor = (intensity: number) => {
     if (intensity >= 0.8) {
       return 'bg-blue-600';
@@ -37,6 +48,41 @@ const LogHeatmapCard = ({ data }: LogHeatmapCardProps) => {
   // 시간대 레이블 (0, 6, 12, 18, 23 표시)
   const hourLabels = [0, 6, 12, 18, 23];
 
+  const normalizedHeatmap = useMemo(() => {
+    const raw = data.heatmap ?? [];
+
+    return DEFAULT_DAYS.map(defaultDay => {
+      const existingDay = raw.find(
+        d => Number(d.dayOfWeek) === defaultDay.dayOfWeek,
+      );
+
+      const hourlyData = Array.from({ length: 24 }, (_, hourIndex) => {
+        const existingHour = existingDay?.hourlyData.find(
+          h => Number(h.hour) === hourIndex,
+        );
+
+        if (existingHour) {
+          return existingHour;
+        }
+
+        return {
+          hour: String(hourIndex),
+          count: 0,
+          errorCount: 0,
+          warnCount: 0,
+          infoCount: 0,
+          intensity: 0,
+        };
+      });
+
+      return {
+        dayOfWeek: existingDay?.dayOfWeek ?? String(defaultDay.dayOfWeek),
+        dayName: existingDay?.dayName ?? defaultDay.dayName,
+        hourlyData,
+      };
+    });
+  }, [data]);
+
   return (
     <Card className="h-full">
       <CardHeader>
@@ -47,7 +93,7 @@ const LogHeatmapCard = ({ data }: LogHeatmapCardProps) => {
           <div className="space-y-2">
             {/* 시간 레이블 */}
             <div className="flex items-center gap-2">
-              <div className="w-12"></div>
+              <div className="w-12" />
               <div className="flex flex-1 gap-0.5">
                 {Array.from({ length: 24 }).map((_, hour) => (
                   <div
@@ -63,7 +109,7 @@ const LogHeatmapCard = ({ data }: LogHeatmapCardProps) => {
             </div>
 
             {/* 히트맵 */}
-            {data.heatmap.map(day => (
+            {normalizedHeatmap.map(day => (
               <div key={day.dayOfWeek} className="flex items-center gap-3">
                 {/* 요일 레이블 */}
                 <div className="w-12 text-xs font-medium text-gray-700">
@@ -79,7 +125,7 @@ const LogHeatmapCard = ({ data }: LogHeatmapCardProps) => {
                           className={`h-6 flex-1 rounded-sm ${getIntensityColor(
                             hourData.intensity,
                           )} group relative cursor-pointer transition-all hover:ring-2 hover:ring-blue-700`}
-                        ></div>
+                        />
                       </TooltipTrigger>
                       <TooltipContent>
                         <div className="mb-1 font-semibold">
@@ -108,12 +154,12 @@ const LogHeatmapCard = ({ data }: LogHeatmapCardProps) => {
             <div className="flex items-center justify-center gap-2 border-t pt-3">
               <span className="text-xs text-gray-500">적음</span>
               <div className="flex gap-1">
-                <div className="h-4 w-4 rounded-sm bg-gray-100"></div>
-                <div className="h-4 w-4 rounded-sm bg-blue-100"></div>
-                <div className="h-4 w-4 rounded-sm bg-blue-300"></div>
-                <div className="h-4 w-4 rounded-sm bg-blue-400"></div>
-                <div className="h-4 w-4 rounded-sm bg-blue-500"></div>
-                <div className="h-4 w-4 rounded-sm bg-blue-600"></div>
+                <div className="h-4 w-4 rounded-sm bg-gray-100" />
+                <div className="h-4 w-4 rounded-sm bg-blue-100" />
+                <div className="h-4 w-4 rounded-sm bg-blue-300" />
+                <div className="h-4 w-4 rounded-sm bg-blue-400" />
+                <div className="h-4 w-4 rounded-sm bg-blue-500" />
+                <div className="h-4 w-4 rounded-sm bg-blue-600" />
               </div>
               <span className="text-xs text-gray-500">많음</span>
             </div>
