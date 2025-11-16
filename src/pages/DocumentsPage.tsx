@@ -223,7 +223,7 @@ const DocumentsPage = () => {
     try {
       const response = await searchLogs({
         projectUuid,
-        logLevel: ['ERROR', 'FATAL'],
+        logLevel: ['ERROR'],
         size: 20,
         sort: 'TIMESTAMP,DESC',
       });
@@ -528,22 +528,14 @@ const DocumentsPage = () => {
                         type="button"
                         onClick={() => setLogIdInput(String(log.logId))}
                         className={`w-full border-b border-gray-200 p-3 text-left last:border-b-0 hover:bg-gray-50 ${
-                          logIdInput === String(log.logId)
-                            ? 'bg-blue-50'
-                            : ''
+                          logIdInput === String(log.logId) ? 'bg-blue-50' : ''
                         }`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium text-gray-900">
                             #{log.logId}
                           </span>
-                          <span
-                            className={`rounded px-2 py-0.5 text-xs font-semibold ${
-                              log.logLevel === 'FATAL'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-orange-100 text-orange-800'
-                            }`}
-                          >
+                          <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
                             {log.logLevel}
                           </span>
                         </div>
@@ -558,7 +550,7 @@ const DocumentsPage = () => {
                   </div>
                 )}
                 <p className="mt-2 text-xs text-gray-500">
-                  최근 20개의 에러/치명적 로그를 표시합니다.
+                  최근 20개의 에러 로그를 표시합니다.
                 </p>
               </div>
             )}

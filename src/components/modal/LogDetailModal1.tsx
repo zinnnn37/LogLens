@@ -11,7 +11,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, ScanSearch, Link2, Wand2, Copy, FileText } from 'lucide-react';
+import {
+  Loader2,
+  ScanSearch,
+  Link2,
+  Wand2,
+  Copy,
+  FileText,
+} from 'lucide-react';
 import { analyzeLogs } from '@/services/logService';
 import { getJiraConnectionStatus } from '@/services/jiraService';
 import type { LogData, LogAnalysisData } from '@/types/log';

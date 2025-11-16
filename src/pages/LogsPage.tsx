@@ -391,7 +391,9 @@ const LogsPage = () => {
         },
       });
 
-      toast.success('에러 분석 문서가 생성되었습니다. 문서 작성 페이지에서 확인하세요.');
+      toast.success(
+        '에러 분석 문서가 생성되었습니다. 문서 작성 페이지에서 확인하세요.',
+      );
       setIsLogDetailModalOpen(false);
     } catch (error) {
       console.error('에러 분석 문서 생성 실패:', error);
