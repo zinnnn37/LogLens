@@ -104,4 +104,17 @@ export const API_PATH = {
 
   // 알림 이력 조회
   ALERT_HISTORY: '/api/alerts/histories',
+
+  // 분석 문서 API
+  ANALYSIS_DOCUMENTS: (projectUuid: string) =>
+    `/api/analysis/projects/${projectUuid}/documents`,
+
+  ANALYSIS_DOCUMENT_DETAIL: (projectUuid: string, documentId: number) =>
+    `/api/analysis/projects/${projectUuid}/documents/${documentId}`,
+
+  ANALYSIS_PROJECT_REPORT: (projectUuid: string) =>
+    `/api/analysis/projects/${projectUuid}/reports`,
+
+  ANALYSIS_ERROR_REPORT: (logId: number) =>
+    `/api/analysis/errors/${logId}/reports`,
 } as const;

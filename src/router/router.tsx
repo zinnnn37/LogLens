@@ -13,6 +13,8 @@ import DashboardPage from '@/pages/DashboradPage';
 import DependencyGraphPage from '@/pages/DependencyGraphPage';
 import ChatbotPage from '@/pages/ChatbotPage';
 import Docs from '@/pages/Docs';
+import AnalysisTestPage from '@/pages/AnalysisTestPage';
+import DocumentsPage from '@/pages/DocumentsPage';
 
 export const router = createBrowserRouter([
   // 인증이 필요한 페이지들
@@ -51,6 +53,10 @@ export const router = createBrowserRouter([
             element: <ChatbotPage />,
           },
           {
+            path: ROUTE_PATH.DOCUMENTS,
+            element: <DocumentsPage />,
+          },
+          {
             path: ROUTE_PATH.DOCS,
             element: <Docs />,
           },
@@ -67,5 +73,10 @@ export const router = createBrowserRouter([
   {
     path: ROUTE_PATH.SIGNUP,
     element: <SignupPage />,
+  },
+  // 테스트 페이지 (개발용)
+  {
+    path: '/analysis-test',
+    element: <AnalysisTestPage />,
   },
 ]);
