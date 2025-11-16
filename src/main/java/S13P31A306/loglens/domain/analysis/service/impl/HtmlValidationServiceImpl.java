@@ -44,21 +44,22 @@ public class HtmlValidationServiceImpl implements HtmlValidationService {
         }
 
         try {
-            // 1. Jsoup으로 HTML 파싱
-            Document doc = Jsoup.parse(html);
-
-            // 2. 필수 태그 확인
-            if (doc.select("html").isEmpty()) {
+            // 1. 필수 태그 확인 (Jsoup 파싱 전 원본 HTML 검사 - Jsoup이 자동으로 태그 추가하기 때문)
+            String htmlLower = html.toLowerCase();
+            if (!htmlLower.contains("<html")) {
                 errors.add("Missing <html> tag");
             }
 
-            if (doc.select("body").isEmpty()) {
+            if (!htmlLower.contains("<body")) {
                 errors.add("Missing <body> tag");
             }
 
-            if (doc.select("head").isEmpty()) {
+            if (!htmlLower.contains("<head")) {
                 warnings.add("Missing <head> tag");
             }
+
+            // 2. Jsoup으로 HTML 파싱 (이후 검증용)
+            Document doc = Jsoup.parse(html);
 
             // 3. 타이틀 확인
             if (doc.select("title").isEmpty()) {

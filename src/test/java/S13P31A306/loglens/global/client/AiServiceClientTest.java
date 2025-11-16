@@ -206,23 +206,23 @@ class AiServiceClientTest {
 
             String responseBody = """
                     {
-                      "htmlContent": "<!DOCTYPE html><html><head><title>Test</title></head><body><h1>Report</h1></body></html>",
+                      "html_content": "<!DOCTYPE html><html><head><title>Test</title></head><body><h1>Report</h1></body></html>",
                       "metadata": {
-                        "wordCount": 1500,
-                        "estimatedReadingTime": "5분",
-                        "sectionsGenerated": ["executive_summary", "metrics_overview"],
-                        "chartsIncluded": ["error_timeline"],
-                        "cssLibrariesUsed": ["tailwindcss"],
-                        "jsLibrariesUsed": ["chartjs"],
-                        "generationTime": 8.5,
-                        "healthScore": 85,
-                        "criticalIssues": 2,
-                        "totalIssues": 10,
+                        "word_count": 1500,
+                        "estimated_reading_time": "5분",
+                        "sections_generated": ["executive_summary", "metrics_overview"],
+                        "charts_included": ["error_timeline"],
+                        "css_libraries_used": ["tailwindcss"],
+                        "js_libraries_used": ["chartjs"],
+                        "generation_time": 8.5,
+                        "health_score": 85,
+                        "critical_issues": 2,
+                        "total_issues": 10,
                         "recommendations": 5
                       },
-                      "validationStatus": {
-                        "isValidHtml": true,
-                        "hasRequiredSections": true,
+                      "validation_status": {
+                        "is_valid_html": true,
+                        "has_required_sections": true,
                         "warnings": []
                       }
                     }
@@ -309,22 +309,22 @@ class AiServiceClientTest {
 
             String responseBody = """
                     {
-                      "htmlContent": "<!DOCTYPE html><html><head><title>Error Analysis</title></head><body><h1>Error Report</h1></body></html>",
+                      "html_content": "<!DOCTYPE html><html><head><title>Error Analysis</title></head><body><h1>Error Report</h1></body></html>",
                       "metadata": {
-                        "wordCount": 800,
-                        "estimatedReadingTime": "3분",
-                        "sectionsGenerated": ["root_cause", "solutions"],
-                        "chartsIncluded": [],
-                        "cssLibrariesUsed": ["tailwindcss"],
-                        "jsLibrariesUsed": [],
-                        "generationTime": 5.2,
+                        "word_count": 800,
+                        "estimated_reading_time": "3분",
+                        "sections_generated": ["root_cause", "solutions"],
+                        "charts_included": [],
+                        "css_libraries_used": ["tailwindcss"],
+                        "js_libraries_used": [],
+                        "generation_time": 5.2,
                         "severity": "HIGH",
-                        "rootCause": "Null pointer dereference",
-                        "affectedUsers": 150
+                        "root_cause": "Null pointer dereference",
+                        "affected_users": 150
                       },
-                      "validationStatus": {
-                        "isValidHtml": true,
-                        "hasRequiredSections": true,
+                      "validation_status": {
+                        "is_valid_html": true,
+                        "has_required_sections": true,
                         "warnings": []
                       }
                     }
@@ -387,14 +387,14 @@ class AiServiceClientTest {
 
             String responseBody = """
                     {
-                      "htmlContent": "<!DOCTYPE html><html><head><title>Fixed</title></head><body>Content</body></html>",
+                      "html_content": "<!DOCTYPE html><html><head><title>Fixed</title></head><body>Content</body></html>",
                       "metadata": {
-                        "wordCount": 500,
-                        "generationTime": 3.0
+                        "word_count": 500,
+                        "generation_time": 3.0
                       },
-                      "validationStatus": {
-                        "isValidHtml": true,
-                        "hasRequiredSections": true,
+                      "validation_status": {
+                        "is_valid_html": true,
+                        "has_required_sections": true,
                         "warnings": []
                       }
                     }
@@ -429,13 +429,13 @@ class AiServiceClientTest {
 
             String responseBody = """
                     {
-                      "htmlContent": "<!DOCTYPE html><html><body>Fixed Error Report</body></html>",
+                      "html_content": "<!DOCTYPE html><html><body>Fixed Error Report</body></html>",
                       "metadata": {
                         "severity": "MEDIUM"
                       },
-                      "validationStatus": {
-                        "isValidHtml": true,
-                        "hasRequiredSections": true,
+                      "validation_status": {
+                        "is_valid_html": true,
+                        "has_required_sections": true,
                         "warnings": []
                       }
                     }

@@ -26,6 +26,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDateTime;
 import java.util.stream.Stream;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,6 +34,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
@@ -55,7 +57,7 @@ class AnalysisValidatorTest {
     @BeforeEach
     void setup() {
         userDetails = mock(UserDetails.class);
-        given(userDetails.getUsername()).willReturn("testuser");
+        lenient().when(userDetails.getUsername()).thenReturn("testuser");
     }
 
     @Nested
@@ -144,7 +146,10 @@ class AnalysisValidatorTest {
             ))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", AnalysisErrorCode.INVALID_TIME_RANGE)
-                    .hasMessageContaining("시작 시간이 종료 시간보다 늦을 수 없습니다");
+                    .satisfies(ex -> {
+                        BusinessException be = (BusinessException) ex;
+                        assertThat((String) be.getDetails()).contains("시작 시간이 종료 시간보다 늦을 수 없습니다");
+                    });
         }
 
         @Test
@@ -169,7 +174,10 @@ class AnalysisValidatorTest {
             ))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", AnalysisErrorCode.INVALID_TIME_RANGE)
-                    .hasMessageContaining("시간 범위는 최대 365일까지 가능합니다");
+                    .satisfies(ex -> {
+                        BusinessException be = (BusinessException) ex;
+                        assertThat((String) be.getDetails()).contains("시간 범위는 최대 365일까지 가능합니다");
+                    });
         }
 
         @Test
@@ -194,7 +202,10 @@ class AnalysisValidatorTest {
             ))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", AnalysisErrorCode.INVALID_TIME_RANGE)
-                    .hasMessageContaining("종료 시간은 현재 시간 이후일 수 없습니다");
+                    .satisfies(ex -> {
+                        BusinessException be = (BusinessException) ex;
+                        assertThat((String) be.getDetails()).contains("종료 시간은 현재 시간 이후일 수 없습니다");
+                    });
         }
 
         @Test
@@ -399,7 +410,10 @@ class AnalysisValidatorTest {
             ))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", AnalysisErrorCode.INVALID_OPTIONS)
-                    .hasMessageContaining("1~100 범위 내여야 합니다");
+                    .satisfies(ex -> {
+                        BusinessException be = (BusinessException) ex;
+                        assertThat((String) be.getDetails()).contains("1~100 범위 내여야 합니다");
+                    });
         }
 
         @Test
@@ -427,7 +441,10 @@ class AnalysisValidatorTest {
             ))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", AnalysisErrorCode.INVALID_OPTIONS)
-                    .hasMessageContaining("1~100 범위 내여야 합니다");
+                    .satisfies(ex -> {
+                        BusinessException be = (BusinessException) ex;
+                        assertThat((String) be.getDetails()).contains("1~100 범위 내여야 합니다");
+                    });
         }
     }
 }

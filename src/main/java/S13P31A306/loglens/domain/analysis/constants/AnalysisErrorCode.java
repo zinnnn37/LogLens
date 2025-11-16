@@ -17,6 +17,7 @@ public enum AnalysisErrorCode implements ErrorCode {
 
     LOG_NOT_FOUND("AN404-1", "로그를 찾을 수 없습니다", 404),
     PDF_FILE_NOT_FOUND("AN404-2", "PDF 파일이 존재하지 않거나 만료되었습니다", 404),
+    DOCUMENT_NOT_FOUND("AN404-3", "문서를 찾을 수 없습니다", 404),
 
     HTML_VALIDATION_FAILED("AN500-1", "HTML 검증에 실패했습니다", 500),
     AI_SERVICE_ERROR("AN500-2", "AI 서비스 오류가 발생했습니다", 500),

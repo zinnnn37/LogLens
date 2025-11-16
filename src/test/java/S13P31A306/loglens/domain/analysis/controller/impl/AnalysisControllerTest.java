@@ -61,7 +61,7 @@ public class AnalysisControllerTest {
     @MockitoBean
     private AnalysisValidator analysisValidator;
 
-    private static final String PROJECT_UUID = "test-project-uuid";
+    private static final String PROJECT_UUID = "550e8400-e29b-41d4-a716-446655440000";
     private static final Long LOG_ID = 123L;
 
     @Nested

@@ -8,6 +8,7 @@ import S13P31A306.loglens.domain.analysis.dto.request.ErrorAnalysisRequest;
 import S13P31A306.loglens.domain.analysis.dto.request.ProjectAnalysisRequest;
 import S13P31A306.loglens.domain.analysis.dto.response.AnalysisDocumentResponse;
 import S13P31A306.loglens.domain.analysis.mapper.AnalysisMapper;
+import S13P31A306.loglens.domain.analysis.repository.AnalysisDocumentRepository;
 import S13P31A306.loglens.domain.analysis.service.DocumentGenerationService;
 import S13P31A306.loglens.domain.dashboard.dto.response.DashboardOverviewResponse;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
@@ -77,6 +78,9 @@ class AnalysisServiceImplTest {
 
     @Mock
     private AnalysisMapper analysisMapper;
+
+    @Mock
+    private AnalysisDocumentRepository analysisDocumentRepository;
 
     private static final String PROJECT_UUID = "test-project-uuid";
     private static final Long LOG_ID = 123L;
@@ -419,6 +423,7 @@ class AnalysisServiceImplTest {
     @DisplayName("generateErrorAnalysisDocument 메서드 테스트")
     class GenerateErrorAnalysisDocumentTest {
 
+        private Project mockProject;
         private ErrorAnalysisRequest request;
         private Log mockLog;
         private LogDetailResponse mockAiAnalysis;
@@ -427,6 +432,10 @@ class AnalysisServiceImplTest {
 
         @BeforeEach
         void setUp() {
+            // Mock Project
+            mockProject = mock(Project.class);
+            when(mockProject.getId()).thenReturn(1);
+
             // Mock Log Entity
             mockLog = new Log();
             mockLog.setLogId(LOG_ID);
@@ -437,7 +446,7 @@ class AnalysisServiceImplTest {
             mockLog.setComponentName("UserService");
             mockLog.setTraceId(TRACE_ID);
 
-            // Mock AI Analysis Response
+        // Mock AI Analysis Response
             AiAnalysisDto aiAnalysisDto = AiAnalysisDto.builder()
                     .summary("Error summary")
                     .errorCause("NullPointerException")
@@ -483,6 +492,8 @@ class AnalysisServiceImplTest {
         @DisplayName("에러_분석_문서를_성공적으로_생성한다")
         void 에러_분석_문서를_성공적으로_생성한다() {
             // given
+            when(projectValidator.validateProjectExists(PROJECT_UUID))
+                    .thenReturn(mockProject);
             when(logRepository.findByLogId(LOG_ID, PROJECT_UUID))
                     .thenReturn(Optional.of(mockLog));
             when(logService.getLogDetail(LOG_ID, PROJECT_UUID))
@@ -520,6 +531,8 @@ class AnalysisServiceImplTest {
         @DisplayName("관련_로그_포함_옵션이_true면_관련_로그를_조회한다")
         void 관련_로그_포함_옵션이_true면_관련_로그를_조회한다() {
             // given
+            when(projectValidator.validateProjectExists(PROJECT_UUID))
+                    .thenReturn(mockProject);
             when(logRepository.findByLogId(LOG_ID, PROJECT_UUID))
                     .thenReturn(Optional.of(mockLog));
             when(logService.getLogDetail(LOG_ID, PROJECT_UUID))
@@ -556,6 +569,8 @@ class AnalysisServiceImplTest {
                             .build())
                     .build();
 
+            when(projectValidator.validateProjectExists(PROJECT_UUID))
+                    .thenReturn(mockProject);
             when(logRepository.findByLogId(LOG_ID, PROJECT_UUID))
                     .thenReturn(Optional.of(mockLog));
             when(logService.getLogDetail(LOG_ID, PROJECT_UUID))
@@ -585,6 +600,8 @@ class AnalysisServiceImplTest {
             logWithoutTrace.setComponentName("Service");
             logWithoutTrace.setTraceId(null); // traceId가 null
 
+            when(projectValidator.validateProjectExists(PROJECT_UUID))
+                    .thenReturn(mockProject);
             when(logRepository.findByLogId(LOG_ID, PROJECT_UUID))
                     .thenReturn(Optional.of(logWithoutTrace));
             when(logService.getLogDetail(LOG_ID, PROJECT_UUID))
@@ -605,6 +622,8 @@ class AnalysisServiceImplTest {
         @DisplayName("관련_로그_조회_실패_시에도_문서를_생성한다")
         void 관련_로그_조회_실패_시에도_문서를_생성한다() {
             // given
+            when(projectValidator.validateProjectExists(PROJECT_UUID))
+                    .thenReturn(mockProject);
             when(logRepository.findByLogId(LOG_ID, PROJECT_UUID))
                     .thenReturn(Optional.of(mockLog));
             when(logService.getLogDetail(LOG_ID, PROJECT_UUID))
@@ -632,6 +651,8 @@ class AnalysisServiceImplTest {
         @DisplayName("수집된_데이터에_에러_로그_정보가_포함된다")
         void 수집된_데이터에_에러_로그_정보가_포함된다() {
             // given
+            when(projectValidator.validateProjectExists(PROJECT_UUID))
+                    .thenReturn(mockProject);
             when(logRepository.findByLogId(LOG_ID, PROJECT_UUID))
                     .thenReturn(Optional.of(mockLog));
             when(logService.getLogDetail(LOG_ID, PROJECT_UUID))
@@ -666,6 +687,8 @@ class AnalysisServiceImplTest {
         @DisplayName("기존_분석_결과가_있으면_데이터에_포함한다")
         void 기존_분석_결과가_있으면_데이터에_포함한다() {
             // given
+            when(projectValidator.validateProjectExists(PROJECT_UUID))
+                    .thenReturn(mockProject);
             when(logRepository.findByLogId(LOG_ID, PROJECT_UUID))
                     .thenReturn(Optional.of(mockLog));
             when(logService.getLogDetail(LOG_ID, PROJECT_UUID))
@@ -712,6 +735,8 @@ class AnalysisServiceImplTest {
                     .downloadUrl("/api/analysis/downloads/test-file-id")
                     .build();
 
+            when(projectValidator.validateProjectExists(PROJECT_UUID))
+                    .thenReturn(mockProject);
             when(logRepository.findByLogId(LOG_ID, PROJECT_UUID))
                     .thenReturn(Optional.of(mockLog));
             when(logService.getLogDetail(LOG_ID, PROJECT_UUID))

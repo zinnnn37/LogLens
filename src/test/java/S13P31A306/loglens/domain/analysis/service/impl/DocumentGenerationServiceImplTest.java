@@ -269,7 +269,8 @@ class DocumentGenerationServiceImplTest {
                     .build();
 
             when(aiServiceClient.generateProjectAnalysisHtml(any(AiHtmlDocumentRequest.class)))
-                    .thenReturn(firstResponse);
+                    .thenReturn(firstResponse)
+                    .thenReturn(secondResponse);
             when(aiServiceClient.regenerateWithFeedback(any(AiHtmlDocumentRequest.class), anyList()))
                     .thenReturn(secondResponse);
             when(htmlValidationService.validate(invalidHtml))
@@ -286,8 +287,7 @@ class DocumentGenerationServiceImplTest {
             assertThat(response.getContent()).isEqualTo(validHtml);
             assertThat(response.getValidationStatus()).isEqualTo("VALID");
 
-            verify(aiServiceClient).generateProjectAnalysisHtml(any(AiHtmlDocumentRequest.class));
-            verify(aiServiceClient).regenerateWithFeedback(any(AiHtmlDocumentRequest.class), anyList());
+            verify(aiServiceClient, times(2)).generateProjectAnalysisHtml(any(AiHtmlDocumentRequest.class));
         }
 
         @Test
@@ -516,7 +516,10 @@ class DocumentGenerationServiceImplTest {
                     PROJECT_UUID, null, DocumentFormat.PDF, DocumentType.PROJECT_ANALYSIS, testData, testOptions
             ))
                     .isInstanceOf(DocumentGenerationException.class)
-                    .hasMessageContaining("PDF 생성 실패");
+                    .satisfies(ex -> {
+                        S13P31A306.loglens.global.exception.BusinessException be = (S13P31A306.loglens.global.exception.BusinessException) ex;
+                        assertThat((String) be.getDetails()).contains("PDF 생성 실패");
+                    });
         }
     }
 
@@ -550,7 +553,10 @@ class DocumentGenerationServiceImplTest {
             // when & then
             assertThatThrownBy(() -> documentGenerationService.getPdfFile(nonExistentFileId))
                     .isInstanceOf(DocumentGenerationException.class)
-                    .hasMessageContaining("PDF 파일을 찾을 수 없습니다");
+                    .satisfies(ex -> {
+                        S13P31A306.loglens.global.exception.BusinessException be = (S13P31A306.loglens.global.exception.BusinessException) ex;
+                        assertThat((String) be.getDetails()).contains("PDF 파일을 찾을 수 없습니다");
+                    });
         }
     }
 

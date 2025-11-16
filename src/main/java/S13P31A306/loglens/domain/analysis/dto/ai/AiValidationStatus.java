@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.analysis.dto.ai;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -20,16 +21,19 @@ public class AiValidationStatus {
     /**
      * 유효한 HTML 여부
      */
+    @JsonProperty("is_valid_html")
     private Boolean isValidHtml;
 
     /**
      * 필수 섹션 포함 여부
      */
+    @JsonProperty("has_required_sections")
     private Boolean hasRequiredSections;
 
     /**
      * 경고 메시지 목록
      */
     @Builder.Default
+    @JsonProperty("warnings")
     private List<String> warnings = new ArrayList<>();
 }

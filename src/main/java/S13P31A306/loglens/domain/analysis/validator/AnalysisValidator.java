@@ -137,4 +137,16 @@ public class AnalysisValidator {
 
         log.debug("Time range validation passed: {} ~ {}", startTime, endTime);
     }
+
+    /**
+     * 프로젝트 접근 권한만 검증 (문서 조회/삭제용)
+     */
+    public void validateProjectAccess(String projectUuid, UserDetails userDetails) {
+        log.debug("Validating project access: projectUuid={}", projectUuid);
+
+        Project project = projectValidator.validateProjectExists(projectUuid);
+        projectValidator.validateProjectAccess(project.getId());
+
+        log.debug("Project access validation passed: projectUuid={}", projectUuid);
+    }
 }

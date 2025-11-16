@@ -18,6 +18,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * 분석 문서 생성 API
@@ -103,5 +104,92 @@ public interface AnalysisApi {
             @Parameter(description = "파일 ID", required = true, example = "abc123-def456")
             @PathVariable
             String fileId
+    );
+
+    @Operation(
+            summary = "분석 문서 목록 조회",
+            description = "프로젝트별 생성된 분석 문서 목록을 페이지네이션으로 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "문서 목록 조회 성공",
+                    content = @Content(schema = @Schema(implementation = BaseResponse.class))
+            ),
+            @ApiResponse(responseCode = "403", description = "프로젝트 접근 권한 없음")
+    })
+    ResponseEntity<? extends BaseResponse> getAnalysisDocuments(
+            @Parameter(description = "프로젝트 UUID", required = true)
+            @PathVariable
+            @ValidUuid
+            String projectUuid,
+
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
+            @RequestParam(defaultValue = "0")
+            int page,
+
+            @Parameter(description = "페이지 크기", example = "10")
+            @RequestParam(defaultValue = "10")
+            int size,
+
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal
+            UserDetails userDetails
+    );
+
+    @Operation(
+            summary = "분석 문서 상세 조회",
+            description = "특정 분석 문서의 상세 내용을 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "문서 상세 조회 성공",
+                    content = @Content(schema = @Schema(implementation = BaseResponse.class))
+            ),
+            @ApiResponse(responseCode = "403", description = "프로젝트 접근 권한 없음"),
+            @ApiResponse(responseCode = "404", description = "문서를 찾을 수 없음")
+    })
+    ResponseEntity<? extends BaseResponse> getAnalysisDocumentById(
+            @Parameter(description = "프로젝트 UUID", required = true)
+            @PathVariable
+            @ValidUuid
+            String projectUuid,
+
+            @Parameter(description = "문서 ID", required = true, example = "1")
+            @PathVariable
+            Integer documentId,
+
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal
+            UserDetails userDetails
+    );
+
+    @Operation(
+            summary = "분석 문서 삭제",
+            description = "특정 분석 문서를 삭제합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "문서 삭제 성공",
+                    content = @Content(schema = @Schema(implementation = BaseResponse.class))
+            ),
+            @ApiResponse(responseCode = "403", description = "프로젝트 접근 권한 없음"),
+            @ApiResponse(responseCode = "404", description = "문서를 찾을 수 없음")
+    })
+    ResponseEntity<? extends BaseResponse> deleteAnalysisDocument(
+            @Parameter(description = "프로젝트 UUID", required = true)
+            @PathVariable
+            @ValidUuid
+            String projectUuid,
+
+            @Parameter(description = "문서 ID", required = true, example = "1")
+            @PathVariable
+            Integer documentId,
+
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal
+            UserDetails userDetails
     );
 }
