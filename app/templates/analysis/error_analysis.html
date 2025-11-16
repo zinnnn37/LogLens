@@ -156,6 +156,71 @@
             font-weight: 700;
             color: {{ '#ef4444' if style.color_scheme == 'red' else '#3b82f6' if style.color_scheme == 'blue' else '#10b981' }};
         }
+
+        /* Markdown rendered content styles */
+        .content-card h1, .content-card h2, .content-card h3 {
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        .content-card ul, .content-card ol {
+            padding-left: 24px;
+            margin: 12px 0;
+        }
+
+        .content-card li {
+            margin-bottom: 8px;
+        }
+
+        .content-card li input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .content-card strong {
+            font-weight: 700;
+            {%- if style.color_scheme == 'red' %}
+            color: #dc2626;
+            {%- elif style.color_scheme == 'blue' %}
+            color: #2563eb;
+            {%- else %}
+            color: #059669;
+            {%- endif %}
+        }
+
+        .content-card code {
+            {%- if style.dark_mode %}
+            background-color: #1a1a1a;
+            {%- else %}
+            background-color: #f3f4f6;
+            {%- endif %}
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .content-card pre {
+            {%- if style.dark_mode %}
+            background-color: #1a1a1a;
+            {%- else %}
+            background-color: #f3f4f6;
+            {%- endif %}
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        .content-card blockquote {
+            border-left: 4px solid {{ '#ef4444' if style.color_scheme == 'red' else '#3b82f6' if style.color_scheme == 'blue' else '#10b981' }};
+            padding-left: 16px;
+            margin: 12px 0;
+            {%- if style.dark_mode %}
+            color: #a0a0a0;
+            {%- else %}
+            color: #666;
+            {%- endif %}
+        }
     </style>
 </head>
 <body>
@@ -219,26 +284,21 @@
             {%- if existing_analysis.summary %}
             <div style="margin-bottom: 24px;">
                 <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">📋 요약</h3>
-                <p>{{ existing_analysis.summary }}</p>
+                <div>{{ existing_analysis.summary | markdown }}</div>
             </div>
             {%- endif %}
 
             {%- if existing_analysis.errorCause %}
             <div style="margin-bottom: 24px;">
                 <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">🔍 근본 원인 분석 (RCA)</h3>
-                <p>{{ existing_analysis.errorCause }}</p>
+                <div>{{ existing_analysis.errorCause | markdown }}</div>
             </div>
             {%- endif %}
 
             {%- if existing_analysis.solution %}
             <div class="solution-section">
                 <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">💡 해결 방안</h3>
-                {%- set solution_lines = existing_analysis.solution.split('\n') %}
-                {%- for line in solution_lines %}
-                {%- if line.strip() %}
-                <div class="solution-item">{{ line.strip() }}</div>
-                {%- endif %}
-                {%- endfor %}
+                <div>{{ existing_analysis.solution | markdown }}</div>
             </div>
             {%- endif %}
         </section>

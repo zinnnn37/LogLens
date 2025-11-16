@@ -9,6 +9,8 @@ import time
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from jinja2 import Environment, FileSystemLoader, Template
+import markdown
+from markupsafe import Markup
 
 from app.models.document import (
     AiHtmlDocumentRequest,
@@ -47,6 +49,7 @@ class HtmlDocumentService:
         # Add custom filters
         self.env.filters["format_number"] = self._format_number
         self.env.filters["format_percentage"] = self._format_percentage
+        self.env.filters["markdown"] = self._markdown_to_html
 
     async def generate_html_document(
         self, request: AiHtmlDocumentRequest
@@ -390,6 +393,33 @@ class HtmlDocumentService:
             return "0%"
         percentage = (value / total) * 100
         return f"{percentage:.1f}%"
+
+    @staticmethod
+    def _markdown_to_html(text: str) -> Markup:
+        """
+        Convert Markdown text to HTML
+
+        Args:
+            text: Markdown formatted text
+
+        Returns:
+            Markup: Safe HTML string (not escaped by Jinja2)
+        """
+        if not text:
+            return Markup("")
+
+        # Convert markdown to HTML with useful extensions
+        html = markdown.markdown(
+            text,
+            extensions=[
+                'extra',      # Tables, fenced code blocks, etc.
+                'nl2br',      # Convert newlines to <br>
+                'sane_lists', # Better list handling
+            ]
+        )
+
+        # Return as Markup to prevent auto-escaping
+        return Markup(html)
 
     async def _analyze_project_health(
         self, project_uuid: str, time_range: Dict[str, str], metrics: Dict[str, Any]
