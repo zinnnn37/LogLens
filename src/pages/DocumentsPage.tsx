@@ -7,6 +7,7 @@ import {
   Eye,
   RefreshCw,
   AlertCircle,
+  Download,
 } from 'lucide-react';
 import {
   generateProjectAnalysis,
@@ -176,6 +177,21 @@ const DocumentsPage = () => {
       console.error('문서 삭제 실패:', err);
       setError('문서 삭제에 실패했습니다.');
     }
+  };
+
+  // 문서 다운로드
+  const handleDownloadDocument = () => {
+    if (!selectedDocument) {
+      return;
+    }
+
+    const blob = new Blob([selectedDocument.content], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedDocument.title}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   // 날짜 포맷팅
@@ -490,15 +506,24 @@ const DocumentsPage = () => {
               <h3 className="text-lg font-semibold">
                 {selectedDocument.title}
               </h3>
-              <button
-                onClick={() => {
-                  setShowViewer(false);
-                  setSelectedDocument(null);
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                닫기
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleDownloadDocument}
+                  className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+                >
+                  <Download className="h-4 w-4" />
+                  다운로드
+                </button>
+                <button
+                  onClick={() => {
+                    setShowViewer(false);
+                    setSelectedDocument(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  닫기
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-auto p-4">
               <iframe
