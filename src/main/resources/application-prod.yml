@@ -2,6 +2,8 @@
 # 'production' 프로필 전용 설정
 # ===================================================================
 spring:
+  application:
+    name: [LogLens]
   # ===================================================================
   # 데이터 소스 설정 (DataSource Configuration)
   # ===================================================================
@@ -50,20 +52,6 @@ logging:
     org.hibernate.SQL: ERROR # Hibernate가 실행하는 SQL 로그 출력
     org.hibernate.type.descriptor.sql: ERROR # SQL 바인딩 파라미터 로그 출력
     org.springframework: INFO
+    a306.dependency_logger_starter: INFO
   file:
     name: ./logs/be/app.log
-
-dependency:
-  logger:
-    api-key: 48d96cd7-bf8d-38f5-891c-9c2f6430d871
-
-    collector:
-      url: https://api.loglens.co.kr
-    enabled: true
-
-    stacktrace:
-      max-lines: 3
-
-    frontend:
-      enabled: true
-      log-path: ./logs/fe/app.log
