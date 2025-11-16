@@ -47,15 +47,3 @@ logging:
     org.hibernate.SQL: ERROR # Hibernate가 실행하는 SQL 로그 출력
     org.hibernate.type.descriptor.sql: ERROR # SQL 바인딩 파라미터 로그 출력
     org.springframework.security: DEBUG
-
-
-dependency:
-  logger:
-    api-key: 831776ac-2d47-3e23-83b9-7619972f0cbf
-
-    collector:
-      url: https://api.loglens.co.kr
-    enabled: true
-
-    stacktrace:
-      max-lines: 3

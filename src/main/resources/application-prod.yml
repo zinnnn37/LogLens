@@ -55,18 +55,3 @@ logging:
     a306.dependency_logger_starter: INFO
   file:
     name: ./logs/be/app.log
-
-dependency:
-  logger:
-    api-key: 831776ac-2d47-3e23-83b9-7619972f0cbf
-
-    collector:
-      url: https://api.loglens.co.kr
-    enabled: true
-
-    stacktrace:
-      max-lines: 3
-
-    frontend:
-      enabled: true
-      log-path: ./logs/fe/app.log
