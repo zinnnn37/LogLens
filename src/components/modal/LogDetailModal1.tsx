@@ -11,10 +11,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, ScanSearch, Link2, Wand2 } from 'lucide-react';
+import { Loader2, ScanSearch, Link2, Wand2, Copy } from 'lucide-react';
 import { analyzeLogs } from '@/services/logService';
 import { getJiraConnectionStatus } from '@/services/jiraService';
 import type { LogData, LogAnalysisData } from '@/types/log';
+import { toast } from 'sonner';
 
 const InfoSection = ({
   title,
@@ -40,7 +41,7 @@ const InfoRow = ({
 }) => (
   <div className="grid grid-cols-1 gap-1 md:grid-cols-4 md:gap-4">
     <span className="text-sm font-medium text-gray-500">{label}</span>
-    <span className="col-span-3 font-mono text-sm break-words text-gray-900">
+    <span className="col-span-3 break-words font-mono text-sm text-gray-900">
       {value}
     </span>
   </div>
@@ -55,17 +56,17 @@ const markdownStyles: Components = {
   ),
   li: ({ node, ...props }) => <li className="pl-1" {...props} />,
   h1: ({ node, ...props }) => (
-    <h1 className="mt-4 mb-2 text-xl font-bold" {...props} />
+    <h1 className="mb-2 mt-4 text-xl font-bold" {...props} />
   ),
   h2: ({ node, ...props }) => (
-    <h2 className="mt-3 mb-2 text-lg font-bold" {...props} />
+    <h2 className="mb-2 mt-3 text-lg font-bold" {...props} />
   ),
   h3: ({ node, ...props }) => (
-    <h3 className="text-md mt-2 mb-1 font-bold" {...props} />
+    <h3 className="text-md mb-1 mt-2 font-bold" {...props} />
   ),
   blockquote: ({ node, ...props }) => (
     <blockquote
-      className="border-l-4 border-gray-300 pl-4 text-gray-600 italic"
+      className="border-l-4 border-gray-300 pl-4 italic text-gray-600"
       {...props}
     />
   ),
@@ -159,6 +160,28 @@ const LogDetailModal1 = ({
 
   const isErrorLevel = log.logLevel === 'ERROR';
 
+  // LogDetail 마크다운
+  const buildLogDetailText = (): string => {
+    if (!log.logDetails) { return ''; }
+    return JSON.stringify(log.logDetails, null, 2)
+      .slice(1, -1)
+      .replace(/"/g, '')
+      .trim();
+  };
+
+  const handleCopyLogDetail = async () => {
+    const text = buildLogDetailText();
+    if (!text) { return; }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('LogDetail 내용을 복사했습니다.');
+    } catch (e) {
+      console.error('클립보드 복사 실패:', e);
+      toast.error('복사에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
+
   const handleAnalyzeClick = async () => {
     if (!projectUuid || !log) {
       return;
@@ -222,16 +245,29 @@ const LogDetailModal1 = ({
               label="Duration"
               value={log.duration !== null ? `${log.duration}ms` : 'N/A'}
             />
+
             {log.logDetails && (
               <InfoRow
                 label="LogDetail"
                 value={
-                  <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                    {JSON.stringify(log.logDetails, null, 2)
-                      .slice(1, -1)
-                      .replace(/"/g, '')
-                      .trim()}
-                  </pre>
+                  <div className="relative rounded-md border bg-white p-3">
+                    {/* 복사 버튼 */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-2 top-2 h-7 w-7 p-0 shadow-none border-none 
+             hover:bg-transparent focus-visible:ring-0 outline-none"
+                      onClick={handleCopyLogDetail}
+                    >
+                      <Copy className="h-4 w-4 text-gray-600" />
+                    </Button>
+
+                    {/* 코드블록 */}
+                    <pre className="mt-6 whitespace-pre-wrap font-mono text-xs text-gray-900">
+                      {buildLogDetailText()}
+                    </pre>
+                  </div>
                 }
               />
             )}
