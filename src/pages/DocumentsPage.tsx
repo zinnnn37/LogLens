@@ -17,12 +17,14 @@ import {
   getAnalysisDocumentById,
   deleteAnalysisDocument,
 } from '@/services/analysisService';
+import { searchLogs } from '@/services/logService';
 import type {
   AnalysisDocumentSummary,
   AnalysisDocumentDetailResponse,
   PageResponse,
   DocumentFormat,
 } from '@/types/analysis';
+import type { LogData } from '@/types/log';
 
 const DocumentsPage = () => {
   const { projectUuid } = useParams<{ projectUuid: string }>();
@@ -48,6 +50,8 @@ const DocumentsPage = () => {
     'project',
   );
   const [logIdInput, setLogIdInput] = useState('');
+  const [errorLogs, setErrorLogs] = useState<LogData[]>([]);
+  const [loadingErrorLogs, setLoadingErrorLogs] = useState(false);
 
   // 문서 목록 조회
   const fetchDocuments = useCallback(async () => {
@@ -208,6 +212,38 @@ const DocumentsPage = () => {
       printWindow.print();
     }
   };
+
+  // 에러 로그 조회
+  const fetchErrorLogs = useCallback(async () => {
+    if (!projectUuid) {
+      return;
+    }
+
+    setLoadingErrorLogs(true);
+    try {
+      const response = await searchLogs({
+        projectUuid,
+        logLevel: ['ERROR', 'FATAL'],
+        size: 20,
+        sort: 'TIMESTAMP,DESC',
+      });
+
+      if ('logs' in response) {
+        setErrorLogs(response.logs);
+      }
+    } catch (err) {
+      console.error('에러 로그 조회 실패:', err);
+    } finally {
+      setLoadingErrorLogs(false);
+    }
+  }, [projectUuid]);
+
+  // 모달이 열릴 때 에러 로그 조회
+  useEffect(() => {
+    if (showGenerateModal && generateType === 'error') {
+      fetchErrorLogs();
+    }
+  }, [showGenerateModal, generateType, fetchErrorLogs]);
 
   // 날짜 포맷팅
   const formatDate = (dateString: string) => {
@@ -448,7 +484,7 @@ const DocumentsPage = () => {
 
       {/* 문서 생성 모달 */}
       {showGenerateModal && (
-        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-lg bg-white p-6">
             <h3 className="mb-4 text-lg font-semibold">문서 생성</h3>
 
@@ -471,15 +507,59 @@ const DocumentsPage = () => {
             {generateType === 'error' && (
               <div className="mb-4">
                 <label className="mb-2 block text-sm font-medium">
-                  로그 ID
+                  에러 로그 선택
                 </label>
-                <input
-                  type="number"
-                  value={logIdInput}
-                  onChange={e => setLogIdInput(e.target.value)}
-                  placeholder="에러 로그 ID를 입력하세요"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                />
+                {loadingErrorLogs ? (
+                  <div className="flex items-center justify-center py-4">
+                    <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
+                    <span className="ml-2 text-sm text-gray-500">
+                      에러 로그 조회 중...
+                    </span>
+                  </div>
+                ) : errorLogs.length === 0 ? (
+                  <div className="py-4 text-center text-sm text-gray-500">
+                    최근 에러 로그가 없습니다.
+                  </div>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-300">
+                    {errorLogs.map(log => (
+                      <button
+                        key={log.logId}
+                        type="button"
+                        onClick={() => setLogIdInput(String(log.logId))}
+                        className={`w-full border-b border-gray-200 p-3 text-left last:border-b-0 hover:bg-gray-50 ${
+                          logIdInput === String(log.logId)
+                            ? 'bg-blue-50'
+                            : ''
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-900">
+                            #{log.logId}
+                          </span>
+                          <span
+                            className={`rounded px-2 py-0.5 text-xs font-semibold ${
+                              log.logLevel === 'FATAL'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-orange-100 text-orange-800'
+                            }`}
+                          >
+                            {log.logLevel}
+                          </span>
+                        </div>
+                        <div className="mt-1 truncate text-xs text-gray-600">
+                          {log.message}
+                        </div>
+                        <div className="mt-1 text-xs text-gray-400">
+                          {new Date(log.timestamp).toLocaleString('ko-KR')}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="mt-2 text-xs text-gray-500">
+                  최근 20개의 에러/치명적 로그를 표시합니다.
+                </p>
               </div>
             )}
 
@@ -515,7 +595,7 @@ const DocumentsPage = () => {
 
       {/* 문서 뷰어 모달 */}
       {showViewer && selectedDocument && (
-        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
           <div className="flex h-[90vh] w-[90vw] flex-col rounded-lg bg-white">
             <div className="flex items-center justify-between border-b p-4">
               <h3 className="text-lg font-semibold">

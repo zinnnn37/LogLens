@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, ScanSearch, Link2, Wand2, Copy } from 'lucide-react';
+import { Loader2, ScanSearch, Link2, Wand2, Copy, FileText } from 'lucide-react';
 import { analyzeLogs } from '@/services/logService';
 import { getJiraConnectionStatus } from '@/services/jiraService';
 import type { LogData, LogAnalysisData } from '@/types/log';
@@ -110,6 +110,8 @@ export interface LogDetailModalProps {
   log: LogData | null;
   onGoToNextPage: () => void;
   onOpenJiraConnect: () => void;
+  onGenerateErrorDoc?: () => void;
+  isGeneratingDoc?: boolean;
 }
 
 const LogDetailModal1 = ({
@@ -118,6 +120,8 @@ const LogDetailModal1 = ({
   log,
   onGoToNextPage,
   onOpenJiraConnect,
+  onGenerateErrorDoc,
+  isGeneratingDoc = false,
 }: LogDetailModalProps) => {
   const { projectUuid } = useParams<{ projectUuid: string }>();
 
@@ -361,6 +365,22 @@ const LogDetailModal1 = ({
             <ScanSearch className="h-4 w-4" />
             요청 흐름 보기
           </Button>
+
+          {isErrorLevel && onGenerateErrorDoc && (
+            <Button
+              variant="outline"
+              onClick={onGenerateErrorDoc}
+              disabled={isGeneratingDoc}
+              className="gap-2 border-purple-600 text-purple-600 hover:bg-purple-50"
+            >
+              {isGeneratingDoc ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
+              {isGeneratingDoc ? '생성 중...' : '에러 분석 문서'}
+            </Button>
+          )}
 
           {isErrorLevel &&
             (isJiraLoading ? (

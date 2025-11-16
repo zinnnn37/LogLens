@@ -3,7 +3,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { searchLogs } from '@/services/logService'; // connectLogStream 추가할 것, 현재 서버 부하로 인해 잠시 삭제.
 import { createJiraIssue } from '@/services/jiraService';
+import { generateErrorAnalysis } from '@/services/analysisService';
 import type { LogData, LogSearchParams } from '@/types/log';
+import type { DocumentFormat } from '@/types/analysis';
 
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -54,6 +56,7 @@ const LogsPage = () => {
   const [isLogDetailModalOpen, setIsLogDetailModalOpen] = useState(false);
   const [modalPage, setModalPage] = useState<'page1' | 'page2'>('page1');
   const [isJiraConnectModalOpen, setIsJiraConnectModalOpen] = useState(false);
+  const [isGeneratingDoc, setIsGeneratingDoc] = useState(false);
 
   const fetchLogs = useCallback(
     async (isInitial: boolean, searchCriteria: SearchCriteria | null) => {
@@ -365,6 +368,39 @@ const LogsPage = () => {
     }
   };
 
+  /**
+   * 에러 분석 문서 생성
+   */
+  const handleGenerateErrorDoc = async () => {
+    if (!projectUuid || !selectedLog?.logId) {
+      toast.error('프로젝트 정보나 로그 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    setIsGeneratingDoc(true);
+    try {
+      await generateErrorAnalysis(selectedLog.logId, {
+        projectUuid,
+        format: 'HTML' as DocumentFormat,
+        options: {
+          includeRelatedLogs: true,
+          includeSimilarErrors: true,
+          includeImpactAnalysis: true,
+          includeCodeExamples: true,
+          maxRelatedLogs: 10,
+        },
+      });
+
+      toast.success('에러 분석 문서가 생성되었습니다. 문서 작성 페이지에서 확인하세요.');
+      setIsLogDetailModalOpen(false);
+    } catch (error) {
+      console.error('에러 분석 문서 생성 실패:', error);
+      toast.error('에러 분석 문서 생성에 실패했습니다.');
+    } finally {
+      setIsGeneratingDoc(false);
+    }
+  };
+
   return (
     <TooltipProvider>
       <div className="font-pretendard space-y-6 p-6 py-1">
@@ -410,6 +446,8 @@ const LogsPage = () => {
             log={selectedLog}
             onGoToNextPage={handleGoToNextPage}
             onOpenJiraConnect={handleOpenJiraConnect}
+            onGenerateErrorDoc={handleGenerateErrorDoc}
+            isGeneratingDoc={isGeneratingDoc}
           />
         )}
 
