@@ -22,6 +22,15 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect # H2 데이터베이스 방언 사용
         format_sql: true # SQL을 보기 좋게 포맷팅
+    defer-datasource-initialization: true # data.sql이 JPA 스키마 생성 후 실행되도록 설정
+
+  # ===================================================================
+  # SQL 초기화 설정
+  # ===================================================================
+  sql:
+    init:
+      mode: always # 항상 data.sql 실행
+      platform: h2
 
   # ===================================================================
   # H2 데이터베이스 콘솔 설정
@@ -47,3 +56,22 @@ logging:
     org.hibernate.SQL: ERROR # Hibernate가 실행하는 SQL 로그 출력
     org.hibernate.type.descriptor.sql: ERROR # SQL 바인딩 파라미터 로그 출력
     org.springframework.security: DEBUG
+
+
+dependency:
+  logger:
+    api-key: 48d96cd7-bf8d-38f5-891c-9c2f6430d871
+
+    collector:
+      url: https://api.loglens.co.kr
+    enabled: true
+
+    stacktrace:
+      max-lines: 3
+
+# ===================================================================
+# AI 서비스 설정 (로컬 AI 서버)
+# ===================================================================
+ai:
+  service:
+    base-url: http://localhost:8000
