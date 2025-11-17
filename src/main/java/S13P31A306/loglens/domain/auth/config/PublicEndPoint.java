@@ -33,6 +33,7 @@ public enum PublicEndPoint {
     // Component test
     COMPONENT("/api/components/**"),
     DEPENDENCY("/api/dependencies/**"),
+    FRONT_LOG("/api/logs/frontend"),
     H2("/h2-console/**"),
 
     // Root
