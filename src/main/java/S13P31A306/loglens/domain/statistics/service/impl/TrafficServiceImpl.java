@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -39,7 +40,7 @@ public class TrafficServiceImpl implements TrafficService {
         Project project = statisticsValidator.validateTrafficRequest(projectUuid);
 
         // 2. 시간 범위 계산 (현재 시각 기준 24시간 전, 시각 단위로 절삭)
-        LocalDateTime endTime = LocalDateTime.now().truncatedTo(ChronoUnit.HOURS);
+        LocalDateTime endTime = LocalDateTime.now(ZoneId.of("Asia/Seoul")).truncatedTo(ChronoUnit.HOURS);
         LocalDateTime startTime = endTime.minusHours(TREND_HOURS);
 
         log.debug("{} 조회 기간: {} ~ {}", LOG_PREFIX, startTime, endTime);
