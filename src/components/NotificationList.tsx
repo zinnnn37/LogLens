@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getAlertHistory, readAlert } from '@/services/alertService';
-import type { AlertHistoryItem, AlertHistoryResponse } from '@/types/alert';
+import type { AlertHistoryItem } from '@/types/alert';
 import { Settings, BellRing } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AlertConfigModal } from '@/components/modal/AlertConfigModal';
@@ -41,8 +41,9 @@ const NotificationList = ({ projectUuid }: NotificationListProps) => {
       setError(null);
 
       try {
-        const response: AlertHistoryResponse = await getAlertHistory({
+        const response = await getAlertHistory({
           projectUuid,
+          resolvedYN: 'N', 
         });
 
         console.log('getAlertHistory 응답:', response);
