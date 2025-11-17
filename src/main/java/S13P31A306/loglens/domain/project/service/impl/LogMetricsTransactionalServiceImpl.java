@@ -127,9 +127,9 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
                     .trackTotalHits(t -> t.enabled(true))  // 10,000건 제한 해제
                     .query(q -> q
                             .range(r -> r
-                                    .field("timestamp")
-                                    .gte(JsonData.of(from.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
-                                    .lt(JsonData.of(to.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
+                                    .field("@timestamp")
+                                    .gte(JsonData.of(from.atOffset(ZoneOffset.UTC).toString()))
+                                    .lte(JsonData.of(to.atOffset(ZoneOffset.UTC).toString()))
                             )
                     )
             );
@@ -163,9 +163,9 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
                 .size(0)
                 .query(q -> q
                         .range(r -> r
-                                .field("timestamp")
-                                .gte(JsonData.of(from.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
-                                .lt(JsonData.of(to.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
+                                .field("@timestamp")
+                                .gte(JsonData.of(from.atOffset(ZoneOffset.UTC).toString()))
+                                .lte(JsonData.of(to.atOffset(ZoneOffset.UTC).toString()))
                         )
                 )
                 .aggregations("total_logs", a -> a
@@ -207,14 +207,14 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
                 .size(0)
                 .query(q -> q
                         .range(r -> r
-                                .field("timestamp")
-                                .gte(JsonData.of(from.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
-                                .lt(JsonData.of(to.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
+                                .field("@timestamp")
+                                .gte(JsonData.of(from.atOffset(ZoneOffset.UTC).toString()))
+                                .lte(JsonData.of(to.atOffset(ZoneOffset.UTC).toString()))
                         )
                 )
                 .aggregations("by_hour", a -> a
                         .dateHistogram(dh -> dh
-                                .field("timestamp")
+                                .field("@timestamp")
                                 .fixedInterval(fi -> fi.time("1h"))
                                 .timeZone(DEFAULT_TIMEZONE)
                                 .format("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
