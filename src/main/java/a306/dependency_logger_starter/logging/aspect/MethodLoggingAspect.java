@@ -6,6 +6,13 @@ import a306.dependency_logger_starter.logging.util.TypeChecker;
 import a306.dependency_logger_starter.logging.util.ValueProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -18,21 +25,11 @@ import org.springframework.util.ClassUtils;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-
 /**
  * 메서드 실행 로깅 Aspect
- *
- * Controller, Service, Repository, Component 메서드 실행을 자동으로 로깅
- * - 요청/응답 데이터 수집
- * - @Sensitive, @ExcludeValue 마스킹 지원
- * - 실행 시간 측정
- * - HTTP 정보 수집 (Controller만)
+ * <p>
+ * Controller, Service, Repository, Component 메서드 실행을 자동으로 로깅 - 요청/응답 데이터 수집 - @Sensitive, @ExcludeValue 마스킹 지원 - 실행 시간
+ * 측정 - HTTP 정보 수집 (Controller만)
  */
 @Aspect
 @Slf4j
@@ -46,27 +43,37 @@ public class MethodLoggingAspect {
 
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_INSTANT;
 
-    @Around("within(@org.springframework.web.bind.annotation.RestController *) && execution(public * *(..))")
+    @Around("within(@org.springframework.web.bind.annotation.RestController *) && execution(public * *(..)) " +
+            "&& !@annotation(a306.dependency_logger_starter.logging.annotation.NoLogging) " +
+            "&& !@within(a306.dependency_logger_starter.logging.annotation.NoLogging)")
     public Object logControllerMethods(ProceedingJoinPoint joinPoint) throws Throwable {
         return logMethodExecution(joinPoint);
     }
 
-    @Around("within(@org.springframework.stereotype.Service *) && execution(public * *(..))")
+    @Around("within(@org.springframework.stereotype.Service *) && execution(public * *(..)) " +
+            "&& !@annotation(a306.dependency_logger_starter.logging.annotation.NoLogging) " +
+            "&& !@within(a306.dependency_logger_starter.logging.annotation.NoLogging)")
     public Object logServiceMethods(ProceedingJoinPoint joinPoint) throws Throwable {
         return logMethodExecution(joinPoint);
     }
 
-    @Around("within(@org.springframework.stereotype.Repository *) && execution(public * *(..))")
+    @Around("within(@org.springframework.stereotype.Repository *) && execution(public * *(..)) " +
+            "&& !@annotation(a306.dependency_logger_starter.logging.annotation.NoLogging) " +
+            "&& !@within(a306.dependency_logger_starter.logging.annotation.NoLogging)")
     public Object logRepositoryMethods(ProceedingJoinPoint joinPoint) throws Throwable {
         return logMethodExecution(joinPoint);
     }
 
-    @Around("target(org.springframework.data.repository.Repository)")
+    @Around("target(org.springframework.data.repository.Repository) " +
+            "&& !@annotation(a306.dependency_logger_starter.logging.annotation.NoLogging) " +
+            "&& !@within(a306.dependency_logger_starter.logging.annotation.NoLogging)")
     public Object logJpaRepositoryMethods(ProceedingJoinPoint joinPoint) throws Throwable {
         return logMethodExecution(joinPoint);
     }
 
-    @Around("within(@org.springframework.stereotype.Component *) && execution(public * *(..))")
+    @Around("within(@org.springframework.stereotype.Component *) && execution(public * *(..)) " +
+            "&& !@annotation(a306.dependency_logger_starter.logging.annotation.NoLogging) " +
+            "&& !@within(a306.dependency_logger_starter.logging.annotation.NoLogging)")
     public Object logComponentMethods(ProceedingJoinPoint joinPoint) throws Throwable {
         return logMethodExecution(joinPoint);
     }
@@ -117,7 +124,8 @@ public class MethodLoggingAspect {
                 httpInfo.updateStatusCode();
             }
 
-            logResponse(packageName, componentName, layer, methodName, responseData, executionTime, exception, httpInfo);
+            logResponse(packageName, componentName, layer, methodName, responseData, executionTime, exception,
+                    httpInfo);
         }
 
         return result;
@@ -353,8 +361,12 @@ public class MethodLoggingAspect {
     }
 
     private Object collectResponse(Object result) {
-        if (result == null) return null;
-        if (result instanceof Void) return "void";
+        if (result == null) {
+            return null;
+        }
+        if (result instanceof Void) {
+            return "void";
+        }
 
         if (result.getClass().getName().contains("ResponseEntity")) {
             try {
@@ -384,7 +396,9 @@ public class MethodLoggingAspect {
     }
 
     private String getStackTrace(Throwable e) {
-        if (e == null) return null;
+        if (e == null) {
+            return null;
+        }
 
         StackTraceElement[] stackTrace = e.getStackTrace();
         if (stackTrace == null || stackTrace.length == 0) {
