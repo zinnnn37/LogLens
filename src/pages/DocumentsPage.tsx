@@ -3,8 +3,7 @@ import { useParams } from 'react-router-dom';
 import {
   FileText,
   Plus,
-  Trash2,
-  Eye,
+  XCircle,
   RefreshCw,
   AlertCircle,
   Download,
@@ -263,80 +262,100 @@ const DocumentsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="mx-auto max-w-7xl">
-        {/* 헤더 */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <FileText className="h-8 w-8 text-blue-600" />
+    <div className="font-pretendard space-y-6 p-6 py-1">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-godoM text-2xl font-bold text-gray-900">
+            문서 작성
+          </h1>
+          <p className="mt-1 text-sm text-gray-600">
+            AI 기반 프로젝트 분석 및 에러 분석 문서를 생성하고 관리합니다.
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={fetchDocuments}
+            className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            새로고침
+          </button>
+          <button
+            onClick={() => setShowGenerateModal(true)}
+            className="bg-primary hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
+            disabled={generating}
+          >
+            <Plus className="h-4 w-4" />
+            문서 생성
+          </button>
+        </div>
+      </div>
+
+      {/* 에러 메시지 */}
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg bg-red-50 p-4 text-red-700">
+          <AlertCircle className="h-5 w-5 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="rounded-lg border bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">문서 작성</h1>
-              <p className="text-sm text-gray-500">
-                AI 기반 프로젝트 분석 및 에러 분석 문서를 생성하고 관리합니다.
+              <p className="text-sm font-medium text-gray-600">총 문서 수</p>
+              <p className="mt-2 text-3xl font-bold text-gray-900">
+                {totalElements}
               </p>
             </div>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={fetchDocuments}
-              className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              disabled={loading}
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`}
-              />
-              새로고침
-            </button>
-            <button
-              onClick={() => setShowGenerateModal(true)}
-              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-              disabled={generating}
-            >
-              <Plus className="h-4 w-4" />
-              문서 생성
-            </button>
+            <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-lg">
+              <FileText className="text-primary h-6 w-6" />
+            </div>
           </div>
         </div>
 
-        {/* 에러 메시지 */}
-        {error && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 p-4 text-red-700">
-            <AlertCircle className="h-5 w-5" />
-            {error}
-          </div>
-        )}
-
-        {/* 통계 */}
-        <div className="mb-6 grid grid-cols-3 gap-4">
-          <div className="rounded-lg bg-white p-4 shadow-sm">
-            <div className="text-2xl font-bold text-blue-600">
-              {totalElements}
+        <div className="rounded-lg border bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">프로젝트 분석</p>
+              <p className="mt-2 text-3xl font-bold text-gray-900">
+                {
+                  documents.filter(d => d.documentType === 'PROJECT_ANALYSIS')
+                    .length
+                }
+              </p>
             </div>
-            <div className="text-sm text-gray-500">총 문서 수</div>
-          </div>
-          <div className="rounded-lg bg-white p-4 shadow-sm">
-            <div className="text-2xl font-bold text-green-600">
-              {
-                documents.filter(d => d.documentType === 'PROJECT_ANALYSIS')
-                  .length
-              }
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-100">
+              <FileText className="h-6 w-6 text-emerald-600" />
             </div>
-            <div className="text-sm text-gray-500">프로젝트 분석</div>
-          </div>
-          <div className="rounded-lg bg-white p-4 shadow-sm">
-            <div className="text-2xl font-bold text-orange-600">
-              {
-                documents.filter(d => d.documentType === 'ERROR_ANALYSIS')
-                  .length
-              }
-            </div>
-            <div className="text-sm text-gray-500">에러 분석</div>
           </div>
         </div>
 
-        {/* 문서 목록 테이블 */}
-        <div className="overflow-hidden rounded-lg bg-white shadow-sm">
+        <div className="rounded-lg border bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">에러 분석</p>
+              <p className="mt-2 text-3xl font-bold text-gray-900">
+                {
+                  documents.filter(d => d.documentType === 'ERROR_ANALYSIS')
+                    .length
+                }
+              </p>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-100">
+              <AlertCircle className="h-6 w-6 text-amber-600" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 문서 목록 테이블 */}
+      <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+        <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -359,7 +378,7 @@ const DocumentsPage = () => {
                   생성일
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                  작업
+                  {/* 작업 */}
                 </th>
               </tr>
             </thead>
@@ -390,7 +409,11 @@ const DocumentsPage = () => {
                 </tr>
               ) : (
                 documents.map(doc => (
-                  <tr key={doc.id} className="hover:bg-gray-50">
+                  <tr
+                    key={doc.id}
+                    onClick={() => handleViewDocument(doc.id)}
+                    className="cursor-pointer transition-colors hover:bg-gray-50"
+                  >
                     <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-900">
                       {doc.id}
                     </td>
@@ -425,21 +448,17 @@ const DocumentsPage = () => {
                     <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
                       {formatDate(doc.createdAt)}
                     </td>
-                    <td className="px-6 py-4 text-sm whitespace-nowrap">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleViewDocument(doc.id)}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="보기"
-                        >
-                          <Eye className="h-5 w-5" />
-                        </button>
+                    <td
+                      className="px-6 py-4 text-sm whitespace-nowrap"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <div className="flex justify-center">
                         <button
                           onClick={() => handleDeleteDocument(doc.id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="text-gray-400 transition-colors hover:text-red-500"
                           title="삭제"
                         >
-                          <Trash2 className="h-5 w-5" />
+                          <XCircle className="h-5 w-5" />
                         </button>
                       </div>
                     </td>
@@ -448,48 +467,50 @@ const DocumentsPage = () => {
               )}
             </tbody>
           </table>
-
-          {/* 페이지네이션 */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3">
-              <div className="text-sm text-gray-700">
-                총 {totalElements}개 중 {currentPage * pageSize + 1} -{' '}
-                {Math.min((currentPage + 1) * pageSize, totalElements)}개 표시
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-                  disabled={currentPage === 0}
-                  className="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-50"
-                >
-                  이전
-                </button>
-                <span className="px-3 py-1 text-sm">
-                  {currentPage + 1} / {totalPages}
-                </span>
-                <button
-                  onClick={() =>
-                    setCurrentPage(p => Math.min(totalPages - 1, p + 1))
-                  }
-                  disabled={currentPage >= totalPages - 1}
-                  className="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-50"
-                >
-                  다음
-                </button>
-              </div>
-            </div>
-          )}
         </div>
+
+        {/* 페이지네이션 */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-gray-200 bg-white px-6 py-4">
+            <div className="text-sm text-gray-700">
+              총 {totalElements}개 중 {currentPage * pageSize + 1} -{' '}
+              {Math.min((currentPage + 1) * pageSize, totalElements)}개 표시
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                disabled={currentPage === 0}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                이전
+              </button>
+              <span className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700">
+                {currentPage + 1} / {totalPages}
+              </span>
+              <button
+                onClick={() =>
+                  setCurrentPage(p => Math.min(totalPages - 1, p + 1))
+                }
+                disabled={currentPage >= totalPages - 1}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                다음
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 문서 생성 모달 */}
       {showGenerateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-lg bg-white p-6">
-            <h3 className="mb-4 text-lg font-semibold">문서 생성</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border bg-white p-6 shadow-2xl">
+            <h3 className="font-godoM mb-6 text-xl font-bold text-gray-900">
+              문서 생성
+            </h3>
 
-            <div className="mb-4">
-              <label className="mb-2 block text-sm font-medium">
+            <div className="mb-6">
+              <label className="mb-2 block text-sm font-medium text-gray-700">
                 문서 유형
               </label>
               <select
@@ -497,7 +518,13 @@ const DocumentsPage = () => {
                 onChange={e =>
                   setGenerateType(e.target.value as 'project' | 'error')
                 }
-                className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                className="focus:border-primary focus:ring-primary/20 w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 py-2.5 pr-10 text-sm transition-colors focus:ring-2 focus:outline-none"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                  backgroundPosition: 'right 0.75rem center',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundSize: '1.25em 1.25em',
+                }}
               >
                 <option value="project">프로젝트 분석</option>
                 <option value="error">에러 분석</option>
@@ -505,41 +532,43 @@ const DocumentsPage = () => {
             </div>
 
             {generateType === 'error' && (
-              <div className="mb-4">
-                <label className="mb-2 block text-sm font-medium">
+              <div className="mb-6">
+                <label className="mb-2 block text-sm font-medium text-gray-700">
                   에러 로그 선택
                 </label>
                 {loadingErrorLogs ? (
-                  <div className="flex items-center justify-center py-4">
-                    <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
-                    <span className="ml-2 text-sm text-gray-500">
+                  <div className="flex items-center justify-center rounded-lg border border-gray-200 py-8">
+                    <RefreshCw className="text-primary h-5 w-5 animate-spin" />
+                    <span className="ml-2 text-sm text-gray-600">
                       에러 로그 조회 중...
                     </span>
                   </div>
                 ) : errorLogs.length === 0 ? (
-                  <div className="py-4 text-center text-sm text-gray-500">
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 py-8 text-center text-sm text-gray-500">
                     최근 에러 로그가 없습니다.
                   </div>
                 ) : (
-                  <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-300">
+                  <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-300">
                     {errorLogs.map(log => (
                       <button
                         key={log.logId}
                         type="button"
                         onClick={() => setLogIdInput(String(log.logId))}
-                        className={`w-full border-b border-gray-200 p-3 text-left last:border-b-0 hover:bg-gray-50 ${
-                          logIdInput === String(log.logId) ? 'bg-blue-50' : ''
+                        className={`w-full border-b border-gray-200 p-4 text-left transition-colors last:border-b-0 hover:bg-gray-50 ${
+                          logIdInput === String(log.logId)
+                            ? 'bg-primary/10 border-primary/20'
+                            : ''
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-900">
+                          <span className="text-sm font-semibold text-gray-900">
                             #{log.logId}
                           </span>
-                          <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
+                          <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800">
                             {log.logLevel}
                           </span>
                         </div>
-                        <div className="mt-1 truncate text-xs text-gray-600">
+                        <div className="mt-2 truncate text-sm text-gray-600">
                           {log.message}
                         </div>
                         <div className="mt-1 text-xs text-gray-400">
@@ -549,7 +578,7 @@ const DocumentsPage = () => {
                     ))}
                   </div>
                 )}
-                <p className="mt-2 text-xs text-gray-500">
+                <p className="mt-3 text-xs text-gray-500">
                   최근 20개의 에러 로그를 표시합니다.
                 </p>
               </div>
@@ -561,7 +590,7 @@ const DocumentsPage = () => {
                   setShowGenerateModal(false);
                   setLogIdInput('');
                 }}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm"
+                className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
                 disabled={generating}
               >
                 취소
@@ -575,7 +604,7 @@ const DocumentsPage = () => {
                 disabled={
                   generating || (generateType === 'error' && !logIdInput)
                 }
-                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-50"
+                className="bg-primary hover:bg-primary/90 flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {generating && <RefreshCw className="h-4 w-4 animate-spin" />}
                 {generating ? '생성 중...' : '생성'}
@@ -587,44 +616,61 @@ const DocumentsPage = () => {
 
       {/* 문서 뷰어 모달 */}
       {showViewer && selectedDocument && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <div className="flex h-[90vh] w-[90vw] flex-col rounded-lg bg-white">
-            <div className="flex items-center justify-between border-b p-4">
-              <h3 className="text-lg font-semibold">
-                {selectedDocument.title}
-              </h3>
-              <div className="flex items-center gap-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="flex h-[90vh] w-full max-w-7xl flex-col overflow-hidden rounded-xl border bg-white shadow-2xl">
+            {/* 헤더 */}
+            <div className="flex flex-shrink-0 items-center justify-between border-b bg-gray-50 px-6 py-4">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-godoM truncate text-xl font-bold text-gray-900">
+                  {selectedDocument.title}
+                </h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  {getDocumentTypeLabel(selectedDocument.documentType)}
+                </p>
+              </div>
+              <div className="ml-6 flex flex-shrink-0 items-center gap-2">
                 <button
                   onClick={handleDownloadDocument}
-                  className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+                  className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
                 >
                   <Download className="h-4 w-4" />
-                  HTML
+                  <span>HTML</span>
                 </button>
                 <button
                   onClick={handlePrintAsPdf}
-                  className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+                  className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700"
                 >
                   <Printer className="h-4 w-4" />
-                  PDF
+                  <span>PDF</span>
                 </button>
                 <button
                   onClick={() => {
                     setShowViewer(false);
                     setSelectedDocument(null);
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                 >
                   닫기
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-auto p-4">
-              <iframe
-                srcDoc={selectedDocument.content}
-                className="h-full w-full border-0"
-                title="Document Viewer"
-              />
+
+            {/* 문서 내용 */}
+            <div className="flex-1 overflow-hidden bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-8">
+              <div className="relative h-full overflow-hidden rounded-2xl bg-white shadow-2xl">
+                {/* 화려한 장식 요소 */}
+                <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 opacity-20 blur-2xl"></div>
+                <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-gradient-to-tr from-emerald-400 to-blue-400 opacity-20 blur-2xl"></div>
+
+                {/* iframe 컨테이너 */}
+                <div className="relative z-10 h-full overflow-auto rounded-xl bg-white p-1">
+                  <iframe
+                    srcDoc={selectedDocument.content}
+                    className="h-full w-full rounded-lg border-0"
+                    title="Document Viewer"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
