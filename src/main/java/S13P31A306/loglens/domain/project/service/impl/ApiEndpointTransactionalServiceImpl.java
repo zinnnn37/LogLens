@@ -9,9 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.FieldValue;
-import org.opensearch.client.opensearch._types.aggregations.CompositeAggregate;
-import org.opensearch.client.opensearch._types.aggregations.CompositeAggregationSource;
-import org.opensearch.client.opensearch._types.aggregations.CompositeBucket;
+import org.opensearch.client.opensearch._types.aggregations.Aggregate;
 import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.SearchResponse;
 import org.opensearch.client.json.JsonData;
@@ -104,40 +102,33 @@ public class ApiEndpointTransactionalServiceImpl implements ApiEndpointTransacti
                                 )
                         )
                 )
-                .aggregations("api_endpoints", a -> a
-                        .composite(c -> c
+                .aggregations("by_endpoint", a -> a
+                        .terms(t -> t
+                                .field("log_details.request_uri.keyword")
                                 .size(1000)
-                                .sources(
-                                        Map.of(
-                                                "uri", CompositeAggregationSource.of(cas -> cas
-                                                        .terms(t -> t
-                                                                .field("log_details.request_uri.keyword")
-                                                        )
-                                                ),
-                                                "method", CompositeAggregationSource.of(cas -> cas
-                                                        .terms(t -> t
-                                                                .field("log_details.http_method")
-                                                        )
+                        )
+                        .aggregations("by_method", sub -> sub
+                                .terms(t -> t
+                                        .field("log_details.http_method")
+                                        .size(10)
+                                )
+                                .aggregations("error_count", subsub -> subsub
+                                        .filter(f -> f
+                                                .range(r -> r
+                                                        .field("log_details.response_status")
+                                                        .gte(JsonData.of(400))
                                                 )
                                         )
                                 )
-                        )
-                        .aggregations("error_count", sub -> sub
-                                .filter(f -> f
-                                        .range(r -> r
-                                                .field("log_details.response_status")
-                                                .gte(JsonData.of(400))
+                                .aggregations("avg_response_time", subsub -> subsub
+                                        .avg(avg -> avg
+                                                .field("log_details.execution_time")
                                         )
                                 )
-                        )
-                        .aggregations("avg_response_time", sub -> sub
-                                .avg(avg -> avg
-                                        .field("log_details.execution_time")
-                                )
-                        )
-                        .aggregations("max_timestamp", sub -> sub
-                                .max(max -> max
-                                        .field("timestamp")
+                                .aggregations("max_timestamp", subsub -> subsub
+                                        .max(max -> max
+                                                .field("timestamp")
+                                        )
                                 )
                         )
                 )
@@ -147,46 +138,71 @@ public class ApiEndpointTransactionalServiceImpl implements ApiEndpointTransacti
     private Map<String, ApiEndpointStats> parseApiEndpointStatistics(SearchResponse<Void> response) {
         Map<String, ApiEndpointStats> statsMap = new HashMap<>();
 
-        if (Objects.isNull(response.aggregations()) ||
-                Objects.isNull(response.aggregations().get("api_endpoints"))) {
+        if (Objects.isNull(response.aggregations())) {
+            log.warn("{} aggregations가 null입니다", LOG_PREFIX);
             return statsMap;
         }
 
-        CompositeAggregate composite = response.aggregations()
-                .get("api_endpoints")
-                .composite();
-
-        for (CompositeBucket bucket : composite.buckets().array()) {
-            String uri = bucket.key().get("uri").stringValue();
-            String method = bucket.key().get("method").stringValue();
-            long totalRequests = bucket.docCount();
-
-            long errorCount = bucket.aggregations()
-                    .get("error_count")
-                    .filter()
-                    .docCount();
-
-            Double avgResponseTime = bucket.aggregations()
-                    .get("avg_response_time")
-                    .avg()
-                    .value();
-
-            Double maxTimestamp = bucket.aggregations()
-                    .get("max_timestamp")
-                    .max()
-                    .value();
-
-            String key = method + ":" + uri;
-            statsMap.put(key, new ApiEndpointStats(
-                    uri,
-                    method,
-                    totalRequests,
-                    errorCount,
-                    avgResponseTime,
-                    maxTimestamp
-            ));
+        Aggregate byEndpointAgg = response.aggregations().get("by_endpoint");
+        if (Objects.isNull(byEndpointAgg) || !byEndpointAgg.isSterms()) {
+            log.warn("{} by_endpoint aggregation이 없습니다", LOG_PREFIX);
+            return statsMap;
         }
 
+        for (var endpointBucket : byEndpointAgg.sterms().buckets().array()) {
+            String uri = endpointBucket.key();
+
+            Aggregate byMethodAgg = endpointBucket.aggregations().get("by_method");
+            if (Objects.isNull(byMethodAgg) || !byMethodAgg.isSterms()) {
+                continue;
+            }
+
+            for (var methodBucket : byMethodAgg.sterms().buckets().array()) {
+                try {
+                    String method = methodBucket.key();
+                    long totalRequests = methodBucket.docCount();
+
+                    // error_count aggregation 안전하게 추출
+                    long errorCount = 0;
+                    Aggregate errorAgg = methodBucket.aggregations().get("error_count");
+                    if (errorAgg != null && errorAgg.isFilter()) {
+                        errorCount = errorAgg.filter().docCount();
+                    }
+
+                    // avg_response_time aggregation 안전하게 추출
+                    Double avgResponseTime = null;
+                    Aggregate avgAgg = methodBucket.aggregations().get("avg_response_time");
+                    if (avgAgg != null && avgAgg.isAvg()) {
+                        avgResponseTime = avgAgg.avg().value();
+                    }
+
+                    // max_timestamp aggregation 안전하게 추출
+                    Double maxTimestamp = null;
+                    Aggregate maxAgg = methodBucket.aggregations().get("max_timestamp");
+                    if (maxAgg != null && maxAgg.isMax()) {
+                        maxTimestamp = maxAgg.max().value();
+                    }
+
+                    String key = method + ":" + uri;
+                    statsMap.put(key, new ApiEndpointStats(
+                            uri,
+                            method,
+                            totalRequests,
+                            errorCount,
+                            avgResponseTime,
+                            maxTimestamp
+                    ));
+
+                    log.debug("{} 파싱 완료: {}:{}, requests={}, errors={}",
+                            LOG_PREFIX, method, uri, totalRequests, errorCount);
+
+                } catch (Exception e) {
+                    log.error("{} 메서드 버킷 파싱 실패", LOG_PREFIX, e);
+                }
+            }
+        }
+
+        log.info("{} 총 {}개 엔드포인트 파싱 완료", LOG_PREFIX, statsMap.size());
         return statsMap;
     }
 
