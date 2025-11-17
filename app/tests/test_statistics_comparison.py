@@ -579,3 +579,263 @@ class TestVerdictGrading:
 
         # then
         assert result["overall_accuracy"] < 70.0
+
+
+class TestLogging:
+    """로깅 테스트"""
+
+    @patch("app.api.v2_langgraph.statistics.logger")
+    @patch("app.api.v2_langgraph.statistics._get_db_statistics")
+    @patch("app.api.v2_langgraph.statistics._get_log_samples")
+    @patch("app.api.v2_langgraph.statistics._llm_estimate_statistics")
+    @patch("app.api.v2_langgraph.statistics._calculate_accuracy")
+    def test_logs_info_on_successful_comparison(
+        self, mock_accuracy, mock_llm, mock_samples, mock_db, mock_logger, client
+    ):
+        """성공적인 비교 시 모든 단계에서 로깅"""
+        # given
+        mock_db.return_value = {
+            "total_logs": 1000,
+            "error_count": 100,
+            "warn_count": 100,
+            "info_count": 800,
+            "error_rate": 10.0,
+            "peak_hour": "2025-11-14T12",
+            "peak_count": 500,
+            "hourly_data": []
+        }
+        mock_samples.return_value = [{"level": "ERROR"}] * 100
+        mock_llm.return_value = {
+            "estimated_total_logs": 1000,
+            "estimated_error_count": 100,
+            "estimated_warn_count": 100,
+            "estimated_info_count": 800,
+            "estimated_error_rate": 10.0,
+            "confidence_score": 90,
+            "reasoning": "테스트"
+        }
+        mock_accuracy.return_value = {
+            "total_logs_accuracy": 100.0,
+            "error_count_accuracy": 100.0,
+            "warn_count_accuracy": 100.0,
+            "info_count_accuracy": 100.0,
+            "error_rate_accuracy": 100.0,
+            "overall_accuracy": 100.0,
+            "ai_confidence": 90
+        }
+
+        # when
+        response = client.get(
+            "/api/v2-langgraph/statistics/compare",
+            params={"project_uuid": "test-uuid", "time_hours": 24, "sample_size": 100}
+        )
+
+        # then
+        assert response.status_code == 200
+
+        # 로깅 호출 검증
+        info_calls = [call for call in mock_logger.info.call_args_list]
+        assert len(info_calls) >= 4  # 시작, DB 조회, 샘플 추출, LLM 추론, 정확도 계산
+
+        # 첫 번째 로그: 시작 메시지
+        start_log = str(info_calls[0])
+        assert "AI vs DB 통계 비교 시작" in start_log
+        assert "test-uuid" in start_log
+
+    @patch("app.api.v2_langgraph.statistics.logger")
+    @patch("app.api.v2_langgraph.statistics._get_db_statistics")
+    def test_logs_warning_when_no_data(self, mock_db, mock_logger, client):
+        """로그 데이터가 없을 때 경고 로깅"""
+        # given
+        mock_db.return_value = {
+            "total_logs": 0,
+            "error_count": 0,
+            "warn_count": 0,
+            "info_count": 0,
+            "error_rate": 0,
+            "peak_hour": "",
+            "peak_count": 0,
+            "hourly_data": []
+        }
+
+        # when
+        response = client.get(
+            "/api/v2-langgraph/statistics/compare",
+            params={"project_uuid": "empty-uuid", "time_hours": 24}
+        )
+
+        # then
+        assert response.status_code == 404
+
+        # 경고 로깅 검증
+        warning_calls = mock_logger.warning.call_args_list
+        assert len(warning_calls) >= 1
+        warning_log = str(warning_calls[0])
+        assert "로그 데이터 없음" in warning_log
+        assert "empty-uuid" in warning_log
+
+    @patch("app.api.v2_langgraph.statistics.logger")
+    @patch("app.api.v2_langgraph.statistics._get_db_statistics")
+    def test_logs_error_on_exception(self, mock_db, mock_logger, client):
+        """예외 발생 시 에러 로깅"""
+        # given
+        mock_db.side_effect = Exception("OpenSearch connection failed")
+
+        # when
+        response = client.get(
+            "/api/v2-langgraph/statistics/compare",
+            params={"project_uuid": "fail-uuid", "time_hours": 24}
+        )
+
+        # then
+        assert response.status_code == 500
+
+        # 에러 로깅 검증
+        error_calls = mock_logger.error.call_args_list
+        assert len(error_calls) >= 1
+        error_log = str(error_calls[0])
+        assert "AI vs DB 통계 비교 중 예외 발생" in error_log
+        assert "fail-uuid" in error_log
+
+    @patch("app.api.v2_langgraph.statistics.logger")
+    @patch("app.api.v2_langgraph.statistics._get_db_statistics")
+    @patch("app.api.v2_langgraph.statistics._get_log_samples")
+    def test_logs_error_when_samples_empty(self, mock_samples, mock_db, mock_logger, client):
+        """샘플 추출 실패 시 에러 로깅"""
+        # given
+        mock_db.return_value = {
+            "total_logs": 1000,
+            "error_count": 100,
+            "warn_count": 100,
+            "info_count": 800,
+            "error_rate": 10.0,
+            "peak_hour": "2025-11-14T12",
+            "peak_count": 500,
+            "hourly_data": []
+        }
+        mock_samples.return_value = []  # 빈 샘플
+
+        # when
+        response = client.get(
+            "/api/v2-langgraph/statistics/compare",
+            params={"project_uuid": "no-samples-uuid", "time_hours": 24}
+        )
+
+        # then
+        assert response.status_code == 500
+
+        # 에러 로깅 검증
+        error_calls = mock_logger.error.call_args_list
+        assert len(error_calls) >= 1
+        error_log = str(error_calls[0])
+        assert "로그 샘플 추출 실패" in error_log
+
+    @patch("app.api.v2_langgraph.statistics.logger")
+    @patch("app.api.v2_langgraph.statistics._get_db_statistics")
+    @patch("app.api.v2_langgraph.statistics._get_log_samples")
+    @patch("app.api.v2_langgraph.statistics._llm_estimate_statistics")
+    @patch("app.api.v2_langgraph.statistics._calculate_accuracy")
+    def test_logs_include_accuracy_results(
+        self, mock_accuracy, mock_llm, mock_samples, mock_db, mock_logger, client
+    ):
+        """정확도 결과가 로그에 포함됨"""
+        # given
+        mock_db.return_value = {
+            "total_logs": 1000,
+            "error_count": 100,
+            "warn_count": 100,
+            "info_count": 800,
+            "error_rate": 10.0,
+            "peak_hour": "2025-11-14T12",
+            "peak_count": 500,
+            "hourly_data": []
+        }
+        mock_samples.return_value = [{"level": "ERROR"}] * 50
+        mock_llm.return_value = {
+            "estimated_total_logs": 950,
+            "estimated_error_count": 95,
+            "estimated_warn_count": 95,
+            "estimated_info_count": 760,
+            "estimated_error_rate": 10.0,
+            "confidence_score": 85,
+            "reasoning": "테스트"
+        }
+        mock_accuracy.return_value = {
+            "total_logs_accuracy": 95.0,
+            "error_count_accuracy": 95.0,
+            "warn_count_accuracy": 95.0,
+            "info_count_accuracy": 95.0,
+            "error_rate_accuracy": 100.0,
+            "overall_accuracy": 96.0,
+            "ai_confidence": 85
+        }
+
+        # when
+        response = client.get(
+            "/api/v2-langgraph/statistics/compare",
+            params={"project_uuid": "test-uuid", "time_hours": 24}
+        )
+
+        # then
+        assert response.status_code == 200
+
+        # 정확도 로깅 검증
+        info_calls = [str(call) for call in mock_logger.info.call_args_list]
+        accuracy_logged = any("96" in call or "overall_accuracy" in call for call in info_calls)
+        assert accuracy_logged
+
+    @patch("app.api.v2_langgraph.statistics.logger")
+    @patch("app.api.v2_langgraph.statistics._get_db_statistics")
+    @patch("app.api.v2_langgraph.statistics._get_log_samples")
+    @patch("app.api.v2_langgraph.statistics._llm_estimate_statistics")
+    @patch("app.api.v2_langgraph.statistics._calculate_accuracy")
+    def test_debug_logs_for_each_step(
+        self, mock_accuracy, mock_llm, mock_samples, mock_db, mock_logger, client
+    ):
+        """각 단계별 디버그 로그 확인"""
+        # given
+        mock_db.return_value = {
+            "total_logs": 1000,
+            "error_count": 100,
+            "warn_count": 100,
+            "info_count": 800,
+            "error_rate": 10.0,
+            "peak_hour": "2025-11-14T12",
+            "peak_count": 500,
+            "hourly_data": []
+        }
+        mock_samples.return_value = [{"level": "ERROR"}] * 100
+        mock_llm.return_value = {
+            "estimated_total_logs": 1000,
+            "estimated_error_count": 100,
+            "estimated_warn_count": 100,
+            "estimated_info_count": 800,
+            "estimated_error_rate": 10.0,
+            "confidence_score": 90,
+            "reasoning": "테스트"
+        }
+        mock_accuracy.return_value = {
+            "total_logs_accuracy": 100.0,
+            "error_count_accuracy": 100.0,
+            "warn_count_accuracy": 100.0,
+            "info_count_accuracy": 100.0,
+            "error_rate_accuracy": 100.0,
+            "overall_accuracy": 100.0,
+            "ai_confidence": 90
+        }
+
+        # when
+        response = client.get(
+            "/api/v2-langgraph/statistics/compare",
+            params={"project_uuid": "test-uuid", "time_hours": 24}
+        )
+
+        # then
+        assert response.status_code == 200
+
+        # 디버그 로그 검증
+        debug_calls = [str(call) for call in mock_logger.debug.call_args_list]
+        assert any("1단계" in call or "DB 통계 조회" in call for call in debug_calls)
+        assert any("2단계" in call or "로그 샘플 추출" in call for call in debug_calls)
+        assert any("3단계" in call or "LLM 통계 추론" in call for call in debug_calls)
+        assert any("4단계" in call or "정확도 계산" in call for call in debug_calls)

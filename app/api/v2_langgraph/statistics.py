@@ -4,6 +4,7 @@ V2 LangGraph API - Statistics Comparison Endpoints
 AI vs DB 통계 비교를 통한 LLM 역량 검증 API
 """
 
+import logging
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
@@ -15,6 +16,8 @@ from app.tools.statistics_comparison_tools import (
     _llm_estimate_statistics,
     _calculate_accuracy
 )
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/v2-langgraph", tags=["Statistics Comparison"])
@@ -128,30 +131,42 @@ async def compare_ai_vs_db(
     - 70% 이상: 보통 (개선 필요)
     - 70% 미만: 미흡 (재검토 필요)
     """
+    logger.info(f"🤖 AI vs DB 통계 비교 시작: project_uuid={project_uuid}, time_hours={time_hours}, sample_size={sample_size}")
+
     try:
         # 1. DB에서 직접 통계 조회
+        logger.debug(f"1단계: DB 통계 조회 시작")
         db_stats = _get_db_statistics(project_uuid, time_hours)
+        logger.info(f"✅ DB 통계 조회 완료: total_logs={db_stats.get('total_logs', 0)}")
 
         if db_stats["total_logs"] == 0:
+            logger.warning(f"⚠️ 로그 데이터 없음: project_uuid={project_uuid}, time_hours={time_hours}")
             raise HTTPException(
                 status_code=404,
                 detail=f"최근 {time_hours}시간 동안 로그 데이터가 없습니다."
             )
 
         # 2. 로그 샘플 추출
+        logger.debug(f"2단계: 로그 샘플 추출 시작")
         log_samples = _get_log_samples(project_uuid, time_hours, sample_size)
+        logger.info(f"✅ 로그 샘플 추출 완료: sample_count={len(log_samples)}")
 
         if not log_samples:
+            logger.error(f"🔴 로그 샘플 추출 실패: project_uuid={project_uuid}")
             raise HTTPException(
                 status_code=500,
                 detail="로그 샘플을 추출할 수 없습니다."
             )
 
         # 3. LLM 기반 통계 추론
+        logger.debug(f"3단계: LLM 통계 추론 시작")
         ai_stats = _llm_estimate_statistics(log_samples, db_stats["total_logs"], time_hours)
+        logger.info(f"✅ LLM 추론 완료: estimated_total={ai_stats.get('estimated_total_logs', 0)}, confidence={ai_stats.get('confidence_score', 0)}")
 
         # 4. 정확도 계산
+        logger.debug(f"4단계: 정확도 계산 시작")
         accuracy_metrics = _calculate_accuracy(db_stats, ai_stats)
+        logger.info(f"✅ 정확도 계산 완료: overall_accuracy={accuracy_metrics.get('overall_accuracy', 0)}%")
 
         # 5. 검증 결론 생성
         overall = accuracy_metrics["overall_accuracy"]
@@ -258,6 +273,7 @@ async def compare_ai_vs_db(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"🔴 AI vs DB 통계 비교 중 예외 발생: project_uuid={project_uuid}, error={str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"AI vs DB 통계 비교 중 오류 발생: {str(e)}"
