@@ -219,6 +219,71 @@ class StatisticsControllerAIComparisonTest {
                     .andExpect(jsonPath("$.data.technicalHighlights.length()").value(3))
                     .andExpect(jsonPath("$.data.technicalHighlights[0]").value("Temperature 0.1로 일관된 추론"));
         }
+
+        @Test
+        @DisplayName("불완전한_응답_수신_시에도_200_OK를_반환한다")
+        void 불완전한_응답_수신_시에도_200_OK를_반환한다() throws Exception {
+            // given - verdict만 있고 나머지는 null인 불완전한 응답
+            String projectUuid = "550e8400-e29b-41d4-a716-446655440000";
+            AIComparisonResponse incompleteResponse = new AIComparisonResponse(
+                    projectUuid,  // AiServiceClient에서 보완됨
+                    24,           // AiServiceClient에서 보완됨
+                    100,          // AiServiceClient에서 보완됨
+                    LocalDateTime.now(),  // AiServiceClient에서 보완됨
+                    null,  // dbStatistics null
+                    null,  // aiStatistics null
+                    null,  // accuracyMetrics null
+                    createVerdict("미흡", false),  // verdict만 존재
+                    null   // technicalHighlights null
+            );
+
+            given(aiServiceClient.compareAiVsDbStatistics(anyString(), anyInt(), anyInt()))
+                    .willReturn(incompleteResponse);
+
+            // when & then - 불완전해도 정상 반환
+            mockMvc.perform(get("/api/statistics/ai-comparison")
+                            .param("projectUuid", projectUuid))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("STATISTICS_2003"))
+                    .andExpect(jsonPath("$.data.projectUuid").value(projectUuid))
+                    .andExpect(jsonPath("$.data.analysisPeriodHours").value(24))
+                    .andExpect(jsonPath("$.data.sampleSize").value(100))
+                    .andExpect(jsonPath("$.data.dbStatistics").doesNotExist())
+                    .andExpect(jsonPath("$.data.aiStatistics").doesNotExist())
+                    .andExpect(jsonPath("$.data.accuracyMetrics").doesNotExist())
+                    .andExpect(jsonPath("$.data.verdict.grade").value("미흡"));
+        }
+
+        @Test
+        @DisplayName("verdict만_있는_불완전한_응답도_처리한다")
+        void verdict만_있는_불완전한_응답도_처리한다() throws Exception {
+            // given
+            String projectUuid = "550e8400-e29b-41d4-a716-446655440000";
+            AIComparisonResponse.ComparisonVerdict verdict = new AIComparisonResponse.ComparisonVerdict(
+                    "미흡",
+                    null,  // canReplaceDb도 null
+                    "정확도가 낮아 근본적인 개선이 필요합니다.",
+                    List.of("LLM 모델 업그레이드 고려")
+            );
+
+            AIComparisonResponse response = new AIComparisonResponse(
+                    projectUuid, 24, 100, LocalDateTime.now(),
+                    null, null, null,
+                    verdict,
+                    null
+            );
+
+            given(aiServiceClient.compareAiVsDbStatistics(anyString(), anyInt(), anyInt()))
+                    .willReturn(response);
+
+            // when & then
+            mockMvc.perform(get("/api/statistics/ai-comparison")
+                            .param("projectUuid", projectUuid))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.verdict.grade").value("미흡"))
+                    .andExpect(jsonPath("$.data.verdict.canReplaceDb").doesNotExist())
+                    .andExpect(jsonPath("$.data.verdict.explanation").value("정확도가 낮아 근본적인 개선이 필요합니다."));
+        }
     }
 
     // Helper methods for creating test data

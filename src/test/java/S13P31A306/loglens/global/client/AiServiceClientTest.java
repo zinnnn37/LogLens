@@ -724,6 +724,184 @@ class AiServiceClientTest {
             assertThat(response.verdict().canReplaceDb()).isFalse();
             assertThat(response.accuracyMetrics().overallAccuracy()).isLessThan(70.0);
         }
+
+        @Test
+        @DisplayName("불완전한_응답_수신_시_request_파라미터로_보완한다")
+        void 불완전한_응답_수신_시_request_파라미터로_보완한다() {
+            // given - verdict만 있고 나머지 필드는 null인 불완전한 응답
+            String responseBody = """
+                    {
+                      "projectUuid": null,
+                      "analysisPeriodHours": null,
+                      "sampleSize": null,
+                      "analyzedAt": null,
+                      "dbStatistics": null,
+                      "aiStatistics": null,
+                      "accuracyMetrics": null,
+                      "verdict": {
+                        "grade": "미흡",
+                        "canReplaceDb": null,
+                        "explanation": "정확도가 낮아 근본적인 개선이 필요합니다.",
+                        "recommendations": ["LLM 모델 업그레이드 고려"]
+                      },
+                      "technicalHighlights": null
+                    }
+                    """;
+
+            mockWebServer.enqueue(new MockResponse()
+                    .setBody(responseBody)
+                    .addHeader("Content-Type", "application/json")
+                    .setResponseCode(200));
+
+            // when
+            String requestProjectUuid = "request-project-uuid-1234";
+            int requestTimeHours = 48;
+            int requestSampleSize = 200;
+            var response = aiServiceClient.compareAiVsDbStatistics(requestProjectUuid, requestTimeHours, requestSampleSize);
+
+            // then - request 파라미터로 보완됨
+            assertThat(response).isNotNull();
+            assertThat(response.projectUuid()).isEqualTo(requestProjectUuid);
+            assertThat(response.analysisPeriodHours()).isEqualTo(requestTimeHours);
+            assertThat(response.sampleSize()).isEqualTo(requestSampleSize);
+            assertThat(response.analyzedAt()).isNotNull(); // LocalDateTime.now()로 설정됨
+
+            // verdict는 원래 값 유지
+            assertThat(response.verdict()).isNotNull();
+            assertThat(response.verdict().grade()).isEqualTo("미흡");
+
+            // 나머지 필드는 여전히 null
+            assertThat(response.dbStatistics()).isNull();
+            assertThat(response.aiStatistics()).isNull();
+            assertThat(response.accuracyMetrics()).isNull();
+        }
+
+        @Test
+        @DisplayName("projectUuid만_null인_경우에도_보완한다")
+        void projectUuid만_null인_경우에도_보완한다() {
+            // given - projectUuid만 null
+            String responseBody = """
+                    {
+                      "projectUuid": null,
+                      "analysisPeriodHours": 24,
+                      "sampleSize": 100,
+                      "analyzedAt": "2025-11-14T15:30:00",
+                      "dbStatistics": {
+                        "totalLogs": 1000,
+                        "errorCount": 100,
+                        "warnCount": 100,
+                        "infoCount": 800,
+                        "errorRate": 10.0,
+                        "peakHour": "2025-11-14T12",
+                        "peakCount": 100
+                      },
+                      "aiStatistics": {
+                        "estimatedTotalLogs": 980,
+                        "estimatedErrorCount": 98,
+                        "estimatedWarnCount": 99,
+                        "estimatedInfoCount": 783,
+                        "estimatedErrorRate": 10.0,
+                        "confidenceScore": 85,
+                        "reasoning": "추론 완료"
+                      },
+                      "accuracyMetrics": {
+                        "totalLogsAccuracy": 98.0,
+                        "errorCountAccuracy": 98.0,
+                        "warnCountAccuracy": 99.0,
+                        "infoCountAccuracy": 97.875,
+                        "errorRateAccuracy": 100.0,
+                        "overallAccuracy": 98.4,
+                        "aiConfidence": 85
+                      },
+                      "verdict": {
+                        "grade": "매우 우수",
+                        "canReplaceDb": true,
+                        "explanation": "오차율 5% 미만",
+                        "recommendations": []
+                      },
+                      "technicalHighlights": []
+                    }
+                    """;
+
+            mockWebServer.enqueue(new MockResponse()
+                    .setBody(responseBody)
+                    .addHeader("Content-Type", "application/json")
+                    .setResponseCode(200));
+
+            // when
+            String requestProjectUuid = "enriched-project-uuid";
+            var response = aiServiceClient.compareAiVsDbStatistics(requestProjectUuid, 24, 100);
+
+            // then - projectUuid만 보완됨
+            assertThat(response.projectUuid()).isEqualTo(requestProjectUuid);
+            // 원래 값은 유지
+            assertThat(response.analysisPeriodHours()).isEqualTo(24);
+            assertThat(response.sampleSize()).isEqualTo(100);
+            assertThat(response.dbStatistics()).isNotNull();
+            assertThat(response.aiStatistics()).isNotNull();
+            assertThat(response.accuracyMetrics()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("완전한_응답_수신_시_보완하지_않는다")
+        void 완전한_응답_수신_시_보완하지_않는다() {
+            // given - 모든 필드가 채워진 완전한 응답
+            String responseBody = """
+                    {
+                      "projectUuid": "original-uuid",
+                      "analysisPeriodHours": 12,
+                      "sampleSize": 50,
+                      "analyzedAt": "2025-11-14T10:00:00",
+                      "dbStatistics": {
+                        "totalLogs": 500,
+                        "errorCount": 50,
+                        "warnCount": 50,
+                        "infoCount": 400,
+                        "errorRate": 10.0,
+                        "peakHour": "2025-11-14T09",
+                        "peakCount": 60
+                      },
+                      "aiStatistics": {
+                        "estimatedTotalLogs": 490,
+                        "estimatedErrorCount": 49,
+                        "estimatedWarnCount": 49,
+                        "estimatedInfoCount": 392,
+                        "estimatedErrorRate": 10.0,
+                        "confidenceScore": 90,
+                        "reasoning": "정확한 추론"
+                      },
+                      "accuracyMetrics": {
+                        "totalLogsAccuracy": 98.0,
+                        "errorCountAccuracy": 98.0,
+                        "warnCountAccuracy": 98.0,
+                        "infoCountAccuracy": 98.0,
+                        "errorRateAccuracy": 100.0,
+                        "overallAccuracy": 98.4,
+                        "aiConfidence": 90
+                      },
+                      "verdict": {
+                        "grade": "매우 우수",
+                        "canReplaceDb": true,
+                        "explanation": "높은 정확도",
+                        "recommendations": []
+                      },
+                      "technicalHighlights": ["정확도 98.4%"]
+                    }
+                    """;
+
+            mockWebServer.enqueue(new MockResponse()
+                    .setBody(responseBody)
+                    .addHeader("Content-Type", "application/json")
+                    .setResponseCode(200));
+
+            // when - 다른 파라미터로 호출
+            var response = aiServiceClient.compareAiVsDbStatistics("different-uuid", 24, 100);
+
+            // then - 원래 응답 값이 유지됨 (보완되지 않음)
+            assertThat(response.projectUuid()).isEqualTo("original-uuid");
+            assertThat(response.analysisPeriodHours()).isEqualTo(12);
+            assertThat(response.sampleSize()).isEqualTo(50);
+        }
     }
 }
 
