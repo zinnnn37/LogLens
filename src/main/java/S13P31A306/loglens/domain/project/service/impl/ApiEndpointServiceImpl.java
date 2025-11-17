@@ -50,7 +50,7 @@ public class ApiEndpointServiceImpl implements ApiEndpointService {
         log.info("{} API 통계 조회 성공: projectUuid={}, limit={}", LOG_PREFIX, projectUuid, limit);
 
         return new ApiEndpointResponse(
-                projectId,
+                projectUuid,
                 endpointStatsList,
                 summary
         );

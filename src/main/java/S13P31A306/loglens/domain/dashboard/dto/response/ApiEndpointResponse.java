@@ -9,9 +9,10 @@ import java.util.List;
 
 @Schema(description = "API 통계 조회 응답")
 public record ApiEndpointResponse(
-        @Schema(description = "프로젝트 ID", example = "12345")
+
+        @Schema(description = "프로젝트 UUID", example = "48d96cd7-bf8d-38f5-891c-9c2f6430d871")
         @Sensitive
-        Integer projectId,
+        String projectUuid,
 
         @Schema(description = "엔드포인트 목록")
         List<EndpointStats> endpoints,

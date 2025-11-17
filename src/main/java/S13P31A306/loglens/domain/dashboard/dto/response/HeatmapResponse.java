@@ -6,9 +6,10 @@ import java.util.List;
 
 @Schema(description = "히트맵 조회 응답")
 public record HeatmapResponse(
-        @Schema(description = "프로젝트 ID", example = "12345")
+
+        @Schema(description = "프로젝트 UUID", example = "48d96cd7-bf8d-38f5-891c-9c2f6430d871")
         @Sensitive
-        Integer projectId,
+        String projectUuid,
 
         @Schema(description = "조회 기간")
         Period period,
