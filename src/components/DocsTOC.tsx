@@ -7,7 +7,7 @@ interface TOCItem {
   title: string;
 }
 
-const tocItems: TOCItem[] = [
+const backendTocItems: TOCItem[] = [
   { id: 'features', title: '주요 기능' },
   { id: 'installation', title: '설치 방법' },
   { id: 'configuration', title: '기본 설정' },
@@ -22,18 +22,75 @@ const tocItems: TOCItem[] = [
   { id: 'contact', title: '문의하기' },
 ];
 
+const frontendTocItems: TOCItem[] = [
+  { id: 'frontend-installation', title: '설치' },
+  { id: 'frontend-getting-started', title: '시작하기' },
+  { id: 'frontend-wrapping', title: '일반 함수 래핑' },
+  { id: 'frontend-react-hook', title: 'React Hook 사용' },
+  { id: 'frontend-options', title: 'withLogLens 옵션' },
+  { id: 'frontend-features', title: '주요 기능' },
+  { id: 'frontend-warnings', title: '주의사항' },
+  { id: 'frontend-examples', title: 'React 컴포넌트 예제' },
+  { id: 'frontend-api', title: 'API 레퍼런스' },
+  { id: 'frontend-console', title: '콘솔 출력 형식' },
+  { id: 'frontend-faq', title: 'FAQ' },
+  { id: 'frontend-contact', title: '문의하기' },
+];
+
 const DocsTOC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isDocsPage = location.pathname === ROUTE_PATH.DOCS;
   const [activeSection, setActiveSection] = useState<string>('');
   const [isScrolling, setIsScrolling] = useState(false);
+  const [currentTab, setCurrentTab] = useState<'backend' | 'frontend'>(
+    'backend',
+  );
+
+  // 현재 활성화된 탭에 따른 목차 선택
+  const tocItems =
+    currentTab === 'backend' ? backendTocItems : frontendTocItems;
+
+  // 탭 감지 (DOM에서 현재 어떤 탭이 활성화되어 있는지 확인)
+  useEffect(() => {
+    if (!isDocsPage) {
+      return;
+    }
+
+    const checkActiveTab = () => {
+      // Backend 섹션이 보이는지 확인
+      const backendSection = document.getElementById('features');
+      // Frontend 섹션이 보이는지 확인
+      const frontendSection = document.getElementById('frontend-installation');
+
+      if (frontendSection && frontendSection.offsetParent !== null) {
+        setCurrentTab('frontend');
+      } else if (backendSection && backendSection.offsetParent !== null) {
+        setCurrentTab('backend');
+      }
+    };
+
+    // 초기 체크
+    checkActiveTab();
+
+    // MutationObserver로 DOM 변경 감지 (탭 전환 감지)
+    const observer = new MutationObserver(checkActiveTab);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+    });
+
+    return () => observer.disconnect();
+  }, [isDocsPage]);
 
   // Docs 페이지를 벗어나면 activeSection 초기화
   useEffect(() => {
     if (!isDocsPage) {
       setActiveSection('');
       setIsScrolling(false);
+      setCurrentTab('backend');
     }
   }, [isDocsPage]);
 
@@ -77,7 +134,7 @@ const DocsTOC = () => {
     return () => {
       observer.disconnect();
     };
-  }, [isDocsPage, isScrolling]);
+  }, [isDocsPage, isScrolling, tocItems]);
 
   // URL hash 변경 감지하여 스크롤
   useEffect(() => {
