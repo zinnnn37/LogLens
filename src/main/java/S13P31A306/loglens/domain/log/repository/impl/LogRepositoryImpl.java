@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -37,7 +38,6 @@ import org.opensearch.client.opensearch._types.SortOptions;
 import org.opensearch.client.opensearch._types.SortOrder;
 import org.opensearch.client.opensearch._types.Time;
 import org.opensearch.client.opensearch._types.aggregations.Aggregate;
-import org.opensearch.client.opensearch._types.aggregations.CalendarInterval;
 import org.opensearch.client.opensearch._types.aggregations.DateHistogramBucket;
 import org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
@@ -778,10 +778,10 @@ public class LogRepositoryImpl implements LogRepository {
         for (DateHistogramBucket bucket : logsOverTime.dateHistogram().buckets().array()) {
             // 타임스탬프 파싱
             String timestampStr = bucket.keyAsString();
-            LocalDateTime timestamp = LocalDateTime.parse(
+            LocalDateTime timestamp = OffsetDateTime.parse(
                     timestampStr,
                     DateTimeFormatter.ISO_OFFSET_DATE_TIME
-            );
+            ).toLocalDateTime();
 
             // 전체 로그 수
             int totalCount = (int) bucket.docCount();
@@ -899,10 +899,10 @@ public class LogRepositoryImpl implements LogRepository {
         for (DateHistogramBucket bucket : trafficOverTime.dateHistogram().buckets().array()) {
             // 타임스탬프 파싱
             String timestampStr = bucket.keyAsString();
-            LocalDateTime timestamp = LocalDateTime.parse(
+            LocalDateTime timestamp = OffsetDateTime.parse(
                     timestampStr,
                     DateTimeFormatter.ISO_OFFSET_DATE_TIME
-            );
+            ).toLocalDateTime();
 
             // 전체 로그 수
             int totalCount = (int) bucket.docCount();

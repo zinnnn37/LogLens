@@ -1,11 +1,13 @@
 package S13P31A306.loglens.domain.statistics.mapper;
 
+import static S13P31A306.loglens.domain.statistics.constants.StatisticsConstants.DATA_POINTS;
+import static S13P31A306.loglens.domain.statistics.constants.StatisticsConstants.DEFAULT_TIMEZONE;
+import static S13P31A306.loglens.domain.statistics.constants.StatisticsConstants.INTERVAL_HOURS;
+import static S13P31A306.loglens.domain.statistics.constants.StatisticsConstants.TIME_FORMAT;
+import static S13P31A306.loglens.domain.statistics.constants.StatisticsConstants.TREND_HOURS;
+
 import S13P31A306.loglens.domain.statistics.dto.internal.LogTrendAggregation;
 import S13P31A306.loglens.domain.statistics.dto.response.LogTrendResponse;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.ReportingPolicy;
-
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -14,8 +16,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static S13P31A306.loglens.domain.statistics.constants.StatisticsConstants.*;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 
 /**
  * 로그 추이 매핑 인터페이스
@@ -60,9 +63,9 @@ public interface LogTrendMapper {
     /**
      * 전체 응답 생성
      *
-     * @param projectUuid 프로젝트 UUID
-     * @param startTime   시작 시간
-     * @param endTime     종료 시간
+     * @param projectUuid  프로젝트 UUID
+     * @param startTime    시작 시간
+     * @param endTime      종료 시간
      * @param aggregations OpenSearch 집계 결과 리스트
      * @return LogTrendResponse
      */
@@ -109,9 +112,9 @@ public interface LogTrendMapper {
     /**
      * 시간 슬롯 생성
      *
-     * @param startTime 시작 시간
+     * @param startTime     시작 시간
      * @param intervalHours 간격 (시간)
-     * @param count 생성할 슬롯 개수
+     * @param count         생성할 슬롯 개수
      * @return 시간 슬롯 리스트
      */
     default List<LocalDateTime> generateTimeSlots(LocalDateTime startTime, int intervalHours, int count) {
@@ -144,8 +147,8 @@ public interface LogTrendMapper {
                 .mapToInt(LogTrendAggregation::totalCount)
                 .sum();
 
-        // 평균 로그 수
-        int avgLogsPerInterval = aggregations.isEmpty() ? 0 : totalLogs / aggregations.size();
+        // 평균 로그 수 (고정된 데이터 포인트 개수 기준)
+        int avgLogsPerInterval = totalLogs / DATA_POINTS;
 
         // 피크 시간 찾기
         LogTrendAggregation peak = aggregations.stream()
