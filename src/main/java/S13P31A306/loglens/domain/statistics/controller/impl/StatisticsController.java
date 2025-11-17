@@ -2,13 +2,17 @@ package S13P31A306.loglens.domain.statistics.controller.impl;
 
 import S13P31A306.loglens.domain.statistics.constants.StatisticsSuccessCode;
 import S13P31A306.loglens.domain.statistics.controller.StatisticsApi;
+import S13P31A306.loglens.domain.statistics.dto.response.AIComparisonResponse;
 import S13P31A306.loglens.domain.statistics.dto.response.LogTrendResponse;
 import S13P31A306.loglens.domain.statistics.dto.response.TrafficResponse;
 import S13P31A306.loglens.domain.statistics.service.LogTrendService;
 import S13P31A306.loglens.domain.statistics.service.TrafficService;
 import S13P31A306.loglens.global.annotation.ValidUuid;
+import S13P31A306.loglens.global.client.AiServiceClient;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
+import S13P31A306.loglens.global.exception.BusinessException;
+import S13P31A306.loglens.global.constants.GlobalErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +36,7 @@ public class StatisticsController implements StatisticsApi {
 
     private final LogTrendService logTrendService;
     private final TrafficService trafficService;
+    private final AiServiceClient aiServiceClient;
 
     @Override
     @GetMapping("/log-trend")
@@ -62,4 +67,34 @@ public class StatisticsController implements StatisticsApi {
                 response
         );
     }
+
+    @Override
+    @GetMapping("/ai-comparison")
+    public ResponseEntity<? extends BaseResponse> getAiComparison(
+            @ValidUuid @RequestParam String projectUuid,
+            @RequestParam(defaultValue = "24") Integer timeHours,
+            @RequestParam(defaultValue = "100") Integer sampleSize
+    ) {
+        log.info("{} AI vs DB 통계 비교 API 호출: projectUuid={}, timeHours={}, sampleSize={}",
+                LOG_PREFIX, projectUuid, timeHours, sampleSize);
+
+        AIComparisonResponse response = aiServiceClient.compareAiVsDbStatistics(
+                projectUuid, timeHours, sampleSize);
+
+        if (response == null) {
+            log.error("{} AI 서비스 호출 실패: projectUuid={}", LOG_PREFIX, projectUuid);
+            throw new BusinessException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
+        }
+
+        log.info("{} AI vs DB 비교 완료: overallAccuracy={}%, canReplaceDb={}",
+                LOG_PREFIX,
+                response.accuracyMetrics() != null ? response.accuracyMetrics().overallAccuracy() : null,
+                response.verdict() != null ? response.verdict().canReplaceDb() : null);
+
+        return ApiResponseFactory.success(
+                StatisticsSuccessCode.AI_COMPARISON_RETRIEVED,
+                response
+        );
+    }
 }
+

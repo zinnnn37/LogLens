@@ -35,7 +35,7 @@ public class AnalysisDocument extends BaseTimeEntity {
     private Integer id;
 
     @NotNull
-    @Column(name = "project_id", nullable = false)
+    @Column(name = "project_id", nullable = false, columnDefinition = "INT")
     private Integer projectId;
 
     @NotNull
@@ -70,4 +70,7 @@ public class AnalysisDocument extends BaseTimeEntity {
 
     @Column(name = "estimated_reading_time", length = 50)
     private String estimatedReadingTime;
+
+    @Column(name = "document_number")
+    private Integer documentNumber;
 }

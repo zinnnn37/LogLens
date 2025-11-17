@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 public class AnalysisDocumentDetailResponse {
 
     private Integer id;
+    private Integer documentNumber;
     private String projectUuid;
     private DocumentType documentType;
     private String title;

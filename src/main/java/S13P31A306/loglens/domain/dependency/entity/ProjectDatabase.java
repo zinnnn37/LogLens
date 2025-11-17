@@ -18,7 +18,7 @@ public class ProjectDatabase extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "project_id", nullable = false)
+    @Column(name = "project_id", nullable = false, columnDefinition = "INT")
     private Integer projectId;
 
     @Column(name = "database_type", nullable = false, length = 50)

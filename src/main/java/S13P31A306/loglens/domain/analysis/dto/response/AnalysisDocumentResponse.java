@@ -21,6 +21,16 @@ import java.time.LocalDateTime;
 public class AnalysisDocumentResponse {
 
     /**
+     * 문서 ID (DB 기본키)
+     */
+    private Integer documentId;
+
+    /**
+     * 프로젝트별 문서 번호 (1부터 시작)
+     */
+    private Integer documentNumber;
+
+    /**
      * 프로젝트 UUID (프로젝트 분석)
      */
     private String projectUuid;
