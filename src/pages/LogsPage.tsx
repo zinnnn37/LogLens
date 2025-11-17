@@ -1,7 +1,7 @@
 // src/pages/LogsPage.tsx
 
 import { useState, useCallback, useEffect } from 'react';
-import { searchLogs } from '@/services/logService'; // connectLogStream 추가할 것, 현재 서버 부하로 인해 잠시 삭제.
+import { searchLogs, connectLogStream } from '@/services/logService'; 
 import { createJiraIssue } from '@/services/jiraService';
 import { generateErrorAnalysis } from '@/services/analysisService';
 import type { LogData, LogSearchParams } from '@/types/log';
@@ -33,14 +33,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-// import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/stores/authStore';
 
 const LogsPage = () => {
   const { projectUuid: uuidFromParams } = useParams<{ projectUuid: string }>();
   const projectUuid = uuidFromParams;
   const [searchParams] = useSearchParams();
 
-  // const { accessToken } = useAuthStore();
+  const { accessToken } = useAuthStore();
 
   const [logs, setLogs] = useState<LogData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -137,8 +137,7 @@ const LogsPage = () => {
   }, [projectUuid, searchParams]);
 
   // --- 실시간 로그 스트리밍 (SSE) ---
-  // irregular whitespace 때문에 잠시 주석만 유지하고, 안쪽 공백은 전부 일반 공백으로 정리함.
-  /*
+  
   useEffect(() => {
     console.log('SSE useEffect 실행. 현재 accessToken:', accessToken);
 
@@ -209,7 +208,7 @@ const LogsPage = () => {
       eventSource.close();
     };
   }, [projectUuid, criteria, accessToken]);
-  */
+  
 
   // 검색핸들러
   const handleSearch = (newCriteria: SearchCriteria) => {
