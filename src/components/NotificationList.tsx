@@ -43,7 +43,7 @@ const NotificationList = ({ projectUuid }: NotificationListProps) => {
       try {
         const response: AlertHistoryResponse = await getAlertHistory({
           projectUuid,
-          resolvedYN:'N',
+          resolvedYN: 'N',
         });
 
         console.log('getAlertHistory 응답:', response);
