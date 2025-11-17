@@ -9,7 +9,12 @@ import java.math.RoundingMode;
 import java.time.LocalTime;
 
 @Entity
-@Table(name = "api_endpoints")
+@Table(name = "api_endpoints",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_project_endpoint_method",
+                columnNames = {"project_id", "endpoint_path", "http_method"}
+        )
+)
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
