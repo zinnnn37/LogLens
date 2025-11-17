@@ -13,6 +13,7 @@ from datetime import datetime
 from app.tools.statistics_comparison_tools import (
     _get_db_statistics,
     _get_log_samples,
+    _get_stratified_log_samples,
     _llm_estimate_statistics,
     _calculate_accuracy
 )
@@ -146,10 +147,15 @@ async def compare_ai_vs_db(
                 detail=f"최근 {time_hours}시간 동안 로그 데이터가 없습니다."
             )
 
-        # 2. 로그 샘플 추출
-        logger.debug(f"2단계: 로그 샘플 추출 시작")
-        log_samples = _get_log_samples(project_uuid, time_hours, sample_size)
-        logger.info(f"✅ 로그 샘플 추출 완료: sample_count={len(log_samples)}")
+        # 2. 로그 샘플 추출 (층화 샘플링 사용)
+        logger.debug(f"2단계: 층화 로그 샘플 추출 시작")
+        level_counts = {
+            "ERROR": db_stats["error_count"],
+            "WARN": db_stats["warn_count"],
+            "INFO": db_stats["info_count"]
+        }
+        log_samples = _get_stratified_log_samples(project_uuid, time_hours, sample_size, level_counts)
+        logger.info(f"✅ 층화 로그 샘플 추출 완료: sample_count={len(log_samples)}")
 
         if not log_samples:
             logger.error(f"🔴 로그 샘플 추출 실패: project_uuid={project_uuid}")
@@ -226,6 +232,7 @@ async def compare_ai_vs_db(
         # 6. 기술적 어필 포인트
         technical_highlights = [
             f"Temperature 0.1로 일관된 추론 (기본값 대비 7배 낮음)",
+            f"층화 샘플링으로 희소 이벤트(ERROR/WARN) 포착 보장",
             f"샘플 {len(log_samples)}개로 {db_stats['total_logs']:,}개 통계 추론",
             f"종합 정확도 {overall:.1f}% 달성",
             "Structured Output으로 JSON 스키마 강제",

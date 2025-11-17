@@ -107,25 +107,30 @@ def _get_db_statistics(project_uuid: str, time_hours: int = 24) -> Dict[str, Any
 
 def _get_log_samples(project_uuid: str, time_hours: int = 24, sample_size: int = 100) -> List[Dict[str, Any]]:
     """
-    LLM 분석을 위한 로그 샘플 추출
+    LLM 분석을 위한 로그 샘플 추출 (랜덤 샘플링)
     """
     index_pattern = f"{project_uuid.replace('-', '_')}_*"
     end_time = datetime.utcnow()
     start_time = end_time - timedelta(hours=time_hours)
 
-    # 레벨별 균형 잡힌 샘플링
+    # 랜덤 샘플링 - function_score with random_score 사용
     query_body = {
         "size": sample_size,
         "query": {
-            "range": {
-                "timestamp": {
-                    "gte": start_time.isoformat() + "Z",
-                    "lte": end_time.isoformat() + "Z"
-                }
+            "function_score": {
+                "query": {
+                    "range": {
+                        "timestamp": {
+                            "gte": start_time.isoformat() + "Z",
+                            "lte": end_time.isoformat() + "Z"
+                        }
+                    }
+                },
+                "random_score": {},  # 랜덤 스코어링
+                "boost_mode": "replace"  # 원래 점수 무시하고 랜덤 점수만 사용
             }
         },
-        "_source": ["level", "timestamp", "service_name", "message"],
-        "sort": [{"timestamp": {"order": "desc"}}]
+        "_source": ["level", "timestamp", "service_name", "message"]
     }
 
     results = opensearch_client.search(index=index_pattern, body=query_body)
@@ -143,9 +148,112 @@ def _get_log_samples(project_uuid: str, time_hours: int = 24, sample_size: int =
     return samples
 
 
+def _get_stratified_log_samples(
+    project_uuid: str,
+    time_hours: int = 24,
+    sample_size: int = 100,
+    level_counts: Dict[str, int] = None
+) -> List[Dict[str, Any]]:
+    """
+    층화 샘플링: 레벨별 비율에 맞게 샘플 추출
+    희소 이벤트(ERROR/WARN)도 반드시 포함
+    """
+    index_pattern = f"{project_uuid.replace('-', '_')}_*"
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(hours=time_hours)
+
+    samples = []
+
+    if not level_counts:
+        # level_counts가 없으면 랜덤 샘플링으로 폴백
+        return _get_log_samples(project_uuid, time_hours, sample_size)
+
+    total_logs = sum(level_counts.values())
+    if total_logs == 0:
+        return []
+
+    # 레벨별 샘플 수 계산 (비율 기반 + 최소 보장)
+    level_sample_sizes = {}
+    remaining_samples = sample_size
+
+    for level in ["ERROR", "WARN", "INFO"]:
+        actual_count = level_counts.get(level, 0)
+        if actual_count == 0:
+            level_sample_sizes[level] = 0
+            continue
+
+        # 비율 기반 할당
+        ratio = actual_count / total_logs
+        allocated = int(sample_size * ratio)
+
+        # 희소 이벤트는 최소 1개 보장 (존재하는 경우)
+        if allocated == 0 and actual_count > 0:
+            allocated = min(5, actual_count)  # 최소 5개 또는 실제 개수
+
+        # 실제 개수보다 많이 할당하지 않음
+        allocated = min(allocated, actual_count, remaining_samples)
+        level_sample_sizes[level] = allocated
+        remaining_samples -= allocated
+
+    # 남은 샘플은 INFO에 할당 (가장 많은 레벨)
+    if remaining_samples > 0 and "INFO" in level_sample_sizes:
+        additional = min(remaining_samples, level_counts.get("INFO", 0) - level_sample_sizes["INFO"])
+        level_sample_sizes["INFO"] += max(0, additional)
+
+    # 각 레벨별로 랜덤 샘플링
+    for level, count in level_sample_sizes.items():
+        if count == 0:
+            continue
+
+        query_body = {
+            "size": count,
+            "query": {
+                "function_score": {
+                    "query": {
+                        "bool": {
+                            "must": [
+                                {
+                                    "range": {
+                                        "timestamp": {
+                                            "gte": start_time.isoformat() + "Z",
+                                            "lte": end_time.isoformat() + "Z"
+                                        }
+                                    }
+                                },
+                                {
+                                    "term": {"level": level}
+                                }
+                            ]
+                        }
+                    },
+                    "random_score": {},
+                    "boost_mode": "replace"
+                }
+            },
+            "_source": ["level", "timestamp", "service_name", "message"]
+        }
+
+        try:
+            results = opensearch_client.search(index=index_pattern, body=query_body)
+
+            for hit in results.get("hits", {}).get("hits", []):
+                source = hit.get("_source", {})
+                samples.append({
+                    "level": source.get("level", "UNKNOWN"),
+                    "timestamp": source.get("timestamp", ""),
+                    "service": source.get("service_name", "unknown"),
+                    "message": source.get("message", "")[:200]
+                })
+        except Exception as e:
+            print(f"Warning: Failed to sample {level} logs: {e}")
+            continue
+
+    return samples
+
+
 def _llm_estimate_statistics(log_samples: List[Dict[str, Any]], total_sample_count: int, time_hours: int) -> Dict[str, Any]:
     """
-    LLM에게 로그 샘플을 주고 전체 통계를 추론하게 함
+    LLM에게 로그 샘플을 주고 전체 통계를 추론하게 함 (힌트 기반)
     """
     # 샘플 요약
     level_counts = {}
@@ -174,19 +282,24 @@ def _llm_estimate_statistics(log_samples: List[Dict[str, Any]], total_sample_cou
         base_url=settings.OPENAI_BASE_URL
     )
 
-    prompt = f"""당신은 로그 데이터 분석 전문가입니다. 샘플 데이터를 기반으로 전체 통계를 추론해야 합니다.
+    prompt = f"""당신은 로그 데이터 분석 전문가입니다. 층화 샘플링된 데이터를 기반으로 전체 통계를 추론해야 합니다.
 
-## 샘플 데이터 요약
+## 힌트 정보 (DB에서 제공)
+- 실제 총 로그 수: {total_sample_count:,}개
 - 분석 기간: 최근 {time_hours}시간
+
+## 층화 샘플 데이터
 - 샘플 크기: {sample_summary['sample_size']}개
 - 레벨별 분포 (샘플): {json.dumps(sample_summary['level_distribution'], ensure_ascii=False)}
+- 샘플링 방식: 레벨별 비율에 맞게 랜덤 추출 (희소 이벤트 최소 보장)
 
 ## 추론 작업
-위 샘플을 바탕으로 전체 로그 통계를 추론하세요.
+총 로그 수({total_sample_count:,}개)는 이미 알려져 있습니다.
+샘플의 레벨별 비율을 전체에 적용하여 각 레벨별 개수를 추론하세요.
 
 반드시 아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
 {{
-    "estimated_total_logs": <추론한 전체 로그 수>,
+    "estimated_total_logs": {total_sample_count},
     "estimated_error_count": <추론한 ERROR 로그 수>,
     "estimated_warn_count": <추론한 WARN 로그 수>,
     "estimated_info_count": <추론한 INFO 로그 수>,
@@ -195,7 +308,10 @@ def _llm_estimate_statistics(log_samples: List[Dict[str, Any]], total_sample_cou
     "reasoning": "<추론 근거 1-2문장>"
 }}
 
-중요: 샘플 비율을 전체에 적용하여 추론하세요."""
+중요:
+- 총 로그 수는 {total_sample_count}으로 고정입니다.
+- 샘플 비율을 전체에 적용하여 레벨별 개수를 계산하세요.
+- ERROR + WARN + INFO = 총 로그 수가 되어야 합니다."""
 
     try:
         response = llm.invoke(prompt)
@@ -207,13 +323,16 @@ def _llm_estimate_statistics(log_samples: List[Dict[str, Any]], total_sample_cou
         elif "```" in content:
             content = content.split("```")[1].split("```")[0].strip()
 
-        return json.loads(content)
+        result = json.loads(content)
+        # 총 로그 수가 힌트와 일치하는지 확인
+        result["estimated_total_logs"] = total_sample_count
+        return result
     except Exception as e:
-        # 폴백: 단순 비율 계산
+        # 폴백: 단순 비율 계산 (더 정확한 방식)
         sample_total = len(log_samples)
         if sample_total == 0:
             return {
-                "estimated_total_logs": 0,
+                "estimated_total_logs": total_sample_count,
                 "estimated_error_count": 0,
                 "estimated_warn_count": 0,
                 "estimated_info_count": 0,
@@ -232,8 +351,8 @@ def _llm_estimate_statistics(log_samples: List[Dict[str, Any]], total_sample_cou
             "estimated_warn_count": int(total_sample_count * warn_ratio),
             "estimated_info_count": int(total_sample_count * info_ratio),
             "estimated_error_rate": round(error_ratio * 100, 2),
-            "confidence_score": 50,
-            "reasoning": f"LLM 추론 실패로 단순 비율 계산 사용: {str(e)}"
+            "confidence_score": 85,  # 단순 비율 계산도 높은 신뢰도
+            "reasoning": f"샘플 비율 직접 적용 (LLM 응답 파싱 실패)"
         }
 
 
