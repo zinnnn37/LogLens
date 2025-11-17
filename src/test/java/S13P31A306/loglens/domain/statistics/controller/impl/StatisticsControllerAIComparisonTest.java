@@ -58,16 +58,16 @@ class StatisticsControllerAIComparisonTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("STATISTICS_2003"))
                     .andExpect(jsonPath("$.message").value("AI vs DB 통계 비교 검증 성공"))
-                    .andExpect(jsonPath("$.data.projectUuid").value(projectUuid))
-                    .andExpect(jsonPath("$.data.analysisPeriodHours").value(24))
-                    .andExpect(jsonPath("$.data.sampleSize").value(100))
-                    .andExpect(jsonPath("$.data.dbStatistics").exists())
-                    .andExpect(jsonPath("$.data.aiStatistics").exists())
-                    .andExpect(jsonPath("$.data.accuracyMetrics").exists())
+                    .andExpect(jsonPath("$.data.project_uuid").value(projectUuid))
+                    .andExpect(jsonPath("$.data.analysis_period_hours").value(24))
+                    .andExpect(jsonPath("$.data.sample_size").value(100))
+                    .andExpect(jsonPath("$.data.db_statistics").exists())
+                    .andExpect(jsonPath("$.data.ai_statistics").exists())
+                    .andExpect(jsonPath("$.data.accuracy_metrics").exists())
                     .andExpect(jsonPath("$.data.verdict").exists())
-                    .andExpect(jsonPath("$.data.accuracyMetrics.overallAccuracy").value(99.28))
+                    .andExpect(jsonPath("$.data.accuracy_metrics.overall_accuracy").value(99.28))
                     .andExpect(jsonPath("$.data.verdict.grade").value("매우 우수"))
-                    .andExpect(jsonPath("$.data.verdict.canReplaceDb").value(true));
+                    .andExpect(jsonPath("$.data.verdict.can_replace_db").value(true));
         }
 
         @Test
@@ -99,8 +99,8 @@ class StatisticsControllerAIComparisonTest {
             mockMvc.perform(get("/api/statistics/ai-comparison")
                             .param("projectUuid", projectUuid))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.analysisPeriodHours").value(24))
-                    .andExpect(jsonPath("$.data.sampleSize").value(100));
+                    .andExpect(jsonPath("$.data.analysis_period_hours").value(24))
+                    .andExpect(jsonPath("$.data.sample_size").value(100));
         }
 
         @Test
@@ -132,8 +132,8 @@ class StatisticsControllerAIComparisonTest {
                             .param("timeHours", String.valueOf(customTimeHours))
                             .param("sampleSize", String.valueOf(customSampleSize)))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.analysisPeriodHours").value(customTimeHours))
-                    .andExpect(jsonPath("$.data.sampleSize").value(customSampleSize));
+                    .andExpect(jsonPath("$.data.analysis_period_hours").value(customTimeHours))
+                    .andExpect(jsonPath("$.data.sample_size").value(customSampleSize));
         }
 
         @Test
@@ -157,9 +157,9 @@ class StatisticsControllerAIComparisonTest {
             mockMvc.perform(get("/api/statistics/ai-comparison")
                             .param("projectUuid", projectUuid))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.accuracyMetrics.overallAccuracy").value(98.5))
+                    .andExpect(jsonPath("$.data.accuracy_metrics.overall_accuracy").value(98.5))
                     .andExpect(jsonPath("$.data.verdict.grade").value("매우 우수"))
-                    .andExpect(jsonPath("$.data.verdict.canReplaceDb").value(true));
+                    .andExpect(jsonPath("$.data.verdict.can_replace_db").value(true));
         }
 
         @Test
@@ -183,9 +183,9 @@ class StatisticsControllerAIComparisonTest {
             mockMvc.perform(get("/api/statistics/ai-comparison")
                             .param("projectUuid", projectUuid))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.accuracyMetrics.overallAccuracy").value(65.0))
+                    .andExpect(jsonPath("$.data.accuracy_metrics.overall_accuracy").value(65.0))
                     .andExpect(jsonPath("$.data.verdict.grade").value("미흡"))
-                    .andExpect(jsonPath("$.data.verdict.canReplaceDb").value(false));
+                    .andExpect(jsonPath("$.data.verdict.can_replace_db").value(false));
         }
 
         @Test
@@ -215,9 +215,9 @@ class StatisticsControllerAIComparisonTest {
             mockMvc.perform(get("/api/statistics/ai-comparison")
                             .param("projectUuid", projectUuid))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.technicalHighlights").isArray())
-                    .andExpect(jsonPath("$.data.technicalHighlights.length()").value(3))
-                    .andExpect(jsonPath("$.data.technicalHighlights[0]").value("Temperature 0.1로 일관된 추론"));
+                    .andExpect(jsonPath("$.data.technical_highlights").isArray())
+                    .andExpect(jsonPath("$.data.technical_highlights.length()").value(3))
+                    .andExpect(jsonPath("$.data.technical_highlights[0]").value("Temperature 0.1로 일관된 추론"));
         }
 
         @Test
@@ -245,12 +245,12 @@ class StatisticsControllerAIComparisonTest {
                             .param("projectUuid", projectUuid))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("STATISTICS_2003"))
-                    .andExpect(jsonPath("$.data.projectUuid").value(projectUuid))
-                    .andExpect(jsonPath("$.data.analysisPeriodHours").value(24))
-                    .andExpect(jsonPath("$.data.sampleSize").value(100))
-                    .andExpect(jsonPath("$.data.dbStatistics").doesNotExist())
-                    .andExpect(jsonPath("$.data.aiStatistics").doesNotExist())
-                    .andExpect(jsonPath("$.data.accuracyMetrics").doesNotExist())
+                    .andExpect(jsonPath("$.data.project_uuid").value(projectUuid))
+                    .andExpect(jsonPath("$.data.analysis_period_hours").value(24))
+                    .andExpect(jsonPath("$.data.sample_size").value(100))
+                    .andExpect(jsonPath("$.data.db_statistics").doesNotExist())
+                    .andExpect(jsonPath("$.data.ai_statistics").doesNotExist())
+                    .andExpect(jsonPath("$.data.accuracy_metrics").doesNotExist())
                     .andExpect(jsonPath("$.data.verdict.grade").value("미흡"));
         }
 
@@ -281,7 +281,7 @@ class StatisticsControllerAIComparisonTest {
                             .param("projectUuid", projectUuid))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.verdict.grade").value("미흡"))
-                    .andExpect(jsonPath("$.data.verdict.canReplaceDb").doesNotExist())
+                    .andExpect(jsonPath("$.data.verdict.can_replace_db").doesNotExist())
                     .andExpect(jsonPath("$.data.verdict.explanation").value("정확도가 낮아 근본적인 개선이 필요합니다."));
         }
     }

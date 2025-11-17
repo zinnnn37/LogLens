@@ -160,14 +160,14 @@ class AIComparisonResponseTest {
             String json = objectMapper.writeValueAsString(response);
 
             // then
-            assertThat(json).contains("\"projectUuid\":\"test-uuid\"");
-            assertThat(json).contains("\"analysisPeriodHours\":24");
-            assertThat(json).contains("\"sampleSize\":100");
-            assertThat(json).contains("\"totalLogs\":15420");
-            assertThat(json).contains("\"estimatedTotalLogs\":15380");
-            assertThat(json).contains("\"overallAccuracy\":99.28");
+            assertThat(json).contains("\"project_uuid\":\"test-uuid\"");
+            assertThat(json).contains("\"analysis_period_hours\":24");
+            assertThat(json).contains("\"sample_size\":100");
+            assertThat(json).contains("\"total_logs\":15420");
+            assertThat(json).contains("\"estimated_total_logs\":15380");
+            assertThat(json).contains("\"overall_accuracy\":99.28");
             assertThat(json).contains("\"grade\":\"매우 우수\"");
-            assertThat(json).contains("\"canReplaceDb\":true");
+            assertThat(json).contains("\"can_replace_db\":true");
         }
 
         @Test
@@ -176,44 +176,44 @@ class AIComparisonResponseTest {
             // given
             String json = """
                     {
-                      "projectUuid": "test-uuid",
-                      "analysisPeriodHours": 24,
-                      "sampleSize": 100,
-                      "analyzedAt": "2025-11-14T15:30:00",
-                      "dbStatistics": {
-                        "totalLogs": 15420,
-                        "errorCount": 342,
-                        "warnCount": 1205,
-                        "infoCount": 13873,
-                        "errorRate": 2.22,
-                        "peakHour": "2025-11-14T12",
-                        "peakCount": 892
+                      "project_uuid": "test-uuid",
+                      "analysis_period_hours": 24,
+                      "sample_size": 100,
+                      "analyzed_at": "2025-11-14T15:30:00",
+                      "db_statistics": {
+                        "total_logs": 15420,
+                        "error_count": 342,
+                        "warn_count": 1205,
+                        "info_count": 13873,
+                        "error_rate": 2.22,
+                        "peak_hour": "2025-11-14T12",
+                        "peak_count": 892
                       },
-                      "aiStatistics": {
-                        "estimatedTotalLogs": 15380,
-                        "estimatedErrorCount": 338,
-                        "estimatedWarnCount": 1198,
-                        "estimatedInfoCount": 13844,
-                        "estimatedErrorRate": 2.20,
-                        "confidenceScore": 85,
+                      "ai_statistics": {
+                        "estimated_total_logs": 15380,
+                        "estimated_error_count": 338,
+                        "estimated_warn_count": 1198,
+                        "estimated_info_count": 13844,
+                        "estimated_error_rate": 2.20,
+                        "confidence_score": 85,
                         "reasoning": "추론 근거"
                       },
-                      "accuracyMetrics": {
-                        "totalLogsAccuracy": 99.74,
-                        "errorCountAccuracy": 98.83,
-                        "warnCountAccuracy": 99.42,
-                        "infoCountAccuracy": 99.79,
-                        "errorRateAccuracy": 99.80,
-                        "overallAccuracy": 99.28,
-                        "aiConfidence": 85
+                      "accuracy_metrics": {
+                        "total_logs_accuracy": 99.74,
+                        "error_count_accuracy": 98.83,
+                        "warn_count_accuracy": 99.42,
+                        "info_count_accuracy": 99.79,
+                        "error_rate_accuracy": 99.80,
+                        "overall_accuracy": 99.28,
+                        "ai_confidence": 85
                       },
                       "verdict": {
                         "grade": "매우 우수",
-                        "canReplaceDb": true,
+                        "can_replace_db": true,
                         "explanation": "설명",
                         "recommendations": ["권장1", "권장2"]
                       },
-                      "technicalHighlights": ["포인트1", "포인트2"]
+                      "technical_highlights": ["포인트1", "포인트2"]
                     }
                     """;
 

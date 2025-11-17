@@ -1,5 +1,7 @@
 package S13P31A306.loglens.domain.statistics.dto.response;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,6 +11,7 @@ import java.util.List;
  * LLM이 DB 쿼리를 대체할 수 있는 역량을 검증하는 결과
  */
 @Schema(description = "AI vs DB 통계 비교 검증 응답")
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record AIComparisonResponse(
 
         @Schema(description = "프로젝트 UUID", example = "3a73c7d4-8176-3929-b72f-d5b921daae67")
@@ -43,6 +46,7 @@ public record AIComparisonResponse(
      * DB 직접 조회 통계
      */
     @Schema(description = "DB 직접 조회 통계 (Ground Truth)")
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record DBStatistics(
             @Schema(description = "총 로그 수", example = "15420")
             Integer totalLogs,
@@ -70,6 +74,7 @@ public record AIComparisonResponse(
      * AI(LLM) 추론 통계
      */
     @Schema(description = "AI(LLM) 추론 통계")
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record AIStatistics(
             @Schema(description = "추론한 총 로그 수", example = "15380")
             Integer estimatedTotalLogs,
@@ -97,6 +102,7 @@ public record AIComparisonResponse(
      * 정확도 지표
      */
     @Schema(description = "정확도 지표")
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record AccuracyMetrics(
             @Schema(description = "총 로그 수 일치율 (%)", example = "99.74")
             Double totalLogsAccuracy,
@@ -124,6 +130,7 @@ public record AIComparisonResponse(
      * 검증 결론
      */
     @Schema(description = "검증 결론")
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record ComparisonVerdict(
             @Schema(description = "등급", example = "매우 우수")
             String grade,

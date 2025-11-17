@@ -469,47 +469,47 @@ class AiServiceClientTest {
 
             String responseBody = """
                     {
-                      "projectUuid": "test-project-uuid",
-                      "analysisPeriodHours": 24,
-                      "sampleSize": 100,
-                      "analyzedAt": "2025-11-14T15:30:00",
-                      "dbStatistics": {
-                        "totalLogs": 15420,
-                        "errorCount": 342,
-                        "warnCount": 1205,
-                        "infoCount": 13873,
-                        "errorRate": 2.22,
-                        "peakHour": "2025-11-14T12",
-                        "peakCount": 892
+                      "project_uuid": "test-project-uuid",
+                      "analysis_period_hours": 24,
+                      "sample_size": 100,
+                      "analyzed_at": "2025-11-14T15:30:00",
+                      "db_statistics": {
+                        "total_logs": 15420,
+                        "error_count": 342,
+                        "warn_count": 1205,
+                        "info_count": 13873,
+                        "error_rate": 2.22,
+                        "peak_hour": "2025-11-14T12",
+                        "peak_count": 892
                       },
-                      "aiStatistics": {
-                        "estimatedTotalLogs": 15380,
-                        "estimatedErrorCount": 338,
-                        "estimatedWarnCount": 1198,
-                        "estimatedInfoCount": 13844,
-                        "estimatedErrorRate": 2.20,
-                        "confidenceScore": 85,
+                      "ai_statistics": {
+                        "estimated_total_logs": 15380,
+                        "estimated_error_count": 338,
+                        "estimated_warn_count": 1198,
+                        "estimated_info_count": 13844,
+                        "estimated_error_rate": 2.20,
+                        "confidence_score": 85,
                         "reasoning": "샘플 100개 중 ERROR 2.2% 비율을 전체에 적용"
                       },
-                      "accuracyMetrics": {
-                        "totalLogsAccuracy": 99.74,
-                        "errorCountAccuracy": 98.83,
-                        "warnCountAccuracy": 99.42,
-                        "infoCountAccuracy": 99.79,
-                        "errorRateAccuracy": 99.80,
-                        "overallAccuracy": 99.28,
-                        "aiConfidence": 85
+                      "accuracy_metrics": {
+                        "total_logs_accuracy": 99.74,
+                        "error_count_accuracy": 98.83,
+                        "warn_count_accuracy": 99.42,
+                        "info_count_accuracy": 99.79,
+                        "error_rate_accuracy": 99.80,
+                        "overall_accuracy": 99.28,
+                        "ai_confidence": 85
                       },
                       "verdict": {
                         "grade": "매우 우수",
-                        "canReplaceDb": true,
+                        "can_replace_db": true,
                         "explanation": "오차율 5% 미만으로 프로덕션 환경에서 신뢰성 있게 사용 가능합니다.",
                         "recommendations": [
                           "프로덕션 환경 적용 권장",
                           "실시간 대시보드 AI 기반 분석 도입 가능"
                         ]
                       },
-                      "technicalHighlights": [
+                      "technical_highlights": [
                         "Temperature 0.1로 일관된 추론",
                         "종합 정확도 99.28% 달성"
                       ]
@@ -609,44 +609,44 @@ class AiServiceClientTest {
             // given
             String responseBody = """
                     {
-                      "projectUuid": "test-uuid",
-                      "analysisPeriodHours": 24,
-                      "sampleSize": 100,
-                      "analyzedAt": "2025-11-14T15:30:00",
-                      "dbStatistics": {
-                        "totalLogs": 1000,
-                        "errorCount": 100,
-                        "warnCount": 100,
-                        "infoCount": 800,
-                        "errorRate": 10.0,
-                        "peakHour": "2025-11-14T12",
-                        "peakCount": 100
+                      "project_uuid": "test-uuid",
+                      "analysis_period_hours": 24,
+                      "sample_size": 100,
+                      "analyzed_at": "2025-11-14T15:30:00",
+                      "db_statistics": {
+                        "total_logs": 1000,
+                        "error_count": 100,
+                        "warn_count": 100,
+                        "info_count": 800,
+                        "error_rate": 10.0,
+                        "peak_hour": "2025-11-14T12",
+                        "peak_count": 100
                       },
-                      "aiStatistics": {
-                        "estimatedTotalLogs": 920,
-                        "estimatedErrorCount": 93,
-                        "estimatedWarnCount": 95,
-                        "estimatedInfoCount": 732,
-                        "estimatedErrorRate": 10.1,
-                        "confidenceScore": 80,
+                      "ai_statistics": {
+                        "estimated_total_logs": 920,
+                        "estimated_error_count": 93,
+                        "estimated_warn_count": 95,
+                        "estimated_info_count": 732,
+                        "estimated_error_rate": 10.1,
+                        "confidence_score": 80,
                         "reasoning": "추론 기반"
                       },
-                      "accuracyMetrics": {
-                        "totalLogsAccuracy": 92.0,
-                        "errorCountAccuracy": 93.0,
-                        "warnCountAccuracy": 95.0,
-                        "infoCountAccuracy": 91.5,
-                        "errorRateAccuracy": 99.0,
-                        "overallAccuracy": 92.35,
-                        "aiConfidence": 80
+                      "accuracy_metrics": {
+                        "total_logs_accuracy": 92.0,
+                        "error_count_accuracy": 93.0,
+                        "warn_count_accuracy": 95.0,
+                        "info_count_accuracy": 91.5,
+                        "error_rate_accuracy": 99.0,
+                        "overall_accuracy": 92.35,
+                        "ai_confidence": 80
                       },
                       "verdict": {
                         "grade": "우수",
-                        "canReplaceDb": true,
+                        "can_replace_db": true,
                         "explanation": "오차율 10% 미만으로 대부분의 분석 업무에 활용 가능합니다.",
                         "recommendations": ["보조 분석 도구로 즉시 활용 가능"]
                       },
-                      "technicalHighlights": ["종합 정확도 92.35% 달성"]
+                      "technical_highlights": ["종합 정확도 92.35% 달성"]
                     }
                     """;
 
@@ -670,44 +670,44 @@ class AiServiceClientTest {
             // given
             String responseBody = """
                     {
-                      "projectUuid": "test-uuid",
-                      "analysisPeriodHours": 24,
-                      "sampleSize": 100,
-                      "analyzedAt": "2025-11-14T15:30:00",
-                      "dbStatistics": {
-                        "totalLogs": 1000,
-                        "errorCount": 100,
-                        "warnCount": 100,
-                        "infoCount": 800,
-                        "errorRate": 10.0,
-                        "peakHour": "2025-11-14T12",
-                        "peakCount": 100
+                      "project_uuid": "test-uuid",
+                      "analysis_period_hours": 24,
+                      "sample_size": 100,
+                      "analyzed_at": "2025-11-14T15:30:00",
+                      "db_statistics": {
+                        "total_logs": 1000,
+                        "error_count": 100,
+                        "warn_count": 100,
+                        "info_count": 800,
+                        "error_rate": 10.0,
+                        "peak_hour": "2025-11-14T12",
+                        "peak_count": 100
                       },
-                      "aiStatistics": {
-                        "estimatedTotalLogs": 600,
-                        "estimatedErrorCount": 60,
-                        "estimatedWarnCount": 60,
-                        "estimatedInfoCount": 480,
-                        "estimatedErrorRate": 10.0,
-                        "confidenceScore": 30,
+                      "ai_statistics": {
+                        "estimated_total_logs": 600,
+                        "estimated_error_count": 60,
+                        "estimated_warn_count": 60,
+                        "estimated_info_count": 480,
+                        "estimated_error_rate": 10.0,
+                        "confidence_score": 30,
                         "reasoning": "추론 실패"
                       },
-                      "accuracyMetrics": {
-                        "totalLogsAccuracy": 60.0,
-                        "errorCountAccuracy": 60.0,
-                        "warnCountAccuracy": 60.0,
-                        "infoCountAccuracy": 60.0,
-                        "errorRateAccuracy": 100.0,
-                        "overallAccuracy": 62.0,
-                        "aiConfidence": 30
+                      "accuracy_metrics": {
+                        "total_logs_accuracy": 60.0,
+                        "error_count_accuracy": 60.0,
+                        "warn_count_accuracy": 60.0,
+                        "info_count_accuracy": 60.0,
+                        "error_rate_accuracy": 100.0,
+                        "overall_accuracy": 62.0,
+                        "ai_confidence": 30
                       },
                       "verdict": {
                         "grade": "미흡",
-                        "canReplaceDb": false,
+                        "can_replace_db": false,
                         "explanation": "정확도가 낮아 근본적인 개선이 필요합니다.",
                         "recommendations": ["LLM 모델 업그레이드 고려"]
                       },
-                      "technicalHighlights": []
+                      "technical_highlights": []
                     }
                     """;
 
@@ -731,20 +731,20 @@ class AiServiceClientTest {
             // given - verdict만 있고 나머지 필드는 null인 불완전한 응답
             String responseBody = """
                     {
-                      "projectUuid": null,
-                      "analysisPeriodHours": null,
-                      "sampleSize": null,
-                      "analyzedAt": null,
-                      "dbStatistics": null,
-                      "aiStatistics": null,
-                      "accuracyMetrics": null,
+                      "project_uuid": null,
+                      "analysis_period_hours": null,
+                      "sample_size": null,
+                      "analyzed_at": null,
+                      "db_statistics": null,
+                      "ai_statistics": null,
+                      "accuracy_metrics": null,
                       "verdict": {
                         "grade": "미흡",
-                        "canReplaceDb": null,
+                        "can_replace_db": null,
                         "explanation": "정확도가 낮아 근본적인 개선이 필요합니다.",
                         "recommendations": ["LLM 모델 업그레이드 고려"]
                       },
-                      "technicalHighlights": null
+                      "technical_highlights": null
                     }
                     """;
 
@@ -782,44 +782,44 @@ class AiServiceClientTest {
             // given - projectUuid만 null
             String responseBody = """
                     {
-                      "projectUuid": null,
-                      "analysisPeriodHours": 24,
-                      "sampleSize": 100,
-                      "analyzedAt": "2025-11-14T15:30:00",
-                      "dbStatistics": {
-                        "totalLogs": 1000,
-                        "errorCount": 100,
-                        "warnCount": 100,
-                        "infoCount": 800,
-                        "errorRate": 10.0,
-                        "peakHour": "2025-11-14T12",
-                        "peakCount": 100
+                      "project_uuid": null,
+                      "analysis_period_hours": 24,
+                      "sample_size": 100,
+                      "analyzed_at": "2025-11-14T15:30:00",
+                      "db_statistics": {
+                        "total_logs": 1000,
+                        "error_count": 100,
+                        "warn_count": 100,
+                        "info_count": 800,
+                        "error_rate": 10.0,
+                        "peak_hour": "2025-11-14T12",
+                        "peak_count": 100
                       },
-                      "aiStatistics": {
-                        "estimatedTotalLogs": 980,
-                        "estimatedErrorCount": 98,
-                        "estimatedWarnCount": 99,
-                        "estimatedInfoCount": 783,
-                        "estimatedErrorRate": 10.0,
-                        "confidenceScore": 85,
+                      "ai_statistics": {
+                        "estimated_total_logs": 980,
+                        "estimated_error_count": 98,
+                        "estimated_warn_count": 99,
+                        "estimated_info_count": 783,
+                        "estimated_error_rate": 10.0,
+                        "confidence_score": 85,
                         "reasoning": "추론 완료"
                       },
-                      "accuracyMetrics": {
-                        "totalLogsAccuracy": 98.0,
-                        "errorCountAccuracy": 98.0,
-                        "warnCountAccuracy": 99.0,
-                        "infoCountAccuracy": 97.875,
-                        "errorRateAccuracy": 100.0,
-                        "overallAccuracy": 98.4,
-                        "aiConfidence": 85
+                      "accuracy_metrics": {
+                        "total_logs_accuracy": 98.0,
+                        "error_count_accuracy": 98.0,
+                        "warn_count_accuracy": 99.0,
+                        "info_count_accuracy": 97.875,
+                        "error_rate_accuracy": 100.0,
+                        "overall_accuracy": 98.4,
+                        "ai_confidence": 85
                       },
                       "verdict": {
                         "grade": "매우 우수",
-                        "canReplaceDb": true,
+                        "can_replace_db": true,
                         "explanation": "오차율 5% 미만",
                         "recommendations": []
                       },
-                      "technicalHighlights": []
+                      "technical_highlights": []
                     }
                     """;
 
@@ -848,44 +848,44 @@ class AiServiceClientTest {
             // given - 모든 필드가 채워진 완전한 응답
             String responseBody = """
                     {
-                      "projectUuid": "original-uuid",
-                      "analysisPeriodHours": 12,
-                      "sampleSize": 50,
-                      "analyzedAt": "2025-11-14T10:00:00",
-                      "dbStatistics": {
-                        "totalLogs": 500,
-                        "errorCount": 50,
-                        "warnCount": 50,
-                        "infoCount": 400,
-                        "errorRate": 10.0,
-                        "peakHour": "2025-11-14T09",
-                        "peakCount": 60
+                      "project_uuid": "original-uuid",
+                      "analysis_period_hours": 12,
+                      "sample_size": 50,
+                      "analyzed_at": "2025-11-14T10:00:00",
+                      "db_statistics": {
+                        "total_logs": 500,
+                        "error_count": 50,
+                        "warn_count": 50,
+                        "info_count": 400,
+                        "error_rate": 10.0,
+                        "peak_hour": "2025-11-14T09",
+                        "peak_count": 60
                       },
-                      "aiStatistics": {
-                        "estimatedTotalLogs": 490,
-                        "estimatedErrorCount": 49,
-                        "estimatedWarnCount": 49,
-                        "estimatedInfoCount": 392,
-                        "estimatedErrorRate": 10.0,
-                        "confidenceScore": 90,
+                      "ai_statistics": {
+                        "estimated_total_logs": 490,
+                        "estimated_error_count": 49,
+                        "estimated_warn_count": 49,
+                        "estimated_info_count": 392,
+                        "estimated_error_rate": 10.0,
+                        "confidence_score": 90,
                         "reasoning": "정확한 추론"
                       },
-                      "accuracyMetrics": {
-                        "totalLogsAccuracy": 98.0,
-                        "errorCountAccuracy": 98.0,
-                        "warnCountAccuracy": 98.0,
-                        "infoCountAccuracy": 98.0,
-                        "errorRateAccuracy": 100.0,
-                        "overallAccuracy": 98.4,
-                        "aiConfidence": 90
+                      "accuracy_metrics": {
+                        "total_logs_accuracy": 98.0,
+                        "error_count_accuracy": 98.0,
+                        "warn_count_accuracy": 98.0,
+                        "info_count_accuracy": 98.0,
+                        "error_rate_accuracy": 100.0,
+                        "overall_accuracy": 98.4,
+                        "ai_confidence": 90
                       },
                       "verdict": {
                         "grade": "매우 우수",
-                        "canReplaceDb": true,
+                        "can_replace_db": true,
                         "explanation": "높은 정확도",
                         "recommendations": []
                       },
-                      "technicalHighlights": ["정확도 98.4%"]
+                      "technical_highlights": ["정확도 98.4%"]
                     }
                     """;
 
