@@ -110,97 +110,70 @@ pipeline {
                     def port = env.DEPLOY_TARGET == 'blue' ? env.BLUE_PORT : env.GREEN_PORT
 
                     sh """#!/bin/bash
-                        # 기존 컨테이너 정리
-                        if [ \$(docker ps -aq -f name=${containerName}) ]; then
-                            echo "🗑️ Removing old container: ${containerName}"
-                            docker stop ${containerName} || true
-                            docker rm ${containerName} || true
-                        fi
-                        
-                        # ✅ 로그 디렉토리 절대 경로 설정
-                        LOG_DIR="/home/ubuntu/loglens/logs"
-                        
-                        # 로그 디렉토리 백업 및 초기화
-                        echo "📁 Initializing log directories at \${LOG_DIR}..."
-                        BACKUP_DIR=\${LOG_DIR}/backup/\$(date +%Y%m%d_%H%M%S)
-                        
-                        # BE 로그 백업
-                        if [ -d \${LOG_DIR}/be ] && [ "\$(ls -A \${LOG_DIR}/be)" ]; then
-                            echo "  💾 Backing up existing BE logs..."
-                            mkdir -p \${BACKUP_DIR}/be
-                            mv \${LOG_DIR}/be/* \${BACKUP_DIR}/be/ 2>/dev/null || true
-                            echo "  ✅ BE logs backed up to \${BACKUP_DIR}/be/"
-                        fi
-                        
-                        # FE 로그 백업
-                        if [ -d \${LOG_DIR}/fe ] && [ "\$(ls -A \${LOG_DIR}/fe)" ]; then
-                            echo "  💾 Backing up existing FE logs..."
-                            mkdir -p \${BACKUP_DIR}/fe
-                            mv \${LOG_DIR}/fe/* \${BACKUP_DIR}/fe/ 2>/dev/null || true
-                            echo "  ✅ FE logs backed up to \${BACKUP_DIR}/fe/"
-                        fi
-                        
-                        # Infra 로그 백업
-                        if [ -d \${LOG_DIR}/infra ] && [ "\$(ls -A \${LOG_DIR}/infra)" ]; then
-                            echo "  💾 Backing up existing Infra logs..."
-                            mkdir -p \${BACKUP_DIR}/infra
-                            mv \${LOG_DIR}/infra/* \${BACKUP_DIR}/infra/ 2>/dev/null || true
-                            echo "  ✅ Infra logs backed up to \${BACKUP_DIR}/infra/"
-                        fi
-                        
-                        # 디렉토리 재생성 및 권한 설정
-                        echo "🔧 Recreating log directories with proper ownership..."
-                        rm -rf \${LOG_DIR}/be \${LOG_DIR}/fe \${LOG_DIR}/infra
-                        mkdir -p \${LOG_DIR}/be \${LOG_DIR}/fe \${LOG_DIR}/infra/mysql
-                        
-                        # 권한 설정
-                        chown -R 1000:1000 \${LOG_DIR}
-                        chmod -R 777 \${LOG_DIR}
-                        
-                        echo "✅ Log directories initialized"
-                        ls -la \${LOG_DIR}/
-                        
-                        # 3일 이상 된 백업 로그 자동 삭제
-                        if [ -d \${LOG_DIR}/backup ]; then
-                            echo "🧹 Cleaning up old log backups (older than 3 days)..."
-                            DELETED_COUNT=\$(find \${LOG_DIR}/backup/* -type d -mtime +3 2>/dev/null | wc -l)
-                            if [ "\${DELETED_COUNT}" -gt 0 ]; then
-                                find \${LOG_DIR}/backup/* -type d -mtime +3 -exec rm -rf {} + 2>/dev/null || true
-                                echo "  ✅ Deleted \${DELETED_COUNT} old backup(s)"
-                            else
-                                echo "  ℹ️  No old backups to clean"
-                            fi
-                        fi
-                        
-                        # ✅ 새 컨테이너 배포 (절대 경로 사용)
-                        echo "🚀 Deploying ${containerName} on port ${port}"
-                        docker run -d \\
-                            --name ${containerName} \\
-                            --network loglens-network \\
-                            -p ${port}:8080 \\
-                            --env-file \${WORKSPACE}/.env \\
-                            --restart unless-stopped \\
-                            --user root \\
-                            -v \${LOG_DIR}:/app/logs \\
-                            ${IMAGE_NAME}
-                        
-                        echo "✅ ${containerName} deployed successfully"
-                        docker ps | grep ${containerName}
-                        
-                        # 볼륨 마운트 확인
-                        echo "📋 Verifying volume mounts..."
-                        docker inspect ${containerName} --format='{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'
-                        
-                        # 로그 파일 생성 대기
-                        echo "⏳ Waiting for application to start..."
-                        sleep 15
-                        
-                        echo "📋 Checking log files in container..."
-                        docker exec ${containerName} ls -lh /app/logs/be/ 2>/dev/null || echo "  ⚠️  BE logs not yet created"
-                        
-                        echo "📋 Checking log files on host..."
-                        ls -lh \${LOG_DIR}/be/ 2>/dev/null || echo "  ⚠️  BE logs not visible on host"
-                    """
+
+                echo "🎯 Deploy Target: ${containerName} on port ${port}"
+                
+                # 1. 기존 컨테이너 중지 및 삭제 (서비스 중단 없음 — 비활성 노드만 삭제)
+                if [ \$(docker ps -aq -f name=${containerName}) ]; then
+                    echo "🛑 Stopping old container: ${containerName}"
+                    docker stop ${containerName} || true
+                    docker rm ${containerName} || true
+                fi
+
+                # 2. 로그 디렉토리 설정
+                LOG_DIR="/home/ubuntu/loglens/logs"
+
+                echo "🧹 Removing old logs in: \${LOG_DIR}"
+
+                # 3. BE 로그 전체 삭제 (.gz, .tmp 포함)
+                rm -rf \${LOG_DIR}/be/* || true
+
+                # 4. FE 로그 삭제
+                rm -rf \${LOG_DIR}/fe/* || true
+
+                # 5. Infra 로그 삭제
+                rm -rf \${LOG_DIR}/infra/* || true
+
+                # 6. 디렉토리 재생성
+                echo "📁 Recreating log directories..."
+                rm -rf \${LOG_DIR}/be \${LOG_DIR}/fe \${LOG_DIR}/infra
+                mkdir -p \${LOG_DIR}/be \${LOG_DIR}/fe \${LOG_DIR}/infra/mysql
+
+                # 7. 권한 설정
+                chown -R 1000:1000 \${LOG_DIR}
+                chmod -R 777 \${LOG_DIR}
+
+                echo "✅ Log directories cleaned"
+                ls -lh \${LOG_DIR}
+
+                # 8. 새 컨테이너 실행
+                echo "🚀 Deploying ${containerName}..."
+                docker run -d \\
+                    --name ${containerName} \\
+                    --network loglens-network \\
+                    -p ${port}:8080 \\
+                    --env-file \${WORKSPACE}/.env \\
+                    --restart unless-stopped \\
+                    --user root \\
+                    -v \${LOG_DIR}:/app/logs \\
+                    ${IMAGE_NAME}
+
+                echo "✅ ${containerName} deployed successfully!"
+
+                # 9. 볼륨 마운트 확인
+                echo "📋 Checking volume mounts..."
+                docker inspect ${containerName} --format='{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'
+
+                # 10. 애플리케이션 로그 생성 대기
+                echo "⏳ Waiting for logs to initialize..."
+                sleep 5
+
+                echo "📋 Checking BE logs in container..."
+                docker exec ${containerName} ls -lh /app/logs/be || echo "⚠️ No BE logs yet"
+
+                echo "📋 Checking BE logs on host..."
+                ls -lh \${LOG_DIR}/be || echo "⚠️ No BE logs on host yet"
+            """
                 }
             }
         }
