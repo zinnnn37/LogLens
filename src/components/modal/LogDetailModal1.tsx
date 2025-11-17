@@ -243,7 +243,7 @@ const LogDetailModal1 = ({
             <InfoRow label="System" value={log.sourceType} />
             <InfoRow
               label="Date"
-              value={new Date(log.timestamp).toLocaleString()}
+              value={new Date(log.timestamp.replace('Z', '')).toLocaleString()}
             />
             <InfoRow
               label="Message"
