@@ -3,6 +3,7 @@ package S13P31A306.loglens.global.client;
 import S13P31A306.loglens.domain.analysis.dto.ai.AiHtmlDocumentRequest;
 import S13P31A306.loglens.domain.analysis.dto.ai.AiHtmlDocumentResponse;
 import S13P31A306.loglens.domain.log.dto.ai.AiAnalysisResponse;
+import S13P31A306.loglens.domain.statistics.dto.response.AIComparisonResponse;
 import java.time.Duration;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +27,9 @@ public class AiServiceClient {
     private static final String LOG_PREFIX = "[AiServiceClient]";
     private static final String AI_API_V2_LANGGRAPH_LOGS_PATH = "/api/v2-langgraph/logs";
     private static final String AI_API_V2_LANGGRAPH_ANALYSIS_PATH = "/api/v2-langgraph/analysis";
+    private static final String AI_API_V2_LANGGRAPH_STATISTICS_PATH = "/api/v2-langgraph/statistics";
     private static final int DOCUMENT_GENERATION_TIMEOUT = 60000; // 60초
+    private static final int STATISTICS_COMPARISON_TIMEOUT = 30000; // 30초
 
     private final WebClient webClient;
     private final int timeout;
@@ -187,4 +190,56 @@ public class AiServiceClient {
             case ERROR_ANALYSIS -> generateErrorAnalysisHtml(request);
         };
     }
+
+    /**
+     * AI vs DB 통계 비교 검증 요청
+     * AI 서비스의 GET /api/v2-langgraph/statistics/compare 엔드포인트를 호출합니다.
+     * LLM이 DB 쿼리를 대체할 수 있는 역량을 검증합니다.
+     *
+     * @param projectUuid 프로젝트 UUID
+     * @param timeHours   분석 기간 (시간)
+     * @param sampleSize  AI 분석용 샘플 크기
+     * @return AI vs DB 비교 검증 결과, 실패 시 null
+     */
+    public AIComparisonResponse compareAiVsDbStatistics(String projectUuid, int timeHours, int sampleSize) {
+        log.debug("{} 🤖 AI vs DB 통계 비교 요청: projectUuid={}, timeHours={}, sampleSize={}",
+                LOG_PREFIX, projectUuid, timeHours, sampleSize);
+
+        try {
+            AIComparisonResponse response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path(AI_API_V2_LANGGRAPH_STATISTICS_PATH + "/compare")
+                            .queryParam("project_uuid", projectUuid)
+                            .queryParam("time_hours", timeHours)
+                            .queryParam("sample_size", sampleSize)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(AIComparisonResponse.class)
+                    .timeout(Duration.ofMillis(STATISTICS_COMPARISON_TIMEOUT))
+                    .block();
+
+            if (response != null) {
+                log.info("{} ✅ AI vs DB 통계 비교 완료: projectUuid={}, overallAccuracy={}%, canReplaceDb={}",
+                        LOG_PREFIX, projectUuid,
+                        response.accuracyMetrics() != null ? response.accuracyMetrics().overallAccuracy() : null,
+                        response.verdict() != null ? response.verdict().canReplaceDb() : null);
+            }
+            return response;
+
+        } catch (WebClientResponseException e) {
+            log.error("{} 🔴 AI vs DB 통계 비교 실패: projectUuid={}, status={}, body={}",
+                    LOG_PREFIX, projectUuid, e.getStatusCode(), e.getResponseBodyAsString());
+
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                log.warn("{} ⚠️ 로그 데이터 없음: projectUuid={}", LOG_PREFIX, projectUuid);
+            }
+            return null;
+
+        } catch (Exception e) {
+            log.error("{} 🔴 AI vs DB 통계 비교 중 예외 발생: projectUuid={}, error={}",
+                    LOG_PREFIX, projectUuid, e.getMessage(), e);
+            return null;
+        }
+    }
 }
+

@@ -1,5 +1,6 @@
 package S13P31A306.loglens.domain.statistics.controller;
 
+import S13P31A306.loglens.domain.statistics.dto.response.AIComparisonResponse;
 import S13P31A306.loglens.domain.statistics.dto.response.LogTrendResponse;
 import S13P31A306.loglens.domain.statistics.dto.response.TrafficResponse;
 import S13P31A306.loglens.global.annotation.ValidUuid;
@@ -388,4 +389,95 @@ public interface StatisticsApi {
             @ValidUuid
             @RequestParam String projectUuid
     );
+
+    @Operation(
+            summary = "AI vs DB 통계 비교 검증",
+            description = "LLM 기반 통계 추론과 DB 직접 조회의 정확도를 비교하여 AI의 DB 대체 역량을 검증합니다.",
+            security = @SecurityRequirement(name = SwaggerMessages.BEARER_AUTH),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "AI vs DB 통계 비교 검증 성공",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = AIComparisonResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "AIComparisonSuccess",
+                                            summary = "AI vs DB 통계 비교 성공 예시",
+                                            value = """
+                                                    {
+                                                      "code": "STATISTICS_2003",
+                                                      "message": "AI vs DB 통계 비교 검증 성공",
+                                                      "status": 200,
+                                                      "data": {
+                                                        "projectUuid": "3a73c7d4-8176-3929-b72f-d5b921daae67",
+                                                        "analysisPeriodHours": 24,
+                                                        "sampleSize": 100,
+                                                        "analyzedAt": "2025-11-14T15:30:00",
+                                                        "dbStatistics": {
+                                                          "totalLogs": 15420,
+                                                          "errorCount": 342,
+                                                          "warnCount": 1205,
+                                                          "infoCount": 13873,
+                                                          "errorRate": 2.22,
+                                                          "peakHour": "2025-11-14T12",
+                                                          "peakCount": 892
+                                                        },
+                                                        "aiStatistics": {
+                                                          "estimatedTotalLogs": 15380,
+                                                          "estimatedErrorCount": 338,
+                                                          "estimatedWarnCount": 1198,
+                                                          "estimatedInfoCount": 13844,
+                                                          "estimatedErrorRate": 2.20,
+                                                          "confidenceScore": 85,
+                                                          "reasoning": "샘플 100개 중 ERROR 2.2% 비율을 전체에 적용"
+                                                        },
+                                                        "accuracyMetrics": {
+                                                          "totalLogsAccuracy": 99.74,
+                                                          "errorCountAccuracy": 98.83,
+                                                          "warnCountAccuracy": 99.42,
+                                                          "infoCountAccuracy": 99.79,
+                                                          "errorRateAccuracy": 99.80,
+                                                          "overallAccuracy": 99.28,
+                                                          "aiConfidence": 85
+                                                        },
+                                                        "verdict": {
+                                                          "grade": "매우 우수",
+                                                          "canReplaceDb": true,
+                                                          "explanation": "오차율 5% 미만으로 프로덕션 환경에서 신뢰성 있게 사용 가능합니다.",
+                                                          "recommendations": [
+                                                            "프로덕션 환경 적용 권장",
+                                                            "실시간 대시보드 AI 기반 분석 도입 가능",
+                                                            "DB 부하 감소를 위한 AI 캐싱 레이어 구축"
+                                                          ]
+                                                        },
+                                                        "technicalHighlights": [
+                                                          "Temperature 0.1로 일관된 추론 (기본값 대비 7배 낮음)",
+                                                          "샘플 100개로 15,420개 통계 추론",
+                                                          "종합 정확도 99.28% 달성",
+                                                          "Structured Output으로 JSON 스키마 강제",
+                                                          "자동화된 다차원 정확도 검증",
+                                                          "MCP/멀티모달 없이 단일 LLM으로 구현"
+                                                        ]
+                                                      },
+                                                      "timestamp": "2025-11-14T15:30:00Z"
+                                                    }
+                                                    """
+                                    )
+                            )
+                    )
+            }
+    )
+    ResponseEntity<? extends BaseResponse> getAiComparison(
+            @Parameter(description = "프로젝트 UUID", required = true, example = "3a73c7d4-8176-3929-b72f-d5b921daae67")
+            @ValidUuid
+            @RequestParam String projectUuid,
+
+            @Parameter(description = "분석 기간 (시간)", example = "24")
+            @RequestParam(defaultValue = "24") Integer timeHours,
+
+            @Parameter(description = "AI 분석용 샘플 크기", example = "100")
+            @RequestParam(defaultValue = "100") Integer sampleSize
+    );
 }
+

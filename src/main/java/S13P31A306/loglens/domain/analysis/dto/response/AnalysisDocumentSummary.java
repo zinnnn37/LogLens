@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 public class AnalysisDocumentSummary {
 
     private Integer id;
+    private Integer documentNumber;
     private String title;
     private DocumentType documentType;
     private String validationStatus;

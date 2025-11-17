@@ -454,4 +454,276 @@ class AiServiceClientTest {
             assertThat(response.getHtmlContent()).contains("Fixed Error Report");
         }
     }
+
+    @Nested
+    @DisplayName("AI vs DB 통계 비교 테스트")
+    class CompareAiVsDbStatisticsTest {
+
+        @Test
+        @DisplayName("통계_비교_성공_시_AIComparisonResponse를_반환한다")
+        void 통계_비교_성공_시_AIComparisonResponse를_반환한다() {
+            // given
+            String projectUuid = "test-project-uuid";
+            int timeHours = 24;
+            int sampleSize = 100;
+
+            String responseBody = """
+                    {
+                      "projectUuid": "test-project-uuid",
+                      "analysisPeriodHours": 24,
+                      "sampleSize": 100,
+                      "analyzedAt": "2025-11-14T15:30:00",
+                      "dbStatistics": {
+                        "totalLogs": 15420,
+                        "errorCount": 342,
+                        "warnCount": 1205,
+                        "infoCount": 13873,
+                        "errorRate": 2.22,
+                        "peakHour": "2025-11-14T12",
+                        "peakCount": 892
+                      },
+                      "aiStatistics": {
+                        "estimatedTotalLogs": 15380,
+                        "estimatedErrorCount": 338,
+                        "estimatedWarnCount": 1198,
+                        "estimatedInfoCount": 13844,
+                        "estimatedErrorRate": 2.20,
+                        "confidenceScore": 85,
+                        "reasoning": "샘플 100개 중 ERROR 2.2% 비율을 전체에 적용"
+                      },
+                      "accuracyMetrics": {
+                        "totalLogsAccuracy": 99.74,
+                        "errorCountAccuracy": 98.83,
+                        "warnCountAccuracy": 99.42,
+                        "infoCountAccuracy": 99.79,
+                        "errorRateAccuracy": 99.80,
+                        "overallAccuracy": 99.28,
+                        "aiConfidence": 85
+                      },
+                      "verdict": {
+                        "grade": "매우 우수",
+                        "canReplaceDb": true,
+                        "explanation": "오차율 5% 미만으로 프로덕션 환경에서 신뢰성 있게 사용 가능합니다.",
+                        "recommendations": [
+                          "프로덕션 환경 적용 권장",
+                          "실시간 대시보드 AI 기반 분석 도입 가능"
+                        ]
+                      },
+                      "technicalHighlights": [
+                        "Temperature 0.1로 일관된 추론",
+                        "종합 정확도 99.28% 달성"
+                      ]
+                    }
+                    """;
+
+            mockWebServer.enqueue(new MockResponse()
+                    .setBody(responseBody)
+                    .addHeader("Content-Type", "application/json")
+                    .setResponseCode(200));
+
+            // when
+            var response = aiServiceClient.compareAiVsDbStatistics(projectUuid, timeHours, sampleSize);
+
+            // then
+            assertThat(response).isNotNull();
+            assertThat(response.projectUuid()).isEqualTo("test-project-uuid");
+            assertThat(response.analysisPeriodHours()).isEqualTo(24);
+            assertThat(response.sampleSize()).isEqualTo(100);
+
+            // DB Statistics
+            assertThat(response.dbStatistics()).isNotNull();
+            assertThat(response.dbStatistics().totalLogs()).isEqualTo(15420);
+            assertThat(response.dbStatistics().errorCount()).isEqualTo(342);
+            assertThat(response.dbStatistics().errorRate()).isEqualTo(2.22);
+
+            // AI Statistics
+            assertThat(response.aiStatistics()).isNotNull();
+            assertThat(response.aiStatistics().estimatedTotalLogs()).isEqualTo(15380);
+            assertThat(response.aiStatistics().confidenceScore()).isEqualTo(85);
+
+            // Accuracy Metrics
+            assertThat(response.accuracyMetrics()).isNotNull();
+            assertThat(response.accuracyMetrics().overallAccuracy()).isEqualTo(99.28);
+            assertThat(response.accuracyMetrics().errorCountAccuracy()).isEqualTo(98.83);
+
+            // Verdict
+            assertThat(response.verdict()).isNotNull();
+            assertThat(response.verdict().grade()).isEqualTo("매우 우수");
+            assertThat(response.verdict().canReplaceDb()).isTrue();
+            assertThat(response.verdict().recommendations()).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("통계_비교_404_응답_시_null을_반환한다")
+        void 통계_비교_404_응답_시_null을_반환한다() {
+            // given
+            String projectUuid = "non-existent-project";
+
+            mockWebServer.enqueue(new MockResponse()
+                    .setResponseCode(404)
+                    .setBody("{\"detail\": \"최근 24시간 동안 로그 데이터가 없습니다.\"}"));
+
+            // when
+            var response = aiServiceClient.compareAiVsDbStatistics(projectUuid, 24, 100);
+
+            // then
+            assertThat(response).isNull();
+        }
+
+        @Test
+        @DisplayName("통계_비교_500_응답_시_null을_반환한다")
+        void 통계_비교_500_응답_시_null을_반환한다() {
+            // given
+            String projectUuid = "test-project-uuid";
+
+            mockWebServer.enqueue(new MockResponse()
+                    .setResponseCode(500)
+                    .setBody("{\"detail\": \"AI vs DB 통계 비교 중 오류 발생\"}"));
+
+            // when
+            var response = aiServiceClient.compareAiVsDbStatistics(projectUuid, 24, 100);
+
+            // then
+            assertThat(response).isNull();
+        }
+
+        @Test
+        @DisplayName("통계_비교_네트워크_오류_시_null을_반환한다")
+        void 통계_비교_네트워크_오류_시_null을_반환한다() throws IOException {
+            // given
+            String projectUuid = "test-project-uuid";
+
+            // 서버 종료로 네트워크 오류 시뮬레이션
+            mockWebServer.shutdown();
+
+            // when
+            var response = aiServiceClient.compareAiVsDbStatistics(projectUuid, 24, 100);
+
+            // then
+            assertThat(response).isNull();
+        }
+
+        @Test
+        @DisplayName("우수_등급_응답_시_canReplaceDb가_true이다")
+        void 우수_등급_응답_시_canReplaceDb가_true이다() {
+            // given
+            String responseBody = """
+                    {
+                      "projectUuid": "test-uuid",
+                      "analysisPeriodHours": 24,
+                      "sampleSize": 100,
+                      "analyzedAt": "2025-11-14T15:30:00",
+                      "dbStatistics": {
+                        "totalLogs": 1000,
+                        "errorCount": 100,
+                        "warnCount": 100,
+                        "infoCount": 800,
+                        "errorRate": 10.0,
+                        "peakHour": "2025-11-14T12",
+                        "peakCount": 100
+                      },
+                      "aiStatistics": {
+                        "estimatedTotalLogs": 920,
+                        "estimatedErrorCount": 93,
+                        "estimatedWarnCount": 95,
+                        "estimatedInfoCount": 732,
+                        "estimatedErrorRate": 10.1,
+                        "confidenceScore": 80,
+                        "reasoning": "추론 기반"
+                      },
+                      "accuracyMetrics": {
+                        "totalLogsAccuracy": 92.0,
+                        "errorCountAccuracy": 93.0,
+                        "warnCountAccuracy": 95.0,
+                        "infoCountAccuracy": 91.5,
+                        "errorRateAccuracy": 99.0,
+                        "overallAccuracy": 92.35,
+                        "aiConfidence": 80
+                      },
+                      "verdict": {
+                        "grade": "우수",
+                        "canReplaceDb": true,
+                        "explanation": "오차율 10% 미만으로 대부분의 분석 업무에 활용 가능합니다.",
+                        "recommendations": ["보조 분석 도구로 즉시 활용 가능"]
+                      },
+                      "technicalHighlights": ["종합 정확도 92.35% 달성"]
+                    }
+                    """;
+
+            mockWebServer.enqueue(new MockResponse()
+                    .setBody(responseBody)
+                    .addHeader("Content-Type", "application/json")
+                    .setResponseCode(200));
+
+            // when
+            var response = aiServiceClient.compareAiVsDbStatistics("test-uuid", 24, 100);
+
+            // then
+            assertThat(response.verdict().grade()).isEqualTo("우수");
+            assertThat(response.verdict().canReplaceDb()).isTrue();
+            assertThat(response.accuracyMetrics().overallAccuracy()).isGreaterThanOrEqualTo(90.0);
+        }
+
+        @Test
+        @DisplayName("미흡_등급_응답_시_canReplaceDb가_false이다")
+        void 미흡_등급_응답_시_canReplaceDb가_false이다() {
+            // given
+            String responseBody = """
+                    {
+                      "projectUuid": "test-uuid",
+                      "analysisPeriodHours": 24,
+                      "sampleSize": 100,
+                      "analyzedAt": "2025-11-14T15:30:00",
+                      "dbStatistics": {
+                        "totalLogs": 1000,
+                        "errorCount": 100,
+                        "warnCount": 100,
+                        "infoCount": 800,
+                        "errorRate": 10.0,
+                        "peakHour": "2025-11-14T12",
+                        "peakCount": 100
+                      },
+                      "aiStatistics": {
+                        "estimatedTotalLogs": 600,
+                        "estimatedErrorCount": 60,
+                        "estimatedWarnCount": 60,
+                        "estimatedInfoCount": 480,
+                        "estimatedErrorRate": 10.0,
+                        "confidenceScore": 30,
+                        "reasoning": "추론 실패"
+                      },
+                      "accuracyMetrics": {
+                        "totalLogsAccuracy": 60.0,
+                        "errorCountAccuracy": 60.0,
+                        "warnCountAccuracy": 60.0,
+                        "infoCountAccuracy": 60.0,
+                        "errorRateAccuracy": 100.0,
+                        "overallAccuracy": 62.0,
+                        "aiConfidence": 30
+                      },
+                      "verdict": {
+                        "grade": "미흡",
+                        "canReplaceDb": false,
+                        "explanation": "정확도가 낮아 근본적인 개선이 필요합니다.",
+                        "recommendations": ["LLM 모델 업그레이드 고려"]
+                      },
+                      "technicalHighlights": []
+                    }
+                    """;
+
+            mockWebServer.enqueue(new MockResponse()
+                    .setBody(responseBody)
+                    .addHeader("Content-Type", "application/json")
+                    .setResponseCode(200));
+
+            // when
+            var response = aiServiceClient.compareAiVsDbStatistics("test-uuid", 24, 100);
+
+            // then
+            assertThat(response.verdict().grade()).isEqualTo("미흡");
+            assertThat(response.verdict().canReplaceDb()).isFalse();
+            assertThat(response.accuracyMetrics().overallAccuracy()).isLessThan(70.0);
+        }
+    }
 }
+

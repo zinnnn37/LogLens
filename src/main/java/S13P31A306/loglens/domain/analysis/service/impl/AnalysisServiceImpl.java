@@ -91,10 +91,25 @@ public class AnalysisServiceImpl implements AnalysisService {
                 convertOptionsToMap(request.getOptions())
         );
 
-        // 5. 문서 저장
-        saveAnalysisDocument(project.getId(), projectUuid, null, DocumentType.PROJECT_ANALYSIS, response);
+        // 5. 문서 저장 및 ID/번호 설정
+        AnalysisDocument savedDocument = saveAnalysisDocument(project.getId(), projectUuid, null, DocumentType.PROJECT_ANALYSIS, response);
 
-        return response;
+        // 6. 응답에 문서 ID와 번호 추가
+        return AnalysisDocumentResponse.builder()
+                .documentId(savedDocument != null ? savedDocument.getId() : null)
+                .documentNumber(savedDocument != null ? savedDocument.getDocumentNumber() : null)
+                .projectUuid(response.getProjectUuid())
+                .logId(response.getLogId())
+                .format(response.getFormat())
+                .content(response.getContent())
+                .downloadUrl(response.getDownloadUrl())
+                .fileName(response.getFileName())
+                .fileSize(response.getFileSize())
+                .expiresAt(response.getExpiresAt())
+                .documentMetadata(response.getDocumentMetadata())
+                .validationStatus(response.getValidationStatus())
+                .cacheTtl(response.getCacheTtl())
+                .build();
     }
 
     @Override
@@ -121,10 +136,25 @@ public class AnalysisServiceImpl implements AnalysisService {
                 convertErrorOptionsToMap(request.getOptions())
         );
 
-        // 4. 문서 저장
-        saveAnalysisDocument(project.getId(), request.getProjectUuid(), logId, DocumentType.ERROR_ANALYSIS, response);
+        // 4. 문서 저장 및 ID/번호 설정
+        AnalysisDocument savedDocument = saveAnalysisDocument(project.getId(), request.getProjectUuid(), logId, DocumentType.ERROR_ANALYSIS, response);
 
-        return response;
+        // 5. 응답에 문서 ID와 번호 추가
+        return AnalysisDocumentResponse.builder()
+                .documentId(savedDocument != null ? savedDocument.getId() : null)
+                .documentNumber(savedDocument != null ? savedDocument.getDocumentNumber() : null)
+                .projectUuid(response.getProjectUuid())
+                .logId(response.getLogId())
+                .format(response.getFormat())
+                .content(response.getContent())
+                .downloadUrl(response.getDownloadUrl())
+                .fileName(response.getFileName())
+                .fileSize(response.getFileSize())
+                .expiresAt(response.getExpiresAt())
+                .documentMetadata(response.getDocumentMetadata())
+                .validationStatus(response.getValidationStatus())
+                .cacheTtl(response.getCacheTtl())
+                .build();
     }
 
     /**
@@ -294,7 +324,7 @@ public class AnalysisServiceImpl implements AnalysisService {
     /**
      * 분석 문서 저장
      */
-    private void saveAnalysisDocument(
+    private AnalysisDocument saveAnalysisDocument(
             Integer projectId,
             String projectUuid,
             Long logId,
@@ -304,6 +334,11 @@ public class AnalysisServiceImpl implements AnalysisService {
         try {
             DocumentMetadata metadata = response.getDocumentMetadata();
             DocumentSummary summary = metadata != null ? metadata.getSummary() : null;
+
+            // 프로젝트별 다음 문서 번호 계산
+            Integer nextDocumentNumber = analysisDocumentRepository
+                    .findMaxDocumentNumberByProjectId(projectId)
+                    .orElse(0) + 1;
 
             AnalysisDocument document = AnalysisDocument.builder()
                     .projectId(projectId)
@@ -317,14 +352,18 @@ public class AnalysisServiceImpl implements AnalysisService {
                     .criticalIssues(summary != null ? summary.getCriticalIssues() : null)
                     .wordCount(metadata != null ? metadata.getWordCount() : null)
                     .estimatedReadingTime(metadata != null ? metadata.getEstimatedReadingTime() : null)
+                    .documentNumber(nextDocumentNumber)
                     .build();
 
-            analysisDocumentRepository.save(document);
-            log.info("Analysis document saved with id: {}", document.getId());
+            AnalysisDocument savedDocument = analysisDocumentRepository.save(document);
+            log.info("Analysis document saved with id: {}, documentNumber: {}", savedDocument.getId(), savedDocument.getDocumentNumber());
+
+            return savedDocument;
 
         } catch (Exception e) {
             log.warn("Failed to save analysis document: {}", e.getMessage());
             // 저장 실패해도 문서 생성은 성공으로 처리
+            return null;
         }
     }
 
@@ -347,6 +386,7 @@ public class AnalysisServiceImpl implements AnalysisService {
         // DTO 변환
         return documents.map(doc -> AnalysisDocumentSummary.builder()
                 .id(doc.getId())
+                .documentNumber(doc.getDocumentNumber())
                 .title(doc.getTitle())
                 .documentType(doc.getDocumentType())
                 .validationStatus(doc.getValidationStatus())
@@ -381,6 +421,7 @@ public class AnalysisServiceImpl implements AnalysisService {
         // DTO 변환
         return AnalysisDocumentDetailResponse.builder()
                 .id(document.getId())
+                .documentNumber(document.getDocumentNumber())
                 .projectUuid(projectUuid)
                 .documentType(document.getDocumentType())
                 .title(document.getTitle())

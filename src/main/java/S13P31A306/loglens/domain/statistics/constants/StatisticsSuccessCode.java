@@ -13,7 +13,8 @@ import org.springframework.http.HttpStatus;
 public enum StatisticsSuccessCode implements SuccessCode {
 
     LOG_TREND_RETRIEVED("STATISTICS_2001", "로그 추이 조회 성공", HttpStatus.OK.value()),
-    TRAFFIC_RETRIEVED("STATISTICS_2002", "Traffic 조회 성공", HttpStatus.OK.value());
+    TRAFFIC_RETRIEVED("STATISTICS_2002", "Traffic 조회 성공", HttpStatus.OK.value()),
+    AI_COMPARISON_RETRIEVED("STATISTICS_2003", "AI vs DB 통계 비교 검증 성공", HttpStatus.OK.value());
 
     private final String code;
     private final String message;

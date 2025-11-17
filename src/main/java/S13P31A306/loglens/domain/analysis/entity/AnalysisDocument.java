@@ -70,4 +70,7 @@ public class AnalysisDocument extends BaseTimeEntity {
 
     @Column(name = "estimated_reading_time", length = 50)
     private String estimatedReadingTime;
+
+    @Column(name = "document_number")
+    private Integer documentNumber;
 }
