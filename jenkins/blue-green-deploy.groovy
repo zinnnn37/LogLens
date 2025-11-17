@@ -117,62 +117,36 @@ pipeline {
                             docker rm ${containerName} || true
                         fi
                         
-                        # ✅ 로그 디렉토리 절대 경로 설정
+                        # 로그 디렉토리 절대 경로
                         LOG_DIR="/home/ubuntu/loglens/logs"
-                        
-                        # 로그 디렉토리 백업 및 초기화
-                        echo "📁 Initializing log directories at \${LOG_DIR}..."
-                        BACKUP_DIR=\${LOG_DIR}/backup/\$(date +%Y%m%d_%H%M%S)
-                        
-                        # BE 로그 백업
-                        if [ -d \${LOG_DIR}/be ] && [ "\$(ls -A \${LOG_DIR}/be)" ]; then
-                            echo "  💾 Backing up existing BE logs..."
-                            mkdir -p \${BACKUP_DIR}/be
-                            mv \${LOG_DIR}/be/* \${BACKUP_DIR}/be/ 2>/dev/null || true
-                            echo "  ✅ BE logs backed up to \${BACKUP_DIR}/be/"
-                        fi
-                        
-                        # FE 로그 백업
-                        if [ -d \${LOG_DIR}/fe ] && [ "\$(ls -A \${LOG_DIR}/fe)" ]; then
-                            echo "  💾 Backing up existing FE logs..."
-                            mkdir -p \${BACKUP_DIR}/fe
-                            mv \${LOG_DIR}/fe/* \${BACKUP_DIR}/fe/ 2>/dev/null || true
-                            echo "  ✅ FE logs backed up to \${BACKUP_DIR}/fe/"
-                        fi
-                        
-                        # Infra 로그 백업
-                        if [ -d \${LOG_DIR}/infra ] && [ "\$(ls -A \${LOG_DIR}/infra)" ]; then
-                            echo "  💾 Backing up existing Infra logs..."
-                            mkdir -p \${BACKUP_DIR}/infra
-                            mv \${LOG_DIR}/infra/* \${BACKUP_DIR}/infra/ 2>/dev/null || true
-                            echo "  ✅ Infra logs backed up to \${BACKUP_DIR}/infra/"
-                        fi
-                        
-                        # 디렉토리 재생성 및 권한 설정
-                        echo "🔧 Recreating log directories with proper ownership..."
+
+                        echo "📁 Cleaning and initializing log directories at \${LOG_DIR}..."
+
+                        # BE 로그 삭제
+                        echo "🧹 Removing old BE logs..."
+                        find \${LOG_DIR}/be -type f -delete 2>/dev/null || true
+
+                        # FE 로그 삭제
+                        echo "🧹 Removing old FE logs..."
+                        find \${LOG_DIR}/fe -type f -delete 2>/dev/null || true
+
+                        # Infra 로그 삭제
+                        echo "🧹 Removing old Infra logs..."
+                        find \${LOG_DIR}/infra -type f -delete 2>/dev/null || true
+
+                        # 디렉토리 재생성
+                        echo "🔧 Recreating log directories..."
                         rm -rf \${LOG_DIR}/be \${LOG_DIR}/fe \${LOG_DIR}/infra
                         mkdir -p \${LOG_DIR}/be \${LOG_DIR}/fe \${LOG_DIR}/infra/mysql
-                        
+
                         # 권한 설정
                         chown -R 1000:1000 \${LOG_DIR}
                         chmod -R 777 \${LOG_DIR}
-                        
-                        echo "✅ Log directories initialized"
+
+                        echo "✅ Log directories cleaned and recreated"
                         ls -la \${LOG_DIR}/
-                        
-                        # 3일 이상 된 백업 로그 자동 삭제
-                        if [ -d \${LOG_DIR}/backup ]; then
-                            echo "🧹 Cleaning up old log backups (older than 3 days)..."
-                            DELETED_COUNT=\$(find \${LOG_DIR}/backup/* -type d -mtime +3 2>/dev/null | wc -l)
-                            if [ "\${DELETED_COUNT}" -gt 0 ]; then
-                                find \${LOG_DIR}/backup/* -type d -mtime +3 -exec rm -rf {} + 2>/dev/null || true
-                                echo "  ✅ Deleted \${DELETED_COUNT} old backup(s)"
-                            else
-                                echo "  ℹ️  No old backups to clean"
-                            fi
-                        fi
-                        
-                        # ✅ 새 컨테이너 배포 (절대 경로 사용)
+
+                        # 새 컨테이너 배포
                         echo "🚀 Deploying ${containerName} on port ${port}"
                         docker run -d \\
                             --name ${containerName} \\
@@ -183,21 +157,21 @@ pipeline {
                             --user root \\
                             -v \${LOG_DIR}:/app/logs \\
                             ${IMAGE_NAME}
-                        
+
                         echo "✅ ${containerName} deployed successfully"
                         docker ps | grep ${containerName}
-                        
+
                         # 볼륨 마운트 확인
                         echo "📋 Verifying volume mounts..."
                         docker inspect ${containerName} --format='{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'
-                        
+
                         # 로그 파일 생성 대기
                         echo "⏳ Waiting for application to start..."
                         sleep 15
-                        
+
                         echo "📋 Checking log files in container..."
                         docker exec ${containerName} ls -lh /app/logs/be/ 2>/dev/null || echo "  ⚠️  BE logs not yet created"
-                        
+
                         echo "📋 Checking log files on host..."
                         ls -lh \${LOG_DIR}/be/ 2>/dev/null || echo "  ⚠️  BE logs not visible on host"
                     """
