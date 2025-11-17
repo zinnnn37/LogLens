@@ -23,6 +23,7 @@ def _get_db_statistics(project_uuid: str, time_hours: int = 24) -> Dict[str, Any
     start_time = end_time - timedelta(hours=time_hours)
 
     query_body = {
+        "track_total_hits": True,  # 10,000건 제한 해제 - 정확한 총 개수 반환
         "size": 0,
         "query": {
             "range": {
