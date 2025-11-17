@@ -17,7 +17,7 @@ import lombok.*;
 public class Component extends BaseEntity {
 
     @NotNull
-    @Column(name = "project_id", nullable = false)
+    @Column(name = "project_id", nullable = false, columnDefinition = "INT")
     private Integer projectId;
 
     @Column(name = "name", nullable = false, length = 255)

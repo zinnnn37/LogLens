@@ -20,7 +20,7 @@ public class DependencyGraph extends BaseEntity {
      * projects 테이블과 연관
      */
     @NotNull
-    @Column(name = "project_id", nullable = false)
+    @Column(name = "project_id", nullable = false, columnDefinition = "INT")
     private Integer projectId;
 
     /**

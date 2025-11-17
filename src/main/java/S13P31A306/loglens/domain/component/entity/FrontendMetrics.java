@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 public class FrontendMetrics extends BaseEntity {
 
     @NotNull
-    @Column(name = "project_id", nullable = false)
+    @Column(name = "project_id", nullable = false, columnDefinition = "INT")
     private Integer projectId;
 
     @NotNull
