@@ -17,8 +17,6 @@ import FrequentErrorsCard from '@/components/FrequentErrorsCard';
 import FloatingChecklist from '@/components/FloatingChecklist';
 import AIComparisonCard from '@/components/AIComparisonCard';
 
-import { DUMMY_ALERTS } from '@/mocks/dummyAlerts';
-
 import {
   getDashboardOverview,
   getDashboardTopErrors,
@@ -26,6 +24,7 @@ import {
   getDashboardApiStats,
   getAIComparison,
 } from '@/services/dashboardService';
+import { getRecentAlerts } from '@/services/alertService';
 import type {
   DashboardSummary,
   DashboardTopErrorsData,
@@ -33,6 +32,7 @@ import type {
   DashboardApiStatsData,
 } from '@/types/dashboard';
 import type { AIComparisonResponse } from '@/types/aiComparison';
+import type { Alert } from '@/types/alert';
 import ApiStatsCard from '@/components/ApiStatsCard';
 
 const DashboardPage = () => {
@@ -59,6 +59,11 @@ const DashboardPage = () => {
   const [apiStats, setApiStats] = useState<DashboardApiStatsData | null>(null);
   const [apiStatsLoading, setApiStatsLoading] = useState(true);
   const [apiStatsError, setApiStatsError] = useState(false);
+
+  // 최근 알림 상태
+  const [recentAlerts, setRecentAlerts] = useState<Alert[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(true);
+  const [alertsError, setAlertsError] = useState(false);
 
   // AI vs DB 비교 상태
   const [showAIComparison, setShowAIComparison] = useState(false);
@@ -187,11 +192,28 @@ const DashboardPage = () => {
       }
     };
 
+    // 최근 알림 조회
+    const fetchRecentAlerts = async () => {
+      setAlertsLoading(true);
+      setAlertsError(false);
+      try {
+        const alerts = await getRecentAlerts(projectUuid, 5);
+        setRecentAlerts(alerts);
+      } catch (e) {
+        console.error('최근 알림 조회 실패:', e);
+        toast.error('최근 알림 정보를 불러오지 못했습니다.');
+        setAlertsError(true);
+      } finally {
+        setAlertsLoading(false);
+      }
+    };
+
     // API 동시 호출
     fetchOverview();
     fetchTopErrors();
     fetchHeatmap();
     fetchApiStats();
+    fetchRecentAlerts();
   }, [projectUuid]);
 
   return (
@@ -251,7 +273,19 @@ const DashboardPage = () => {
       ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <RecentAlertsCard alerts={DUMMY_ALERTS} />
+        {alertsLoading ? (
+          <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-gray-500">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            최근 알림을 불러오는 중...
+          </div>
+        ) : alertsError ? (
+          <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-red-200 bg-red-50 text-red-500">
+            <AlertCircle className="mr-2 h-5 w-5" />
+            최근 알림을 불러올 수 없습니다.
+          </div>
+        ) : (
+          <RecentAlertsCard alerts={recentAlerts} />
+        )}
 
         {/* 히트맵 */}
         {heatmapLoading ? (

@@ -101,6 +101,8 @@ export interface AlertHistoryItem {
   alertTime: string;
   resolvedYN: 'Y' | 'N';
   logReference: string;
+  alertLevel?: 'ERROR' | 'WARN' | 'INFO';
+  traceId?: string;
   projectUuid: string;
 }
 

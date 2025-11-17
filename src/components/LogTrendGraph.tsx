@@ -7,7 +7,6 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  type TooltipProps,
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +37,9 @@ const severityLegend = [
   },
 ] as const;
 
-const fieldBySeverity: Record<SeverityKey, keyof LogDataPoint> = {
+type NumericLogFields = 'infoCount' | 'warnCount' | 'errorCount';
+
+const fieldBySeverity: Record<SeverityKey, NumericLogFields> = {
   INFO: 'infoCount',
   WARN: 'warnCount',
   ERROR: 'errorCount',
@@ -120,11 +121,9 @@ const LogTrendGraph = ({ dataPoints }: LogTrendGraphProps) => {
     }));
   };
 
-  const tooltipRenderer = ({
-    active,
-    payload,
-    label,
-  }: TooltipProps<number, string>) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tooltipRenderer = (props: any) => {
+    const { active, payload, label } = props;
     if (!active || !payload?.length) {
       return null;
     }
@@ -133,32 +132,38 @@ const LogTrendGraph = ({ dataPoints }: LogTrendGraphProps) => {
       <div className="min-w-[160px] rounded-2xl border border-slate-100 bg-white/95 p-3 text-xs shadow-2xl backdrop-blur">
         <p className="text-slate-400">{label}</p>
         <div className="mt-2 space-y-1">
-          {payload.map(item => {
-            if (!item?.dataKey) {
-              return null;
-            }
+          {payload.map(
+            (item: {
+              dataKey?: string | number;
+              value?: number;
+              color?: string;
+            }) => {
+              if (!item?.dataKey) {
+                return null;
+              }
 
-            const key = item.dataKey as SeverityKey;
-            const meta = severityMetaMap[key];
+              const key = item.dataKey as SeverityKey;
+              const meta = severityMetaMap[key];
 
-            return (
-              <div
-                key={item.dataKey}
-                className="flex items-center justify-between text-sm text-slate-600"
-              >
-                <span className="flex items-center gap-2">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: meta?.color }}
-                  />
-                  <span>{meta?.label ?? key}</span>
-                </span>
-                <span className="font-semibold text-slate-900">
-                  {Number(item.value ?? 0).toLocaleString()}건
-                </span>
-              </div>
-            );
-          })}
+              return (
+                <div
+                  key={item.dataKey}
+                  className="flex items-center justify-between text-sm text-slate-600"
+                >
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: meta?.color }}
+                    />
+                    <span>{meta?.label ?? key}</span>
+                  </span>
+                  <span className="font-semibold text-slate-900">
+                    {Number(item.value ?? 0).toLocaleString()}건
+                  </span>
+                </div>
+              );
+            },
+          )}
         </div>
       </div>
     );

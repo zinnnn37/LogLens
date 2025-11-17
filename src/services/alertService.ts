@@ -18,6 +18,8 @@ import type {
   AlertSseParams,
   AlertHistoryParams,
   AlertHistoryResponse,
+  Alert,
+  AlertHistoryItem,
 } from '@/types/alert';
 
 /**
@@ -101,4 +103,29 @@ export const connectAlertStream = (
   return new EventSourcePolyfill(url, {
     heartbeatTimeout: 3600000,
   });
+};
+
+/**
+ * AlertHistoryItem을 Alert 타입으로 변환
+ */
+const convertToAlert = (item: AlertHistoryItem): Alert => {
+  return {
+    id: item.id,
+    level: item.alertLevel || 'ERROR',
+    message: item.alertMessage,
+    traceId: item.traceId || '',
+    timestamp: item.alertTime,
+  };
+};
+
+/**
+ * 최근 알림 조회 (Dashboard용)
+ */
+export const getRecentAlerts = async (
+  projectUuid: string,
+  limit: number = 5,
+): Promise<Alert[]> => {
+  const response = await getAlertHistory({ projectUuid });
+  const alerts = response.slice(0, limit).map(convertToAlert);
+  return alerts;
 };

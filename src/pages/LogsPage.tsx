@@ -1,7 +1,7 @@
 // src/pages/LogsPage.tsx
 
 import { useState, useCallback, useEffect } from 'react';
-import { searchLogs, connectLogStream } from '@/services/logService'; 
+import { searchLogs, connectLogStream } from '@/services/logService';
 import { createJiraIssue } from '@/services/jiraService';
 import { generateErrorAnalysis } from '@/services/analysisService';
 import type { LogData, LogSearchParams } from '@/types/log';
@@ -137,7 +137,7 @@ const LogsPage = () => {
   }, [projectUuid, searchParams]);
 
   // --- 실시간 로그 스트리밍 (SSE) ---
-  
+
   useEffect(() => {
     console.log('SSE useEffect 실행. 현재 accessToken:', accessToken);
 
@@ -153,7 +153,9 @@ const LogsPage = () => {
     const streamParams: LogSearchParams = {
       projectUuid,
       logLevel: criteria?.logLevel?.length ? criteria.logLevel : undefined,
-      sourceType: criteria?.sourceType?.length ? criteria.sourceType : undefined,
+      sourceType: criteria?.sourceType?.length
+        ? criteria.sourceType
+        : undefined,
       traceId: criteria?.traceId || undefined,
       keyword: criteria?.keyword || undefined,
     };
@@ -208,7 +210,6 @@ const LogsPage = () => {
       eventSource.close();
     };
   }, [projectUuid, criteria, accessToken]);
-  
 
   // 검색핸들러
   const handleSearch = (newCriteria: SearchCriteria) => {
