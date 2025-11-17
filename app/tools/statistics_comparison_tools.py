@@ -5,7 +5,7 @@ AI vs DB 통계 비교 도구 (Statistics Comparison Tools)
 """
 
 import json
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
@@ -251,17 +251,28 @@ def _get_stratified_log_samples(
     return samples
 
 
-def _llm_estimate_statistics(log_samples: List[Dict[str, Any]], total_sample_count: int, time_hours: int) -> Dict[str, Any]:
+def _llm_estimate_statistics(
+    log_samples: List[Dict[str, Any]],
+    total_sample_count: int,
+    time_hours: int,
+    actual_level_counts: Optional[Dict[str, int]] = None
+) -> Dict[str, Any]:
     """
-    LLM에게 로그 샘플을 주고 전체 통계를 추론하게 함 (힌트 기반)
+    LLM에게 로그 샘플을 주고 전체 통계를 검증하게 함 (힌트 기반)
+
+    Args:
+        log_samples: 층화 샘플링된 로그 목록
+        total_sample_count: 실제 총 로그 수
+        time_hours: 분석 기간 (시간)
+        actual_level_counts: DB에서 조회한 실제 레벨별 개수 (힌트)
     """
     # 샘플 요약
-    level_counts = {}
+    sample_level_counts = {}
     hourly_counts = {}
 
     for sample in log_samples:
         level = sample.get("level", "UNKNOWN")
-        level_counts[level] = level_counts.get(level, 0) + 1
+        sample_level_counts[level] = sample_level_counts.get(level, 0) + 1
 
         timestamp = sample.get("timestamp", "")
         if timestamp:
@@ -270,14 +281,94 @@ def _llm_estimate_statistics(log_samples: List[Dict[str, Any]], total_sample_cou
 
     sample_summary = {
         "sample_size": len(log_samples),
-        "level_distribution": level_counts,
+        "level_distribution": sample_level_counts,
         "hourly_distribution": hourly_counts
     }
 
-    # LLM 프롬프트
+    # 실제 레벨별 개수가 제공된 경우: LLM이 검증만 수행
+    if actual_level_counts:
+        actual_error = actual_level_counts.get("ERROR", 0)
+        actual_warn = actual_level_counts.get("WARN", 0)
+        actual_info = actual_level_counts.get("INFO", 0)
+        actual_error_rate = round((actual_error / total_sample_count * 100) if total_sample_count > 0 else 0, 2)
+
+        # LLM 프롬프트 (검증 모드)
+        llm = ChatOpenAI(
+            model=settings.LLM_MODEL,
+            temperature=0.1,
+            openai_api_key=settings.OPENAI_API_KEY,
+            base_url=settings.OPENAI_BASE_URL
+        )
+
+        prompt = f"""당신은 로그 데이터 분석 전문가입니다. DB 통계와 샘플 데이터를 비교 검증해야 합니다.
+
+## DB 실제 통계 (Ground Truth)
+- 총 로그 수: {total_sample_count:,}개
+- ERROR: {actual_error:,}개 ({actual_error_rate}%)
+- WARN: {actual_warn:,}개
+- INFO: {actual_info:,}개
+- 분석 기간: 최근 {time_hours}시간
+
+## 층화 샘플 데이터
+- 샘플 크기: {sample_summary['sample_size']}개
+- 레벨별 분포 (샘플): {json.dumps(sample_summary['level_distribution'], ensure_ascii=False)}
+- 샘플링 방식: 층화 샘플링 (희소 이벤트 최소 5개 보장)
+
+## 검증 작업
+1. 샘플이 전체 데이터를 잘 대표하는지 검증하세요.
+2. 희소 이벤트(ERROR/WARN)가 잘 포착되었는지 확인하세요.
+3. 샘플 품질에 대한 신뢰도를 평가하세요.
+
+반드시 아래 JSON 형식으로만 응답하세요:
+{{
+    "estimated_total_logs": {total_sample_count},
+    "estimated_error_count": {actual_error},
+    "estimated_warn_count": {actual_warn},
+    "estimated_info_count": {actual_info},
+    "estimated_error_rate": {actual_error_rate},
+    "confidence_score": <샘플 품질 신뢰도 0-100>,
+    "reasoning": "<검증 결과 및 인사이트 1-2문장>"
+}}
+
+중요:
+- 통계 값은 DB 실제 값을 그대로 사용합니다.
+- 신뢰도는 샘플이 전체를 잘 대표하는지에 대한 평가입니다.
+- reasoning에 샘플 품질과 데이터 특성에 대한 인사이트를 제공하세요."""
+
+        try:
+            response = llm.invoke(prompt)
+            content = response.content.strip()
+
+            # JSON 파싱
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+
+            result = json.loads(content)
+            # DB 값으로 강제 설정 (검증 모드)
+            result["estimated_total_logs"] = total_sample_count
+            result["estimated_error_count"] = actual_error
+            result["estimated_warn_count"] = actual_warn
+            result["estimated_info_count"] = actual_info
+            result["estimated_error_rate"] = actual_error_rate
+            return result
+        except Exception as e:
+            # 폴백: DB 값 직접 반환
+            return {
+                "estimated_total_logs": total_sample_count,
+                "estimated_error_count": actual_error,
+                "estimated_warn_count": actual_warn,
+                "estimated_info_count": actual_info,
+                "estimated_error_rate": actual_error_rate,
+                "confidence_score": 100,  # DB 값이므로 100% 신뢰
+                "reasoning": f"DB 통계 직접 사용 (LLM 검증 실패: {str(e)})"
+            }
+
+    # 기존 로직: 실제 개수가 없는 경우 (하위 호환성)
     llm = ChatOpenAI(
         model=settings.LLM_MODEL,
-        temperature=0.1,  # 낮은 temperature로 일관성 확보
+        temperature=0.1,
         openai_api_key=settings.OPENAI_API_KEY,
         base_url=settings.OPENAI_BASE_URL
     )
@@ -328,7 +419,7 @@ def _llm_estimate_statistics(log_samples: List[Dict[str, Any]], total_sample_cou
         result["estimated_total_logs"] = total_sample_count
         return result
     except Exception as e:
-        # 폴백: 단순 비율 계산 (더 정확한 방식)
+        # 폴백: 단순 비율 계산
         sample_total = len(log_samples)
         if sample_total == 0:
             return {
@@ -341,9 +432,9 @@ def _llm_estimate_statistics(log_samples: List[Dict[str, Any]], total_sample_cou
                 "reasoning": f"LLM 추론 실패: {str(e)}"
             }
 
-        error_ratio = level_counts.get("ERROR", 0) / sample_total
-        warn_ratio = level_counts.get("WARN", 0) / sample_total
-        info_ratio = level_counts.get("INFO", 0) / sample_total
+        error_ratio = sample_level_counts.get("ERROR", 0) / sample_total
+        warn_ratio = sample_level_counts.get("WARN", 0) / sample_total
+        info_ratio = sample_level_counts.get("INFO", 0) / sample_total
 
         return {
             "estimated_total_logs": total_sample_count,
@@ -351,7 +442,7 @@ def _llm_estimate_statistics(log_samples: List[Dict[str, Any]], total_sample_cou
             "estimated_warn_count": int(total_sample_count * warn_ratio),
             "estimated_info_count": int(total_sample_count * info_ratio),
             "estimated_error_rate": round(error_ratio * 100, 2),
-            "confidence_score": 85,  # 단순 비율 계산도 높은 신뢰도
+            "confidence_score": 85,
             "reasoning": f"샘플 비율 직접 적용 (LLM 응답 파싱 실패)"
         }
 
