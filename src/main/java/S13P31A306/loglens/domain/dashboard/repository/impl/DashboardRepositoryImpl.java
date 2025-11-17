@@ -108,6 +108,7 @@ public class DashboardRepositoryImpl implements DashboardRepository {
         return SearchRequest.of(s -> s
                 .index(OpenSearchUtils.getProjectIndexPattern(projectUuid))
                 .size(0)
+                .trackTotalHits(t -> t.enabled(true))  // 10,000건 제한 해제
                 .query(buildErrorLogQuery(start, end))
                 .aggregations("unique_types", a -> a
                         .cardinality(c -> c.field(OpenSearchField.LOGGER.getFieldName())))

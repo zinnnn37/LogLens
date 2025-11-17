@@ -124,6 +124,7 @@ public class LogMetricsTransactionalServiceImpl implements LogMetricsTransaction
             SearchRequest countRequest = SearchRequest.of(s -> s
                     .index(indexPattern)
                     .size(0)
+                    .trackTotalHits(t -> t.enabled(true))  // 10,000건 제한 해제
                     .query(q -> q
                             .range(r -> r
                                     .field("timestamp")

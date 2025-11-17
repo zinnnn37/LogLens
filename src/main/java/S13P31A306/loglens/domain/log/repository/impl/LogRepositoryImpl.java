@@ -287,6 +287,7 @@ public class LogRepositoryImpl implements LogRepository {
                     .query(q -> q.term(t -> t.field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
                             .value(FieldValue.of(projectUuid))))
                     .size(1)
+                    .trackTotalHits(t -> t.enabled(true))  // 10,000건 제한 해제
                     .build();
 
             SearchResponse<Log> response = openSearchClient.search(searchRequest, Log.class);
@@ -337,7 +338,8 @@ public class LogRepositoryImpl implements LogRepository {
                 .index(OpenSearchUtils.getProjectIndexPattern(projectUuid))
                 .query(query)
                 .size(size)
-                .sort(sortOptions);
+                .sort(sortOptions)
+                .trackTotalHits(t -> t.enabled(true));  // 10,000건 제한 해제
 
         if (Objects.nonNull(cursor) && !cursor.isEmpty()) {
             List<FieldValue> searchAfterValues = convertCursorToFieldValues(cursor);
@@ -356,6 +358,7 @@ public class LogRepositoryImpl implements LogRepository {
                 .query(query)
                 .size(MAX_TRACE_LOGS)
                 .sort(s -> s.field(f -> f.field(TIMESTAMP_FIELD).order(SortOrder.Asc)))
+                .trackTotalHits(t -> t.enabled(true))  // 10,000건 제한 해제
                 .aggregations("min_timestamp", a -> a.min(m -> m.field(TIMESTAMP_FIELD)))
                 .aggregations("max_timestamp", a -> a.max(m -> m.field(TIMESTAMP_FIELD)))
                 .aggregations("level_counts", a -> a.terms(t -> t.field(OpenSearchField.LOG_LEVEL.getFieldName())))
@@ -679,6 +682,7 @@ public class LogRepositoryImpl implements LogRepository {
                     .index(OpenSearchUtils.getProjectIndexPattern(projectUuid))
                     .query(query)
                     .size(0)  // 문서는 반환하지 않음
+                    .trackTotalHits(t -> t.enabled(true))  // 10,000건 제한 해제
             );
 
             // 3. OpenSearch 쿼리 실행
