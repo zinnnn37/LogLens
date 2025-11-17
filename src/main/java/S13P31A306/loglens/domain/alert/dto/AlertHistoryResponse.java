@@ -25,6 +25,12 @@ public record AlertHistoryResponse(
                 example = "{\"logId\": 12345, \"traceId\": \"abc-123\", \"errorCount\": 15}")
         String logReference,
 
+        @Schema(description = "알림 레벨", example = "ERROR", allowableValues = {"ERROR", "WARN", "INFO"})
+        String alertLevel,
+
+        @Schema(description = "트레이스 ID", example = "abc-123-xyz")
+        String traceId,
+
         @Schema(description = "프로젝트 UUID", example = "9911573f-8a1d-3b96-98b4-5a0def93513b")
         String projectUuid
 ) {

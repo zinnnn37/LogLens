@@ -17,7 +17,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -778,10 +777,10 @@ public class LogRepositoryImpl implements LogRepository {
         for (DateHistogramBucket bucket : logsOverTime.dateHistogram().buckets().array()) {
             // 타임스탬프 파싱
             String timestampStr = bucket.keyAsString();
-            LocalDateTime timestamp = OffsetDateTime.parse(
+            LocalDateTime timestamp = LocalDateTime.parse(
                     timestampStr,
                     DateTimeFormatter.ISO_OFFSET_DATE_TIME
-            ).toLocalDateTime();
+            );
 
             // 전체 로그 수
             int totalCount = (int) bucket.docCount();
@@ -899,10 +898,10 @@ public class LogRepositoryImpl implements LogRepository {
         for (DateHistogramBucket bucket : trafficOverTime.dateHistogram().buckets().array()) {
             // 타임스탬프 파싱
             String timestampStr = bucket.keyAsString();
-            LocalDateTime timestamp = OffsetDateTime.parse(
+            LocalDateTime timestamp = LocalDateTime.parse(
                     timestampStr,
                     DateTimeFormatter.ISO_OFFSET_DATE_TIME
-            ).toLocalDateTime();
+            );
 
             // 전체 로그 수
             int totalCount = (int) bucket.docCount();

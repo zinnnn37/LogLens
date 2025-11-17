@@ -40,6 +40,12 @@ public class AlertHistory {
     @Column(name = "log_reference", columnDefinition = "JSON", nullable = false)
     private String logReference;
 
+    @Column(name = "alert_level", length = 10)
+    private String alertLevel;
+
+    @Column(name = "trace_id", length = 100)
+    private String traceId;
+
     @NotNull
     @Column(name = "project_id", columnDefinition = "TINYINT", nullable = false)
     private Integer projectId;
