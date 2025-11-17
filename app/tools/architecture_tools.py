@@ -18,7 +18,7 @@ async def analyze_error_by_layer(
     min_error_count: int = 1
 ) -> str:
     """
-    애플리케이션 레이어별 에러 분포를 분석합니다.
+    🎯 레이어별 에러 분석 도구 - "레이어별 에러 분석해줘", "계층별 에러" 질문에 사용!
 
     이 도구는 다음을 수행합니다:
     - ✅ layer 필드로 그룹핑 (Controller/Service/Repository/Filter/Util)
@@ -28,10 +28,11 @@ async def analyze_error_by_layer(
     - ❌ 레이어 간 호출 관계는 추적 안 함 (trace_component_calls 사용)
 
     사용 시나리오:
-    1. "Controller/Service/Repository 중 어디서 에러가 많아?"
+    1. "레이어별 에러 분석해줘" ← 이 질문에 반드시 사용!
     2. "레이어별 에러 통계"
-    3. "어느 계층이 불안정해?"
-    4. "아키텍처 문제 진단"
+    3. "Controller/Service/Repository 중 어디서 에러가 많아?"
+    4. "계층별 에러 현황"
+    5. "어느 계층이 불안정해?"
 
     ⚠️ 중요한 제약사항:
     - 1회 호출로 충분합니다
@@ -58,7 +59,7 @@ async def analyze_error_by_layer(
     start_time = end_time - timedelta(hours=time_hours)
 
     try:
-        # OpenSearch 집계 쿼리
+        # OpenSearch 집계 쿼리 (최적화: bucket_script 제거, 타임아웃 추가)
         results = opensearch_client.search(
             index=index_pattern,
             body={
@@ -85,15 +86,7 @@ async def analyze_error_by_layer(
                             "error_logs": {
                                 "filter": {"term": {"level": "ERROR"}}
                             },
-                            "error_rate": {
-                                "bucket_script": {
-                                    "buckets_path": {
-                                        "errors": "error_logs>_count",
-                                        "total": "total_logs"
-                                    },
-                                    "script": "params.total > 0 ? (params.errors / params.total * 100) : 0"
-                                }
-                            },
+                            # bucket_script 제거 - Python에서 계산
                             "top_classes": {
                                 "terms": {
                                     "field": "class_name",
@@ -111,7 +104,8 @@ async def analyze_error_by_layer(
                         "filter": {"term": {"level": "ERROR"}}
                     }
                 }
-            }
+            },
+            request_timeout=30  # 30초 타임아웃 추가
         )
 
         aggs = results.get("aggregations", {})
@@ -144,7 +138,8 @@ async def analyze_error_by_layer(
             layer_name = bucket.get("key", "Other")
             total_count = bucket.get("total_logs", {}).get("value", 0)
             error_count = bucket.get("error_logs", {}).get("doc_count", 0)
-            error_rate = bucket.get("error_rate", {}).get("value", 0)
+            # Python에서 error_rate 계산 (bucket_script 대신)
+            error_rate = (error_count / total_count * 100) if total_count > 0 else 0
 
             # 필터링
             if error_count < min_error_count:

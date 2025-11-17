@@ -934,7 +934,7 @@ async def detect_anomalies(
         import statistics
 
         client = opensearch_client
-        index_name = f"logs_{project_uuid}"
+        index_pattern = f"{project_uuid.replace('-', '_')}_*"
 
         now = datetime.now()
         start_time = now - timedelta(hours=time_hours)
@@ -944,7 +944,7 @@ async def detect_anomalies(
         # 시간대별 데이터 수집 (1시간 단위)
         interval = "1h"
         response = client.search(
-            index=index_name,
+            index=index_pattern,
             body={
                 "size": 0,
                 "query": {

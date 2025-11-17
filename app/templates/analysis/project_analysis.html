@@ -24,7 +24,7 @@
             background-color: #1a1a1a;
             color: #e0e0e0;
             {%- else %}
-            background-color: #f5f5f5;
+            background-color: #ffffff;
             color: #333;
             {%- endif %}
         }
@@ -37,16 +37,17 @@
             background-color: white;
             border: 1px solid #e0e0e0;
             {%- endif %}
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 20px;
             margin-bottom: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         .section-title {
-            font-size: 24px;
-            font-weight: 700;
+            font-size: 18px;
+            font-weight: 500;
             margin-bottom: 16px;
+            margin-top: 0;
             padding-bottom: 8px;
             border-bottom: 2px solid {{ '#3b82f6' if style.color_scheme == 'blue' else '#10b981' if style.color_scheme == 'green' else '#ef4444' }};
         }

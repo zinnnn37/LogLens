@@ -127,7 +127,8 @@ async def get_slowest_apis(
                                     }
 
                                     // Request URI 추출 (.keyword 서브필드 사용)
-                                    if (doc['log_details.request_uri.keyword'].size() > 0) {
+                                    if (doc.containsKey('log_details.request_uri.keyword') &&
+                                        doc['log_details.request_uri.keyword'].size() > 0) {
                                         requestUri = doc['log_details.request_uri.keyword'].value;
                                     }
 
