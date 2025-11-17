@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { getTrafficGraph } from '@/services/logService';
 import type { TrafficGraphResponse } from '@/types/log';
 import TrafficGraph from '@/components/TrafficGraph';
+import { cn } from '@/lib/utils';
 
 const CardSkeleton = () => (
   <div className="animate-pulse rounded-lg border bg-white p-6 shadow-sm">
@@ -76,36 +77,63 @@ const TrafficGraphCard: React.FC = () => {
 
   const { summary } = trafficData;
 
+  const summaryStats = [
+    {
+      key: 'total',
+      label: '총 로그',
+      value: summary.totalLogs,
+      accentClass: 'text-slate-900',
+    },
+    {
+      key: 'fe',
+      label: 'FE',
+      value: summary.totalFeCount,
+      accentClass: 'text-emerald-600',
+    },
+    {
+      key: 'be',
+      label: 'BE',
+      value: summary.totalBeCount,
+      accentClass: 'text-sky-600',
+    },
+  ] as const;
+
   return (
     <div className="rounded-lg border bg-white p-6 shadow-sm">
-      {/* 카드 제목 + 요약 */}
-      <div className="mb-4 flex items-baseline justify-between">
-        <h2 className="text-base font-semibold">트래픽 그래프</h2>
-        <div className="flex gap-4 text-right text-xs text-slate-500">
-          <div>
-            <p className="text-[11px]">총 로그</p>
-            <p className="text-sm font-semibold text-slate-900">
-              {summary.totalLogs.toLocaleString('ko-KR')}
-            </p>
-          </div>
-          <div>
-            <p className="text-[11px]">FE</p>
-            <p className="text-sm font-semibold text-emerald-600">
-              {summary.totalFeCount.toLocaleString('ko-KR')}
-            </p>
-          </div>
-          <div>
-            <p className="text-[11px]">BE</p>
-            <p className="text-sm font-semibold text-sky-600">
-              {summary.totalBeCount.toLocaleString('ko-KR')}
-            </p>
-          </div>
-        </div>
+      {/* 카드 제목 */}
+      <div className="mb-4">
+        <h2 className="text-base font-semibold text-slate-900">
+          트래픽 그래프
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          24시간 동안의 FE/BE 트래픽 추이를 확인하세요.
+        </p>
       </div>
 
-      {/* 그래프 영역 */}
-      <div className="flex min-h-[250px] w-full items-center justify-center rounded-md bg-gray-50">
-        <TrafficGraph dataPoints={trafficData.dataPoints} />
+      <div className="flex flex-col gap-6">
+        {/* 그래프 영역 */}
+        <div className="flex min-h-[380px] flex-1">
+          <TrafficGraph dataPoints={trafficData.dataPoints} />
+        </div>
+
+        {/* 통계 요약 */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          {summaryStats.map(stat => (
+            <div
+              key={stat.key}
+              className="rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] tracking-wide text-slate-400 uppercase">
+                  {stat.label}
+                </p>
+                <p className={cn('text-base font-semibold', stat.accentClass)}>
+                  {stat.value.toLocaleString('ko-KR')}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
