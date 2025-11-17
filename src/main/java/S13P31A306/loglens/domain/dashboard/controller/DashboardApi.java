@@ -34,7 +34,7 @@ public interface DashboardApi {
                             name = "projectUuid",
                             description = "프로젝트 UUID",
                             required = true,
-                            schema = @Schema(type = "string", example = "48d96cd7-bf8d-38f5-891c-9c2f6430d871")
+                            schema = @Schema(type = "string", example = "9911573f-8a1d-3b96-98b4-5a0def93513b")
                     ),
                     @Parameter(
                             in = ParameterIn.QUERY,
@@ -67,7 +67,7 @@ public interface DashboardApi {
                                                   "message": "대시보드 통계를 성공적으로 조회했습니다.",
                                                   "status": 200,
                                                   "data": {
-                                                    "projectUuid": "48d96cd7-bf8d-38f5-891c-9c2f6430d871",
+                                                    "projectUuid": "9911573f-8a1d-3b96-98b4-5a0def93513b",
                                                     "period": {
                                                       "startTime": "2025-10-10T14:20:35Z",
                                                       "endTime": "2025-10-17T14:20:35Z"
@@ -230,7 +230,7 @@ public interface DashboardApi {
                             name = "projectUuid",
                             description = "프로젝트 UUID",
                             required = true,
-                            schema = @Schema(type = "string", example = "48d96cd7-bf8d-38f5-891c-9c2f6430d871")
+                            schema = @Schema(type = "string", example = "9911573f-8a1d-3b96-98b4-5a0def93513b")
                     ),
                     @Parameter(
                             in = ParameterIn.QUERY,
@@ -270,7 +270,7 @@ public interface DashboardApi {
                                                   "message": "자주 발생하는 에러를 성공적으로 조회했습니다.",
                                                   "status": 200,
                                                   "data": {
-                                                    "projectUuid": "48d96cd7-bf8d-38f5-891c-9c2f6430d871",
+                                                    "projectUuid": "9911573f-8a1d-3b96-98b4-5a0def93513b",
                                                     "period": {
                                                       "startTime": "2025-10-10T00:00:00Z",
                                                       "endTime": "2025-10-17T23:59:59Z"
@@ -518,7 +518,7 @@ public interface DashboardApi {
                             name = "projectUuid",
                             description = "프로젝트 UUID",
                             required = true,
-                            schema = @Schema(type = "string", example = "48d96cd7-bf8d-38f5-891c-9c2f6430d871")
+                            schema = @Schema(type = "string", example = "9911573f-8a1d-3b96-98b4-5a0def93513b")
                     ),
                     @Parameter(
                             in = ParameterIn.QUERY,
@@ -544,7 +544,7 @@ public interface DashboardApi {
                                                   "message": "API 통계를 성공적으로 조회했습니다.",
                                                   "status": 200,
                                                   "data": {
-                                                    "projectId": 12345,
+                                                    "projectUuid": "9911573f-8a1d-3b96-98b4-5a0def93513b",
                                                     "endpoints": [
                                                       {
                                                         "id": 1,
@@ -707,15 +707,26 @@ public interface DashboardApi {
 
     @Operation(
             summary = "로그 히트맵 조회",
-            description = "특정 프로젝트의 로그 발생 패턴을 요일별, 시간대별로 집계하여 히트맵 데이터를 제공합니다.",
+            description = """
+                특정 프로젝트의 로그 발생 패턴을 요일별, 시간대별로 집계하여 히트맵 데이터를 제공합니다.
+                
+                **주요 기능:**
+                - 요일별(월~일), 시간대별(0~23시) 로그 발생 패턴 분석
+                - 주중/주말 패턴 비교, 피크 타임 파악
+                - 로그 레벨별(ERROR, WARN, INFO) 집계
+                
+                **조회 제한:**
+                - 최대 90일까지 조회 가능
+                - 프로젝트 멤버만 조회 가능
+                """,
             security = @SecurityRequirement(name = "bearerAuth"),
             parameters = {
                     @Parameter(
-                            in = ParameterIn.QUERY,  // 수정: PATH → QUERY
+                            in = ParameterIn.QUERY,
                             name = "projectUuid",
                             description = "프로젝트 UUID",
                             required = true,
-                            schema = @Schema(type = "string", example = "48d96cd7-bf8d-38f5-891c-9c2f6430d871")
+                            schema = @Schema(type = "string", example = "9911573f-8a1d-3b96-98b4-5a0def93513b")
                     ),
                     @Parameter(
                             in = ParameterIn.QUERY,
@@ -738,10 +749,213 @@ public interface DashboardApi {
                             required = false,
                             schema = @Schema(type = "string", allowableValues = {"INFO", "WARN", "ERROR", "ALL"}, defaultValue = "ALL", example = "ALL")
                     )
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "요일별 로그 히트맵 조회 성공",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = HeatmapResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "HeatmapRetrieved",
+                                            summary = "히트맵 조회 성공 예시",
+                                            value = """
+                                                {
+                                                  "code": "DSB200-4",
+                                                  "message": "요일별 로그 히트맵 조회가 완료되었습니다.",
+                                                  "status": 200,
+                                                  "data": {
+                                                    "projectUuid": "9911573f-8a1d-3b96-98b4-5a0def93513b",
+                                                    "period": {
+                                                      "startTime": "2025-10-10T00:00:00Z",
+                                                      "endTime": "2025-10-17T23:59:59Z"
+                                                    },
+                                                    "heatmap": [
+                                                      {
+                                                        "dayOfWeek": "MONDAY",
+                                                        "dayName": "월요일",
+                                                        "hourlyData": [
+                                                          {
+                                                            "hour": 0,
+                                                            "count": 1234,
+                                                            "errorCount": 45,
+                                                            "warnCount": 120,
+                                                            "infoCount": 1069,
+                                                            "intensity": 0.62
+                                                          },
+                                                          {
+                                                            "hour": 1,
+                                                            "count": 856,
+                                                            "errorCount": 23,
+                                                            "warnCount": 87,
+                                                            "infoCount": 746,
+                                                            "intensity": 0.43
+                                                          }
+                                                        ],
+                                                        "totalCount": 28945
+                                                      }
+                                                    ],
+                                                    "summary": {
+                                                      "totalLogs": 185643,
+                                                      "peakDay": "WEDNESDAY",
+                                                      "peakHour": 14,
+                                                      "peakCount": 4567,
+                                                      "avgDailyCount": 26520
+                                                    },
+                                                    "metadata": {
+                                                      "logLevel": "ALL",
+                                                      "timezone": "Asia/Seoul"
+                                                    }
+                                                  },
+                                                  "timestamp": "2025-10-17T15:30:45Z"
+                                                }
+                                                """
+                                    )
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "잘못된 요청 (UUID 형식, 시간 형식, 로그 레벨 등)",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class),
+                                    examples = {
+                                            @ExampleObject(
+                                                    name = "InvalidUuid",
+                                                    summary = "잘못된 UUID 형식",
+                                                    value = """
+                                                    {
+                                                        "code": "G400",
+                                                        "message": "입력값이 유효하지 않습니다",
+                                                        "status": 400,
+                                                        "timestamp": "2025-10-17T15:30:45Z"
+                                                    }
+                                                    """
+                                            ),
+                                            @ExampleObject(
+                                                    name = "InvalidTimeFormat",
+                                                    summary = "잘못된 시간 형식",
+                                                    value = """
+                                                    {
+                                                        "code": "DSB400-3",
+                                                        "message": "유효하지 않은 시간 형식입니다. (ISO 8601 형식 사용)",
+                                                        "status": 400,
+                                                        "timestamp": "2025-10-17T15:30:45Z"
+                                                    }
+                                                    """
+                                            ),
+                                            @ExampleObject(
+                                                    name = "InvalidLogLevel",
+                                                    summary = "잘못된 로그 레벨",
+                                                    value = """
+                                                    {
+                                                        "code": "DSB400-7",
+                                                        "message": "유효하지 않은 로그 레벨입니다. (INFO, WARN, ERROR, ALL 중 하나를 사용하세요)",
+                                                        "status": 400,
+                                                        "timestamp": "2025-10-17T15:30:45Z"
+                                                    }
+                                                    """
+                                            ),
+                                            @ExampleObject(
+                                                    name = "PeriodExceedsLimit",
+                                                    summary = "조회 기간 초과",
+                                                    value = """
+                                                    {
+                                                        "code": "DSB400-6",
+                                                        "message": "조회 기간은 최대 90일을 초과할 수 없습니다.",
+                                                        "status": 400,
+                                                        "timestamp": "2025-10-17T15:30:45Z"
+                                                    }
+                                                    """
+                                            )
+                                    }
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "인증 실패",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "Unauthorized",
+                                            summary = "인증 필요",
+                                            value = """
+                                            {
+                                                "code": "G401",
+                                                "message": "인증이 필요합니다.",
+                                                "status": 401,
+                                                "timestamp": "2025-10-17T15:30:45Z"
+                                            }
+                                            """
+                                    )
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "프로젝트 접근 권한 없음",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "AccessDenied",
+                                            summary = "접근 권한 없음",
+                                            value = """
+                                            {
+                                                "code": "PJ403-1",
+                                                "message": "해당 프로젝트에 대한 접근 권한이 없습니다.",
+                                                "status": 403,
+                                                "timestamp": "2025-10-17T15:30:45Z"
+                                            }
+                                            """
+                                    )
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "프로젝트를 찾을 수 없음",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "ProjectNotFound",
+                                            summary = "프로젝트 없음",
+                                            value = """
+                                            {
+                                                "code": "PJ404-1",
+                                                "message": "해당 프로젝트를 찾을 수 없습니다.",
+                                                "status": 404,
+                                                "timestamp": "2025-10-17T15:30:45Z"
+                                            }
+                                            """
+                                    )
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "서버 내부 오류",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "InternalServerError",
+                                            summary = "서버 오류",
+                                            value = """
+                                            {
+                                                "code": "G500",
+                                                "message": "서버 내부 오류가 발생했습니다.",
+                                                "status": 500,
+                                                "timestamp": "2025-10-17T15:30:45Z"
+                                            }
+                                            """
+                                    )
+                            )
+                    )
             }
     )
     ResponseEntity<? extends BaseResponse> getHeatmap(
-            @ValidUuid @RequestParam String projectUuid,  // 수정: @PathVariable → @RequestParam
+            @ValidUuid @RequestParam String projectUuid,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime,
             @RequestParam(defaultValue = "ALL") String logLevel
