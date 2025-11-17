@@ -727,7 +727,7 @@ public class LogRepositoryImpl implements LogRepository {
                             ))
                             // 시간 범위 필터
                             .filter(f -> f.range(r -> r
-                                    .field(TIMESTAMP_FIELD)
+                                    .field("@timestamp")
                                     .gte(JsonData.of(startTime.atOffset(ZoneOffset.UTC).toString()))
                                     .lte(JsonData.of(endTime.atOffset(ZoneOffset.UTC).toString()))
                             ))
@@ -848,7 +848,7 @@ public class LogRepositoryImpl implements LogRepository {
                             ))
                             // 시간 범위 필터
                             .filter(f -> f.range(r -> r
-                                    .field(TIMESTAMP_FIELD)
+                                    .field("@timestamp")
                                     .gte(JsonData.of(startTime.atOffset(ZoneOffset.UTC).toString()))
                                     .lte(JsonData.of(endTime.atOffset(ZoneOffset.UTC).toString()))
                             ))
