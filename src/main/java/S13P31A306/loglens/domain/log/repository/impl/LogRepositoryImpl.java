@@ -735,7 +735,7 @@ public class LogRepositoryImpl implements LogRepository {
                     .aggregations("logs_over_time", a -> a
                             // Date Histogram aggregation
                             .dateHistogram(dh -> dh
-                                    .field(TIMESTAMP_FIELD)
+                                    .field("@timestamp")
                                     .fixedInterval(Time.of(t -> t.time(interval)))
                                     .timeZone("Asia/Seoul")
                                     .minDocCount(0)  // 로그가 없는 시간대도 포함
@@ -856,7 +856,7 @@ public class LogRepositoryImpl implements LogRepository {
                     .aggregations("traffic_over_time", a -> a
                             // Date Histogram aggregation
                             .dateHistogram(dh -> dh
-                                    .field(TIMESTAMP_FIELD)
+                                    .field("@timestamp")
                                     .fixedInterval(Time.of(t -> t.time(interval)))
                                     .timeZone("Asia/Seoul")
                                     .minDocCount(0)  // 로그가 없는 시간대도 포함
