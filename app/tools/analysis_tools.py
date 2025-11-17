@@ -259,45 +259,7 @@ async def get_recent_errors(
     service_name: Optional[str] = None,
     time_hours: int = 24
 ) -> str:
-    """
-    최근 에러 로그를 조회하고 심각도 분석을 수행합니다.
-
-    이 도구는 다음을 수행합니다:
-    - ✅ 최근 N시간 동안의 ERROR 레벨 로그 조회
-    - ✅ 에러 타입 자동 추출 (Exception, Error, Timeout 등)
-    - ✅ 심각도 자동 평가 (CRITICAL/HIGH/MEDIUM/LOW/MINIMAL)
-    - ✅ 에러 타입별 분포 통계 제공
-    - ✅ 심각도순으로 정렬된 에러 목록 반환
-    - ✅ 특정 서비스 필터링 지원
-    - ❌ AI 기반 근본 원인 분석은 하지 않음 (analyze_single_log 또는 analyze_errors_unified 사용)
-    - ❌ 스택 트레이스 심층 분석은 하지 않음 (analyze_single_log 사용)
-    - ❌ 해결책 제시는 하지 않음 (analyze_single_log 사용)
-
-    사용 시나리오:
-    1. "최근 에러가 뭐야?" - 전체 에러 현황 파악 (service_name 없이 호출)
-    2. "user-service 에러 보여줘" - 특정 서비스 에러만 조회
-    3. "지난 1시간 에러 확인" - time_hours=1로 설정
-    4. "심각한 에러부터 보여줘" - 자동으로 심각도순 정렬됨
-
-    ⚠️ 중요한 제약사항:
-    - 이 도구는 **1회 호출로 충분**합니다. 같은 조건으로 반복 호출하지 마세요.
-    - "ERROR 레벨 로그가 없습니다" 응답은 **정상 결과**입니다. 다른 도구로 재시도하지 마세요.
-    - 심각도 분석이 **이미 포함**되어 있습니다. 별도 분석 도구를 추가로 호출할 필요 없습니다.
-    - 전체 현황 파악 시 service_name 필터 없이 먼저 조회하세요.
-
-    입력 파라미터 (JSON 형식):
-        limit: 조회할 개수 (기본 10개, 최대 100개)
-        service_name: 특정 서비스만 조회 (선택, 예: "user-service")
-        time_hours: 검색 시간 범위 (기본 24시간)
-
-    관련 도구:
-    - analyze_single_log: 특정 log_id의 AI 기반 심층 분석 (근본 원인, 해결책)
-    - analyze_errors_unified: 여러 에러의 통합 분석 (트렌드, 패턴)
-    - get_log_detail: 단순 로그 원본 조회 (분석 없음)
-
-    Returns:
-        에러 타입별 분포, 심각도순 에러 목록, 각 에러의 상세 정보
-    """
+    """최근 에러 로그 조회 및 심각도 분석. "최근 에러?", "user-service 에러", "심각한 에러 목록" ⚠️ 1회 호출 충분, 자동 심각도 평가 포함"""
     # 시간 범위 계산
     end_time = datetime.utcnow()
     start_time = end_time - timedelta(hours=time_hours)
@@ -514,10 +476,10 @@ async def correlate_logs(
         - "log_id 12345와 연관된 로그 추적"
     """
     try:
-        from app.db.opensearch import get_opensearch_client
+        from app.core.opensearch import opensearch_client
         from datetime import datetime, timedelta
 
-        client = get_opensearch_client()
+        client = opensearch_client
         index_name = f"logs_{project_uuid}"
 
         # 1. 기준 로그 조회
@@ -682,35 +644,7 @@ async def analyze_errors_unified(
     limit: int = 10,
     service_name: Optional[str] = None
 ) -> str:
-    """
-    통합 에러 분석 도구 (기존 3개 도구 통합)
-
-    하나의 도구로 다양한 에러 분석 수행 (심각도별/빈도별/API별)
-
-    Args:
-        project_uuid: 프로젝트 UUID
-        group_by: 그룹핑 기준
-            - severity: 심각도별 그룹핑 (CRITICAL > HIGH > MEDIUM)
-            - error_type: 에러 타입별 (NullPointerException 등)
-            - service: 서비스별
-            - api: API 엔드포인트별
-        sort_by: 정렬 기준
-            - severity: 심각도순 (CRITICAL 우선)
-            - frequency: 발생 빈도순
-            - time: 최근 발생 시간순
-        time_hours: 분석 기간 (기본 24시간)
-        limit: 최대 결과 수
-        service_name: 특정 서비스만 분석 (선택)
-
-    Returns:
-        그룹핑/정렬된 에러 분석 결과
-
-    Examples:
-        - "가장 심각한 에러" → group_by=severity, sort_by=severity
-        - "가장 자주 발생하는 에러" → group_by=error_type, sort_by=frequency
-        - "서비스별 에러 현황" → group_by=service
-        - "API별 에러율" → group_by=api
-    """
+    """통합 에러 분석 (심각도별/빈도별/서비스별/API별). group_by: severity/error_type/service/api, sort_by: severity/frequency/time ⚠️ 1회 호출 충분"""
     # 기존 도구 재사용
     if group_by == "severity" and sort_by == "severity":
         # get_recent_errors 로직
@@ -754,56 +688,7 @@ async def analyze_single_log(
     project_uuid: str,
     log_id: int
 ) -> str:
-    """
-    단일 로그를 AI가 심층 분석합니다 (v2-langgraph API 사용).
-
-    이 도구는 다음을 수행합니다:
-    - ✅ 특정 log_id의 AI 분석 수행 (근본 원인, 해결책, 심각도)
-    - ✅ 스택 트레이스 분석 (있는 경우)
-    - ✅ 연관 로그 추천
-    - ✅ 3-tier 캐싱 활용 (빠른 응답 + 비용 절감)
-    - ❌ 여러 로그를 동시 분석하지 않음 (analyze_errors_unified 사용)
-    - ❌ 로그 원본만 조회하지 않음 (get_log_detail 사용)
-
-    사용 시나리오:
-    - "log_id 12345를 분석해줘" ✅
-    - "이 에러의 근본 원인은?" ✅ (log_id 필요)
-    - "NullPointerException을 해결하는 방법은?" ✅ (log_id 필요)
-    - "최근 에러들을 분석해줘" ❌ (get_recent_errors 또는 analyze_errors_unified 사용)
-    - "log_id 12345의 상세 정보만 보여줘" ❌ (get_log_detail 사용)
-
-    입력 파라미터 (JSON):
-        log_id: 분석할 로그 ID (int, 필수)
-
-    출력 형식:
-        ## 🤖 AI 로그 분석 (log_id: {log_id})
-
-        ### 📋 요약
-        [AI가 생성한 요약]
-
-        ### 🔍 근본 원인
-        [Root Cause Analysis]
-
-        ### 💡 해결 방법
-        [Solutions]
-
-        ### 🏷️ 태그
-        [분류 태그]
-
-    주의사항:
-    - ⚠️ 이 도구는 **단일 로그만** 분석. 여러 로그는 analyze_errors_unified 사용
-    - ⚠️ AI 분석은 5-10초 소요될 수 있음 (캐시 사용 시 1초 이내)
-    - ⚠️ log_id가 존재하지 않으면 에러 반환
-    - ⚠️ 이 도구를 호출했다면 추가 분석 도구를 호출할 필요 없음 (이미 완전한 분석 포함)
-
-    관련 도구:
-    - get_log_detail: 로그 원본만 조회 (AI 분석 없음, 단순 조회용)
-    - analyze_errors_unified: 여러 로그를 한 번에 분석 (이 도구는 단일만)
-    - get_recent_errors: 최근 에러 목록 조회 (이 도구는 특정 log_id 분석)
-
-    Returns:
-        AI 분석 결과 (summary, error_cause, solution, tags 포함)
-    """
+    """단일 로그 AI 심층 분석. "log_id 12345 분석", "에러 근본 원인", "해결 방법" ⚠️ log_id 필수, 1회 호출로 완전한 분석 제공"""
     try:
         # v2-langgraph 서비스 임포트
         from app.services.log_analysis_service_v2 import log_analysis_service_v2

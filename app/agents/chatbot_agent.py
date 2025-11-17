@@ -128,17 +128,18 @@ Your job: Analyze logs using tools and answer in Korean. Do NOT waste time check
    - "레이어별", "Controller vs Service", "계층별" → analyze_error_by_layer (NEW: 아키텍처)
    - "비슷한 에러", "같은 패턴", "중복 에러" → cluster_stack_traces (NEW: 클러스터링)
    - "동시성", "데드락", "스레드 문제" → detect_concurrency_issues (NEW: 동시성)
-   - "HTTP 에러 매트릭스", "API 상태 코드" → analyze_http_error_matrix (NEW: HTTP)
+   - "HTTP 에러 매트릭스", "API 상태 코드", "4xx vs 5xx", "클라이언트 vs 서버 에러" → analyze_http_error_matrix (NEW: HTTP)
+   - "API별 에러율", "API 에러율 비교", "엔드포인트별 에러" → get_api_error_rates (NEW: API 에러율)
    - "컴포넌트 호출", "호출 순서", "요청 흐름" → trace_component_calls (NEW: trace_id 필요)
    - "언제부터", "얼마나 오래", "미해결 에러" → analyze_error_lifetime (NEW: 생존 시간)
-   - "주기적", "매일 발생", "배치 에러" → detect_recurring_errors (NEW: 재발 주기)
+   - "주기적", "매일 발생", "배치 에러", "재발 패턴", "반복 에러" → detect_recurring_errors (NEW: 재발 주기)
    - "핫스팟 메서드", "많이 실행된 메서드" → get_hottest_methods (NEW: 메서드 빈도)
    - "FE vs BE", "프론트 vs 백엔드" → compare_source_types (NEW: Source Type)
    - "로그 노이즈", "로거 활동" → analyze_logger_activity (NEW: 로거 분석)
    - "요청 패턴", "request body" → analyze_request_patterns (NEW: API path 필요)
    - "응답 패턴", "response error" → analyze_response_failures (NEW: API path 필요)
    - "파라미터 분포", "파라미터 null" → analyze_parameter_distribution (NEW: class+method 필요)
-   - "에러 전파", "연쇄 에러 경로" → trace_error_propagation (NEW: log_id 필요)
+   - "에러 전파", "연쇄 에러 경로" → trace_error_propagation (⚠️ REQUIRES: log_id 필수! 먼저 get_recent_errors로 log_id 확보)
 
 4️⃣ **Efficiency:** Use ONE broad query first → Analyze → If needed, 1-2 more refined calls (max 3-4 total)
 
@@ -926,6 +927,28 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
 
         # 에러 원인 분석
         if "Could not parse LLM output" in error_msg:
+            # "Action:" 있지만 "Action Input:" 없는 경우 체크
+            raw_output = error_msg.split("`")[-2] if "`" in error_msg else ""
+            if "Action:" in raw_output and "Action Input:" not in raw_output:
+                # LLM이 Action Input을 누락한 경우
+                return """🚨 ACTION INPUT MISSING 🚨
+
+You wrote "Action:" but forgot "Action Input:"!
+
+✅ CORRECT FORMAT (ALL tools need parameters):
+Thought: I need to check API error rates
+Action: get_api_error_rates
+Action Input: {"project_uuid": "USE_PROJECT_CONTEXT"}
+
+❌ WRONG - What you just did:
+Action: get_api_error_rates
+(missing Action Input line!)
+
+⚠️ EVERY tool call MUST have "Action Input:" with JSON parameters.
+For most tools, use: {"project_uuid": "USE_PROJECT_CONTEXT"}
+
+Try again with the correct format!"""
+
             # LLM이 "Final Answer:" 없이 바로 마크다운 출력한 경우
             return """🚨🚨🚨 CRITICAL PARSING ERROR 🚨🚨🚨
 You forgot to write "Final Answer:" label!

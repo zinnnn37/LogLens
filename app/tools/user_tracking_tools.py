@@ -64,7 +64,7 @@ async def trace_user_session(
     # Query 구성
     must_clauses = [
         {"exists": {"field": "requester_ip"}},
-        {"term": {"requester_ip": requester_ip}},
+        {"match_phrase": {"requester_ip": requester_ip}},  # IP 타입 필드 지원을 위해 match_phrase 사용
         {"range": {
             "timestamp": {
                 "gte": start_time.isoformat() + "Z",
@@ -551,7 +551,7 @@ async def trace_error_propagation(
             must_clauses.append({"term": {"trace_id": origin_trace_id}})
             correlation_type = "trace_id"
         elif origin_ip:
-            must_clauses.append({"term": {"requester_ip": origin_ip}})
+            must_clauses.append({"match_phrase": {"requester_ip": origin_ip}})  # IP 타입 필드 지원
             correlation_type = "requester_ip"
         else:
             return (

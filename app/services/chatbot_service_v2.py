@@ -6,10 +6,11 @@ LLM이 자율적으로 도구를 선택하여 로그 분석 수행
 
 import re
 import asyncio
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, AsyncGenerator, Tuple
 from app.agents.chatbot_agent import create_log_analysis_agent
 from app.models.chat import ChatResponse, ChatMessage
 from app.utils.agent_logger import AgentLogger
+from app.utils.sanitizer import sanitize_for_display
 from app.callbacks.tool_tracker_callback import ToolTrackerCallback
 from langchain_core.messages import HumanMessage, AIMessage
 
@@ -144,6 +145,44 @@ class ChatbotServiceV2:
         return 'simple'
 
     @staticmethod
+    def _sanitize_user_input_in_response(answer: str, question: str) -> str:
+        """
+        응답에 포함된 사용자 입력을 위생처리 (XSS/SQL 인젝션 방지)
+
+        Agent가 사용자의 질문을 응답에 포함시킬 때, 악성 문자열이 그대로 반영되지 않도록 처리
+
+        Args:
+            answer: Agent 생성 답변
+            question: 원본 질문
+
+        Returns:
+            위생처리된 답변
+        """
+        # 사용자 질문이 응답에 포함되어 있는지 확인
+        if question in answer:
+            # 위생처리된 버전으로 대체
+            safe_question = sanitize_for_display(question, max_length=200)
+            answer = answer.replace(question, safe_question)
+
+        # 추가: 따옴표로 감싸진 부분에서 위험한 패턴 검출 및 처리
+        # 예: "키워드는 "<script>alert('XSS')</script>"이며"
+        import html
+        dangerous_patterns = [
+            r'<script[^>]*>.*?</script>',  # script tags
+            r'<iframe[^>]*>.*?</iframe>',  # iframe tags
+            r'javascript:',  # javascript protocol
+            r'on\w+\s*=\s*["\']',  # event handlers
+        ]
+
+        for pattern in dangerous_patterns:
+            matches = re.findall(pattern, answer, re.IGNORECASE | re.DOTALL)
+            for match in matches:
+                safe_match = html.escape(match, quote=True)
+                answer = answer.replace(match, safe_match)
+
+        return answer
+
+    @staticmethod
     def _validate_and_enhance_response(answer: str, query_type: str, question: str) -> str:
         """
         답변 검증 및 자동 확장 (7가지 질문 유형별)
@@ -156,6 +195,9 @@ class ChatbotServiceV2:
         Returns:
             검증 및 확장된 답변
         """
+        # 보안: 사용자 입력 위생처리
+        answer = ChatbotServiceV2._sanitize_user_input_in_response(answer, question)
+
         answer_length = len(answer)
 
         # 유형별 최소 길이 요구사항 (완화됨 - 파싱 성공이 우선)
@@ -452,6 +494,184 @@ class ChatbotServiceV2:
                 from_cache=False,
                 related_logs=[]
             )
+
+    async def ask_stream(
+        self,
+        question: str,
+        project_uuid: str,
+        chat_history: Optional[List[ChatMessage]] = None,
+    ) -> AsyncGenerator[Tuple[str, str], None]:
+        """
+        ReAct Agent를 사용하여 질문에 답변 (스트리밍)
+
+        ask()와 동일한 검증 로직을 사용하되, 스트리밍 방식으로 응답
+
+        Args:
+            question: 사용자 질문
+            project_uuid: 프로젝트 UUID
+            chat_history: 대화 기록 (선택)
+
+        Yields:
+            Tuple[str, str]: (event_type, content)
+            - ("chunk", "text"): 답변 청크
+            - ("done", ""): 완료
+            - ("error", "message"): 에러
+        """
+        # Agent 로거 초기화
+        agent_logger = AgentLogger(project_uuid, question)
+
+        try:
+            # 1. Off-topic 필터링 (ask()와 동일)
+            if self._is_off_topic(question):
+                print(f"🚫 Off-topic question detected (stream): {question[:50]}...")
+                agent_logger.log_completion(True, 0, "Off-topic question filtered")
+                off_topic_message = """죄송합니다. 저는 로그 분석 전문 AI 어시스턴트입니다.
+
+다음과 같은 질문에만 답변할 수 있습니다:
+
+**📊 에러 분석:**
+- "최근 에러 로그 보여줘"
+- "가장 심각한 에러는?"
+- "NullPointerException 분석해줘"
+
+**⚡ 성능 분석:**
+- "응답 시간이 느린 API는?"
+- "성능 병목 지점 찾아줘"
+
+**🔍 로그 검색:**
+- "user-service 로그 찾아줘"
+- "최근 24시간 로그 조회"
+
+무엇을 도와드릴까요? 😊"""
+                # 타이핑 효과로 전송
+                chunk_size = 20
+                for i in range(0, len(off_topic_message), chunk_size):
+                    chunk = off_topic_message[i:i+chunk_size]
+                    yield ("chunk", chunk)
+                    await asyncio.sleep(0.03)
+                yield ("done", "")
+                return
+
+            # 2. 쿼리 타입 분류 (ask()와 동일)
+            query_type = self._classify_query_type(question)
+
+            # 3. Agent 생성 및 실행
+            agent_executor = create_log_analysis_agent(project_uuid)
+            tool_tracker_callback = ToolTrackerCallback()
+
+            # 대화 히스토리 포맷팅
+            history_text = ""
+            if chat_history:
+                history_text = "\n\n## 이전 대화:\n"
+                for msg in chat_history:
+                    role = "User" if msg.role == "user" else "Assistant"
+                    history_text += f"{role}: {msg.content}\n"
+
+            agent_input = {
+                "input": question,
+                "chat_history": history_text
+            }
+
+            # 4. 스트리밍 실행
+            full_answer = ""
+            is_streaming = False
+            buffer = ""
+
+            try:
+                async for event in agent_executor.astream_events(
+                    agent_input,
+                    version="v1",
+                    config={"callbacks": [tool_tracker_callback]}
+                ):
+                    kind = event["event"]
+
+                    if kind == "on_chat_model_stream":
+                        chunk = event.get("data", {}).get("chunk")
+                        if chunk and hasattr(chunk, "content"):
+                            content = chunk.content
+
+                            if content:
+                                buffer += content
+
+                                if "Final Answer:" in buffer and not is_streaming:
+                                    is_streaming = True
+                                    parts = buffer.split("Final Answer:", 1)
+                                    if len(parts) > 1:
+                                        answer_start = parts[1].lstrip()
+                                        if answer_start:
+                                            full_answer += answer_start
+                                            yield ("chunk", answer_start)
+                                    buffer = ""
+                                elif is_streaming:
+                                    full_answer += content
+                                    yield ("chunk", content)
+
+                # 5. 응답 검증 (ask()와 동일)
+                if full_answer:
+                    validated_answer = self._validate_and_enhance_response(
+                        full_answer, query_type, question
+                    )
+
+                    # 검증으로 추가된 부분이 있으면 스트리밍
+                    if len(validated_answer) > len(full_answer):
+                        additional = validated_answer[len(full_answer):]
+                        yield ("chunk", additional)
+
+                    # 검증 결과 로깅
+                    factual_warnings = self._validate_factual_accuracy(validated_answer, question)
+                    missing_sections = self._validate_required_sections(validated_answer, query_type)
+
+                    if factual_warnings:
+                        print(f"⚠️ 사실 정확성 경고: {factual_warnings}")
+                    if missing_sections:
+                        print(f"⚠️ 누락 섹션: {missing_sections}")
+
+                    agent_logger.log_completion(True, len(validated_answer))
+
+                    # 도구 호출 통계
+                    tool_summary = tool_tracker_callback.get_summary()
+                    if tool_summary != "No tool calls yet.":
+                        print(f"📊 도구 호출 통계:\n{tool_summary}")
+
+                yield ("done", "")
+
+            except AttributeError:
+                # astream_events 미지원 시 fallback
+                print("⚠️ astream_events not available, using fallback")
+                yield ("chunk", "로그를 분석하고 있습니다...\n\n")
+
+                result = await asyncio.wait_for(
+                    agent_executor.ainvoke(
+                        agent_input,
+                        config={"callbacks": [tool_tracker_callback]}
+                    ),
+                    timeout=60.0
+                )
+
+                answer = result.get("output", "")
+                validated_answer = self._validate_and_enhance_response(
+                    answer, query_type, question
+                )
+
+                # 타이핑 효과로 전송
+                chunk_size = 15
+                for i in range(0, len(validated_answer), chunk_size):
+                    chunk = validated_answer[i:i+chunk_size]
+                    yield ("chunk", chunk)
+                    await asyncio.sleep(0.05)
+
+                agent_logger.log_completion(True, len(validated_answer))
+                yield ("done", "")
+
+        except asyncio.TimeoutError:
+            agent_logger.log_timeout(60.0)
+            agent_logger.log_completion(False, 0, "Timeout")
+            yield ("error", "요청 처리 시간이 초과되었습니다. 질문을 더 구체적으로 작성해주세요.")
+
+        except Exception as e:
+            print(f"❌ Agent 스트리밍 중 오류: {e}")
+            agent_logger.log_completion(False, 0, str(e))
+            yield ("error", f"질문 처리 중 오류가 발생했습니다: {str(e)}")
 
 
 # Global service instance

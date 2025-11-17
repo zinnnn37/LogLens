@@ -10,6 +10,7 @@ from app.api.v1 import router as v1_router
 from app.api.v2 import router as v2_router
 from app.api.v2_langgraph.logs import router as v2_langgraph_router
 from app.api.v2_langgraph.analysis import router as v2_langgraph_analysis_router
+from app.api.v2_langgraph.statistics import router as v2_langgraph_statistics_router
 
 
 @asynccontextmanager
@@ -79,6 +80,10 @@ tags_metadata = [
         "name": "Analysis Documents V2",
         "description": "HTML 문서 생성 - Jinja2 템플릿 기반 프로젝트/에러 분석 HTML 문서 생성, Chart.js 차트 렌더링",
     },
+    {
+        "name": "Statistics Comparison",
+        "description": "AI vs DB 통계 비교 - LLM 기반 통계 추론과 DB 직접 조회의 정확도 검증, AI의 DB 대체 역량 증명",
+    },
 ]
 
 # Create FastAPI app
@@ -146,6 +151,7 @@ app.include_router(v1_router, prefix="/api/v1")
 app.include_router(v2_router, prefix="/api/v2")
 app.include_router(v2_langgraph_router, prefix="/api")
 app.include_router(v2_langgraph_analysis_router, prefix="/api")
+app.include_router(v2_langgraph_statistics_router, prefix="/api")
 
 
 @app.get("/")
@@ -160,6 +166,7 @@ async def root():
             "v1": "/api/v1",
             "v2": "/api/v2 (Chatbot Agent 기반)",
             "v2-langgraph": "/api/v2-langgraph (Log Analysis LangGraph 기반)",
-            "v2-langgraph-analysis": "/api/v2-langgraph/analysis (HTML Document 생성)"
+            "v2-langgraph-analysis": "/api/v2-langgraph/analysis (HTML Document 생성)",
+            "v2-langgraph-statistics": "/api/v2-langgraph/statistics (AI vs DB 통계 비교)"
         }
     }

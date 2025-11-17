@@ -330,91 +330,23 @@ async def ask_chatbot_v2_stream(
                 yield f"data: {json.dumps({'error': error_msg})}\n\n"
                 return
 
-            # 2. Agent 생성
-            agent_executor = create_log_analysis_agent(request.project_uuid)
-
-            # 3. 대화 히스토리 포맷팅
-            history_text = ""
-            if request.chat_history:
-                history_text = "\n\n## 이전 대화:\n"
-                for msg in request.chat_history:
-                    role = "User" if msg.role == "user" else "Assistant"
-                    history_text += f"{role}: {msg.content}\n"
-
-            agent_input = {
-                "input": request.question,
-                "chat_history": history_text
-            }
-
-            # 4. Agent 스트리밍 실행
-            full_answer = ""
-            is_streaming = False  # "Final Answer:" 감지 후 True
-            buffer = ""  # 토큰 버퍼
-
-            try:
-                # LangChain 0.2.x: astream_events 사용
-                async for event in agent_executor.astream_events(
-                    agent_input,
-                    version="v1"
-                ):
-                    kind = event["event"]
-
-                    # LLM 토큰만 스트리밍 (최종 답변만)
-                    if kind == "on_chat_model_stream":
-                        chunk = event.get("data", {}).get("chunk")
-                        if chunk and hasattr(chunk, "content"):
-                            content = chunk.content
-
-                            if content:
-                                buffer += content
-
-                                # "Final Answer:" 패턴 감지
-                                if "Final Answer:" in buffer and not is_streaming:
-                                    is_streaming = True
-                                    # "Final Answer:" 이후 텍스트만 추출
-                                    parts = buffer.split("Final Answer:", 1)
-                                    if len(parts) > 1:
-                                        answer_start = parts[1].lstrip()  # 앞 공백 제거
-                                        if answer_start:
-                                            full_answer += answer_start
-                                            escaped = answer_start.replace("\n", "\\n")
-                                            yield f"data: {escaped}\n\n"
-                                    buffer = ""  # 버퍼 초기화
-                                elif is_streaming:
-                                    # 이미 Final Answer 시작됨, 그대로 스트리밍
-                                    full_answer += content
-                                    escaped_content = content.replace("\n", "\\n")
-                                    yield f"data: {escaped_content}\n\n"
-                                # else: Final Answer 이전이므로 스킵 (Thought, Action 등)
-
-                # 5. Completion signal
-                yield "data: [DONE]\n\n"
-
-            except AttributeError:
-                # astream_events가 없는 경우 fallback: 일반 실행 후 타이핑 효과
-                logger.warning("astream_events not available, using fallback streaming")
-
-                # 분석 중 메시지
-                yield "data: 로그를 분석하고 있습니다...\\n\\n\n\n"
-
-                # Agent 실행 (비동기)
-                result = await agent_executor.ainvoke(agent_input)
-                answer = result.get("output", "")
-
-                # 답변을 청크 단위로 스트리밍 (타이핑 효과)
-                # 한글이 음절 단위로 쪼개지는 것을 방지하기 위해 청크 단위로 전송
-                import asyncio
-                chunk_size = 15  # 15자씩 전송 (한글 2-3자, 영문 단어 1-2개 정도)
-                newline_escape = '\\n'
-
-                for i in range(0, len(answer), chunk_size):
-                    chunk = answer[i:i+chunk_size]
-                    # 줄바꿈 이스케이프
-                    escaped_chunk = chunk.replace("\n", newline_escape)
-                    yield f"data: {escaped_chunk}\n\n"
-                    await asyncio.sleep(0.05)  # 50ms 딜레이 (읽기 편한 속도)
-
-                yield "data: [DONE]\n\n"
+            # 2. 서비스 레이어를 통한 스트리밍 (ask()와 동일한 검증 로직 사용)
+            async for event_type, content in chatbot_service_v2.ask_stream(
+                question=request.question,
+                project_uuid=request.project_uuid,
+                chat_history=request.chat_history
+            ):
+                if event_type == "chunk":
+                    # 청크 데이터 스트리밍
+                    escaped_content = content.replace("\n", "\\n")
+                    yield f"data: {escaped_content}\n\n"
+                elif event_type == "done":
+                    # 완료 신호
+                    yield "data: [DONE]\n\n"
+                elif event_type == "error":
+                    # 에러 발생
+                    yield "data: [ERROR]\n\n"
+                    yield f"data: {json.dumps({'error': content})}\n\n"
 
         except Exception as e:
             logger.error(

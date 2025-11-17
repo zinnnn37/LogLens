@@ -11,6 +11,7 @@ from app.core.opensearch import opensearch_client
 from app.services.similarity_service import similarity_service
 from app.services.embedding_service import embedding_service
 from app.tools.common_fields import BASE_FIELDS, LOG_DETAILS_FIELDS
+from app.utils.sanitizer import sanitize_for_display, log_security_warning
 
 
 @tool
@@ -110,12 +111,18 @@ async def search_logs_by_keyword(
         hits = results.get("hits", {}).get("hits", [])
         total_count = results.get("hits", {}).get("total", {}).get("value", 0)
 
+        # 보안 경고 로깅
+        log_security_warning(keyword, "keyword_search")
+
+        # 응답에 표시할 키워드 위생처리 (XSS/SQL 인젝션 방지)
+        safe_keyword = sanitize_for_display(keyword)
+
         if total_count == 0:
-            return f"'{keyword}' 키워드로 검색한 결과 {time_hours}시간 내 로그가 없습니다."
+            return f"'{safe_keyword}' 키워드로 검색한 결과 {time_hours}시간 내 로그가 없습니다."
 
         # 결과 포맷팅
         summary_lines = [
-            f"'{keyword}' 검색 결과: 총 {total_count}건 (최근 {time_hours}시간)",
+            f"'{safe_keyword}' 검색 결과: 총 {total_count}건 (최근 {time_hours}시간)",
             ""
         ]
 
@@ -253,12 +260,16 @@ async def search_logs_by_similarity(
             time_range=time_range
         )
 
+        # 보안 경고 로깅 및 위생처리
+        log_security_warning(query, "similarity_search")
+        safe_query = sanitize_for_display(query)
+
         if not results:
-            return f"'{query}' 쿼리로 검색한 결과 {time_hours}시간 내 유사한 로그가 없습니다."
+            return f"'{safe_query}' 쿼리로 검색한 결과 {time_hours}시간 내 유사한 로그가 없습니다."
 
         # 결과 포맷팅
         summary_lines = [
-            f"'{query}' 유사도 검색 결과: {len(results)}건 (최근 {time_hours}시간)",
+            f"'{safe_query}' 유사도 검색 결과: {len(results)}건 (최근 {time_hours}시간)",
             ""
         ]
 
@@ -367,9 +378,9 @@ async def search_logs_advanced(
     """
     try:
         from datetime import datetime, timezone
-        from app.db.opensearch import get_opensearch_client
+        from app.core.opensearch import opensearch_client
 
-        client = get_opensearch_client()
+        client = opensearch_client
         index_name = f"logs_{project_uuid}"
 
         # 쿼리 구성
@@ -431,13 +442,18 @@ async def search_logs_advanced(
         hits = response['hits']['hits']
         total_count = response['hits']['total']['value']
 
+        # 키워드 위생처리 (보안)
+        if keyword:
+            log_security_warning(keyword, "advanced_search")
+        safe_keyword = sanitize_for_display(keyword) if keyword else None
+
         if total_count == 0:
             conditions_desc = []
             if start_time: conditions_desc.append(f"시작: {start_time}")
             if end_time: conditions_desc.append(f"종료: {end_time}")
             if service_name: conditions_desc.append(f"서비스: {service_name}")
             if level: conditions_desc.append(f"레벨: {level}")
-            if keyword: conditions_desc.append(f"키워드: {keyword}")
+            if safe_keyword: conditions_desc.append(f"키워드: {safe_keyword}")
 
             return f"=== 고급 검색 결과 ===\n\n조건: {', '.join(conditions_desc) if conditions_desc else '전체'}\n\n검색 결과가 없습니다."
 
@@ -450,7 +466,7 @@ async def search_logs_advanced(
         if end_time: conditions.append(f"📅 종료: {end_time}")
         if service_name: conditions.append(f"🔧 서비스: {service_name}")
         if level: conditions.append(f"📊 레벨: {level}")
-        if keyword: conditions.append(f"🔍 키워드: {keyword}")
+        if safe_keyword: conditions.append(f"🔍 키워드: {safe_keyword}")
 
         summary_lines.append("**검색 조건:**")
         summary_lines.extend([f"- {cond}" for cond in conditions])
