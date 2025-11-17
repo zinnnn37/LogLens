@@ -13,11 +13,9 @@ import S13P31A306.loglens.domain.project.service.ApiEndpointService;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
 import S13P31A306.loglens.domain.dashboard.service.HeatmapService;
 import S13P31A306.loglens.domain.dashboard.service.TopFrequentErrorsService;
-import S13P31A306.loglens.domain.project.entity.LogMetrics;
 import S13P31A306.loglens.domain.project.entity.Project;
-import S13P31A306.loglens.domain.project.repository.LogMetricsRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
-import S13P31A306.loglens.domain.project.service.LogMetricsTransactionalService;
+import S13P31A306.loglens.domain.project.service.ApiEndpointTransactionalService;
 import S13P31A306.loglens.global.annotation.ValidUuid;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
@@ -50,8 +48,7 @@ public class DashboardController implements DashboardApi {
 
     // TODO: 추후 삭제
     private final ProjectRepository projectRepository;
-    private final LogMetricsRepository logMetricsRepository;
-    private final LogMetricsTransactionalService logMetricsTransactionalService;
+    private final ApiEndpointTransactionalService apiEndpointTransactionalService;
 
     /**
      * 통계 개요 조회
@@ -207,15 +204,13 @@ public class DashboardController implements DashboardApi {
             LocalDateTime to = LocalDateTime.now();
             LocalDateTime from = to.minusDays(90);
 
-            LogMetrics previous = logMetricsRepository
-                    .findTopByProjectIdOrderByAggregatedAtDesc(project.getId())
-                    .orElse(null);
-
-            logMetricsTransactionalService.aggregateProjectMetricsIncremental(
-                    project, from, to, previous
+            // 2. API 엔드포인트 메트릭 집계
+            apiEndpointTransactionalService.aggregateApiEndpointMetrics(
+                    project, from, to
             );
 
-            return ResponseEntity.ok("집계 완료: " + projectUuid);
+            return ResponseEntity.ok("집계 완료: " + projectUuid +
+                    " (LogMetrics + ApiEndpoint + Top10 Errors)");
 
         } catch (Exception e) {
             log.error("{} 집계 실패", LOG_PREFIX, e);
