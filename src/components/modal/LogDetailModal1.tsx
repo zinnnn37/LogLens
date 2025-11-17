@@ -11,10 +11,18 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, ScanSearch, Link2, Wand2 } from 'lucide-react';
+import {
+  Loader2,
+  ScanSearch,
+  Link2,
+  Wand2,
+  Copy,
+  FileText,
+} from 'lucide-react';
 import { analyzeLogs } from '@/services/logService';
 import { getJiraConnectionStatus } from '@/services/jiraService';
 import type { LogData, LogAnalysisData } from '@/types/log';
+import { toast } from 'sonner';
 
 const InfoSection = ({
   title,
@@ -109,6 +117,8 @@ export interface LogDetailModalProps {
   log: LogData | null;
   onGoToNextPage: () => void;
   onOpenJiraConnect: () => void;
+  onGenerateErrorDoc?: () => void;
+  isGeneratingDoc?: boolean;
 }
 
 const LogDetailModal1 = ({
@@ -117,6 +127,8 @@ const LogDetailModal1 = ({
   log,
   onGoToNextPage,
   onOpenJiraConnect,
+  onGenerateErrorDoc,
+  isGeneratingDoc = false,
 }: LogDetailModalProps) => {
   const { projectUuid } = useParams<{ projectUuid: string }>();
 
@@ -158,6 +170,32 @@ const LogDetailModal1 = ({
   }
 
   const isErrorLevel = log.logLevel === 'ERROR';
+
+  // LogDetail 마크다운
+  const buildLogDetailText = (): string => {
+    if (!log.logDetails) {
+      return '';
+    }
+    return JSON.stringify(log.logDetails, null, 2)
+      .slice(1, -1)
+      .replace(/"/g, '')
+      .trim();
+  };
+
+  const handleCopyLogDetail = async () => {
+    const text = buildLogDetailText();
+    if (!text) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('LogDetail 내용을 복사했습니다.');
+    } catch (e) {
+      console.error('클립보드 복사 실패:', e);
+      toast.error('복사에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
 
   const handleAnalyzeClick = async () => {
     if (!projectUuid || !log) {
@@ -222,16 +260,28 @@ const LogDetailModal1 = ({
               label="Duration"
               value={log.duration !== null ? `${log.duration}ms` : 'N/A'}
             />
+
             {log.logDetails && (
               <InfoRow
                 label="LogDetail"
                 value={
-                  <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                    {JSON.stringify(log.logDetails, null, 2)
-                      .slice(1, -1)
-                      .replace(/"/g, '')
-                      .trim()}
-                  </pre>
+                  <div className="relative rounded-md border bg-white p-3">
+                    {/* 복사 버튼 */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 h-7 w-7 border-none p-0 shadow-none outline-none hover:bg-transparent focus-visible:ring-0"
+                      onClick={handleCopyLogDetail}
+                    >
+                      <Copy className="h-4 w-4 text-gray-600" />
+                    </Button>
+
+                    {/* 코드블록 */}
+                    <pre className="mt-6 font-mono text-xs whitespace-pre-wrap text-gray-900">
+                      {buildLogDetailText()}
+                    </pre>
+                  </div>
                 }
               />
             )}
@@ -322,6 +372,22 @@ const LogDetailModal1 = ({
             <ScanSearch className="h-4 w-4" />
             요청 흐름 보기
           </Button>
+
+          {isErrorLevel && onGenerateErrorDoc && (
+            <Button
+              variant="outline"
+              onClick={onGenerateErrorDoc}
+              disabled={isGeneratingDoc}
+              className="gap-2 border-purple-600 text-purple-600 hover:bg-purple-50"
+            >
+              {isGeneratingDoc ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
+              {isGeneratingDoc ? '생성 중...' : '에러 분석 문서'}
+            </Button>
+          )}
 
           {isErrorLevel &&
             (isJiraLoading ? (
