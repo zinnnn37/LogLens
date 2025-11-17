@@ -1,11 +1,12 @@
-package S13P31A306.loglens.domain.dashboard.repository;
+package S13P31A306.loglens.domain.project.repository;
 
-import S13P31A306.loglens.domain.dashboard.entity.ApiEndpoint;
-import io.lettuce.core.dynamic.annotation.Param;
+import S13P31A306.loglens.domain.project.entity.ApiEndpoint;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ApiEndpointRepository extends JpaRepository<ApiEndpoint, Integer> {
 
@@ -81,5 +82,20 @@ public interface ApiEndpointRepository extends JpaRepository<ApiEndpoint, Intege
                  OR ae.anomalyCount >= 10)
             """)
     long countCriticalEndpointsByProjectId(@Param("projectId") Integer projectId);
+
+    /**
+     * 특정 엔드포인트 조회 (누적 업데이트용)
+     * 배치 스케줄러에서 기존 데이터 확인할 때 사용
+     *
+     * @param projectId 프로젝트 ID
+     * @param endpointPath 엔드포인트 경로
+     * @param httpMethod HTTP 메서드
+     * @return 조회된 API 엔드포인트
+     */
+    Optional<ApiEndpoint> findByProjectIdAndEndpointPathAndHttpMethod(
+            Integer projectId,
+            String endpointPath,
+            String httpMethod
+    );
 
 }

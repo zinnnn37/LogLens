@@ -60,7 +60,7 @@ public class TopFrequentErrorsServiceImpl implements TopFrequentErrorsService {
         Integer projectId = dashboardValidator.validateProjectAccess(projectUuid);
 
         // 2. limit 검증
-        dashboardValidator.validateErrorLimit(limit);
+        limit = dashboardValidator.validateErrorLimit(limit);
 
         // 3. 시간 파싱 및 기본값 설정
         LocalDateTime parsedEnd = dashboardValidator.validateAndParseTime(endTime);

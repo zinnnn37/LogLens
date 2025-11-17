@@ -13,24 +13,12 @@ public record ApiEndpointResponse(
         @Sensitive
         Integer projectId,
 
-        @Schema(description = "조회 기간")
-        Period period,
-
         @Schema(description = "엔드포인트 목록")
         List<EndpointStats> endpoints,
 
         @Schema(description = "통계 요약")
         Summary summary
 ) {
-
-    public record Period(
-            @Schema(description = "조회 시작 시간", example = "2025-10-01T00:00:00Z")
-            LocalDateTime startTime,
-
-            @Schema(description = "조회 종료 시간", example = "2025-10-17T23:59:59Z")
-            LocalDateTime endTime
-    ) {
-    }
 
     public record EndpointStats(
             @Schema(description = "엔드포인트 ID", example = "1")

@@ -2,14 +2,14 @@ package S13P31A306.loglens.domain.dashboard.controller.impl;
 
 import S13P31A306.loglens.domain.dashboard.constants.DashboardSuccessCode;
 import S13P31A306.loglens.domain.dashboard.controller.DashboardApi;
-import S13P31A306.loglens.domain.dashboard.dto.response.ApiEndpointResponse;
+import S13P31A306.loglens.domain.dashboard.dto.response.*;
 import S13P31A306.loglens.domain.dashboard.dto.response.ComponentDependencyResponse;
 import S13P31A306.loglens.domain.dashboard.dto.response.DashboardOverviewResponse;
 import S13P31A306.loglens.domain.dashboard.dto.response.DatabaseComponentResponse;
 import S13P31A306.loglens.domain.dashboard.dto.response.HeatmapResponse;
 import S13P31A306.loglens.domain.dashboard.dto.response.ProjectComponentsResponse;
 import S13P31A306.loglens.domain.dashboard.dto.response.TopFrequentErrorsResponse;
-import S13P31A306.loglens.domain.dashboard.service.ApiEndpointService;
+import S13P31A306.loglens.domain.project.service.ApiEndpointService;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
 import S13P31A306.loglens.domain.dashboard.service.HeatmapService;
 import S13P31A306.loglens.domain.dashboard.service.TopFrequentErrorsService;
@@ -99,14 +99,11 @@ public class DashboardController implements DashboardApi {
     @GetMapping("/statistics/api-calls")
     public ResponseEntity<? extends BaseResponse> getApiCallStatistics(
             @ValidUuid @RequestParam String projectUuid,
-            @RequestParam(required = false) String startTime,
-            @RequestParam(required = false) String endTime,
             @RequestParam(required = false) Integer limit
     ) {
         log.info("{} API 통계 {}개 호출", LOG_PREFIX, limit);
 
-        ApiEndpointResponse response = apiEndpointService.getApiEndpointStatistics(projectUuid, startTime, endTime,
-                limit);
+        ApiEndpointResponse response = apiEndpointService.getApiEndpointStatistics(projectUuid, limit);
         return ApiResponseFactory.success(
                 DashboardSuccessCode.API_STATISTICS_RETRIEVED,
                 response

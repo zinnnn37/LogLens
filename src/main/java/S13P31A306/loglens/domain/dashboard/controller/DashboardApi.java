@@ -522,20 +522,6 @@ public interface DashboardApi {
                     ),
                     @Parameter(
                             in = ParameterIn.QUERY,
-                            name = "startTime",
-                            description = "조회 시작 시간 (ISO 8601 형식). 미입력 시 endTime 기준 -1일",
-                            required = false,
-                            schema = @Schema(type = "string", format = "date-time", example = "2025-10-01T00:00:00Z")
-                    ),
-                    @Parameter(
-                            in = ParameterIn.QUERY,
-                            name = "endTime",
-                            description = "조회 종료 시간 (ISO 8601 형식). 미입력 시 startTime 기준 +1일",
-                            required = false,
-                            schema = @Schema(type = "string", format = "date-time", example = "2025-10-17T23:59:59Z")
-                    ),
-                    @Parameter(
-                            in = ParameterIn.QUERY,
                             name = "limit",
                             description = "조회할 API 개수 (1~50). 기본값 10",
                             required = false,
@@ -559,10 +545,6 @@ public interface DashboardApi {
                                                   "status": 200,
                                                   "data": {
                                                     "projectId": 12345,
-                                                    "period": {
-                                                      "startTime": "2025-10-01T00:00:00",
-                                                      "endTime": "2025-10-17T23:59:59"
-                                                    },
                                                     "endpoints": [
                                                       {
                                                         "id": 1,
@@ -616,30 +598,6 @@ public interface DashboardApi {
                                                         {
                                                             "code": "G400",
                                                             "message": "입력값이 유효하지 않습니다",
-                                                            "status": 400,
-                                                            "timestamp": "2025-10-17T10:30:00Z"
-                                                        }
-                                                        """
-                                            ),
-                                            @ExampleObject(
-                                                    name = "InvalidTimeFormat",
-                                                    summary = "잘못된 시간 형식",
-                                                    value = """
-                                                        {
-                                                            "code": "DSB400-3",
-                                                            "message": "유효하지 않은 시간 형식입니다. (ISO 8601 형식 사용)",
-                                                            "status": 400,
-                                                            "timestamp": "2025-10-17T10:30:00Z"
-                                                        }
-                                                        """
-                                            ),
-                                            @ExampleObject(
-                                                    name = "InvalidTimeRange",
-                                                    summary = "잘못된 시간 범위",
-                                                    value = """
-                                                        {
-                                                            "code": "DSB400-4",
-                                                            "message": "종료 시간은 시작 시간보다 늦어야 합니다.",
                                                             "status": 400,
                                                             "timestamp": "2025-10-17T10:30:00Z"
                                                         }
@@ -744,8 +702,6 @@ public interface DashboardApi {
     )
     ResponseEntity<? extends BaseResponse> getApiCallStatistics(
             @ValidUuid @RequestParam String projectUuid,
-            @RequestParam(required = false) String startTime,
-            @RequestParam(required = false) String endTime,
             @RequestParam(required = false) Integer limit
     );
 

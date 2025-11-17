@@ -6,6 +6,7 @@ public class DashboardConstants {
 
     public static final int ERROR_MIN_LIMIT = 1;
     public static final int ERROR_MAX_LIMIT = 50;
+    public static final int ERROR_DEFAULT_LIMIT = 10;
     public static final int ERROR_MAX_DEFAULT_RETRIEVAL_TIME = 90;
     public static final int ERROR_DEFAULT_TIME_RANGE = 7;
 
