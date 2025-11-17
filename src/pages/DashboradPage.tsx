@@ -2,13 +2,20 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Loader2, AlertCircle } from 'lucide-react';
+import {
+  Loader2,
+  AlertCircle,
+  Brain,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 
 import DashboardStatsCards from '@/components/DashboardStatsCards';
 import RecentAlertsCard from '@/components/RecentAlertsCard';
 import LogHeatmapCard from '@/components/LogHeatmapCard';
 import FrequentErrorsCard from '@/components/FrequentErrorsCard';
 import FloatingChecklist from '@/components/FloatingChecklist';
+import AIComparisonCard from '@/components/AIComparisonCard';
 
 import { DUMMY_ALERTS } from '@/mocks/dummyAlerts';
 
@@ -17,6 +24,7 @@ import {
   getDashboardTopErrors,
   getLogHeatmap,
   getDashboardApiStats,
+  getAIComparison,
 } from '@/services/dashboardService';
 import type {
   DashboardSummary,
@@ -24,6 +32,7 @@ import type {
   HeatmapResponse,
   DashboardApiStatsData,
 } from '@/types/dashboard';
+import type { AIComparisonResponse } from '@/types/aiComparison';
 import ApiStatsCard from '@/components/ApiStatsCard';
 
 const DashboardPage = () => {
@@ -50,6 +59,47 @@ const DashboardPage = () => {
   const [apiStats, setApiStats] = useState<DashboardApiStatsData | null>(null);
   const [apiStatsLoading, setApiStatsLoading] = useState(true);
   const [apiStatsError, setApiStatsError] = useState(false);
+
+  // AI vs DB 비교 상태
+  const [showAIComparison, setShowAIComparison] = useState(false);
+  const [aiComparison, setAIComparison] = useState<AIComparisonResponse | null>(
+    null,
+  );
+  const [aiComparisonLoading, setAIComparisonLoading] = useState(false);
+  const [aiComparisonError, setAIComparisonError] = useState(false);
+
+  // AI 비교 데이터 조회 함수
+  const fetchAIComparison = async () => {
+    if (!projectUuid) {
+      return;
+    }
+
+    setAIComparisonLoading(true);
+    setAIComparisonError(false);
+    try {
+      const response = await getAIComparison({
+        projectUuid,
+        timeHours: 24,
+        sampleSize: 100,
+      });
+      setAIComparison(response);
+    } catch (e) {
+      console.error('AI 비교 데이터 조회 실패:', e);
+      toast.error('AI 비교 데이터를 불러오지 못했습니다.');
+      setAIComparisonError(true);
+    } finally {
+      setAIComparisonLoading(false);
+    }
+  };
+
+  // AI 비교 토글 핸들러
+  const handleToggleAIComparison = () => {
+    if (!showAIComparison && !aiComparison && !aiComparisonLoading) {
+      // 처음 열 때만 데이터 조회
+      fetchAIComparison();
+    }
+    setShowAIComparison(!showAIComparison);
+  };
 
   useEffect(() => {
     if (!projectUuid) {
@@ -146,7 +196,44 @@ const DashboardPage = () => {
 
   return (
     <div className="font-pretendard space-y-6 p-6 py-1">
-      <h1 className="font-godoM text-lg">통계 요약</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="font-godoM text-lg">통계 요약</h1>
+        <button
+          onClick={handleToggleAIComparison}
+          className="flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100"
+        >
+          <Brain className="h-4 w-4" />
+          AI 검증 보기
+          {showAIComparison ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
+        </button>
+      </div>
+
+      {/* AI vs DB 비교 섹션 (토글) */}
+      {showAIComparison && (
+        <div className="animate-in slide-in-from-top-2 duration-300">
+          {aiComparisonLoading ? (
+            <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-purple-200 bg-purple-50 text-purple-600">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              AI 비교 분석 중... (최대 30초 소요)
+            </div>
+          ) : aiComparisonError ? (
+            <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-red-200 bg-red-50 text-red-500">
+              <AlertCircle className="mr-2 h-5 w-5" />
+              AI 비교 데이터를 불러올 수 없습니다.
+            </div>
+          ) : aiComparison ? (
+            <AIComparisonCard data={aiComparison} />
+          ) : (
+            <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-gray-500">
+              AI 비교 데이터가 없습니다.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 대시보드 통계 개요 */}
       {statsLoading ? (

@@ -10,6 +10,10 @@ import type {
   HeatmapParams,
   HeatmapResponse,
 } from '@/types/dashboard';
+import type {
+  AIComparisonParams,
+  AIComparisonResponse,
+} from '@/types/aiComparison';
 
 /**
  * 대시보드 통계 개요 조회 API
@@ -58,6 +62,20 @@ export const getLogHeatmap = async (
 ): Promise<HeatmapResponse> => {
   const response = await apiClient.get<HeatmapResponse>(
     API_PATH.STATISTICS_HEATMAP,
+    params,
+  );
+  return response;
+};
+
+/**
+ * AI vs DB 통계 비교 조회 API
+ * LLM의 DB 대체 역량을 검증하는 API
+ */
+export const getAIComparison = async (
+  params: AIComparisonParams,
+): Promise<AIComparisonResponse> => {
+  const response = await apiClient.get<AIComparisonResponse>(
+    API_PATH.AI_COMPARISON,
     params,
   );
   return response;

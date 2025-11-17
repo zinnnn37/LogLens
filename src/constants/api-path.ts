@@ -84,6 +84,9 @@ export const API_PATH = {
   // 트래픽 그래프
   TRAFFIC: '/api/statistics/traffic',
 
+  // AI vs DB 통계 비교
+  AI_COMPARISON: '/api/statistics/ai-comparison',
+
   // 챗봇 스트리밍 API
   CHATBOT_STREAM: '/api/v2/chatbot/ask/stream',
 

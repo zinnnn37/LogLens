@@ -142,6 +142,16 @@ export interface DocumentMetadata {
  */
 export interface AnalysisDocumentResponse {
   /**
+   * 문서 ID (DB 기본키)
+   */
+  documentId?: number;
+
+  /**
+   * 프로젝트별 문서 번호 (1부터 시작)
+   */
+  documentNumber?: number;
+
+  /**
    * 프로젝트 UUID
    */
   projectUuid: string;
@@ -207,6 +217,11 @@ export interface AnalysisDocumentSummary {
   id: number;
 
   /**
+   * 프로젝트별 문서 번호 (1부터 시작)
+   */
+  documentNumber?: number;
+
+  /**
    * 문서 제목
    */
   title: string;
@@ -265,6 +280,11 @@ export interface AnalysisDocumentDetailResponse {
    * 문서 ID
    */
   id: number;
+
+  /**
+   * 프로젝트별 문서 번호 (1부터 시작)
+   */
+  documentNumber?: number;
 
   /**
    * 프로젝트 UUID

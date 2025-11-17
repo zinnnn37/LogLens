@@ -415,7 +415,7 @@ const DocumentsPage = () => {
                     className="cursor-pointer transition-colors hover:bg-gray-50"
                   >
                     <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-900">
-                      {doc.id}
+                      {doc.documentNumber ?? doc.id}
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
                       {doc.title}
