@@ -219,6 +219,19 @@ public class AiServiceClient {
                     .block();
 
             if (response != null) {
+                // 응답 검증: 필수 필드가 null인지 확인
+                if (isIncompleteResponse(response)) {
+                    log.warn("{} ⚠️ AI 서비스로부터 불완전한 응답 수신: projectUuid={}, " +
+                                    "dbStatistics={}, aiStatistics={}, accuracyMetrics={}",
+                            LOG_PREFIX, projectUuid,
+                            response.dbStatistics() != null ? "OK" : "NULL",
+                            response.aiStatistics() != null ? "OK" : "NULL",
+                            response.accuracyMetrics() != null ? "OK" : "NULL");
+
+                    // 기본 메타데이터로 응답 보완
+                    response = enrichIncompleteResponse(response, projectUuid, timeHours, sampleSize);
+                }
+
                 log.info("{} ✅ AI vs DB 통계 비교 완료: projectUuid={}, overallAccuracy={}%, canReplaceDb={}",
                         LOG_PREFIX, projectUuid,
                         response.accuracyMetrics() != null ? response.accuracyMetrics().overallAccuracy() : null,
@@ -240,6 +253,38 @@ public class AiServiceClient {
                     LOG_PREFIX, projectUuid, e.getMessage(), e);
             return null;
         }
+    }
+
+    /**
+     * AI 비교 응답이 불완전한지 확인
+     */
+    private boolean isIncompleteResponse(AIComparisonResponse response) {
+        return response.projectUuid() == null
+                || response.dbStatistics() == null
+                || response.aiStatistics() == null
+                || response.accuracyMetrics() == null;
+    }
+
+    /**
+     * 불완전한 응답을 요청 파라미터로 보완
+     */
+    private AIComparisonResponse enrichIncompleteResponse(
+            AIComparisonResponse response,
+            String projectUuid,
+            int timeHours,
+            int sampleSize) {
+
+        return new AIComparisonResponse(
+                response.projectUuid() != null ? response.projectUuid() : projectUuid,
+                response.analysisPeriodHours() != null ? response.analysisPeriodHours() : timeHours,
+                response.sampleSize() != null ? response.sampleSize() : sampleSize,
+                response.analyzedAt() != null ? response.analyzedAt() : java.time.LocalDateTime.now(),
+                response.dbStatistics(),
+                response.aiStatistics(),
+                response.accuracyMetrics(),
+                response.verdict(),
+                response.technicalHighlights()
+        );
     }
 }
 

@@ -86,6 +86,17 @@ public class StatisticsController implements StatisticsApi {
             throw new BusinessException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
         }
 
+        // 불완전한 응답 검증 및 경고
+        if (response.dbStatistics() == null || response.aiStatistics() == null || response.accuracyMetrics() == null) {
+            log.warn("{} ⚠️ AI 서비스로부터 불완전한 응답 수신. " +
+                            "dbStatistics={}, aiStatistics={}, accuracyMetrics={}, verdict={}",
+                    LOG_PREFIX,
+                    response.dbStatistics() != null ? "OK" : "NULL",
+                    response.aiStatistics() != null ? "OK" : "NULL",
+                    response.accuracyMetrics() != null ? "OK" : "NULL",
+                    response.verdict() != null ? response.verdict().grade() : "NULL");
+        }
+
         log.info("{} AI vs DB 비교 완료: overallAccuracy={}%, canReplaceDb={}",
                 LOG_PREFIX,
                 response.accuracyMetrics() != null ? response.accuracyMetrics().overallAccuracy() : null,
