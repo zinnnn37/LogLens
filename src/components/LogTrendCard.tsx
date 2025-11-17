@@ -119,29 +119,36 @@ const LogTrendCard = () => {
       <h2 className="mb-4 text-base font-semibold">로그 발생 추이 </h2>
 
       {/* 카드 본문 */}
-      <div className="flex flex-col space-y-6 sm:flex-row sm:space-y-0 sm:space-x-6">
+      <div className="flex flex-col gap-6">
+        {/* 그래프 영역 */}
+        <div className="flex min-h-[420px] flex-1">
+          <LogTrendGraph dataPoints={trendData.dataPoints} />
+        </div>
+
         {/* 로그 카운트 리스트 */}
-        <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-3">
           {logLevels.map(item => (
-            <div key={item.level} className="flex items-center space-x-3">
-              <img
-                src={item.icon}
-                alt={item.label}
-                className="h-8 w-8 flex-shrink-0"
-              />
-              <div>
-                <p className="text-sm text-gray-500 uppercase">{item.label}</p>
-                <p className="text-2xl font-bold">
+            <div
+              key={item.level}
+              className="rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <img
+                    src={item.icon}
+                    alt={item.label}
+                    className="h-7 w-7 rounded-full border border-slate-100 bg-white p-1"
+                  />
+                  <p className="text-[11px] tracking-wide text-slate-400 uppercase">
+                    {item.label}
+                  </p>
+                </div>
+                <p className="text-base font-semibold text-slate-900">
                   {item.count.toLocaleString()}
                 </p>
               </div>
             </div>
           ))}
-        </div>
-
-        {/* 그래프 영역 */}
-        <div className="flex min-h-[250px] flex-1 items-center justify-center rounded-md bg-gray-50 text-sm text-gray-400">
-          <LogTrendGraph dataPoints={trendData.dataPoints} />
         </div>
       </div>
     </div>
