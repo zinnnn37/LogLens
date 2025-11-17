@@ -43,6 +43,7 @@ async def get_error_rate_trend(
         results = opensearch_client.search(
             index=index_pattern,
             body={
+                "track_total_hits": True,  # 10,000건 제한 해제
                 "size": 0,
                 "query": {"bool": {"must": must_clauses}},
                 "aggs": {
@@ -203,6 +204,7 @@ async def get_service_health_status(
         results = opensearch_client.search(
             index=index_pattern,
             body={
+                "track_total_hits": True,  # 10,000건 제한 해제
                 "size": 0,
                 "query": {"bool": {"must": must_clauses}},
                 "aggs": {
@@ -421,6 +423,7 @@ async def get_error_frequency_ranking(
         results = opensearch_client.search(
             index=index_pattern,
             body={
+                "track_total_hits": True,  # 10,000건 제한 해제
                 "size": 0,
                 "query": {"bool": {"must": must_clauses}},
                 "aggs": {
@@ -581,6 +584,7 @@ async def get_api_error_rates(
         results = opensearch_client.search(
             index=index_pattern,
             body={
+                "track_total_hits": True,  # 10,000건 제한 해제
                 "size": 0,
                 "query": {"bool": {"must": must_clauses}},
                 "aggs": {
@@ -773,6 +777,7 @@ async def get_affected_users_count(
         results = opensearch_client.search(
             index=index_pattern,
             body={
+                "track_total_hits": True,  # 10,000건 제한 해제
                 "size": 0,
                 "query": {"bool": {"must": must_clauses}},
                 "aggs": {

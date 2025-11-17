@@ -145,6 +145,7 @@ async def get_log_statistics(
 
     # Aggregation 쿼리
     query_body = {
+        "track_total_hits": True,  # 10,000건 제한 해제 - 정확한 총 개수 반환
         "query": {
             "range": {
                 "timestamp": {
