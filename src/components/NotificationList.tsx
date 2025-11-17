@@ -43,6 +43,7 @@ const NotificationList = ({ projectUuid }: NotificationListProps) => {
       try {
         const response: AlertHistoryResponse = await getAlertHistory({
           projectUuid,
+          resolvedYN: 'N',
         });
 
         console.log('getAlertHistory 응답:', response);
@@ -150,10 +151,6 @@ const NotificationList = ({ projectUuid }: NotificationListProps) => {
         </ul>
 
         <div className="flex items-center justify-between border-t p-2">
-          <Button variant="link" size="sm" className="text-xs">
-            모든 알림 보기
-          </Button>
-
           <Button
             variant="ghost"
             size="icon"
