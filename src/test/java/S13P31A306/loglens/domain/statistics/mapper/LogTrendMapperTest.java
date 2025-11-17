@@ -155,4 +155,47 @@ class LogTrendMapperTest {
         assertThat(response.summary().totalLogs()).isZero();
         assertThat(response.summary().avgLogsPerInterval()).isZero();
     }
+
+    @Test
+    @DisplayName("타임스탬프가_정확히_일치하지_않아도_같은_시간대로_매칭된다")
+    void 타임스탬프가_정확히_일치하지_않아도_같은_시간대로_매칭된다() {
+        // given - OpenSearch에서 반환되는 타임스탬프가 정확히 시간 정각이 아닌 경우를 시뮬레이션
+        String projectUuid = "test-uuid";
+        LocalDateTime startTime = LocalDateTime.of(2025, 11, 13, 15, 0);  // 정각
+        LocalDateTime endTime = LocalDateTime.of(2025, 11, 14, 15, 0);
+
+        // OpenSearch가 15:30:45, 18:15:30 등 정각이 아닌 타임스탬프를 반환하는 경우
+        List<LogTrendAggregation> aggregations = List.of(
+                new LogTrendAggregation(LocalDateTime.of(2025, 11, 13, 15, 30, 45), 1523, 1200, 250, 73),  // 15시대
+                new LogTrendAggregation(LocalDateTime.of(2025, 11, 13, 18, 15, 30), 1820, 1450, 280, 90)   // 18시대
+        );
+
+        // when
+        LogTrendResponse response = logTrendMapper.toLogTrendResponse(
+                projectUuid, startTime, endTime, aggregations
+        );
+
+        // then - 시간 단위로 truncate되어 매칭되어야 함
+        assertThat(response.dataPoints()).hasSize(8);
+
+        // 15:00 슬롯에 15:30:45 데이터가 매칭됨
+        assertThat(response.dataPoints().get(0).totalCount()).isEqualTo(1523);
+        assertThat(response.dataPoints().get(0).infoCount()).isEqualTo(1200);
+        assertThat(response.dataPoints().get(0).warnCount()).isEqualTo(250);
+        assertThat(response.dataPoints().get(0).errorCount()).isEqualTo(73);
+
+        // 18:00 슬롯에 18:15:30 데이터가 매칭됨
+        assertThat(response.dataPoints().get(1).totalCount()).isEqualTo(1820);
+        assertThat(response.dataPoints().get(1).infoCount()).isEqualTo(1450);
+        assertThat(response.dataPoints().get(1).warnCount()).isEqualTo(280);
+        assertThat(response.dataPoints().get(1).errorCount()).isEqualTo(90);
+
+        // 나머지 슬롯은 0
+        assertThat(response.dataPoints().get(2).totalCount()).isEqualTo(0);
+
+        // Summary도 정상 계산
+        assertThat(response.summary().totalLogs()).isEqualTo(3343);
+        assertThat(response.summary().peakHour()).isIn("15:30", "18:15");  // 원래 timestamp의 시간
+    }
 }
+

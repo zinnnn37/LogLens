@@ -12,7 +12,9 @@ import org.mapstruct.ReportingPolicy;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -44,16 +46,17 @@ public interface TrafficMapper {
         // 전체 시간 슬롯 생성 (24시간 / 3시간 = 8개)
         List<LocalDateTime> timeSlots = generateTimeSlots(startTime, INTERVAL_HOURS, TREND_HOURS / INTERVAL_HOURS);
 
-        // OpenSearch 결과를 Map으로 변환 (timestamp -> aggregation)
+        // OpenSearch 결과를 Map으로 변환 (timestamp를 시간 단위로 truncate하여 매칭)
         Map<LocalDateTime, TrafficAggregation> aggMap = aggregations.stream()
                 .collect(Collectors.toMap(
-                        TrafficAggregation::timestamp,
-                        agg -> agg
+                        agg -> agg.timestamp().truncatedTo(ChronoUnit.HOURS),
+                        agg -> agg,
+                        (existing, replacement) -> existing  // 중복 시 첫 번째 값 사용
                 ));
 
         // 각 시간 슬롯에 대해 데이터 있으면 사용, 없으면 0으로 채움
         List<DataPoint> dataPoints = timeSlots.stream()
-                .map(ts -> aggMap.getOrDefault(ts, createEmptyAggregation(ts)))
+                .map(ts -> aggMap.getOrDefault(ts.truncatedTo(ChronoUnit.HOURS), createEmptyAggregation(ts)))
                 .map(this::toDataPoint)
                 .toList();
 
@@ -63,8 +66,8 @@ public interface TrafficMapper {
                 formatTimestamp(endTime)
         );
 
-        // Summary 생성
-        Summary summary = buildSummary(dataPoints);
+        // Summary 생성 (실제 aggregations 기반)
+        Summary summary = buildSummary(aggregations);
 
         return new TrafficResponse(
                 projectUuid,
@@ -102,30 +105,30 @@ public interface TrafficMapper {
     }
 
     /**
-     * Summary 생성 (전체 요약 통계)
+     * Summary 생성 (전체 요약 통계 - 실제 aggregations 기반)
      */
-    default Summary buildSummary(List<DataPoint> dataPoints) {
-        int totalLogs = dataPoints.stream()
-                .mapToInt(DataPoint::totalCount)
+    default Summary buildSummary(List<TrafficAggregation> aggregations) {
+        int totalLogs = aggregations.stream()
+                .mapToInt(TrafficAggregation::totalCount)
                 .sum();
 
-        int totalFeCount = dataPoints.stream()
-                .mapToInt(DataPoint::feCount)
+        int totalFeCount = aggregations.stream()
+                .mapToInt(TrafficAggregation::feCount)
                 .sum();
 
-        int totalBeCount = dataPoints.stream()
-                .mapToInt(DataPoint::beCount)
+        int totalBeCount = aggregations.stream()
+                .mapToInt(TrafficAggregation::beCount)
                 .sum();
 
-        int avgLogsPerInterval = dataPoints.isEmpty() ? 0 : totalLogs / dataPoints.size();
+        int avgLogsPerInterval = aggregations.isEmpty() ? 0 : totalLogs / aggregations.size();
 
         // 피크 시간대 찾기
-        DataPoint peakDataPoint = dataPoints.stream()
-                .max((d1, d2) -> Integer.compare(d1.totalCount(), d2.totalCount()))
+        TrafficAggregation peakAggregation = aggregations.stream()
+                .max(Comparator.comparing(TrafficAggregation::totalCount))
                 .orElse(null);
 
-        String peakHour = peakDataPoint != null ? peakDataPoint.hour() : "00:00";
-        Integer peakCount = peakDataPoint != null ? peakDataPoint.totalCount() : 0;
+        String peakHour = peakAggregation != null ? formatHour(peakAggregation.timestamp()) : "00:00";
+        Integer peakCount = peakAggregation != null ? peakAggregation.totalCount() : 0;
 
         return new Summary(
                 totalLogs,

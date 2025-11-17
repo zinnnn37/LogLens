@@ -9,6 +9,7 @@ import org.mapstruct.ReportingPolicy;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -75,16 +76,17 @@ public interface LogTrendMapper {
         // 전체 시간 슬롯 생성 (24시간 / 3시간 = 8개)
         List<LocalDateTime> timeSlots = generateTimeSlots(startTime, INTERVAL_HOURS, TREND_HOURS / INTERVAL_HOURS);
 
-        // OpenSearch 결과를 Map으로 변환 (timestamp -> aggregation)
+        // OpenSearch 결과를 Map으로 변환 (timestamp를 시간 단위로 truncate하여 매칭)
         Map<LocalDateTime, LogTrendAggregation> aggMap = aggregations.stream()
                 .collect(Collectors.toMap(
-                        LogTrendAggregation::timestamp,
-                        agg -> agg
+                        agg -> agg.timestamp().truncatedTo(ChronoUnit.HOURS),
+                        agg -> agg,
+                        (existing, replacement) -> existing  // 중복 시 첫 번째 값 사용
                 ));
 
         // 각 시간 슬롯에 대해 데이터 있으면 사용, 없으면 0으로 채움
         List<LogTrendResponse.DataPoint> dataPoints = timeSlots.stream()
-                .map(ts -> aggMap.getOrDefault(ts, createEmptyAggregation(ts)))
+                .map(ts -> aggMap.getOrDefault(ts.truncatedTo(ChronoUnit.HOURS), createEmptyAggregation(ts)))
                 .map(this::toDataPoint)
                 .toList();
 
