@@ -1,17 +1,19 @@
-package S13P31A306.loglens.domain.dashboard.entity;
+package S13P31A306.loglens.domain.project.entity;
 
 import S13P31A306.loglens.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalTime;
 
-@Getter
 @Entity
 @Table(name = "api_endpoints")
+@Getter
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 public class ApiEndpoint extends BaseTimeEntity {
 
     @Id
@@ -44,5 +46,28 @@ public class ApiEndpoint extends BaseTimeEntity {
 
     @Column(name = "component_id", nullable = false)
     private Integer componentId;
+
+    /**
+     * 누적 통계 업데이트
+     */
+    public void updateMetrics(
+            Integer additionalRequests,
+            Integer additionalErrors,
+            Double newAvgResponseTime,
+            LocalTime lastAccessed) {
+
+        this.totalRequests += additionalRequests;
+        this.errorCount += additionalErrors;
+
+        // 평균 응답시간 재계산 (가중 평균)
+        if (newAvgResponseTime != null && additionalRequests > 0) {
+            double currentTotal = this.avgResponseTime.doubleValue() * (this.totalRequests - additionalRequests);
+            double newTotal = newAvgResponseTime * additionalRequests;
+            this.avgResponseTime = BigDecimal.valueOf((currentTotal + newTotal) / this.totalRequests)
+                    .setScale(2, RoundingMode.HALF_UP);
+        }
+
+        this.lastAccessed = lastAccessed;
+    }
 
 }

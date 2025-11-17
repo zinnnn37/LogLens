@@ -1,10 +1,13 @@
 package S13P31A306.loglens.domain.project.scheduler;
 
+import S13P31A306.loglens.domain.dashboard.dto.opensearch.ApiEndpointStats;
 import S13P31A306.loglens.domain.project.entity.LogMetrics;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.LogMetricsRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
+import S13P31A306.loglens.domain.project.service.ApiEndpointService;
 import S13P31A306.loglens.domain.project.service.LogMetricsTransactionalService;
+import S13P31A306.loglens.domain.project.service.ApiEndpointTransactionalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -12,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static S13P31A306.loglens.domain.project.constants.LogMetricsConstants.LOG_METRICS_AGGREGATION_CRON;
@@ -27,7 +31,9 @@ public class LogMetricsBatchScheduler {
 
     private final ProjectRepository projectRepository;
     private final LogMetricsRepository logMetricsRepository;
-    private final LogMetricsTransactionalService transactionalService;
+    private final LogMetricsTransactionalService logMetricsTransactionalService;
+    private final ApiEndpointTransactionalService apiEndpointTransactionalService;
+
 
     @Scheduled(cron = LOG_METRICS_AGGREGATION_CRON)
     public void aggregateAllProjectsMetrics() {
@@ -51,6 +57,8 @@ public class LogMetricsBatchScheduler {
                     boolean aggregated = aggregateProjectIncremental(project);
                     if (aggregated) {
                         successCount++;
+                        // LogMetrics 집계 성공 시 API 엔드포인트 메트릭도 집계
+                        aggregateApiEndpointMetrics(project);
                     } else {
                         skipCount++;
                     }
@@ -90,9 +98,20 @@ public class LogMetricsBatchScheduler {
         log.debug("{} 프로젝트 증분 집계 시작: projectId={}, from={}, to={}",
                 LOG_PREFIX, project.getId(), from, to);
 
-        transactionalService.aggregateProjectMetricsIncremental(project, from, to, previous);
+        logMetricsTransactionalService.aggregateProjectMetricsIncremental(project, from, to, previous);
 
         log.debug("{} 프로젝트 증분 집계 완료: projectId={}", LOG_PREFIX, project.getId());
         return true;
+    }
+
+    /**
+     * API 엔드포인트 메트릭 집계
+     * OpenSearch 조회는 트랜잭션 밖에서, DB 저장만 트랜잭션 처리
+     */
+    private void aggregateApiEndpointMetrics(Project project) {
+        LocalDateTime endTime = LocalDateTime.now().minusMinutes(10);
+        LocalDateTime startTime = endTime.minusMinutes(10);
+
+        apiEndpointTransactionalService.aggregateApiEndpointMetrics(project, startTime, endTime);
     }
 }

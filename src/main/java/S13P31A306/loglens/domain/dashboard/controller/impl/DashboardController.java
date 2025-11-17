@@ -3,7 +3,6 @@ package S13P31A306.loglens.domain.dashboard.controller.impl;
 import S13P31A306.loglens.domain.dashboard.constants.DashboardSuccessCode;
 import S13P31A306.loglens.domain.dashboard.controller.DashboardApi;
 import S13P31A306.loglens.domain.dashboard.dto.response.*;
-import S13P31A306.loglens.domain.dashboard.service.ApiEndpointService;
 import S13P31A306.loglens.domain.dashboard.service.DashboardService;
 import S13P31A306.loglens.domain.dashboard.service.HeatmapService;
 import S13P31A306.loglens.domain.dashboard.service.TopFrequentErrorsService;
@@ -11,6 +10,7 @@ import S13P31A306.loglens.domain.project.entity.LogMetrics;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.LogMetricsRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
+import S13P31A306.loglens.domain.project.service.ApiEndpointService;
 import S13P31A306.loglens.domain.project.service.LogMetricsTransactionalService;
 import S13P31A306.loglens.global.annotation.ValidUuid;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
@@ -87,13 +87,11 @@ public class DashboardController implements DashboardApi {
     @GetMapping("/statistics/api-calls")
     public ResponseEntity<? extends BaseResponse> getApiCallStatistics(
             @ValidUuid @RequestParam String projectUuid,
-            @RequestParam(required = false) String startTime,
-            @RequestParam(required = false) String endTime,
             @RequestParam(required = false) Integer limit
     ) {
         log.info("{} API 통계 {}개 호출", LOG_PREFIX, limit);
 
-        ApiEndpointResponse response = apiEndpointService.getApiEndpointStatistics(projectUuid, startTime, endTime, limit);
+        ApiEndpointResponse response = apiEndpointService.getApiEndpointStatistics(projectUuid, limit);
         return ApiResponseFactory.success(
                 DashboardSuccessCode.API_STATISTICS_RETRIEVED,
                 response
