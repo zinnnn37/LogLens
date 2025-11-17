@@ -17,7 +17,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -671,7 +670,7 @@ public class LogRepositoryImpl implements LogRepository {
                             .field(OpenSearchField.LOG_LEVEL.getFieldName())
                             .value(FieldValue.of("ERROR"))))
                     .filter(f -> f.range(r -> r
-                            .field("@timestamp")
+                            .field(TIMESTAMP_FIELD)
                             .gte(JsonData.of(startTime.atOffset(ZoneOffset.UTC).toString()))
                             .lte(JsonData.of(endTime.atOffset(ZoneOffset.UTC).toString()))
                     ))
@@ -728,9 +727,9 @@ public class LogRepositoryImpl implements LogRepository {
                             ))
                             // 시간 범위 필터
                             .filter(f -> f.range(r -> r
-                                    .field("@timestamp")
-                                    .gte(JsonData.of(startTime.atZone(ZoneId.of("Asia/Seoul")).toInstant().toString()))
-                                    .lt(JsonData.of(endTime.atZone(ZoneId.of("Asia/Seoul")).toInstant().toString()))
+                                    .field(TIMESTAMP_FIELD)
+                                    .gte(JsonData.of(startTime.atOffset(ZoneOffset.UTC).toString()))
+                                    .lte(JsonData.of(endTime.atOffset(ZoneOffset.UTC).toString()))
                             ))
                     ))
                     .aggregations("logs_over_time", a -> a
@@ -849,15 +848,15 @@ public class LogRepositoryImpl implements LogRepository {
                             ))
                             // 시간 범위 필터
                             .filter(f -> f.range(r -> r
-                                    .field("@timestamp")
-                                    .gte(JsonData.of(startTime.atZone(ZoneId.of("Asia/Seoul")).toInstant().toString()))
-                                    .lt(JsonData.of(endTime.atZone(ZoneId.of("Asia/Seoul")).toInstant().toString()))
+                                    .field(TIMESTAMP_FIELD)
+                                    .gte(JsonData.of(startTime.atOffset(ZoneOffset.UTC).toString()))
+                                    .lte(JsonData.of(endTime.atOffset(ZoneOffset.UTC).toString()))
                             ))
                     ))
                     .aggregations("traffic_over_time", a -> a
                             // Date Histogram aggregation
                             .dateHistogram(dh -> dh
-                                    .field("@timestamp")
+                                    .field(TIMESTAMP_FIELD)
                                     .fixedInterval(Time.of(t -> t.time(interval)))
                                     .timeZone("Asia/Seoul")
                                     .minDocCount(0)  // 로그가 없는 시간대도 포함
