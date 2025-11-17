@@ -3,7 +3,7 @@
 # ===================================================================
 spring:
   application:
-    name: loglens
+    name: LogLens
   profiles:
     #    active: ${SPRING_PROFILES_ACTIVE:dev}
     active: dev
@@ -150,7 +150,7 @@ sse:
 
 dependency:
   logger:
-    api-key: 831776ac-2d47-3e23-83b9-7619972f0cbf
+    api-key: c076af75-d2ca-3f82-8f7c-24605bbd8bc7
 
     collector:
       url: https://api.loglens.co.kr
