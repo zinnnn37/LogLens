@@ -130,28 +130,38 @@ export interface HeatmapHourlyData {
   intensity: number;
 }
 
+export type DayOfWeek =
+  | 'MONDAY'
+  | 'TUESDAY'
+  | 'WEDNESDAY'
+  | 'THURSDAY'
+  | 'FRIDAY'
+  | 'SATURDAY'
+  | 'SUNDAY';
+
 export interface HeatmapDailyData {
-  dayOfWeek: string;
-  dayName: string;
+  dayOfWeek: DayOfWeek; 
+  dayName: string; 
   hourlyData: HeatmapHourlyData[];
   totalCount: number;
 }
 
 export interface HeatmapSummary {
   totalLogs: number;
-  peakDay: string;
+  peakDay: DayOfWeek; 
   peakHour: number;
   peakCount: number;
   avgDailyCount: number;
 }
 
 export interface HeatmapMetadata {
-  logLevel: string;
+  logLevel: string; 
   timezone: string;
 }
+
 // 히트맵 응답
 export interface HeatmapResponse {
-  projectId: number;
+  projectUuid: string;
   period: HeatmapPeriod;
   heatmap: HeatmapDailyData[];
   summary: HeatmapSummary;
