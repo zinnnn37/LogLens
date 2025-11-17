@@ -62,11 +62,11 @@ public class HeatmapServiceImpl implements HeatmapService {
         List<HeatmapMetrics> heatmapMetrics = heatmapMetricsRepository
                 .findByProjectIdAndDateBetween(projectId, start.toLocalDate(), end.toLocalDate());
 
-        return buildHeatmapResponse(projectId, start, end, level, heatmapMetrics);
+        return buildHeatmapResponse(projectUuid, start, end, level, heatmapMetrics);
     }
 
     private HeatmapResponse buildHeatmapResponse(
-            Integer projectId,
+            String projectUuid,
             LocalDateTime start,
             LocalDateTime end,
             String logLevel,
@@ -110,7 +110,7 @@ public class HeatmapServiceImpl implements HeatmapService {
         HeatmapResponse.Summary summary = buildSummary(aggregations, start, end);
 
         return new HeatmapResponse(
-                projectId,
+                projectUuid,
                 new HeatmapResponse.Period(
                         start.format(DateTimeFormatter.ISO_DATE_TIME),
                         end.format(DateTimeFormatter.ISO_DATE_TIME)

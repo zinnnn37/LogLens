@@ -9,12 +9,10 @@ import java.util.List;
 
 @Schema(description = "API 통계 조회 응답")
 public record ApiEndpointResponse(
-        @Schema(description = "프로젝트 ID", example = "12345")
-        @Sensitive
-        Integer projectId,
 
-        @Schema(description = "조회 기간")
-        Period period,
+        @Schema(description = "프로젝트 UUID", example = "48d96cd7-bf8d-38f5-891c-9c2f6430d871")
+        @Sensitive
+        String projectUuid,
 
         @Schema(description = "엔드포인트 목록")
         List<EndpointStats> endpoints,
@@ -22,15 +20,6 @@ public record ApiEndpointResponse(
         @Schema(description = "통계 요약")
         Summary summary
 ) {
-
-    public record Period(
-            @Schema(description = "조회 시작 시간", example = "2025-10-01T00:00:00Z")
-            LocalDateTime startTime,
-
-            @Schema(description = "조회 종료 시간", example = "2025-10-17T23:59:59Z")
-            LocalDateTime endTime
-    ) {
-    }
 
     public record EndpointStats(
             @Schema(description = "엔드포인트 ID", example = "1")

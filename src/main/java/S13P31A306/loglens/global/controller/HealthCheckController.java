@@ -1,5 +1,6 @@
 package S13P31A306.loglens.global.controller;
 
+import a306.dependency_logger_starter.logging.annotation.NoLogging;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,6 +16,7 @@ import java.util.Map;
  * </p>
  */
 @RestController
+@NoLogging
 public class HealthCheckController {
 
     /**

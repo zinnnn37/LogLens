@@ -1,10 +1,8 @@
 package S13P31A306.loglens.domain.project.service.impl;
 
-import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.domain.project.entity.LogMetrics;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.LogMetricsRepository;
-import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import S13P31A306.loglens.domain.project.service.LogMetricsService;
 import S13P31A306.loglens.domain.project.service.LogMetricsTransactionalService;
 import S13P31A306.loglens.domain.project.validator.ProjectValidator;

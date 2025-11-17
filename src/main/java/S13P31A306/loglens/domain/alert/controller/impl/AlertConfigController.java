@@ -8,6 +8,7 @@ import S13P31A306.loglens.domain.alert.service.AlertConfigService;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
+import a306.dependency_logger_starter.logging.annotation.NoLogging;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -39,6 +40,7 @@ public class AlertConfigController implements AlertConfigApi {
     }
 
     @GetMapping
+    @NoLogging
     @Override
     public ResponseEntity<? extends BaseResponse> getAlertConfig(
             @RequestParam String projectUuid) {
