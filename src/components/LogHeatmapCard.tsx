@@ -34,11 +34,21 @@ const TIME_BUCKETS = [
 ];
 
 const getIntensityColor = (intensity: number) => {
-  if (intensity >= 0.8) { return 'bg-blue-600'; }
-  if (intensity >= 0.6) { return 'bg-blue-500'; }
-  if (intensity >= 0.4) { return 'bg-blue-400'; }
-  if (intensity >= 0.2) { return 'bg-blue-300'; }
-  if (intensity > 0) { return 'bg-blue-100'; }
+  if (intensity >= 0.8) {
+    return 'bg-blue-600';
+  }
+  if (intensity >= 0.6) {
+    return 'bg-blue-500';
+  }
+  if (intensity >= 0.4) {
+    return 'bg-blue-400';
+  }
+  if (intensity >= 0.2) {
+    return 'bg-blue-300';
+  }
+  if (intensity > 0) {
+    return 'bg-blue-100';
+  }
   return 'bg-gray-100';
 };
 
@@ -86,10 +96,7 @@ const LogHeatmapCard = ({ data }: LogHeatmapCardProps) => {
           return hNum >= bucket.start && hNum <= bucket.end;
         });
 
-        const totalCount = hoursInRange.reduce(
-          (sum, h) => sum + h.count,
-          0,
-        );
+        const totalCount = hoursInRange.reduce((sum, h) => sum + h.count, 0);
 
         const maxIntensity = hoursInRange.reduce(
           (max, h) => Math.max(max, h.intensity),
@@ -100,14 +107,8 @@ const LogHeatmapCard = ({ data }: LogHeatmapCardProps) => {
           (sum, h) => sum + h.errorCount,
           0,
         );
-        const totalWarn = hoursInRange.reduce(
-          (sum, h) => sum + h.warnCount,
-          0,
-        );
-        const totalInfo = hoursInRange.reduce(
-          (sum, h) => sum + h.infoCount,
-          0,
-        );
+        const totalWarn = hoursInRange.reduce((sum, h) => sum + h.warnCount, 0);
+        const totalInfo = hoursInRange.reduce((sum, h) => sum + h.infoCount, 0);
 
         return {
           dayOfWeek: day.dayOfWeek,
@@ -138,9 +139,7 @@ const LogHeatmapCard = ({ data }: LogHeatmapCardProps) => {
           <div className="space-y-4">
             {/* 표 헤더 */}
             <div className="flex items-center gap-3">
-              <div className="w-12 text-xs font-medium text-gray-500">
-                Hour
-              </div>
+              <div className="w-12 text-xs font-medium text-gray-500">Hour</div>
               <div className="flex flex-1 gap-1">
                 {DEFAULT_DAYS.map(day => (
                   <div
@@ -164,9 +163,7 @@ const LogHeatmapCard = ({ data }: LogHeatmapCardProps) => {
                 {/* 요일별 셀 */}
                 <div className="flex flex-1 items-center justify-between gap-2">
                   {row.cells.map(cell => (
-                    <Tooltip
-                      key={`${row.label}-${cell.dayOfWeek}`}
-                    >
+                    <Tooltip key={`${row.label}-${cell.dayOfWeek}`}>
                       <TooltipTrigger asChild>
                         <div
                           className={`h-6 flex-1 rounded-sm ${getIntensityColor(
@@ -179,20 +176,15 @@ const LogHeatmapCard = ({ data }: LogHeatmapCardProps) => {
                           {cell.dayName} {cell.bucketLabel}시 구간
                         </div>
                         <div className="space-y-0.5 text-sm">
-                          <div>
-                            전체: {cell.totalCount.toLocaleString()}건
-                          </div>
+                          <div>전체: {cell.totalCount.toLocaleString()}건</div>
                           <div className="text-red-400">
-                            ERROR:{' '}
-                            {cell.totalError.toLocaleString()}건
+                            ERROR: {cell.totalError.toLocaleString()}건
                           </div>
                           <div className="text-yellow-500">
-                            WARN:{' '}
-                            {cell.totalWarn.toLocaleString()}건
+                            WARN: {cell.totalWarn.toLocaleString()}건
                           </div>
                           <div className="text-green-500">
-                            INFO:{' '}
-                            {cell.totalInfo.toLocaleString()}건
+                            INFO: {cell.totalInfo.toLocaleString()}건
                           </div>
                         </div>
                       </TooltipContent>
