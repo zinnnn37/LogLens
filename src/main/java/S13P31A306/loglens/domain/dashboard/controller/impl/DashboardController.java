@@ -193,44 +193,4 @@ public class DashboardController implements DashboardApi {
         return null;
     }
 
-    /**
-     * [임시] 수동 메트릭 집계 - 배포 후 삭제 예정
-     */
-    @PostMapping("/admin/aggregate/{projectUuid}")
-    public ResponseEntity<String> manualAggregate(
-            @PathVariable String projectUuid
-    ) {
-        log.info("{} [임시] 수동 집계 시작: projectUuid={}", LOG_PREFIX, projectUuid);
-
-        try {
-            Project project = projectRepository.findByProjectUuid(projectUuid)
-                    .orElseThrow(() -> new RuntimeException("프로젝트 없음"));
-
-            LocalDateTime to = LocalDateTime.now();
-            LocalDateTime from = to.minusDays(90);
-
-            // 1. 이전 LogMetrics 조회
-            LogMetrics previous = logMetricsRepository
-                    .findTopByProjectIdOrderByAggregatedAtDesc(project.getId())
-                    .orElse(null);
-
-            // 2. LogMetrics + HeatmapMetrics 집계
-            logMetricsTransactionalService.aggregateProjectMetricsIncremental(
-                    project, from, to, previous
-            );
-
-            // 3. API 엔드포인트 메트릭 집계
-            apiEndpointTransactionalService.aggregateApiEndpointMetrics(
-                    project, from, to
-            );
-
-            return ResponseEntity.ok("집계 완료: " + projectUuid +
-                    " (LogMetrics + HeatmapMetrics + ApiEndpoint + Top10 Errors)");
-
-        } catch (Exception e) {
-            log.error("{} 집계 실패", LOG_PREFIX, e);
-            return ResponseEntity.status(500).body("실패: " + e.getMessage());
-        }
-    }
-
 }
