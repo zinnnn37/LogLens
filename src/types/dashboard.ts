@@ -140,22 +140,22 @@ export type DayOfWeek =
   | 'SUNDAY';
 
 export interface HeatmapDailyData {
-  dayOfWeek: DayOfWeek; 
-  dayName: string; 
+  dayOfWeek: DayOfWeek;
+  dayName: string;
   hourlyData: HeatmapHourlyData[];
   totalCount: number;
 }
 
 export interface HeatmapSummary {
   totalLogs: number;
-  peakDay: DayOfWeek; 
+  peakDay: DayOfWeek;
   peakHour: number;
   peakCount: number;
   avgDailyCount: number;
 }
 
 export interface HeatmapMetadata {
-  logLevel: string; 
+  logLevel: string;
   timezone: string;
 }
 
