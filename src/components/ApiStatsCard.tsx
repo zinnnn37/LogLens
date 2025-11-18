@@ -1,4 +1,3 @@
-// src/components/ApiStatsCard.tsx
 import React from 'react';
 import type {
   DashboardApiStatsData,
@@ -74,29 +73,51 @@ const ApiStatsCard: React.FC<ApiStatsCardProps> = ({ data }) => {
         </p>
 
         {endpoints.length > 0 ? (
-          <div className="max-h-60 overflow-y-auto rounded-md border border-slate-100">
-            <table className="min-w-full divide-y divide-slate-100 text-xs">
+          <div className="
+            max-h-60 
+            overflow-y-auto 
+            overflow-x-hidden 
+            rounded-md 
+            border 
+            border-slate-100 
+            pr-2
+            [&::-webkit-scrollbar]:w-1.5
+            [&::-webkit-scrollbar-track]:bg-transparent
+            [&::-webkit-scrollbar-thumb]:bg-slate-200
+            [&::-webkit-scrollbar-thumb]:rounded-full
+          ">
+            <table className="w-full table-fixed divide-y divide-slate-100 text-xs">
+              <colgroup>
+                <col className="w-[8%]" />
+                <col className="w-[42%]" />
+                <col className="w-[10%]" />
+                <col className="w-[10%]" />
+                <col className="w-[10%]" />
+                <col className="w-[10%]" />
+                <col className="w-[10%]" />
+              </colgroup>
+
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium text-slate-500">
+                  <th className="whitespace-nowrap px-2 py-2 text-left font-medium text-slate-500">
                     메서드
                   </th>
-                  <th className="px-3 py-2 text-left font-medium text-slate-500">
+                  <th className="whitespace-nowrap px-2 py-2 text-left font-medium text-slate-500">
                     엔드포인트
                   </th>
-                  <th className="px-3 py-2 text-right font-medium text-slate-500">
+                  <th className="whitespace-nowrap px-2 py-2 text-right font-medium text-slate-500">
                     요청 수
                   </th>
-                  <th className="px-3 py-2 text-right font-medium text-slate-500">
+                  <th className="whitespace-nowrap px-2 py-2 text-right font-medium text-slate-500">
                     에러 수
                   </th>
-                  <th className="px-3 py-2 text-right font-medium text-slate-500">
+                  <th className="whitespace-nowrap px-2 py-2 text-right font-medium text-slate-500">
                     에러율
                   </th>
-                  <th className="px-3 py-2 text-right font-medium text-slate-500">
+                  <th className="whitespace-nowrap px-2 py-2 text-right font-medium text-slate-500">
                     평균 응답
                   </th>
-                  <th className="px-3 py-2 text-right font-medium text-slate-500">
+                  <th className="whitespace-nowrap px-2 py-2 text-right font-medium text-slate-500">
                     이상 탐지
                   </th>
                 </tr>
@@ -104,25 +125,30 @@ const ApiStatsCard: React.FC<ApiStatsCardProps> = ({ data }) => {
               <tbody className="divide-y divide-slate-50 bg-white">
                 {endpoints.slice(0, 10).map((endpoint: ApiEndpointStats) => (
                   <tr key={endpoint.id}>
-                    <td className="px-3 py-2 text-[11px] font-semibold text-slate-700">
+                    <td className="px-2 py-2 text-[11px] font-semibold text-slate-700">
                       {endpoint.httpMethod}
                     </td>
-                    <td className="max-w-[180px] px-3 py-2 text-[11px] text-slate-600">
-                      <span className="truncate">{endpoint.endpointPath}</span>
+                    <td className="px-2 py-2 text-[11px] text-slate-600">
+                      <div
+                        className="truncate block w-full"
+                        title={endpoint.endpointPath}
+                      >
+                        {endpoint.endpointPath}
+                      </div>
                     </td>
-                    <td className="px-3 py-2 text-right text-[11px] text-slate-700">
+                    <td className="px-2 py-2 text-right text-[11px] text-slate-700">
                       {formatNumber(endpoint.totalRequests)}
                     </td>
-                    <td className="px-3 py-2 text-right text-[11px] text-red-500">
+                    <td className="px-2 py-2 text-right text-[11px] text-red-500">
                       {formatNumber(endpoint.errorCount)}
                     </td>
-                    <td className="px-3 py-2 text-right text-[11px] text-slate-700">
+                    <td className="px-2 py-2 text-right text-[11px] text-slate-700">
                       {formatPercent(endpoint.errorRate)}
                     </td>
-                    <td className="px-3 py-2 text-right text-[11px] text-slate-700">
+                    <td className="px-2 py-2 text-right text-[11px] text-slate-700">
                       {formatMs(endpoint.avgResponseTime)}
                     </td>
-                    <td className="px-3 py-2 text-right text-[11px] text-amber-600">
+                    <td className="px-2 py-2 text-right text-[11px] text-amber-600">
                       {formatNumber(endpoint.anomalyCount)}
                     </td>
                   </tr>
