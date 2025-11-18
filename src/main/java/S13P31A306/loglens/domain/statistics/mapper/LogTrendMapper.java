@@ -14,68 +14,47 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-/**
- * 로그 추이 매핑 인터페이스
- */
 @Mapper(
         componentModel = "spring",
         unmappedTargetPolicy = ReportingPolicy.IGNORE
 )
 public interface LogTrendMapper {
 
-    /**
-     * LogTrendAggregation을 DataPoint로 변환
-     *
-     * @param aggregation OpenSearch 집계 결과
-     * @return DataPoint
-     */
+    Logger log = LoggerFactory.getLogger(LogTrendMapper.class);
+
     @Mapping(target = "timestamp", expression = "java(formatTimestamp(aggregation.timestamp()))")
     @Mapping(target = "hour", expression = "java(formatHour(aggregation.timestamp()))")
     LogTrendResponse.DataPoint toDataPoint(LogTrendAggregation aggregation);
 
-    /**
-     * 타임스탬프를 ISO 8601 형식으로 변환
-     *
-     * @param timestamp LocalDateTime
-     * @return ISO 8601 형식 문자열
-     */
     default String formatTimestamp(LocalDateTime timestamp) {
         return timestamp.atZone(ZoneId.of(DEFAULT_TIMEZONE))
                 .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     }
 
-    /**
-     * 시간을 HH:mm 형식으로 변환
-     *
-     * @param timestamp LocalDateTime
-     * @return HH:mm 형식 문자열
-     */
     default String formatHour(LocalDateTime timestamp) {
         return timestamp.format(DateTimeFormatter.ofPattern(TIME_FORMAT));
     }
 
-    /**
-     * 전체 응답 생성
-     *
-     * @param projectUuid  프로젝트 UUID
-     * @param startTimeUtc 시작 시간
-     * @param endTimeUtc   종료 시간
-     * @param aggregations OpenSearch 집계 결과 리스트
-     * @return LogTrendResponse
-     */
     default LogTrendResponse toLogTrendResponse(
             String projectUuid,
             LocalDateTime startTimeUtc,
             LocalDateTime endTimeUtc,
             List<LogTrendAggregation> aggregations
     ) {
+
+        log.info("=== [Mapper] toLogTrendResponse START ===");
+        log.info("[Mapper] startTimeUtc={}", startTimeUtc);
+        log.info("[Mapper] endTimeUtc={}", endTimeUtc);
+
         // UTC → KST 변환
         LocalDateTime startTimeKst = startTimeUtc.atOffset(ZoneOffset.UTC)
                 .atZoneSameInstant(ZoneId.of(DEFAULT_TIMEZONE))
@@ -85,37 +64,64 @@ public interface LogTrendMapper {
                 .atZoneSameInstant(ZoneId.of(DEFAULT_TIMEZONE))
                 .toLocalDateTime();
 
+        log.info("[Mapper] startTimeKst={}", startTimeKst);
+        log.info("[Mapper] endTimeKst={}", endTimeKst);
+
         // KST 기준 슬롯 생성
         List<LocalDateTime> timeSlots = generateTimeSlots(
                 startTimeKst, INTERVAL_HOURS, TREND_HOURS / INTERVAL_HOURS
         );
 
-        // OpenSearch 결과도 KST로 변경하여 슬롯과 매핑
-        Map<LocalDateTime, LogTrendAggregation> aggMap = aggregations.stream()
-                .collect(Collectors.toMap(
-                        agg -> agg.timestamp()
-                                .atOffset(ZoneOffset.UTC)
-                                .atZoneSameInstant(ZoneId.of(DEFAULT_TIMEZONE))
-                                .toLocalDateTime()
-                                .truncatedTo(ChronoUnit.HOURS),
-                        agg -> agg,
-                        (existing, replacement) -> existing
-                ));
+        log.info("=== [Mapper] Generated Time Slots (KST) ===");
+        for (LocalDateTime ts : timeSlots) {
+            log.info("[Slot] {}", ts);
+        }
 
-        // 슬롯을 돌면서 매핑
-        List<LogTrendResponse.DataPoint> dataPoints =
-                timeSlots.stream()
-                        .map(ts -> aggMap.getOrDefault(ts, createEmptyAggregation(ts)))
-                        .map(this::toDataPoint)
-                        .toList();
+        // Aggregation timestamp도 모두 KST로 변환해서 log
+        log.info("=== [Mapper] Aggregations (Original UTC) ===");
+        for (LogTrendAggregation agg : aggregations) {
+            log.info("[Agg-UTC] {}", agg.timestamp());
+        }
 
-        // Period도 KST로 출력
+        // OpenSearch 결과 → KST로 변환하여 Map에 저장
+        Map<LocalDateTime, LogTrendAggregation> aggMap = new HashMap<>();
+        for (LogTrendAggregation agg : aggregations) {
+            LocalDateTime kstKey = agg.timestamp()
+                    .atOffset(ZoneOffset.UTC)
+                    .atZoneSameInstant(ZoneId.of(DEFAULT_TIMEZONE))
+                    .toLocalDateTime()
+                    .truncatedTo(ChronoUnit.HOURS);
+
+            aggMap.putIfAbsent(kstKey, agg);
+        }
+
+        log.info("=== [Mapper] Aggregation Map Keys (KST truncated) ===");
+        for (LocalDateTime key : aggMap.keySet()) {
+            LogTrendAggregation a = aggMap.get(key);
+            log.info("[AggMap] key={} | total={}", key, a.totalCount());
+        }
+
+        // 슬롯 매핑
+        log.info("=== [Mapper] Slot Matching Result ===");
+        List<LogTrendResponse.DataPoint> dataPoints = timeSlots.stream()
+                .map(ts -> {
+                    boolean match = aggMap.containsKey(ts);
+                    log.info("[MatchCheck] slot={} | match={} {}", ts, match,
+                            match ? "(FOUND)" : "(EMPTY → createEmptyAggregation)");
+
+                    return aggMap.getOrDefault(ts, createEmptyAggregation(ts));
+                })
+                .map(this::toDataPoint)
+                .toList();
+
         LogTrendResponse.Period period = new LogTrendResponse.Period(
-                formatTimestamp(startTimeUtc), // formatTimestamp는 이미 KST로 출력함
+                formatTimestamp(startTimeUtc),
                 formatTimestamp(endTimeUtc)
         );
 
         LogTrendResponse.Summary summary = buildSummary(aggregations);
+
+        log.info("=== [Mapper] toLogTrendResponse END ===");
 
         return new LogTrendResponse(
                 projectUuid,
@@ -126,14 +132,6 @@ public interface LogTrendMapper {
         );
     }
 
-    /**
-     * 시간 슬롯 생성
-     *
-     * @param startTime     시작 시간
-     * @param intervalHours 간격 (시간)
-     * @param count         생성할 슬롯 개수
-     * @return 시간 슬롯 리스트
-     */
     default List<LocalDateTime> generateTimeSlots(LocalDateTime startTime, int intervalHours, int count) {
         List<LocalDateTime> timeSlots = new ArrayList<>();
         for (int i = 0; i < count; i++) {
@@ -142,32 +140,17 @@ public interface LogTrendMapper {
         return timeSlots;
     }
 
-    /**
-     * 빈 집계 결과 생성
-     *
-     * @param timestamp 타임스탬프
-     * @return 0으로 채워진 LogTrendAggregation
-     */
     default LogTrendAggregation createEmptyAggregation(LocalDateTime timestamp) {
         return new LogTrendAggregation(timestamp, 0, 0, 0, 0);
     }
 
-    /**
-     * Summary 통계 계산
-     *
-     * @param aggregations OpenSearch 집계 결과 리스트
-     * @return Summary
-     */
     default LogTrendResponse.Summary buildSummary(List<LogTrendAggregation> aggregations) {
-        // 총 로그 수
         int totalLogs = aggregations.stream()
                 .mapToInt(LogTrendAggregation::totalCount)
                 .sum();
 
-        // 평균 로그 수
         int avgLogsPerInterval = aggregations.isEmpty() ? 0 : totalLogs / aggregations.size();
 
-        // 피크 시간 찾기
         LogTrendAggregation peak = aggregations.stream()
                 .max(Comparator.comparing(LogTrendAggregation::totalCount))
                 .orElse(new LogTrendAggregation(LocalDateTime.now(), 0, 0, 0, 0));
