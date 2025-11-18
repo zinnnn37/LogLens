@@ -11,7 +11,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -28,9 +27,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+//@formatter:off
 /**
- * API 엔드포인트 메트릭 트랜잭션 서비스 구현체 OpenSearch에서 API 호출 통계를 조회하여 DB에 저장
+ * API 엔드포인트 메트릭 트랜잭션 서비스 구현체
+ * OpenSearch에서 API 호출 통계를 조회하여 DB에 저장
  */
+//@formatter:on
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -89,8 +91,10 @@ public class ApiEndpointTransactionalServiceImpl implements ApiEndpointTransacti
                                 .must(m -> m
                                         .range(r -> r
                                                 .field(TIMESTAMP_FIELD)
-                                                .gte(JsonData.of(from.atOffset(ZoneOffset.UTC).toString()))
-                                                .lt(JsonData.of(to.atOffset(ZoneOffset.UTC).toString()))
+                                                .gte(JsonData.of(from.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant()
+                                                        .toString()))
+                                                .lt(JsonData.of(
+                                                        to.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
                                         )
                                 )
                                 .must(m -> m
