@@ -31,8 +31,8 @@ public interface LogTrendMapper {
 
     Logger log = LoggerFactory.getLogger(LogTrendMapper.class);
 
-    @Mapping(target = "timestamp", expression = "java(formatTimestamp(aggregation.timestamp()))")
-    @Mapping(target = "hour", expression = "java(formatHour(aggregation.timestamp()))")
+    @Mapping(target = "timestamp", expression = "java(formatTimestamp(aggregation.timestamp().plusHours(INTERVAL_HOURS)))")
+    @Mapping(target = "hour", expression = "java(formatHour(aggregation.timestamp().plusHours(INTERVAL_HOURS)))")
     LogTrendResponse.DataPoint toDataPoint(LogTrendAggregation aggregation);
 
     default String formatTimestamp(LocalDateTime timestamp) {
@@ -50,9 +50,9 @@ public interface LogTrendMapper {
             LocalDateTime endTimeUtc,     // 요청 end
             List<LogTrendAggregation> aggregations // OS bucket 결과
     ) {
-        log.info("=== [Mapper] toLogTrendResponse START ===");
-        log.info("[Mapper] startTimeUtc={}", startTimeUtc);
-        log.info("[Mapper] endTimeUtc={}", endTimeUtc);
+        log.debug("=== [Mapper] toLogTrendResponse START ===");
+        log.debug("[Mapper] startTimeUtc={}", startTimeUtc);
+        log.debug("[Mapper] endTimeUtc={}", endTimeUtc);
 
         if (aggregations.isEmpty()) {
             log.warn("[Mapper] No aggregations returned from OpenSearch — returning empty response.");
@@ -74,8 +74,8 @@ public interface LogTrendMapper {
                 .atZoneSameInstant(ZoneId.of(DEFAULT_TIMEZONE))
                 .toLocalDateTime();
 
-        log.info("[Mapper] startTimeKst={}", startTimeKst);
-        log.info("[Mapper] endTimeKst={}", endTimeKst);
+        log.debug("[Mapper] startTimeKst={}", startTimeKst);
+        log.debug("[Mapper] endTimeKst={}", endTimeKst);
 
         // === 2) Bucket의 첫 timestamp(KST 기준)를 slot 시작 기준으로 사용 ===
         LocalDateTime slotBaseKst = aggregations.getFirst().timestamp()
@@ -84,7 +84,7 @@ public interface LogTrendMapper {
                 .toLocalDateTime()
                 .truncatedTo(ChronoUnit.HOURS);
 
-        log.info("[Mapper] slotBaseKst(첫 bucket KST 기준)={}", slotBaseKst);
+        log.debug("[Mapper] slotBaseKst(첫 bucket KST 기준)={}", slotBaseKst);
 
         // === 3) timeSlots 생성 ===
         List<LocalDateTime> timeSlots = generateTimeSlots(
@@ -93,12 +93,12 @@ public interface LogTrendMapper {
                 TREND_HOURS / INTERVAL_HOURS
         );
 
-        log.info("=== [Mapper] Generated Time Slots (KST) ===");
-        timeSlots.forEach(ts -> log.info("[Slot] {}", ts));
+        log.debug("=== [Mapper] Generated Time Slots (KST) ===");
+        timeSlots.forEach(ts -> log.debug("[Slot] {}", ts));
 
         // === 4) Aggregations을 KST hour-truncated 기준으로 Map으로 변환 ===
-        log.info("=== [Mapper] Aggregations (Original UTC) ===");
-        aggregations.forEach(a -> log.info("[Agg-UTC] {}", a.timestamp()));
+        log.debug("=== [Mapper] Aggregations (Original UTC) ===");
+        aggregations.forEach(a -> log.debug("[Agg-UTC] {}", a.timestamp()));
 
         Map<LocalDateTime, LogTrendAggregation> aggMap = aggregations.stream()
                 .collect(Collectors.toMap(
@@ -111,18 +111,18 @@ public interface LogTrendMapper {
                         (existing, replacement) -> existing
                 ));
 
-        log.info("=== [Mapper] Aggregation Map Keys (KST truncated) ===");
+        log.debug("=== [Mapper] Aggregation Map Keys (KST truncated) ===");
         aggMap.forEach((k, v) ->
-                log.info("[AggMap] key={} | total={}", k, v.totalCount())
+                log.debug("[AggMap] key={} | total={}", k, v.totalCount())
         );
 
         // === 5) timeSlots와 aggMap 매칭 ===
-        log.info("=== [Mapper] Slot Matching Result ===");
+        log.debug("=== [Mapper] Slot Matching Result ===");
         List<LogTrendResponse.DataPoint> dataPoints =
                 timeSlots.stream()
                         .map(ts -> {
                             boolean match = aggMap.containsKey(ts);
-                            log.info("[MatchCheck] slot={} | match={} ({})",
+                            log.debug("[MatchCheck] slot={} | match={} ({})",
                                     ts, match,
                                     match ? "USE aggregation" : "EMPTY → createEmptyAggregation"
                             );
@@ -140,7 +140,7 @@ public interface LogTrendMapper {
         // === 7) Summary 계산 ===
         LogTrendResponse.Summary summary = buildSummary(aggregations);
 
-        log.info("=== [Mapper] toLogTrendResponse END ===");
+        log.debug("=== [Mapper] toLogTrendResponse END ===");
 
         return new LogTrendResponse(
                 projectUuid,
