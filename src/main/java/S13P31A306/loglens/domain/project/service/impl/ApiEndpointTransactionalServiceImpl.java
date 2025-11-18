@@ -5,34 +5,30 @@ import S13P31A306.loglens.domain.project.entity.ApiEndpoint;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.ApiEndpointRepository;
 import S13P31A306.loglens.domain.project.service.ApiEndpointTransactionalService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.FieldValue;
+import org.opensearch.client.opensearch._types.aggregations.Aggregate;
+import org.opensearch.client.opensearch.core.SearchRequest;
+import org.opensearch.client.opensearch.core.SearchResponse;
+import org.opensearch.client.json.JsonData;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.opensearch.client.json.JsonData;
-import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.client.opensearch._types.FieldValue;
-import org.opensearch.client.opensearch._types.aggregations.Aggregate;
-import org.opensearch.client.opensearch.core.SearchRequest;
-import org.opensearch.client.opensearch.core.SearchResponse;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
+import java.util.*;
 
-//@formatter:off
 /**
  * API 엔드포인트 메트릭 트랜잭션 서비스 구현체
  * OpenSearch에서 API 호출 통계를 조회하여 DB에 저장
  */
-//@formatter:on
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -40,7 +36,6 @@ public class ApiEndpointTransactionalServiceImpl implements ApiEndpointTransacti
 
     private static final String LOG_PREFIX = "[ApiEndpointTransactionalService]";
     private static final String DEFAULT_TIMEZONE = "Asia/Seoul";
-    private static final String TIMESTAMP_FIELD = "timestamp";  // ✨ 추가
 
     private final OpenSearchClient openSearchClient;
     private final ApiEndpointRepository apiEndpointRepository;
@@ -81,8 +76,7 @@ public class ApiEndpointTransactionalServiceImpl implements ApiEndpointTransacti
         }
     }
 
-    private SearchRequest buildApiEndpointRequest(String indexPattern, LocalDateTime from, LocalDateTime to,
-                                                  String projectUuid) {
+    private SearchRequest buildApiEndpointRequest(String indexPattern, LocalDateTime from, LocalDateTime to, String projectUuid) {
         return SearchRequest.of(s -> s
                 .index(indexPattern)
                 .size(0)
@@ -90,11 +84,9 @@ public class ApiEndpointTransactionalServiceImpl implements ApiEndpointTransacti
                         .bool(b -> b
                                 .must(m -> m
                                         .range(r -> r
-                                                .field(TIMESTAMP_FIELD)
-                                                .gte(JsonData.of(from.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant()
-                                                        .toString()))
-                                                .lt(JsonData.of(
-                                                        to.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
+                                                .field("timestamp")
+                                                .gte(JsonData.of(from.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
+                                                .lt(JsonData.of(to.atZone(ZoneId.of(DEFAULT_TIMEZONE)).toInstant().toString()))
                                         )
                                 )
                                 .must(m -> m
@@ -135,7 +127,7 @@ public class ApiEndpointTransactionalServiceImpl implements ApiEndpointTransacti
                                 )
                                 .aggregations("max_timestamp", subsub -> subsub
                                         .max(max -> max
-                                                .field(TIMESTAMP_FIELD)
+                                                .field("timestamp")
                                         )
                                 )
                         )
