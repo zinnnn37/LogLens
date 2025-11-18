@@ -737,7 +737,7 @@ public class LogRepositoryImpl implements LogRepository {
                             .dateHistogram(dh -> dh
                                     .field(TIMESTAMP_FIELD)
                                     .fixedInterval(Time.of(t -> t.time(interval)))
-                                    .timeZone("Asia/Seoul")
+                                    .timeZone("UTC")
                                     .minDocCount(0)  // 로그가 없는 시간대도 포함
                             )
                             // log_level별 집계 (sub-aggregation)
@@ -858,7 +858,7 @@ public class LogRepositoryImpl implements LogRepository {
                             .dateHistogram(dh -> dh
                                     .field(TIMESTAMP_FIELD)
                                     .fixedInterval(Time.of(t -> t.time(interval)))
-                                    .timeZone("Asia/Seoul")
+                                    .timeZone("UTC")
                                     .minDocCount(0)  // 로그가 없는 시간대도 포함
                             )
                             // source_type별 집계 (sub-aggregation)
