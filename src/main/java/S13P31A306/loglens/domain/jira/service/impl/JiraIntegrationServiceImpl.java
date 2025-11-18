@@ -96,7 +96,7 @@ public class JiraIntegrationServiceImpl implements JiraIntegrationService {
     /**
      * Jira 연동 정보 저장 (트랜잭션) DB 저장 작업만 트랜잭션으로 처리
      */
-    @Transactional
+    @Transactional(readOnly = false)
     protected JiraConnectResponse saveConnectionInTransaction(
             JiraConnectRequest request,
             Project project,
