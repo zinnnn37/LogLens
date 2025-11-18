@@ -7,8 +7,8 @@ import S13P31A306.loglens.domain.jira.dto.request.JiraConnectRequest;
 import S13P31A306.loglens.domain.jira.dto.response.JiraConnectResponse;
 import S13P31A306.loglens.domain.jira.dto.response.JiraConnectionStatusResponse;
 import S13P31A306.loglens.domain.jira.entity.JiraConnection;
-import S13P31A306.loglens.domain.jira.mapper.JiraMapper;
 import S13P31A306.loglens.domain.jira.repository.JiraConnectionRepository;
+import S13P31A306.loglens.domain.jira.service.JiraConnectionTransactionService;
 import S13P31A306.loglens.domain.jira.service.JiraIntegrationService;
 import S13P31A306.loglens.domain.jira.validator.JiraValidator;
 import S13P31A306.loglens.domain.project.entity.Project;
@@ -19,7 +19,6 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -38,7 +37,7 @@ public class JiraIntegrationServiceImpl implements JiraIntegrationService {
     private final ProjectRepository projectRepository;
     private final JiraApiClient jiraApiClient;
     private final JiraValidator jiraValidator;
-    private final JiraMapper jiraMapper;
+    private final JiraConnectionTransactionService connectionTransactionService;
     private final EncryptionUtils encryptionUtils;
 
     //@formatter:off
@@ -87,27 +86,16 @@ public class JiraIntegrationServiceImpl implements JiraIntegrationService {
         String encryptedToken = encryptionUtils.encrypt(request.jiraApiToken());
         log.debug("{} 💾 API 토큰 암호화 완료", LOG_PREFIX);
 
-        // 6. 연동 정보 저장 (트랜잭션 내에서 DB 작업만 수행)
-        JiraConnectResponse response = saveConnectionInTransaction(request, project, encryptedToken);
+        // 6. 연동 정보 저장 (별도 서비스의 새 트랜잭션에서 DB 작업 수행)
+        JiraConnectResponse response = connectionTransactionService.saveConnection(
+                request,
+                project.getId(),
+                request.projectUuid(),
+                encryptedToken
+        );
 
         log.info("{} 🎉 Jira 연동 설정 완료: projectUuid={}", LOG_PREFIX, request.projectUuid());
         return response;
-    }
-
-    /**
-     * Jira 연동 정보 저장 (트랜잭션) DB 저장 작업만 트랜잭션으로 처리
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
-    protected JiraConnectResponse saveConnectionInTransaction(
-            JiraConnectRequest request,
-            Project project,
-            String encryptedToken) {
-        JiraConnection connection = jiraMapper.toEntity(request, project.getId(), encryptedToken);
-        JiraConnection saved = jiraConnectionRepository.save(connection);
-        log.info("{} ✅ Jira 연동 저장 완료: connectionId={}, projectId={}",
-                LOG_PREFIX, saved.getId(), saved.getProjectId());
-
-        return jiraMapper.toConnectResponse(saved, request.projectUuid());
     }
 
     /**
