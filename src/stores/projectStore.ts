@@ -19,6 +19,7 @@ interface ProjectState {
   totalPages: number;
 
   setProjects: (response: PaginatedProjectResponse) => void;
+  updateProjects: (projects: ProjectInfoDTO[]) => void; // 프로젝트 순서 변경용
   addProject: (newProject: ProjectDTO) => void;
 
   setCurrentProject: (project: ProjectDetailDTO | null) => void;
@@ -52,6 +53,11 @@ export const useProjectStore = create<ProjectState>(set => ({
       totalElements: response.totalElements,
       totalPages: response.totalPages,
     }),
+
+  /**
+   * 프로젝트 순서 변경 (드래그 앤 드롭용)
+   */
+  updateProjects: projects => set({ projects }),
 
   /**
    * (POST /api/projects)

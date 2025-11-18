@@ -2,7 +2,30 @@
 import { useEffect, useState } from 'react';
 import type { ComponentProps } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { PlusSquare, LogOut, BookOpen, Folder } from 'lucide-react';
+import {
+  PlusSquare,
+  LogOut,
+  BookOpen,
+  Folder,
+  GripVertical,
+} from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 import ProjectCreateModal from '@/components/modal/ProjectCreateModal';
 import DocsTOC from '@/components/DocsTOC';
@@ -55,6 +78,62 @@ const NavHeading = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+// 드래그 가능한 프로젝트 아이템
+const SortableProjectItem = ({
+  project,
+  isActive,
+  onClick,
+}: {
+  project: { projectUuid: string; projectName: string };
+  isActive: boolean;
+  onClick: () => void;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: project.projectUuid });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <li ref={setNodeRef} style={style}>
+      <div
+        className={`flex w-full items-center rounded-lg text-left text-sm transition-all ${
+          isActive
+            ? 'text-primary bg-primary/10 font-medium'
+            : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-[#6A6A6A]'
+        }`}
+      >
+        {/* 드래그 핸들 */}
+        <button
+          type="button"
+          className="cursor-grab px-2 py-2 hover:text-gray-900 active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        {/* 프로젝트 클릭 영역 */}
+        <button
+          type="button"
+          onClick={onClick}
+          className="flex flex-1 items-center px-1 py-2 pr-3"
+        >
+          <span className="truncate">{project.projectName}</span>
+        </button>
+      </div>
+    </li>
+  );
+};
+
 const Sidebar = ({ className, ...props }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -67,6 +146,15 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
   // 프로젝트 목록(store)
   const projects = useProjectStore(state => state.projects);
   const setProjectsInStore = useProjectStore(state => state.setProjects);
+  const updateProjects = useProjectStore(state => state.updateProjects);
+
+  // 드래그 앤 드롭 센서
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   // 초기 프로젝트 목록 로드 (메인페이지 패턴과 동일)
   useEffect(() => {
@@ -98,6 +186,19 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
       // 에러가 발생해도 로컬 토큰은 삭제하고 로그인 페이지로 이동
       clearAuth();
       navigate(ROUTE_PATH.LOGIN);
+    }
+  };
+
+  // 드래그 종료 핸들러
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = projects.findIndex(p => p.projectUuid === active.id);
+      const newIndex = projects.findIndex(p => p.projectUuid === over.id);
+
+      const newProjects = arrayMove(projects, oldIndex, newIndex);
+      updateProjects(newProjects);
     }
   };
 
@@ -138,28 +239,33 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="pb-0">
-                    {/* 프로젝트 목록 - 스크롤 영역 */}
-                    <ul className="flex flex-col gap-1 pl-6 text-[#6A6A6A]">
-                      {projects.map(p => {
-                        const isActive = projectUuid === p.projectUuid;
-                        return (
-                          <li key={p.projectUuid}>
-                            <button
-                              type="button"
-                              onClick={() => handleProjectSelect(p.projectUuid)}
-                              className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition-all ${
-                                isActive
-                                  ? 'text-primary bg-primary/10 font-medium'
-                                  : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-[#6A6A6A]'
-                              }`}
-                            >
-                              {/* 프로젝트 이름*/}
-                              <span className="truncate">{p.projectName}</span>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                    {/* 프로젝트 목록 - 드래그 앤 드롭 */}
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={projects.map(p => p.projectUuid)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <ul className="flex flex-col gap-1 pl-2 text-[#6A6A6A]">
+                          {projects.map(p => {
+                            const isActive = projectUuid === p.projectUuid;
+                            return (
+                              <SortableProjectItem
+                                key={p.projectUuid}
+                                project={p}
+                                isActive={isActive}
+                                onClick={() =>
+                                  handleProjectSelect(p.projectUuid)
+                                }
+                              />
+                            );
+                          })}
+                        </ul>
+                      </SortableContext>
+                    </DndContext>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
