@@ -45,15 +45,15 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
         try {
             SearchRequest searchRequest = buildProjectMetricsRequest(projectUuid);
 
-            log.info("{} 🔍 Query built: {}", LOG_PREFIX, searchRequest);
+            log.debug("{} 🔍 Query built: {}", LOG_PREFIX, searchRequest);
 
             SearchResponse<Void> response = openSearchClient.search(searchRequest, Void.class);
 
-            log.info("{} 🔍 Raw aggregations: {}", LOG_PREFIX, response.aggregations().keySet());
+            log.debug("{} 🔍 Raw aggregations: {}", LOG_PREFIX, response.aggregations().keySet());
 
             Map<String, MetricsData> metricsMap = parseProjectMetricsResponse(response);
 
-            log.info("{} 프로젝트 메트릭 조회 완료: projectUuid={}, components={}",
+            log.debug("{} 프로젝트 메트릭 조회 완료: projectUuid={}, components={}",
                     LOG_PREFIX, projectUuid, metricsMap.size());
 
             return metricsMap;
@@ -73,15 +73,15 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
         try {
             SearchRequest searchRequest = buildComponentMetricsRequest(projectUuid, componentName);
 
-            log.info("{} 🔍 Component Query built: {}", LOG_PREFIX, searchRequest);
+            log.debug("{} 🔍 Component Query built: {}", LOG_PREFIX, searchRequest);
 
             SearchResponse<Void> response = openSearchClient.search(searchRequest, Void.class);
 
-            log.info("{} 🔍 Raw aggregations: {}", LOG_PREFIX, response.aggregations().keySet());
+            log.debug("{} 🔍 Raw aggregations: {}", LOG_PREFIX, response.aggregations().keySet());
 
             MetricsData metricsData = parseComponentMetricsResponse(response);
 
-            log.info("{} 컴포넌트 메트릭 조회 완료: {} -> calls={}, errors={}, warns={}",
+            log.debug("{} 컴포넌트 메트릭 조회 완료: {} -> calls={}, errors={}, warns={}",
                     LOG_PREFIX, componentName,
                     metricsData.totalCalls(), metricsData.errorCount(), metricsData.warnCount());
 
@@ -101,14 +101,14 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
         try {
             SearchRequest searchRequest = buildFrontendMetricsRequest(projectUuid);
 
-            log.info("{} 🔍 Frontend Query built: {}", LOG_PREFIX, searchRequest);
+            log.debug("{} 🔍 Frontend Query built: {}", LOG_PREFIX, searchRequest);
 
             SearchResponse<Void> response = openSearchClient.search(searchRequest, Void.class);
-            log.info("{} 🔍 Raw aggregations: {}", LOG_PREFIX, response.aggregations().keySet());
+            log.debug("{} 🔍 Raw aggregations: {}", LOG_PREFIX, response.aggregations().keySet());
 
             FrontendMetricsSummary summary = parseFrontendMetricsResponse(response);
 
-            log.info("{} Frontend 메트릭 조회 완료: total={}, error={}, warn={}",
+            log.debug("{} Frontend 메트릭 조회 완료: total={}, error={}, warn={}",
                     LOG_PREFIX, summary.totalTraces(), summary.totalError(), summary.totalWarn());
 
             return summary;
@@ -238,15 +238,15 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
 
         StringTermsAggregate termsAgg = byComponentAgg.sterms();
 
-        log.info("{} 🔍 Component bucket count = {}", LOG_PREFIX, termsAgg.buckets().array().size());
+        log.debug("{} 🔍 Component bucket count = {}", LOG_PREFIX, termsAgg.buckets().array().size());
 
         for (StringTermsBucket bucket : termsAgg.buckets().array()) {
 
-            log.info("{} ▶ Component: {}, docCount={}",
+            log.debug("{} ▶ Component: {}, docCount={}",
                     LOG_PREFIX, bucket.key(), bucket.docCount());
 
             bucket.aggregations().forEach((key, agg) ->
-                    log.info("{}    ├─ subAgg {}: type={}", LOG_PREFIX, key, agg._kind()));
+                    log.debug("{}    ├─ subAgg {}: type={}", LOG_PREFIX, key, agg._kind()));
 
             int totalCalls = extractCardinalityDebug(bucket.aggregations(), TOTAL_CALLS, bucket.key());
             int errorCount = extractNestedCardinalityDebug(bucket.aggregations(), ERROR_TRACES, ERROR_COUNT,
@@ -256,7 +256,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
             MetricsData metricsData = MetricsData.of(totalCalls, errorCount, warnCount);
             metricsMap.put(bucket.key(), metricsData);
 
-            log.info("{} Component Result → {}: calls={}, error={}, warn={}",
+            log.debug("{} Component Result → {}: calls={}, error={}, warn={}",
                     LOG_PREFIX, bucket.key(), totalCalls, errorCount, warnCount);
         }
 
@@ -297,11 +297,11 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
             return 0;
         }
 
-        log.info("{}    → [{}] '{}' agg type={}", LOG_PREFIX, comp, name, agg._kind());
+        log.debug("{}    → [{}] '{}' agg type={}", LOG_PREFIX, comp, name, agg._kind());
 
         if (agg.isCardinality()) {
             int value = (int) agg.cardinality().value();
-            log.info("{}    ✔ [{}] '{}' = {}", LOG_PREFIX, comp, name, value);
+            log.debug("{}    ✔ [{}] '{}' = {}", LOG_PREFIX, comp, name, value);
             return value;
         }
 
@@ -319,7 +319,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
             return 0;
         }
 
-        log.info("{}    → [{}] '{}' filter type={}", LOG_PREFIX, comp, filterName, filter._kind());
+        log.debug("{}    → [{}] '{}' filter type={}", LOG_PREFIX, comp, filterName, filter._kind());
 
         if (!filter.isFilter()) {
             log.warn("{} ❗ '{}' filter 아님", LOG_PREFIX, filterName);
@@ -328,7 +328,7 @@ public class OpenSearchMetricsServiceImpl implements OpenSearchMetricsService {
 
         Map<String, Aggregate> nested = filter.filter().aggregations();
 
-        log.info("{}      └ Nested keys under '{}': {}", LOG_PREFIX, filterName, nested.keySet());
+        log.debug("{}      └ Nested keys under '{}': {}", LOG_PREFIX, filterName, nested.keySet());
 
         return extractCardinalityDebug(nested, innerName, comp);
     }

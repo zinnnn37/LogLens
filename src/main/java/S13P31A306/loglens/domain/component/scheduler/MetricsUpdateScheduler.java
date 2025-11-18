@@ -40,7 +40,7 @@ public class MetricsUpdateScheduler {
      * 메트릭 갱신 (매 5분마다 실행)
      * cron: 초 분 시 일 월 요일
      */
-    @Scheduled(cron = "0 */3 * * * *")
+    @Scheduled(cron = "0 */5 * * * *")
     @Transactional
     public void updateMetrics() {
         log.info("{} ========== 메트릭 갱신 시작 ==========", LOG_PREFIX);
@@ -94,7 +94,7 @@ public class MetricsUpdateScheduler {
                 openSearchMetricsService.getProjectMetrics(projectUuid);
 
         if (metricsMap.isEmpty()) {
-            log.debug("{} Backend 메트릭 없음: projectId={}", LOG_PREFIX, projectId);
+            log.info("{} Backend 메트릭 없음: projectId={}", LOG_PREFIX, projectId);
             return;
         }
 
@@ -125,7 +125,7 @@ public class MetricsUpdateScheduler {
             updatedCount++;
         }
 
-        log.debug("{} Backend 메트릭 갱신 완료: projectId={}, 갱신={}/{}",
+        log.info("{} Backend 메트릭 갱신 완료: projectId={}, 갱신={}/{}",
                 LOG_PREFIX, projectId, updatedCount, components.size());
     }
 
@@ -138,7 +138,7 @@ public class MetricsUpdateScheduler {
                 openSearchMetricsService.getFrontendMetrics(projectUuid);
 
         if (summary.totalTraces() == 0) {
-            log.debug("{} Frontend 메트릭 없음: projectId={}", LOG_PREFIX, projectId);
+            log.info("{} Frontend 메트릭 없음: projectId={}", LOG_PREFIX, projectId);
             return;
         }
 
@@ -153,7 +153,7 @@ public class MetricsUpdateScheduler {
 
         frontendMetricsRepository.save(metrics);
 
-        log.debug("{} Frontend 메트릭 갱신 완료: projectId={}, traces={}, errors={}",
+        log.info("{} Frontend 메트릭 갱신 완료: projectId={}, traces={}, errors={}",
                 LOG_PREFIX, projectId, summary.totalTraces(), summary.totalError());
     }
 
