@@ -110,7 +110,7 @@ public class LogMetricsBatchScheduler {
      */
     private void aggregateApiEndpointMetrics(Project project) {
         LocalDateTime endTime = LocalDateTime.now().minusMinutes(10);
-        LocalDateTime startTime = endTime.minusMinutes(10);
+        LocalDateTime startTime = endTime.minusMinutes(5);
 
         apiEndpointTransactionalService.aggregateApiEndpointMetrics(project, startTime, endTime);
     }
