@@ -31,9 +31,16 @@ public interface LogTrendMapper {
 
     Logger log = LoggerFactory.getLogger(LogTrendMapper.class);
 
-    @Mapping(target = "timestamp", expression = "java(formatTimestamp(aggregation.timestamp().plusHours(INTERVAL_HOURS)))")
-    @Mapping(target = "hour", expression = "java(formatHour(aggregation.timestamp().plusHours(INTERVAL_HOURS)))")
+    @Mapping(
+            target = "timestamp",
+            expression = "java(formatTimestamp(aggregation.timestamp().plusHours(S13P31A306.loglens.domain.statistics.constants.StatisticsConstants.INTERVAL_HOURS)))"
+    )
+    @Mapping(
+            target = "hour",
+            expression = "java(formatHour(aggregation.timestamp().plusHours(S13P31A306.loglens.domain.statistics.constants.StatisticsConstants.INTERVAL_HOURS)))"
+    )
     LogTrendResponse.DataPoint toDataPoint(LogTrendAggregation aggregation);
+
 
     default String formatTimestamp(LocalDateTime timestamp) {
         return timestamp.atZone(ZoneId.of(DEFAULT_TIMEZONE))
