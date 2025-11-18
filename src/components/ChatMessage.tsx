@@ -62,10 +62,10 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
             type="button"
             onClick={handleCopy}
             className={clsx(
-              "absolute top-2 right-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-xs transition focus:outline-none",
+              'absolute top-2 right-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-xs transition focus:outline-none',
               isUser
-                ? "text-white hover:bg-white/20 focus:ring-white/40"
-                : "text-muted-foreground hover:bg-black/5 focus:ring-primary/40"
+                ? 'text-white hover:bg-white/20 focus:ring-white/40'
+                : 'text-muted-foreground focus:ring-primary/40 hover:bg-black/5',
             )}
             aria-label="메시지 복사"
           >
