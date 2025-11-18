@@ -11,6 +11,7 @@ from app.api.v2 import router as v2_router
 from app.api.v2_langgraph.logs import router as v2_langgraph_router
 from app.api.v2_langgraph.analysis import router as v2_langgraph_analysis_router
 from app.api.v2_langgraph.statistics import router as v2_langgraph_statistics_router
+from app.api.v2_langgraph.experiments import router as v2_langgraph_experiments_router
 
 
 @asynccontextmanager
@@ -84,6 +85,10 @@ tags_metadata = [
         "name": "Statistics Comparison",
         "description": "AI vs DB 통계 비교 - LLM 기반 통계 추론과 DB 직접 조회의 정확도 검증, AI의 DB 대체 역량 증명",
     },
+    {
+        "name": "Vector AI Experiments",
+        "description": "Vector AI 실험 - Vector KNN 검색 + LLM 추론이 OpenSearch 집계를 대체할 수 있는지 검증, k 값별 정확도/성능 비교",
+    },
 ]
 
 # Create FastAPI app
@@ -152,6 +157,7 @@ app.include_router(v2_router, prefix="/api/v2")
 app.include_router(v2_langgraph_router, prefix="/api")
 app.include_router(v2_langgraph_analysis_router, prefix="/api")
 app.include_router(v2_langgraph_statistics_router, prefix="/api")
+app.include_router(v2_langgraph_experiments_router, prefix="/api")
 
 
 @app.get("/")
@@ -167,6 +173,7 @@ async def root():
             "v2": "/api/v2 (Chatbot Agent 기반)",
             "v2-langgraph": "/api/v2-langgraph (Log Analysis LangGraph 기반)",
             "v2-langgraph-analysis": "/api/v2-langgraph/analysis (HTML Document 생성)",
-            "v2-langgraph-statistics": "/api/v2-langgraph/statistics (AI vs DB 통계 비교)"
+            "v2-langgraph-statistics": "/api/v2-langgraph/statistics (AI vs DB 통계 비교)",
+            "v2-langgraph-experiments": "/api/v2-langgraph/experiments (Vector AI vs DB 실험)"
         }
     }

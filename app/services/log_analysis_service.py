@@ -133,38 +133,48 @@ class LogAnalysisService:
 
         # Step 5: No trace cache, check similarity-based cache (fallback)
         log_vector = log_data.get("log_vector")
-        if not log_vector:
-            # Generate vector if missing
+        log_level = log_data.get("log_level") or log_data.get("level", "INFO")
+
+        if not log_vector and log_level == "ERROR":
+            # Generate vector ONLY for ERROR logs
+            # (WARN/INFO logs are not vectorized by enrichment consumer)
+            # If ERROR log doesn't have vector yet, consumer might be processing it
+            # Generate on-demand as fallback
             text_to_embed = self._prepare_text_for_embedding(log_data)
             log_vector = await embedding_service.embed_query(text_to_embed)
 
         # Try similarity search with error handling for index mapping issues
-        try:
-            similar_logs = await similarity_service.find_similar_logs(
-                log_vector=log_vector,
-                k=5,
-                filters={"ai_analysis": {"exists": True}},
-                project_uuid=project_uuid,
-            )
-
-            if similar_logs and similar_logs[0]["score"] >= self.threshold:
-                similar_log = similar_logs[0]
-                similar_analysis = similar_log["data"]["ai_analysis"]
-
-                await self._save_analysis(log_id, similar_analysis, project_uuid)
-
-                return LogAnalysisResponse(
-                    log_id=log_id,
-                    analysis=LogAnalysisResult(**similar_analysis),
-                    from_cache=True,
-                    similar_log_id=similar_log["log_id"],
-                    similarity_score=similar_log["score"],
+        # Only perform vector search for ERROR logs (they have vectors)
+        if log_vector:
+            try:
+                similar_logs = await similarity_service.find_similar_logs(
+                    log_vector=log_vector,
+                    k=5,
+                    filters={"ai_analysis": {"exists": True}},
+                    project_uuid=project_uuid,
                 )
-        except Exception as e:
-            # Handle KNN search failures (e.g., log_vector not knn_vector type)
-            print(f"⚠️  Similarity search failed: {e}")
-            print(f"   Skipping similarity cache and proceeding with LLM analysis...")
-            # Continue to LLM analysis (no return here)
+
+                if similar_logs and similar_logs[0]["score"] >= self.threshold:
+                    similar_log = similar_logs[0]
+                    similar_analysis = similar_log["data"]["ai_analysis"]
+
+                    await self._save_analysis(log_id, similar_analysis, project_uuid)
+
+                    return LogAnalysisResponse(
+                        log_id=log_id,
+                        analysis=LogAnalysisResult(**similar_analysis),
+                        from_cache=True,
+                        similar_log_id=similar_log["log_id"],
+                        similarity_score=similar_log["score"],
+                    )
+            except Exception as e:
+                # Handle KNN search failures (e.g., log_vector not knn_vector type)
+                print(f"⚠️  Similarity search failed: {e}")
+                print(f"   Skipping similarity cache and proceeding with LLM analysis...")
+                # Continue to LLM analysis (no return here)
+        else:
+            # WARN/INFO logs: Skip vector search (no vectors available)
+            print(f"ℹ️  Skipping vector search for {log_level} log (vectors only for ERROR)")
 
         # Step 6: Analyze with LLM (with Korean validation)
         if related_logs:

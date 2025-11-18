@@ -9,8 +9,11 @@ import sys
 from datetime import datetime
 from opensearchpy import OpenSearch
 from openai import OpenAI
+from dotenv import load_dotenv
 
 # 환경 변수 로드
+load_dotenv()
+
 OPENSEARCH_HOST = os.getenv("OPENSEARCH_HOST", "localhost")
 OPENSEARCH_PORT = int(os.getenv("OPENSEARCH_PORT", "9200"))
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
