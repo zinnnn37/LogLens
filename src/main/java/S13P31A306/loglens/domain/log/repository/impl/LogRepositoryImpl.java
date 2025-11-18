@@ -735,7 +735,7 @@ public class LogRepositoryImpl implements LogRepository {
                     .aggregations("logs_over_time", a -> a
                             // Date Histogram aggregation
                             .dateHistogram(dh -> dh
-                                    .field("@timestamp")
+                                    .field(TIMESTAMP_FIELD)
                                     .fixedInterval(Time.of(t -> t.time(interval)))
                                     .timeZone("Asia/Seoul")
                                     .minDocCount(0)  // 로그가 없는 시간대도 포함
