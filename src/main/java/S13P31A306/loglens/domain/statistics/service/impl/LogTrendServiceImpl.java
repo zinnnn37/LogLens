@@ -11,7 +11,6 @@ import S13P31A306.loglens.domain.statistics.mapper.LogTrendMapper;
 import S13P31A306.loglens.domain.statistics.service.LogTrendService;
 import S13P31A306.loglens.domain.statistics.validator.StatisticsValidator;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -40,33 +39,31 @@ public class LogTrendServiceImpl implements LogTrendService {
         // 1. 요청 검증
         Project project = statisticsValidator.validateLogTrendRequest(projectUuid);
 
-        // 2. 한국 시간 기준으로 조회 시간 계산
-        ZoneId KST = ZoneId.of("Asia/Seoul");
+        // 2. UTC 시간으로 범위 계산
+        LocalDateTime endTimeUtc = LocalDateTime.now(ZoneOffset.UTC)
+                .truncatedTo(ChronoUnit.HOURS);
+        LocalDateTime startTimeUtc = endTimeUtc.minusHours(TREND_HOURS);
 
-        LocalDateTime endKst = LocalDateTime.now(KST).truncatedTo(ChronoUnit.HOURS);
-        LocalDateTime startKst = endKst.minusHours(TREND_HOURS);
+        log.debug("{} 조회 기간 (UTC): {} ~ {}", LOG_PREFIX, startTimeUtc, endTimeUtc);
 
-        // 3. 검색용 UTC 변환
-        LocalDateTime startUtc = startKst.atZone(KST).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
-        LocalDateTime endUtc = endKst.atZone(KST).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
-
-        log.debug("{} 조회 기간 KST: {} ~ {}", LOG_PREFIX, startKst, endKst);
-        log.debug("{} 조회 기간 UTC: {} ~ {}", LOG_PREFIX, startUtc, endUtc);
-
-        // 4. OpenSearch 집계 조회 (UTC)
+        // 3. OpenSearch 집계 조회
         List<LogTrendAggregation> aggregations = logRepository.aggregateLogTrendByTimeRange(
                 projectUuid,
-                startUtc,
-                endUtc,
+                startTimeUtc,
+                endTimeUtc,
                 INTERVAL_HOURS + "h"
         );
 
-        // 5. 응답은 KST로 출력
-        return logTrendMapper.toLogTrendResponse(
+        log.debug("{} 집계 결과: {}개 데이터 포인트", LOG_PREFIX, aggregations.size());
+
+        // 4. DTO 변환
+        LogTrendResponse response = logTrendMapper.toLogTrendResponse(
                 projectUuid,
-                startKst,
-                endKst,
+                startTimeUtc,
+                endTimeUtc,
                 aggregations
         );
+
+        return response;
     }
 }

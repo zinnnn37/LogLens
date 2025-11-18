@@ -782,9 +782,7 @@ public class LogRepositoryImpl implements LogRepository {
             // 타임스탬프 파싱
             String timestampStr = bucket.keyAsString();
             ZonedDateTime zoned = ZonedDateTime.parse(timestampStr, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-            LocalDateTime timestamp = zoned
-                    .withZoneSameInstant(ZoneOffset.ofHours(9))
-                    .toLocalDateTime();
+            LocalDateTime timestamp = zoned.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
 
             // 전체 로그 수
             int totalCount = (int) bucket.docCount();
