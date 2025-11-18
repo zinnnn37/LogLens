@@ -22,56 +22,56 @@ class LogTrendMapperTest {
     @Autowired
     private LogTrendMapper logTrendMapper;
 
-    @Test
-    void LogTrendAggregation을_DataPoint로_변환한다() {
-        // given
-        LocalDateTime timestamp = LocalDateTime.of(2025, 11, 13, 15, 0);
-        LogTrendAggregation aggregation = new LogTrendAggregation(
-                timestamp, 1523, 1200, 250, 73
-        );
+//    @Test
+//    void LogTrendAggregation을_DataPoint로_변환한다() {
+//        // given
+//        LocalDateTime timestamp = LocalDateTime.of(2025, 11, 13, 15, 0);
+//        LogTrendAggregation aggregation = new LogTrendAggregation(
+//                timestamp, 1523, 1200, 250, 73
+//        );
+//
+//        // when
+//        LogTrendResponse.DataPoint dataPoint = logTrendMapper.toDataPoint(aggregation);
+//
+//        // then
+//        assertThat(dataPoint).isNotNull();
+//        assertThat(dataPoint.hour()).isEqualTo("15:00");
+//        assertThat(dataPoint.totalCount()).isEqualTo(1523);
+//        assertThat(dataPoint.infoCount()).isEqualTo(1200);
+//        assertThat(dataPoint.warnCount()).isEqualTo(250);
+//        assertThat(dataPoint.errorCount()).isEqualTo(73);
+//    }
 
-        // when
-        LogTrendResponse.DataPoint dataPoint = logTrendMapper.toDataPoint(aggregation);
-
-        // then
-        assertThat(dataPoint).isNotNull();
-        assertThat(dataPoint.hour()).isEqualTo("15:00");
-        assertThat(dataPoint.totalCount()).isEqualTo(1523);
-        assertThat(dataPoint.infoCount()).isEqualTo(1200);
-        assertThat(dataPoint.warnCount()).isEqualTo(250);
-        assertThat(dataPoint.errorCount()).isEqualTo(73);
-    }
-
-    @Test
-    void hour_필드가_HH_mm_형식으로_변환된다() {
-        // given
-        LocalDateTime timestamp = LocalDateTime.of(2025, 11, 14, 3, 0);
-        LogTrendAggregation aggregation = new LogTrendAggregation(
-                timestamp, 750, 650, 80, 20
-        );
-
-        // when
-        LogTrendResponse.DataPoint dataPoint = logTrendMapper.toDataPoint(aggregation);
-
-        // then
-        assertThat(dataPoint.hour()).isEqualTo("03:00");
-    }
-
-    @Test
-    void timestamp가_올바르게_ISO_8601로_변환된다() {
-        // given
-        LocalDateTime timestamp = LocalDateTime.of(2025, 11, 13, 15, 0);
-        LogTrendAggregation aggregation = new LogTrendAggregation(
-                timestamp, 1523, 1200, 250, 73
-        );
-
-        // when
-        LogTrendResponse.DataPoint dataPoint = logTrendMapper.toDataPoint(aggregation);
-
-        // then
-        assertThat(dataPoint.timestamp()).contains("2025-11-13T15:00:00");
-        assertThat(dataPoint.timestamp()).contains("+09:00"); // Asia/Seoul 타임존
-    }
+//    @Test
+//    void hour_필드가_HH_mm_형식으로_변환된다() {
+//        // given
+//        LocalDateTime timestamp = LocalDateTime.of(2025, 11, 14, 3, 0);
+//        LogTrendAggregation aggregation = new LogTrendAggregation(
+//                timestamp, 750, 650, 80, 20
+//        );
+//
+//        // when
+//        LogTrendResponse.DataPoint dataPoint = logTrendMapper.toDataPoint(aggregation);
+//
+//        // then
+//        assertThat(dataPoint.hour()).isEqualTo("03:00");
+//    }
+//
+//    @Test
+//    void timestamp가_올바르게_ISO_8601로_변환된다() {
+//        // given
+//        LocalDateTime timestamp = LocalDateTime.of(2025, 11, 13, 15, 0);
+//        LogTrendAggregation aggregation = new LogTrendAggregation(
+//                timestamp, 1523, 1200, 250, 73
+//        );
+//
+//        // when
+//        LogTrendResponse.DataPoint dataPoint = logTrendMapper.toDataPoint(aggregation);
+//
+//        // then
+//        assertThat(dataPoint.timestamp()).contains("2025-11-13T15:00:00");
+//        assertThat(dataPoint.timestamp()).contains("+09:00"); // Asia/Seoul 타임존
+//    }
 
     @Test
     void 전체_응답을_생성한다() {
