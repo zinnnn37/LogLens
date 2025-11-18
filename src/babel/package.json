@@ -1,0 +1,21 @@
+{
+  "name": "babel-plugin-loglens",
+  "version": "1.0.0",
+  "description": "Babel plugin for LogLens auto-instrumentation",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "keywords": [
+    "babel-plugin",
+    "loglens",
+    "logging",
+    "instrumentation"
+  ],
+  "author": "MJ",
+  "license": "MIT",
+  "peerDependencies": {
+    "@babel/core": "^7.0.0"
+  }
+}
