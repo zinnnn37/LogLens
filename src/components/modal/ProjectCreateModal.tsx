@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import type { CreateProjectPayload, ProjectDTO } from '@/types/project';
 
@@ -102,17 +103,19 @@ const ProjectCreateModal = ({
 
       const newProject = await onCreate(payload);
 
+      toast.success('프로젝트가 성공적으로 생성되었습니다.');
       onComplete(newProject);
       onOpenChange(false);
     } catch (error) {
       console.error('프로젝트 생성 실패', error);
-      // TODO: 실패 시 알림
+      toast.error('프로젝트 생성에 실패했습니다.', {
+        description: '잠시 후 다시 시도해 주세요.',
+      });
     } finally {
       setCompleting(false);
     }
   };
 
-  // [수정] Step1 인풋 변경 핸들러
   const handleChange = (patch: Partial<CreateProjectPayload>) => {
     setForm(prev => ({ ...prev, ...patch }));
     if (patch.projectName && errors.projectName) {
