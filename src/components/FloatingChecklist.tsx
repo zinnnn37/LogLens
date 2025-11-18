@@ -6,21 +6,50 @@ interface ChecklistItem {
   id: string;
   label: string;
   completed: boolean;
+  subItems?: ChecklistItem[];
 }
 
 const INITIAL_CHECKLIST: ChecklistItem[] = [
   {
     id: '1',
-    label: 'Spring Boot 프로젝트에 LogLens SDK 설치',
+    label: 'Spring Boot 프로젝트에 LogLens Gradle 의존성 추가',
     completed: false,
   },
-  { id: '2', label: 'application.yml 설정 완료', completed: false },
-  { id: '3', label: '프로젝트 생성 및 API Key 발급', completed: false },
-  { id: '4', label: '로그 전송 확인', completed: false },
-  { id: '5', label: '대시보드에서 로그 확인', completed: false },
+  { id: '2', label: 'Frontend 라이브러리 NPM 설치', completed: false },
+  {
+    id: '3',
+    label: 'application.yml 설정 완료',
+    completed: false,
+    subItems: [
+      { id: '3-1', label: '프로젝트 UUID 설정', completed: false },
+      {
+        id: '3-2',
+        label: '로그 수집 옵션 구성 (true/false)',
+        completed: false,
+      },
+    ],
+  },
+  {
+    id: '4',
+    label: 'FluentBit Docker 환경 설정',
+    completed: false,
+    subItems: [
+      { id: '4-1', label: 'docker-compose.yml 추가', completed: false },
+      { id: '4-2', label: '.env 파일 구성', completed: false },
+    ],
+  },
+  {
+    id: '5',
+    label: 'Spring Filter 설정',
+    completed: false,
+    subItems: [
+      { id: '5-1', label: '컴포넌트 전송 URL 허용 설정', completed: false },
+    ],
+  },
+  { id: '6', label: '인프라의 log 수집 파일 설정', completed: false },
 ];
 
-const STORAGE_KEY = 'loglens-checklist';
+const STORAGE_KEY = 'loglens-checklist-v3';
 
 const FloatingChecklist = () => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -52,14 +81,65 @@ const FloatingChecklist = () => {
 
   const toggleCheckItem = (id: string) => {
     setChecklist(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, completed: !item.completed } : item,
-      ),
+      prev.map(item => {
+        // 부모 아이템을 클릭한 경우
+        if (item.id === id) {
+          const newCompleted = !item.completed;
+          // 서브 아이템이 있으면 모두 같은 상태로 변경
+          if (item.subItems) {
+            return {
+              ...item,
+              completed: newCompleted,
+              subItems: item.subItems.map(subItem => ({
+                ...subItem,
+                completed: newCompleted,
+              })),
+            };
+          }
+          return { ...item, completed: newCompleted };
+        }
+
+        // 서브 아이템을 클릭한 경우
+        if (item.subItems) {
+          const updatedSubItems = item.subItems.map(subItem =>
+            subItem.id === id
+              ? { ...subItem, completed: !subItem.completed }
+              : subItem,
+          );
+          // 모든 서브 아이템이 완료되면 부모도 완료
+          const allSubItemsCompleted = updatedSubItems.every(
+            sub => sub.completed,
+          );
+          return {
+            ...item,
+            subItems: updatedSubItems,
+            completed: allSubItemsCompleted,
+          };
+        }
+
+        return item;
+      }),
     );
   };
 
-  const completedCount = checklist.filter(item => item.completed).length;
-  const totalCount = checklist.length;
+  const countItems = (items: ChecklistItem[]): number => {
+    return items.reduce((count, item) => {
+      const subCount = item.subItems ? countItems(item.subItems) : 1;
+      return count + subCount;
+    }, 0);
+  };
+
+  const countCompleted = (items: ChecklistItem[]): number => {
+    return items.reduce((count, item) => {
+      if (item.subItems) {
+        return count + countCompleted(item.subItems);
+      }
+      return count + (item.completed ? 1 : 0);
+    }, 0);
+  };
+
+  const completedCount = countCompleted(checklist);
+  const totalCount = countItems(checklist);
 
   return (
     <div className="fixed right-6 bottom-6 z-50">
@@ -117,33 +197,64 @@ const FloatingChecklist = () => {
         <div className="max-h-96 overflow-y-auto p-4">
           <ul className="space-y-3">
             {checklist.map((item, index) => (
-              <li
-                key={item.id}
-                className="group flex cursor-pointer items-start gap-2 transition-transform hover:translate-x-1"
-                onClick={() => toggleCheckItem(item.id)}
-                style={{
-                  animation: isExpanded
-                    ? `slideIn 0.3s ease-out ${index * 0.05}s both`
-                    : 'none',
-                }}
-              >
-                <button className="mt-0.5 transition-transform group-hover:scale-110">
-                  {item.completed ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-gray-300 transition-colors group-hover:text-gray-400" />
-                  )}
-                </button>
-                <span
-                  className={clsx(
-                    'flex-1 text-sm transition-all',
-                    item.completed
-                      ? 'text-gray-400 line-through'
-                      : 'text-gray-700 group-hover:text-gray-900',
-                  )}
+              <li key={item.id}>
+                <div
+                  className="group flex cursor-pointer items-start gap-2 transition-transform hover:translate-x-1"
+                  onClick={() => toggleCheckItem(item.id)}
+                  style={{
+                    animation: isExpanded
+                      ? `slideIn 0.3s ease-out ${index * 0.05}s both`
+                      : 'none',
+                  }}
                 >
-                  {item.label}
-                </span>
+                  <button className="mt-0.5 transition-transform group-hover:scale-110">
+                    {item.completed ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <Circle className="h-5 w-5 text-gray-300 transition-colors group-hover:text-gray-400" />
+                    )}
+                  </button>
+                  <span
+                    className={clsx(
+                      'flex-1 text-sm transition-all',
+                      item.completed
+                        ? 'text-gray-400 line-through'
+                        : 'text-gray-700 group-hover:text-gray-900',
+                    )}
+                  >
+                    {item.label}
+                  </span>
+                </div>
+                {/* Sub Items */}
+                {item.subItems && item.subItems.length > 0 && (
+                  <ul className="mt-2 ml-7 space-y-2">
+                    {item.subItems.map(subItem => (
+                      <li
+                        key={subItem.id}
+                        className="group flex cursor-pointer items-start gap-2 transition-transform hover:translate-x-1"
+                        onClick={() => toggleCheckItem(subItem.id)}
+                      >
+                        <button className="mt-0.5 transition-transform group-hover:scale-110">
+                          {subItem.completed ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Circle className="h-4 w-4 text-gray-300 transition-colors group-hover:text-gray-400" />
+                          )}
+                        </button>
+                        <span
+                          className={clsx(
+                            'flex-1 text-xs transition-all',
+                            subItem.completed
+                              ? 'text-gray-400 line-through'
+                              : 'text-gray-600 group-hover:text-gray-800',
+                          )}
+                        >
+                          {subItem.label}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>

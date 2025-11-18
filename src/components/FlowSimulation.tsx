@@ -102,8 +102,8 @@ const getLogLevelColor = (logLevel: string) => {
 
 const FlowSimulation = ({
   flowData,
-  width = 1200,
-  height = 400,
+  width = 2400,
+  height = 800,
   speed = 1,
   onClose,
   onSeqChange,
@@ -758,7 +758,7 @@ const FlowSimulation = ({
           )}
         </div>
       </div>
-      <div className="relative h-[350px] bg-white">
+      <div className="relative h-[700px] bg-white">
         <svg
           ref={svgRef}
           viewBox={`0 0 ${width} ${height}`}
