@@ -73,19 +73,7 @@ const ApiStatsCard: React.FC<ApiStatsCardProps> = ({ data }) => {
         </p>
 
         {endpoints.length > 0 ? (
-          <div className="
-            max-h-60 
-            overflow-y-auto 
-            overflow-x-hidden 
-            rounded-md 
-            border 
-            border-slate-100 
-            pr-2
-            [&::-webkit-scrollbar]:w-1.5
-            [&::-webkit-scrollbar-track]:bg-transparent
-            [&::-webkit-scrollbar-thumb]:bg-slate-200
-            [&::-webkit-scrollbar-thumb]:rounded-full
-          ">
+          <div className="max-h-60 overflow-x-hidden overflow-y-auto rounded-md border border-slate-100 pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-track]:bg-transparent">
             <table className="w-full table-fixed divide-y divide-slate-100 text-xs">
               <colgroup>
                 <col className="w-[8%]" />
@@ -99,25 +87,25 @@ const ApiStatsCard: React.FC<ApiStatsCardProps> = ({ data }) => {
 
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="whitespace-nowrap px-2 py-2 text-left font-medium text-slate-500">
+                  <th className="px-2 py-2 text-left font-medium whitespace-nowrap text-slate-500">
                     메서드
                   </th>
-                  <th className="whitespace-nowrap px-2 py-2 text-left font-medium text-slate-500">
+                  <th className="px-2 py-2 text-left font-medium whitespace-nowrap text-slate-500">
                     엔드포인트
                   </th>
-                  <th className="whitespace-nowrap px-2 py-2 text-right font-medium text-slate-500">
+                  <th className="px-2 py-2 text-right font-medium whitespace-nowrap text-slate-500">
                     요청 수
                   </th>
-                  <th className="whitespace-nowrap px-2 py-2 text-right font-medium text-slate-500">
+                  <th className="px-2 py-2 text-right font-medium whitespace-nowrap text-slate-500">
                     에러 수
                   </th>
-                  <th className="whitespace-nowrap px-2 py-2 text-right font-medium text-slate-500">
+                  <th className="px-2 py-2 text-right font-medium whitespace-nowrap text-slate-500">
                     에러율
                   </th>
-                  <th className="whitespace-nowrap px-2 py-2 text-right font-medium text-slate-500">
+                  <th className="px-2 py-2 text-right font-medium whitespace-nowrap text-slate-500">
                     평균 응답
                   </th>
-                  <th className="whitespace-nowrap px-2 py-2 text-right font-medium text-slate-500">
+                  <th className="px-2 py-2 text-right font-medium whitespace-nowrap text-slate-500">
                     이상 탐지
                   </th>
                 </tr>
@@ -130,7 +118,7 @@ const ApiStatsCard: React.FC<ApiStatsCardProps> = ({ data }) => {
                     </td>
                     <td className="px-2 py-2 text-[11px] text-slate-600">
                       <div
-                        className="truncate block w-full"
+                        className="block w-full truncate"
                         title={endpoint.endpointPath}
                       >
                         {endpoint.endpointPath}
