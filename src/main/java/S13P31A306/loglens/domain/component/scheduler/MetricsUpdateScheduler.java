@@ -40,7 +40,7 @@ public class MetricsUpdateScheduler {
      * 메트릭 갱신 (매 5분마다 실행)
      * cron: 초 분 시 일 월 요일
      */
-    @Scheduled(cron = "0 */5 * * * *")
+    @Scheduled(cron = "0 */3 * * * *")
     @Transactional
     public void updateMetrics() {
         log.info("{} ========== 메트릭 갱신 시작 ==========", LOG_PREFIX);
