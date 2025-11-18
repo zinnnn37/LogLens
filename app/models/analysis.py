@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, field_serializer
 from typing import List, Optional
 from datetime import datetime
 from enum import Enum
+from app.models.experiment import LogSource, ValidationInfo  # Import common models
 
 
 class AnalysisType(str, Enum):
@@ -64,6 +65,21 @@ class LogAnalysisResponse(BaseModel):
     from_cache: bool = Field(..., description="캐시에서 가져왔는지 여부 (True: 캐시 재사용, False: 새로 분석)")
     similar_log_id: Optional[int] = Field(None, description="유사 로그 ID (캐시 재사용 시에만 존재)")
     similarity_score: Optional[float] = Field(None, description="유사도 점수 (0.0 이상, 높을수록 관련성 높음. 캐시 재사용 시에만 존재, 0.8 이상일 때 재사용)", ge=0.0)
+
+    # V2 추가 필드 (RAG 검증용)
+    sources: Optional[List[LogSource]] = Field(
+        None,
+        description="""분석의 출처 로그 (V2 전용)
+        - ERROR 로그: Vector KNN으로 유사 로그 검색
+        - 관련 로그들을 기반으로 패턴 분석"""
+    )
+    validation: Optional[ValidationInfo] = Field(
+        None,
+        description="""분석의 유효성 검증 정보 (V2 전용)
+        - 신뢰도, 샘플 수, 샘플링 전략
+        - 데이터 커버리지, 데이터 품질
+        - 기능 제약사항 (Vector 검색은 ERROR만 지원)"""
+    )
 
     class Config:
         json_schema_extra = {

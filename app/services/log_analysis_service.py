@@ -11,6 +11,7 @@ from app.chains.log_summarization_chain import log_summarization_chain
 from app.services.embedding_service import embedding_service
 from app.services.similarity_service import similarity_service
 from app.models.analysis import LogAnalysisResponse, LogAnalysisResult
+from app.models.experiment import LogSource, ValidationInfo  # Import common models
 from app.validators.validation_pipeline import ValidationPipeline
 from app.utils.index_naming import format_index_name
 
@@ -27,6 +28,106 @@ class LogAnalysisService:
             structural_threshold=settings.VALIDATION_STRUCTURAL_THRESHOLD,
             content_threshold=settings.VALIDATION_CONTENT_THRESHOLD,
             overall_threshold=settings.VALIDATION_OVERALL_THRESHOLD,
+        )
+
+    def _create_log_sources(
+        self,
+        logs: List[dict],
+        similarity_scores: Optional[List[float]] = None
+    ) -> List[LogSource]:
+        """
+        로그 리스트를 LogSource 리스트로 변환
+
+        Args:
+            logs: 로그 딕셔너리 리스트
+            similarity_scores: 각 로그의 유사도 점수 (선택)
+
+        Returns:
+            List[LogSource]
+        """
+        sources = []
+        for i, log in enumerate(logs[:10]):  # 최대 10개
+            relevance_score = None
+            if similarity_scores and i < len(similarity_scores):
+                relevance_score = similarity_scores[i]
+
+            source = LogSource(
+                log_id=str(log.get("log_id", "unknown")),
+                timestamp=log.get("timestamp", ""),
+                level=log.get("level", log.get("log_level", "INFO")),
+                message=log.get("message", "")[:500],  # 500자까지만
+                service_name=log.get("service_name", "unknown"),
+                relevance_score=relevance_score,
+                class_name=log.get("class_name"),
+                method_name=log.get("method_name")
+            )
+            sources.append(source)
+
+        return sources
+
+    def _create_validation_info(
+        self,
+        sample_count: int,
+        analysis_type: str,
+        log_level: str,
+        from_cache: bool = False
+    ) -> ValidationInfo:
+        """
+        분석 검증 정보 생성
+
+        Args:
+            sample_count: 분석에 사용된 샘플 수
+            analysis_type: "single" | "trace" | "similarity"
+            log_level: ERROR | WARN | INFO
+            from_cache: 캐시 사용 여부
+
+        Returns:
+            ValidationInfo
+        """
+        # 신뢰도 계산
+        if from_cache:
+            confidence = 95  # 캐시 재사용 시 높은 신뢰도
+        elif sample_count > 10:
+            confidence = 90
+        elif sample_count > 5:
+            confidence = 80
+        elif sample_count > 1:
+            confidence = 70
+        else:
+            confidence = 60  # 단일 로그 분석
+
+        # 샘플링 전략
+        if analysis_type == "trace":
+            sampling_strategy = "trace_id_filter"
+            coverage = f"Trace 기반 {sample_count}개 로그 분석"
+        elif analysis_type == "similarity":
+            sampling_strategy = "proportional_vector_knn"
+            coverage = f"Vector 검색으로 유사 로그 {sample_count}개 분석"
+        else:
+            sampling_strategy = "single_log"
+            coverage = "단일 로그 분석"
+
+        # 데이터 품질
+        data_quality = "high" if sample_count > 5 else ("medium" if sample_count > 1 else "low")
+
+        # 제약사항
+        limitation = "Vector 검색은 ERROR 로그만 지원. WARN/INFO는 기본 필터 사용"
+
+        # 추가 메모
+        note = None
+        if log_level == "ERROR" and analysis_type == "similarity":
+            note = "ERROR 로그 Vector 유사도 기반 패턴 분석"
+        elif analysis_type == "trace":
+            note = "동일 Trace ID의 연관 로그들을 기반으로 컨텍스트 분석"
+
+        return ValidationInfo(
+            confidence=confidence,
+            sample_count=sample_count,
+            sampling_strategy=sampling_strategy,
+            coverage=coverage,
+            data_quality=data_quality,
+            limitation=limitation,
+            note=note
         )
 
     def _contains_korean(self, text: str) -> bool:
@@ -87,12 +188,24 @@ class LogAnalysisService:
 
         # Step 2: Check if already analyzed
         if log_data.get("ai_analysis"):
+            # Direct cache hit
+            log_level = log_data.get("log_level", log_data.get("level", "INFO"))
+            sources = self._create_log_sources([log_data])
+            validation = self._create_validation_info(
+                sample_count=1,
+                analysis_type="single",
+                log_level=log_level,
+                from_cache=True
+            )
+
             return LogAnalysisResponse(
                 log_id=log_id,
                 analysis=LogAnalysisResult(**log_data["ai_analysis"]),
                 from_cache=True,
                 similar_log_id=log_id,
                 similarity_score=1.0,
+                sources=sources,
+                validation=validation
             )
 
         # Step 3: Check if trace_id exists for context-based analysis
@@ -123,12 +236,24 @@ class LogAnalysisService:
                     cached_analysis = log["ai_analysis"]
                     await self._save_analysis(log_id, cached_analysis, project_uuid)
 
+                    # Create sources and validation for trace cache hit
+                    log_level = log_data.get("log_level", log_data.get("level", "INFO"))
+                    sources = self._create_log_sources(related_logs + [log_data])
+                    validation = self._create_validation_info(
+                        sample_count=len(related_logs) + 1,
+                        analysis_type="trace",
+                        log_level=log_level,
+                        from_cache=True
+                    )
+
                     return LogAnalysisResponse(
                         log_id=log_id,
                         analysis=LogAnalysisResult(**cached_analysis),
                         from_cache=True,
                         similar_log_id=log.get("log_id"),
                         similarity_score=1.0,  # Same trace
+                        sources=sources,
+                        validation=validation
                     )
 
         # Step 5: No trace cache, check similarity-based cache (fallback)
@@ -160,12 +285,29 @@ class LogAnalysisService:
 
                     await self._save_analysis(log_id, similar_analysis, project_uuid)
 
+                    # Create sources and validation for similarity cache hit
+                    similar_log_data_list = [log["data"] for log in similar_logs]
+                    similarity_scores_list = [log["score"] for log in similar_logs]
+
+                    sources = self._create_log_sources(
+                        similar_log_data_list + [log_data],
+                        similarity_scores=similarity_scores_list
+                    )
+                    validation = self._create_validation_info(
+                        sample_count=len(similar_logs) + 1,
+                        analysis_type="similarity",
+                        log_level=log_level,
+                        from_cache=True
+                    )
+
                     return LogAnalysisResponse(
                         log_id=log_id,
                         analysis=LogAnalysisResult(**similar_analysis),
                         from_cache=True,
                         similar_log_id=similar_log["log_id"],
                         similarity_score=similar_log["score"],
+                        sources=sources,
+                        validation=validation
                     )
             except Exception as e:
                 # Handle KNN search failures (e.g., log_vector not knn_vector type)
@@ -194,12 +336,34 @@ class LogAnalysisService:
                 if log.get("log_id") != log_id:
                     await self._save_analysis(log["log_id"], analysis_dict, project_uuid)
 
+        # Create sources and validation info
+        log_level = log_data.get("log_level", log_data.get("level", "INFO"))
+
+        if related_logs:
+            sources = self._create_log_sources(related_logs + [log_data])
+            validation = self._create_validation_info(
+                sample_count=len(related_logs) + 1,
+                analysis_type="trace",
+                log_level=log_level,
+                from_cache=False
+            )
+        else:
+            sources = self._create_log_sources([log_data])
+            validation = self._create_validation_info(
+                sample_count=1,
+                analysis_type="single",
+                log_level=log_level,
+                from_cache=False
+            )
+
         return LogAnalysisResponse(
             log_id=log_id,
             analysis=analysis_result,
             from_cache=False,
             similar_log_id=None,
             similarity_score=None,
+            sources=sources,
+            validation=validation
         )
 
     async def _get_log(self, log_id: int, project_uuid: str) -> Optional[dict]:

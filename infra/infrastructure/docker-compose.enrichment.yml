@@ -45,4 +45,5 @@ services:
 
 networks:
   ai-loglens-network:
-    external: true
+    name: ai-loglens-network
+    driver: bridge

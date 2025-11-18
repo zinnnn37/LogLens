@@ -18,12 +18,11 @@ from app.models.experiment import (
     DBStatistics,
     ExperimentConclusion
 )
-from app.tools.vector_experiment_tools import (
-    _get_db_statistics_for_experiment,
-    _vector_search_all,
-    _llm_estimate_from_vectors,
-    _calculate_accuracy_for_experiment
-)
+# 기존 Vector AI vs DB 실험은 ERROR 패턴 분석 실험으로 변경됨
+# from app.tools.vector_experiment_tools import (
+#     _get_db_error_statistics,
+#     ...
+# )
 
 logger = logging.getLogger(__name__)
 
@@ -31,43 +30,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v2-langgraph", tags=["Vector AI Experiments"])
 
 
-@router.get("/experiments/vector-vs-db", response_model=ExperimentComparison)
-async def compare_vector_ai_vs_db(
+# 기존 Vector AI vs DB 실험 엔드포인트 비활성화 (ERROR 패턴 분석 실험으로 대체됨)
+# @router.get("/experiments/vector-vs-db", response_model=ExperimentComparison)
+async def compare_vector_ai_vs_db_DEPRECATED(
     project_uuid: str = Query(..., description="프로젝트 UUID"),
     time_hours: int = Query(24, ge=1, le=168, description="분석 기간 (시간)"),
     k_values: str = Query("100,500,1000", description="테스트할 k 값 (콤마로 구분, 예: 100,500,1000)")
-) -> ExperimentComparison:
+): # -> ExperimentComparison:
     """
-    Vector AI vs OpenSearch 집계 성능/정확도 비교 실험
-
-    **실험 목표:**
-    - Vector KNN 검색 + LLM 추론이 OpenSearch 집계를 대체할 수 있는가?
-    - 어떤 k 값에서 90% 이상의 정확도를 달성하는가?
-
-    **실험 방법:**
-    1. OpenSearch 집계로 Ground Truth 획득 (정확도 100%)
-    2. 각 k 값에 대해:
-       - Vector KNN으로 k개 샘플 수집
-       - LLM이 샘플만 보고 전체 통계 추론 (level_counts 힌트 없음)
-       - 정확도 계산 및 성능 측정
-    3. 최적 k 값 도출 및 실용성 평가
-
-    **k 값 의미:**
-    - k=100: 매우 적은 샘플 (빠르지만 정확도 낮음)
-    - k=500: 중간 샘플 (균형)
-    - k=1000: 충분한 샘플 (느리지만 정확)
-    - k=5000: 대량 샘플 (DB 집계와 비교 가능한 수준)
-
-    **실용성 평가 기준:**
-    - 90% 이상: Vector AI가 DB 대체 가능
-    - 80-90%: 보조 도구로 활용 가능
-    - 80% 미만: 추가 개선 필요
-
-    **시사점:**
-    - 성공 시: 복잡한 집계 쿼리를 Vector 검색 + LLM으로 대체 가능
-    - 실패 시: 전통적 집계 방식이 여전히 필수적
+    DEPRECATED: 이 엔드포인트는 ERROR 패턴 분석 실험으로 대체되었습니다.
+    test_experiment_with_localhost.py를 참고하세요.
     """
-    logger.info(f"🧪 Vector AI vs DB 실험 시작: project_uuid={project_uuid}, time_hours={time_hours}, k_values={k_values}")
+    raise HTTPException(
+        status_code=410,
+        detail="This endpoint is deprecated. Use ERROR pattern analysis experiment instead."
+    )
 
     try:
         # k 값 파싱

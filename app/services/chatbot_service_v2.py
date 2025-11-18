@@ -12,6 +12,8 @@ from app.models.chat import ChatResponse, ChatMessage
 from app.utils.agent_logger import AgentLogger
 from app.utils.sanitizer import sanitize_for_display
 from app.callbacks.tool_tracker_callback import ToolTrackerCallback
+from app.utils.sources_tracker import SourcesTracker  # NEW: 출처 추적
+from app.callbacks.sources_tracker_callback import SourcesTrackerCallback  # NEW: 출처 추적 콜백
 from langchain_core.messages import HumanMessage, AIMessage
 
 
@@ -341,6 +343,10 @@ class ChatbotServiceV2:
         # ToolCallTracker 콜백 생성
         tool_tracker_callback = ToolTrackerCallback()
 
+        # SourcesTracker 생성 (출처 및 검증 정보 추적)
+        sources_tracker = SourcesTracker()
+        sources_tracker_callback = SourcesTrackerCallback(sources_tracker)
+
         # 대화 기록을 LangChain 메시지 형식으로 변환
         langchain_history = []
         if chat_history:
@@ -411,7 +417,7 @@ class ChatbotServiceV2:
                 result = await asyncio.wait_for(
                     agent_executor.ainvoke(
                         agent_input,
-                        config={"callbacks": [tool_tracker_callback]}
+                        config={"callbacks": [tool_tracker_callback, sources_tracker_callback]}
                     ),
                     timeout=60.0  # 60초 타임아웃
                 )
@@ -468,12 +474,18 @@ class ChatbotServiceV2:
             if tool_summary != "No tool calls yet.":
                 print(f"📊 도구 호출 통계:\n{tool_summary}")
 
+            # 출처 및 검증 정보 생성
+            top_sources = sources_tracker.get_top_sources(limit=10)
+            validation_info = sources_tracker.get_validation_info()
+
             # ChatResponse 형식으로 반환
             # Agent는 자체적으로 로그를 검색하므로 related_logs는 빈 리스트
             return ChatResponse(
                 answer=validated_answer,
                 from_cache=False,  # V2는 캐싱 미지원
-                related_logs=[]  # Agent가 내부적으로 로그 처리
+                related_logs=[],  # Agent가 내부적으로 로그 처리
+                sources=top_sources if top_sources else None,  # V2 추가
+                validation=validation_info  # V2 추가
             )
 
         except asyncio.TimeoutError:
@@ -559,6 +571,10 @@ class ChatbotServiceV2:
             agent_executor = create_log_analysis_agent(project_uuid)
             tool_tracker_callback = ToolTrackerCallback()
 
+            # Sources tracker 생성
+            sources_tracker = SourcesTracker()
+            sources_tracker_callback = SourcesTrackerCallback(sources_tracker)
+
             # 대화 히스토리 포맷팅
             history_text = ""
             if chat_history:
@@ -581,7 +597,7 @@ class ChatbotServiceV2:
                 async for event in agent_executor.astream_events(
                     agent_input,
                     version="v1",
-                    config={"callbacks": [tool_tracker_callback]}
+                    config={"callbacks": [tool_tracker_callback, sources_tracker_callback]}
                 ):
                     kind = event["event"]
 
@@ -643,7 +659,7 @@ class ChatbotServiceV2:
                 result = await asyncio.wait_for(
                     agent_executor.ainvoke(
                         agent_input,
-                        config={"callbacks": [tool_tracker_callback]}
+                        config={"callbacks": [tool_tracker_callback, sources_tracker_callback]}
                     ),
                     timeout=60.0
                 )

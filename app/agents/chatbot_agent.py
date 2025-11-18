@@ -277,6 +277,7 @@ def create_log_analysis_agent(project_uuid: str) -> AgentExecutor:
     # LLM 설정
     llm = ChatOpenAI(
         model=settings.AGENT_MODEL,
+        base_url=settings.OPENAI_BASE_URL,
         temperature=0,  # 결정적 답변, 형식 일관성 최우선 (파싱 에러 최소화)
         api_key=settings.OPENAI_API_KEY,
         stop=["\nObservation"]  # Observation 환각 방지

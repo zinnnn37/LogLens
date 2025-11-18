@@ -4,7 +4,9 @@ HTML Document generation models
 
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 from enum import Enum
+from app.models.experiment import AnalysisMetadata  # Import common metadata model
 
 
 class DocumentType(str, Enum):
@@ -96,6 +98,16 @@ class AiDocumentMetadata(BaseModel):
 
     # AI-generated insights
     ai_insights: Optional[Dict[str, str]] = Field(None, description="AI-generated insights and analysis")
+
+    # V2 추가: 분석 메타데이터 (RAG 검증용)
+    analysis_metadata: Optional[AnalysisMetadata] = Field(
+        None,
+        description="""문서 생성에 사용된 데이터 출처 및 샘플링 정보 (V2 전용)
+        - 생성 시간, 데이터 범위
+        - 분석된 로그 수 (ERROR/WARN/INFO별)
+        - 샘플링 전략 상세
+        - 기능 제약사항 (Vector 검색은 ERROR만 지원)"""
+    )
 
 
 class AiValidationStatus(BaseModel):

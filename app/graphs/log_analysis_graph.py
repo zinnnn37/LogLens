@@ -271,6 +271,12 @@ class LogAnalysisGraph:
         if state.get("error") or not state.get("log_message"):
             return {"similarity_cache_result": None}
 
+        # ERROR/FATAL/WARN 로그는 similarity cache 사용 안함 (다른 로그의 잘못된 분석 재사용 방지)
+        log_level = (state.get("log_level") or "").upper()
+        if log_level in ["ERROR", "FATAL", "WARN"]:
+            print(f"[Similarity Cache] ⏭️ Skipping cache for {log_level} level - requiring fresh analysis")
+            return {"similarity_cache_result": None}
+
         start_time = time.time()
 
         log_id = state["log_id"]

@@ -76,6 +76,7 @@ class ExtractedTimeRange(BaseModel):
 # LLM 설정
 llm = ChatOpenAI(
     model=settings.LLM_MODEL,
+    base_url=settings.OPENAI_BASE_URL,
     temperature=0,  # 일관된 추출을 위해 temperature=0
 )
 

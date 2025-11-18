@@ -177,10 +177,10 @@ def insert_large_test_data():
     index_name = f"{project_uuid.replace('-', '_')}_2025_11"
 
     # 로그 분포 설정
-    total_logs = 200  # 200개로 축소 (빠른 테스트)
-    error_count = 10   # 5%
-    warn_count = 30   # 15%
-    info_count = 160   # 80%
+    total_logs = 1000  # 1000개로 증가 (정확도 실험용)
+    error_count = 50   # 5%
+    warn_count = 150   # 15%
+    info_count = 800   # 80%
 
     print(f"📝 {total_logs}개의 로그 삽입 시작...")
     print(f"   인덱스: {index_name}")
@@ -217,20 +217,27 @@ def insert_large_test_data():
         minutes_ago = random.randint(0, 24 * 60)
         timestamp = generate_timestamp(minutes_ago)
 
-        # 벡터 생성 텍스트
-        vector_text = f"{level} {service} {class_name}.{method_name} {message}"
+        # ERROR만 벡터화 (WARN/INFO는 벡터 없음)
+        log_vector = None
+        if level == "ERROR":
+            # 벡터 생성 텍스트
+            vector_text = f"{level} {service} {class_name}.{method_name} {message}"
 
-        # Embedding 생성 (배치마다 한 번씩 진행 상황 출력)
-        if i % batch_size == 1:
-            print(f"  [{i}/{total_logs}] {level} 로그 벡터화 중...")
+            # Embedding 생성 (배치마다 한 번씩 진행 상황 출력)
+            if i % batch_size == 1:
+                print(f"  [{i}/{total_logs}] ERROR 로그 벡터화 중...")
 
-        log_vector = generate_embedding(vector_text)
+            log_vector = generate_embedding(vector_text)
 
-        if log_vector is None:
-            print(f"  ⚠️ 로그 {log_id} 벡터 생성 실패 - 건너뜀")
-            continue
+            if log_vector is None:
+                print(f"  ⚠️ ERROR 로그 {log_id} 벡터 생성 실패 - 건너뜀")
+                continue
+        else:
+            # WARN/INFO는 벡터 생성 없이 진행
+            if i % batch_size == 1:
+                print(f"  [{i}/{total_logs}] {level} 로그 생성 중 (벡터 없음)...")
 
-        # 로그 문서
+        # 로그 문서 (기본 필드)
         doc = {
             "log_id": log_id,
             "project_uuid": project_uuid,
@@ -250,7 +257,6 @@ def insert_large_test_data():
             "duration": random.randint(10, 1000),
             "indexed_at": datetime.utcnow().isoformat() + "Z",
             "@timestamp": timestamp,
-            "log_vector": log_vector,
             "log_details": {
                 "http_method": random.choice(["GET", "POST", "PUT", "DELETE"]),
                 "response_status": 200 if level == "INFO" else (400 if level == "WARN" else 500),
@@ -260,6 +266,10 @@ def insert_large_test_data():
                 "method_name": method_name
             }
         }
+
+        # ERROR 로그만 log_vector 필드 추가
+        if log_vector is not None:
+            doc["log_vector"] = log_vector
 
         batch_docs.append(doc)
 

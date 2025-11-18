@@ -5,6 +5,7 @@ Chatbot models
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from app.models.experiment import LogSource, ValidationInfo  # Import common models
 
 
 class ChatMessage(BaseModel):
@@ -94,6 +95,22 @@ class ChatResponse(BaseModel):
     )
     answered_at: datetime = Field(default_factory=datetime.utcnow, description="응답 생성 시각 (UTC)")
 
+    # V2 추가 필드 (RAG 검증용)
+    sources: Optional[List[LogSource]] = Field(
+        None,
+        description="""답변의 출처 로그 (V2 전용)
+        - ERROR 로그: Vector KNN으로 검색
+        - WARN/INFO 로그: 일반 필터로 검색
+        - 각 출처에 관련성 점수 포함"""
+    )
+    validation: Optional[ValidationInfo] = Field(
+        None,
+        description="""답변의 유효성 검증 정보 (V2 전용)
+        - 신뢰도, 샘플 수, 샘플링 전략
+        - 데이터 커버리지, 데이터 품질
+        - 기능 제약사항 (Vector 검색은 ERROR만 지원)"""
+    )
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -110,5 +127,26 @@ class ChatResponse(BaseModel):
                     }
                 ],
                 "answered_at": "2024-01-15T10:35:00.000Z",
+                "sources": [
+                    {
+                        "log_id": "12345",
+                        "timestamp": "2024-01-15T10:30:00Z",
+                        "level": "ERROR",
+                        "message": "NullPointerException in UserService.getUser()",
+                        "service_name": "user-service",
+                        "relevance_score": 0.92,
+                        "class_name": "UserService",
+                        "method_name": "getUser"
+                    }
+                ],
+                "validation": {
+                    "confidence": 85,
+                    "sample_count": 10,
+                    "sampling_strategy": "proportional_vector_knn",
+                    "coverage": "최근 24시간 ERROR 로그 분석",
+                    "data_quality": "high",
+                    "limitation": "Vector 검색은 ERROR 로그만 지원. WARN/INFO는 기본 필터 사용",
+                    "note": "Agent가 자율적으로 도구를 선택하여 분석"
+                }
             }
         }

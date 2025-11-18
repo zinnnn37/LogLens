@@ -12,6 +12,7 @@ from jinja2 import Environment, FileSystemLoader, Template
 import markdown
 from markupsafe import Markup
 
+from datetime import datetime, timedelta
 from app.models.document import (
     AiHtmlDocumentRequest,
     AiHtmlDocumentResponse,
@@ -19,6 +20,7 @@ from app.models.document import (
     AiValidationStatus,
     DocumentType,
 )
+from app.models.experiment import AnalysisMetadata
 from app.core.opensearch import opensearch_client
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
@@ -158,6 +160,15 @@ class HtmlDocumentService:
         health_score = self._calculate_health_score(total_logs, error_count, warn_count)
         critical_issues = error_count
 
+        # Collect analysis metadata (V2 RAG validation)
+        analysis_metadata = None
+        if request.project_uuid and data.get("timeRange"):
+            analysis_metadata = await self._collect_analysis_metadata(
+                project_uuid=request.project_uuid,
+                time_range=data.get("timeRange", {}),
+                document_type="project"
+            )
+
         metadata = AiDocumentMetadata(
             word_count=len(html_content.split()),
             estimated_reading_time=self._estimate_reading_time(html_content),
@@ -172,6 +183,7 @@ class HtmlDocumentService:
             ai_insights={
                 "system_health_summary": ai_health_summary
             } if ai_health_summary else None,
+            analysis_metadata=analysis_metadata,  # V2 추가
         )
 
         return html_content, metadata
@@ -221,6 +233,23 @@ class HtmlDocumentService:
         severity = self._determine_severity(error_log.get("level", "ERROR"))
         root_cause = existing_analysis.get("errorCause", "Unknown")[:100]
 
+        # Collect analysis metadata (V2 RAG validation)
+        analysis_metadata = None
+        if request.project_uuid and error_log.get("timestamp"):
+            # Create time range for error analysis (±1 hour from error)
+            try:
+                error_time = datetime.fromisoformat(error_log.get("timestamp", "").replace("Z", "+00:00"))
+                start_time = (error_time - timedelta(hours=1)).isoformat() + "Z"
+                end_time = (error_time + timedelta(hours=1)).isoformat() + "Z"
+
+                analysis_metadata = await self._collect_analysis_metadata(
+                    project_uuid=request.project_uuid,
+                    time_range={"startTime": start_time, "endTime": end_time},
+                    document_type="error"
+                )
+            except Exception as e:
+                print(f"⚠️ Failed to parse error timestamp for metadata: {e}")
+
         metadata = AiDocumentMetadata(
             word_count=len(html_content.split()),
             estimated_reading_time=self._estimate_reading_time(html_content),
@@ -231,6 +260,7 @@ class HtmlDocumentService:
             severity=severity,
             root_cause=root_cause,
             affected_users=len(data.get("relatedLogs", [])),
+            analysis_metadata=analysis_metadata,  # V2 추가
         )
 
         return html_content, metadata
@@ -421,6 +451,136 @@ class HtmlDocumentService:
         # Return as Markup to prevent auto-escaping
         return Markup(html)
 
+    async def _collect_analysis_metadata(
+        self,
+        project_uuid: str,
+        time_range: Dict[str, str],
+        document_type: str = "project"
+    ) -> Optional[AnalysisMetadata]:
+        """
+        Collect analysis metadata from OpenSearch logs
+
+        Args:
+            project_uuid: Project UUID
+            time_range: Time range dict with startTime and endTime
+            document_type: "project" or "error"
+
+        Returns:
+            AnalysisMetadata object with log statistics and sampling info
+        """
+        try:
+            uuid_formatted = project_uuid.replace('-', '_')
+            index_pattern = f"{uuid_formatted}_*"
+
+            # Parse time range
+            start_time = time_range.get("startTime")
+            end_time = time_range.get("endTime")
+
+            if not start_time or not end_time:
+                # Fallback: Last 24 hours
+                end_dt = datetime.utcnow()
+                start_dt = end_dt - timedelta(hours=24)
+                start_time = start_dt.isoformat() + "Z"
+                end_time = end_dt.isoformat() + "Z"
+
+            # Query OpenSearch for log statistics
+            response = opensearch_client.search(
+                index=index_pattern,
+                body={
+                    "size": 0,
+                    "query": {
+                        "bool": {
+                            "filter": [
+                                {
+                                    "range": {
+                                        "timestamp": {
+                                            "gte": start_time,
+                                            "lte": end_time
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "aggs": {
+                        "by_level": {
+                            "terms": {
+                                "field": "level",
+                                "size": 10
+                            }
+                        }
+                    }
+                }
+            )
+
+            # Extract statistics
+            total_logs = response.get("hits", {}).get("total", {}).get("value", 0)
+            level_buckets = response.get("aggregations", {}).get("by_level", {}).get("buckets", [])
+
+            # Count by level
+            error_logs = 0
+            warn_logs = 0
+            info_logs = 0
+
+            for bucket in level_buckets:
+                level = bucket["key"]
+                count = bucket["doc_count"]
+
+                if level == "ERROR":
+                    error_logs = count
+                elif level == "WARN":
+                    warn_logs = count
+                elif level == "INFO":
+                    info_logs = count
+
+            # Determine sampling strategy
+            sample_strategy = {}
+            limitations = []
+
+            if document_type == "project":
+                sample_strategy = {
+                    "ERROR": "aggregation_query",
+                    "WARN": "aggregation_query",
+                    "INFO": "aggregation_query"
+                }
+                limitations = [
+                    f"분석 기간: {start_time[:10]} ~ {end_time[:10]}",
+                    "집계 쿼리 기반 통계 (샘플링 없음)",
+                ]
+
+                if total_logs > 10000:
+                    limitations.append("대량 로그로 인해 샘플링 적용됨")
+                    sample_strategy["sampling_note"] = "top 100 errors analyzed"
+
+            elif document_type == "error":
+                sample_strategy = {
+                    "target_log": "direct_query",
+                    "related_logs": "trace_id_filter" if total_logs > 0 else "none"
+                }
+                limitations = [
+                    "단일 로그 기반 분석",
+                    f"관련 로그 조회 범위: {start_time[:10]} ~ {end_time[:10]}"
+                ]
+
+            # Create AnalysisMetadata
+            metadata = AnalysisMetadata(
+                generated_at=datetime.utcnow(),
+                data_range=f"{start_time[:10]} ~ {end_time[:10]}",
+                total_logs_analyzed=total_logs,
+                error_logs=error_logs,
+                warn_logs=warn_logs,
+                info_logs=info_logs,
+                sample_strategy=sample_strategy,
+                limitations=limitations
+            )
+
+            return metadata
+
+        except Exception as e:
+            print(f"⚠️ Failed to collect analysis_metadata: {e}")
+            # Return None gracefully - document generation continues without metadata
+            return None
+
     async def _analyze_project_health(
         self, project_uuid: str, time_range: Dict[str, str], metrics: Dict[str, Any]
     ) -> Optional[str]:
@@ -526,7 +686,8 @@ class HtmlDocumentService:
 
             # Initialize LLM
             llm = ChatOpenAI(
-                model=settings.OPENAI_MODEL,
+                model=settings.LLM_MODEL,
+                base_url=settings.OPENAI_BASE_URL,
                 temperature=0.3,  # Lower temperature for consistent analysis
                 timeout=30
             )
