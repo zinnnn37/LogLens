@@ -57,10 +57,12 @@ public class LogTrendServiceImpl implements LogTrendService {
         log.debug("{} 집계 결과: {}개 데이터 포인트", LOG_PREFIX, aggregations.size());
 
         // 4. DTO 변환
+        ZoneOffset KST = ZoneOffset.ofHours(9);
+
         LogTrendResponse response = logTrendMapper.toLogTrendResponse(
                 projectUuid,
-                startTimeUtc,
-                endTimeUtc,
+                startTimeUtc.atOffset(ZoneOffset.UTC).withOffsetSameInstant(KST).toLocalDateTime(),
+                endTimeUtc.atOffset(ZoneOffset.UTC).withOffsetSameInstant(KST).toLocalDateTime(),
                 aggregations
         );
 
