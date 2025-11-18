@@ -775,20 +775,31 @@ public class LogRepositoryImpl implements LogRepository {
 
         Aggregate logsOverTime = response.aggregations().get("logs_over_time");
         if (Objects.isNull(logsOverTime) || Objects.isNull(logsOverTime.dateHistogram())) {
+            log.warn("{} logs_over_time 집계 없음", LOG_PREFIX);
             return result;
         }
 
+        log.info("{} ===================== LogTrend Raw Buckets =====================", LOG_PREFIX);
+
         for (DateHistogramBucket bucket : logsOverTime.dateHistogram().buckets().array()) {
-            // 타임스탬프 파싱
             String timestampStr = bucket.keyAsString();
             ZonedDateTime zoned = ZonedDateTime.parse(timestampStr, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-            LocalDateTime timestamp = zoned.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
 
-            // 전체 로그 수
+            // 🚨 기존 오류 위치: UTC 변환 제거
+            LocalDateTime timestamp = zoned.toLocalDateTime();
+
             int totalCount = (int) bucket.docCount();
-
-            // log_level별 집계 파싱
             Map<String, Integer> levelCounts = parseLevelCountsForTrend(bucket.aggregations().get("by_level"));
+
+            // 🔍 bucket 정보 상세 로그
+            log.info("{} [Bucket] time(KST)={} | total={} | INFO={} WARN={} ERROR={}",
+                    LOG_PREFIX,
+                    timestamp,
+                    totalCount,
+                    levelCounts.getOrDefault("INFO", 0),
+                    levelCounts.getOrDefault("WARN", 0),
+                    levelCounts.getOrDefault("ERROR", 0)
+            );
 
             LogTrendAggregation aggregation = new LogTrendAggregation(
                     timestamp,
@@ -801,6 +812,7 @@ public class LogRepositoryImpl implements LogRepository {
             result.add(aggregation);
         }
 
+        log.info("{} ===================== END Buckets =====================", LOG_PREFIX);
         return result;
     }
 
