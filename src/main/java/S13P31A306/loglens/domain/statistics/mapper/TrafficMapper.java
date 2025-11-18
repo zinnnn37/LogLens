@@ -51,7 +51,18 @@ public interface TrafficMapper {
         log.info("[TrafficMapper] 입력 Aggregation 개수={}", aggregations.size());
 
         // 1. 전체 시간 슬롯 생성 (24시간 / 3시간 = 8개)
-        List<LocalDateTime> timeSlots = generateTimeSlots(startTime, INTERVAL_HOURS, TREND_HOURS / INTERVAL_HOURS);
+        // bucket 첫 timestamp(KST) → bucket end timestamp 기준
+        LocalDateTime slotBaseKst = aggregations.getFirst().timestamp()
+                .plusHours(INTERVAL_HOURS)
+                .atZone(ZoneId.of("Asia/Seoul"))
+                .toLocalDateTime()
+                .truncatedTo(ChronoUnit.HOURS);
+
+        List<LocalDateTime> timeSlots = generateTimeSlots(
+                slotBaseKst,
+                INTERVAL_HOURS,
+                TREND_HOURS / INTERVAL_HOURS
+        );
         log.info("[TrafficMapper] 생성된 timeSlots(KST)={}", timeSlots);
 
         // 2. OpenSearch bucket(timestamp + 3h)를 END 기준으로 변환
