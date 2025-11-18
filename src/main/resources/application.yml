@@ -148,18 +148,18 @@ sse:
   # ALB idle timeout(60초)보다 충분히 길게 설정
   # heartbeat(5초 주기)로 연결 유지
 
-#dependency:
-#  logger:
-#    api-key: 831776ac-2d47-3e23-83b9-7619972f0cbf
-#
-#    collector:
-#      url: https://api.loglens.co.kr
-#    sender:
-#      enabled: true
-#
-#    stacktrace:
-#      max-lines: 3
-#
-#    frontend:
-#      enabled: true
-#      log-path: ./logs/fe/app.log
+dependency:
+  logger:
+    api-key: 831776ac-2d47-3e23-83b9-7619972f0cbf
+
+    collector:
+      url: https://api.loglens.co.kr
+    sender:
+      enabled: true
+
+    stacktrace:
+      max-lines: 3
+
+    frontend:
+      enabled: true
+      log-path: ./logs/fe/app.log

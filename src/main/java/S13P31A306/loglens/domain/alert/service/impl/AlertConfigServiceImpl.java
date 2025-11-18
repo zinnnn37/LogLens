@@ -16,6 +16,7 @@ import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import S13P31A306.loglens.domain.project.service.ProjectService;
 import S13P31A306.loglens.global.exception.BusinessException;
+import a306.dependency_logger_starter.logging.annotation.NoLogging;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -79,7 +80,7 @@ public class AlertConfigServiceImpl implements AlertConfigService {
         return alertConfigMapper.toResponse(saved, project.getProjectName(), project.getProjectUuid());
     }
 
-    //@NoLogging
+    @NoLogging
     @Override
     public AlertConfigResponse getAlertConfig(String projectUuid, Integer userId) {
         log.info("{} 알림 설정 조회 시작: projectUuid={}", LOG_PREFIX, projectUuid);

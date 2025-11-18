@@ -10,6 +10,7 @@ import S13P31A306.loglens.domain.alert.service.AlertHistoryService;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
+import a306.dependency_logger_starter.logging.annotation.NoLogging;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -66,7 +67,7 @@ public class AlertHistoryController implements AlertHistoryApi {
     }
 
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    //@NoLogging
+    @NoLogging
     @Override
     public SseEmitter streamAlerts(@RequestParam String projectUuid) {
         return alertHistoryService.streamAlerts(projectUuid);
