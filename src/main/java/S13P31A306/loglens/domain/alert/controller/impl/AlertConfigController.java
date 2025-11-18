@@ -1,5 +1,9 @@
 package S13P31A306.loglens.domain.alert.controller.impl;
 
+import static S13P31A306.loglens.domain.alert.constants.AlertSuccessCode.ALERT_CONFIG_CREATED;
+import static S13P31A306.loglens.domain.alert.constants.AlertSuccessCode.ALERT_CONFIG_RETRIEVED;
+import static S13P31A306.loglens.domain.alert.constants.AlertSuccessCode.ALERT_CONFIG_UPDATED;
+
 import S13P31A306.loglens.domain.alert.controller.AlertConfigApi;
 import S13P31A306.loglens.domain.alert.dto.AlertConfigCreateRequest;
 import S13P31A306.loglens.domain.alert.dto.AlertConfigResponse;
@@ -8,15 +12,17 @@ import S13P31A306.loglens.domain.alert.service.AlertConfigService;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
 import S13P31A306.loglens.global.dto.response.ApiResponseFactory;
 import S13P31A306.loglens.global.dto.response.BaseResponse;
-import a306.dependency_logger_starter.logging.annotation.NoLogging;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
-
-import static S13P31A306.loglens.domain.alert.constants.AlertSuccessCode.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 알림 설정 컨트롤러
@@ -40,7 +46,7 @@ public class AlertConfigController implements AlertConfigApi {
     }
 
     @GetMapping
-    @NoLogging
+//    @NoLogging
     @Override
     public ResponseEntity<? extends BaseResponse> getAlertConfig(
             @RequestParam String projectUuid) {

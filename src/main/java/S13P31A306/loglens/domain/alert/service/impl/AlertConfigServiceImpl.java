@@ -1,5 +1,8 @@
 package S13P31A306.loglens.domain.alert.service.impl;
 
+import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PROJECT_NOT_FOUND;
+import static S13P31A306.loglens.global.constants.GlobalErrorCode.FORBIDDEN;
+
 import S13P31A306.loglens.domain.alert.dto.AlertConfigCreateRequest;
 import S13P31A306.loglens.domain.alert.dto.AlertConfigResponse;
 import S13P31A306.loglens.domain.alert.dto.AlertConfigUpdateRequest;
@@ -13,15 +16,10 @@ import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import S13P31A306.loglens.domain.project.service.ProjectService;
 import S13P31A306.loglens.global.exception.BusinessException;
-import a306.dependency_logger_starter.logging.annotation.NoLogging;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.ACCESS_FORBIDDEN;
-import static S13P31A306.loglens.domain.project.constants.ProjectErrorCode.PROJECT_NOT_FOUND;
-import static S13P31A306.loglens.global.constants.GlobalErrorCode.FORBIDDEN;
 
 /**
  * 알림 설정 서비스 구현체
@@ -81,7 +79,7 @@ public class AlertConfigServiceImpl implements AlertConfigService {
         return alertConfigMapper.toResponse(saved, project.getProjectName(), project.getProjectUuid());
     }
 
-    @NoLogging
+    //@NoLogging
     @Override
     public AlertConfigResponse getAlertConfig(String projectUuid, Integer userId) {
         log.info("{} 알림 설정 조회 시작: projectUuid={}", LOG_PREFIX, projectUuid);
@@ -100,7 +98,8 @@ public class AlertConfigServiceImpl implements AlertConfigService {
 
         // 3. 알림 설정 조회 (없으면 null 반환)
         return alertConfigRepository.findByProjectId(projectId)
-                .map(alertConfig -> alertConfigMapper.toResponse(alertConfig, project.getProjectName(), project.getProjectUuid()))
+                .map(alertConfig -> alertConfigMapper.toResponse(alertConfig, project.getProjectName(),
+                        project.getProjectUuid()))
                 .orElse(null);
     }
 
