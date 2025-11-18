@@ -738,7 +738,7 @@ public class LogRepositoryImpl implements LogRepository {
                             .dateHistogram(dh -> dh
                                     .field(TIMESTAMP_FIELD)
                                     .fixedInterval(Time.of(t -> t.time(interval)))
-                                    .timeZone("UTC")
+                                    .timeZone("+09:00")
                                     .minDocCount(0)  // 로그가 없는 시간대도 포함
                             )
                             // log_level별 집계 (sub-aggregation)
@@ -827,25 +827,23 @@ public class LogRepositoryImpl implements LogRepository {
             LocalDateTime endTime,
             String interval
     ) {
-        log.info("{} Traffic 집계 시작: projectUuid={}, start={}, end={}, interval={}",
+        log.info("{} Traffic 집계 시작: projectUuid={}, start(UTC)={}, end(UTC)={}, interval={}",
                 LOG_PREFIX, projectUuid, startTime, endTime, interval);
 
         try {
             // OpenSearchUtils로 인덱스 패턴 생성
             String indexPattern = OpenSearchUtils.getProjectIndexPattern(projectUuid);
-            log.debug("{} 인덱스 패턴: {}", LOG_PREFIX, indexPattern);
+            log.info("{} 인덱스 패턴: {}", LOG_PREFIX, indexPattern);
 
             // SearchRequest 생성
             SearchRequest searchRequest = SearchRequest.of(s -> s
                     .index(indexPattern)
-                    .size(0)  // 집계만 수행
+                    .size(0)
                     .query(q -> q.bool(b -> b
-                            // project_uuid 필터
                             .filter(f -> f.term(t -> t
                                     .field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
                                     .value(FieldValue.of(projectUuid))
                             ))
-                            // 시간 범위 필터
                             .filter(f -> f.range(r -> r
                                     .field(TIMESTAMP_FIELD)
                                     .gte(JsonData.of(startTime.atOffset(ZoneOffset.UTC).toString()))
@@ -853,14 +851,12 @@ public class LogRepositoryImpl implements LogRepository {
                             ))
                     ))
                     .aggregations("traffic_over_time", a -> a
-                            // Date Histogram aggregation
                             .dateHistogram(dh -> dh
                                     .field(TIMESTAMP_FIELD)
                                     .fixedInterval(Time.of(t -> t.time(interval)))
-                                    .timeZone("UTC")
-                                    .minDocCount(0)  // 로그가 없는 시간대도 포함
+                                    .timeZone("+09:00")
+                                    .minDocCount(0)
                             )
-                            // source_type별 집계 (sub-aggregation)
                             .aggregations("by_source_type", sub -> sub
                                     .terms(t -> t
                                             .field(OpenSearchField.SOURCE_TYPE.getFieldName())
@@ -869,13 +865,16 @@ public class LogRepositoryImpl implements LogRepository {
                     )
             );
 
+            log.info("{} 검색 요청 생성 완료", LOG_PREFIX);
+
             // OpenSearch 쿼리 실행
             SearchResponse<Void> response = openSearchClient.search(searchRequest, Void.class);
+            log.info("{} 검색 결과 수신 (took={}ms)", LOG_PREFIX, response.took());
 
             // 결과 파싱
             List<TrafficAggregation> result = parseTrafficAggregation(response);
 
-            log.info("{} Traffic 집계 완료: projectUuid={}, 결과개수={}",
+            log.info("{} Traffic 집계 완료: projectUuid={}, 결과 개수={}",
                     LOG_PREFIX, projectUuid, result.size());
 
             return result;
@@ -901,7 +900,7 @@ public class LogRepositoryImpl implements LogRepository {
             // 타임스탬프 파싱
             String timestampStr = bucket.keyAsString();
             ZonedDateTime zoned = ZonedDateTime.parse(timestampStr, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-            LocalDateTime timestamp = zoned.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+            LocalDateTime timestamp = zoned.toLocalDateTime();
 
             // 전체 로그 수
             int totalCount = (int) bucket.docCount();
