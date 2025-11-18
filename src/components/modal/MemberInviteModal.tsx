@@ -414,7 +414,7 @@ const MemberInviteModal = ({
               <AlertDialogCancel>취소</AlertDialogCancel>
               <AlertDialogAction
                 onClick={executeRemove}
-                className="bg-[#ff6347] text-destructive-foreground hover:bg-[#ff6347]/90 text-white"
+                className="text-destructive-foreground bg-[#ff6347] text-white hover:bg-[#ff6347]/90"
               >
                 삭제
               </AlertDialogAction>
