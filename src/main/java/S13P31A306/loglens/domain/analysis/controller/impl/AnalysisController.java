@@ -178,8 +178,7 @@ public class AnalysisController implements AnalysisApi {
         log.info("✅ Analysis document deleted: documentId={}", documentId);
 
         return ApiResponseFactory.success(
-                AnalysisSuccessCode.DOCUMENT_DELETED,
-                null
+                AnalysisSuccessCode.DOCUMENT_DELETED
         );
     }
 }
