@@ -8,6 +8,7 @@ import S13P31A306.loglens.domain.jira.repository.JiraConnectionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -26,7 +27,7 @@ public class JiraConnectionTransactionService {
 
     /**
      * Jira 연동 정보 저장
-     * 별도의 쓰기 가능한 트랜잭션으로 실행
+     * 별도의 쓰기 가능한 트랜잭션으로 실행 (부모 트랜잭션과 독립적)
      *
      * @param request 연동 요청 DTO
      * @param projectId 프로젝트 ID
@@ -34,7 +35,7 @@ public class JiraConnectionTransactionService {
      * @param encryptedToken 암호화된 API 토큰
      * @return JiraConnectResponse 연동 응답 DTO
      */
-    @Transactional(readOnly = false)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public JiraConnectResponse saveConnection(
             JiraConnectRequest request,
             Integer projectId,
