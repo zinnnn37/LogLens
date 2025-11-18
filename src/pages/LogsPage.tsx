@@ -426,13 +426,12 @@ const LogsPage = () => {
                 size="sm"
                 variant={isRealtimeEnabled ? 'default' : 'outline'}
                 className="flex items-center gap-2"
-                onClick={() =>
-                  setIsRealtimeEnabled(prev => !prev)
-                }
+                onClick={() => setIsRealtimeEnabled(prev => !prev)}
               >
                 <RadioTower
-                  className={`h-4 w-4 ${isRealtimeEnabled ? 'text-emerald-300' : 'text-gray-400'
-                    }`}
+                  className={`h-4 w-4 ${
+                    isRealtimeEnabled ? 'text-emerald-300' : 'text-gray-400'
+                  }`}
                 />
                 <span className="text-xs">
                   {isRealtimeEnabled ? '실시간 수신 ON' : '실시간 수신 OFF'}
@@ -440,8 +439,8 @@ const LogsPage = () => {
               </Button>
             </TooltipTrigger>
             <TooltipContent className="bg-gray-800 text-white shadow-md">
-              실시간 로그 스트리밍을{' '}
-              {isRealtimeEnabled ? '중지' : '시작'}합니다.
+              실시간 로그 스트리밍을 {isRealtimeEnabled ? '중지' : '시작'}
+              합니다.
             </TooltipContent>
           </Tooltip>
         </div>
