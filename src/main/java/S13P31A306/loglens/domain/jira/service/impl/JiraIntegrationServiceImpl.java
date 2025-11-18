@@ -19,6 +19,7 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -96,7 +97,7 @@ public class JiraIntegrationServiceImpl implements JiraIntegrationService {
     /**
      * Jira 연동 정보 저장 (트랜잭션) DB 저장 작업만 트랜잭션으로 처리
      */
-    @Transactional(readOnly = false)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
     protected JiraConnectResponse saveConnectionInTransaction(
             JiraConnectRequest request,
             Project project,
