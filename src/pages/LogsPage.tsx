@@ -414,10 +414,10 @@ const LogsPage = () => {
 
   return (
     <TooltipProvider>
-      <div className="font-pretendard space-y-6 p-6 py-1">
+      <div className="space-y-6 p-6 py-1">
         {/* 상단 타이틀 + 실시간 토글 */}
-        <div className="mb-2 flex items-center justify-between">
-          <h1 className="font-godoM text-lg">로그 내역</h1>
+        <div className="mb-2 flex items-end justify-between">
+          <h1 className="font-godoM text-lg leading-none">로그 내역</h1>
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -425,7 +425,7 @@ const LogsPage = () => {
                 type="button"
                 size="sm"
                 variant={isRealtimeEnabled ? 'default' : 'outline'}
-                className="flex items-center gap-2"
+                className="flex h-7 items-center gap-2 rounded-lg px-3 py-1"
                 onClick={() => setIsRealtimeEnabled(prev => !prev)}
               >
                 <RadioTower
