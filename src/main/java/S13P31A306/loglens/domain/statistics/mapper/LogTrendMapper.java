@@ -1,13 +1,15 @@
 package S13P31A306.loglens.domain.statistics.mapper;
 
+import static S13P31A306.loglens.domain.statistics.constants.StatisticsConstants.DEFAULT_TIMEZONE;
+import static S13P31A306.loglens.domain.statistics.constants.StatisticsConstants.INTERVAL_HOURS;
+import static S13P31A306.loglens.domain.statistics.constants.StatisticsConstants.TIME_FORMAT;
+import static S13P31A306.loglens.domain.statistics.constants.StatisticsConstants.TREND_HOURS;
+
 import S13P31A306.loglens.domain.statistics.dto.internal.LogTrendAggregation;
 import S13P31A306.loglens.domain.statistics.dto.response.LogTrendResponse;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.ReportingPolicy;
-
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -15,8 +17,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static S13P31A306.loglens.domain.statistics.constants.StatisticsConstants.*;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 
 /**
  * 로그 추이 매핑 인터페이스
@@ -61,42 +64,57 @@ public interface LogTrendMapper {
     /**
      * 전체 응답 생성
      *
-     * @param projectUuid 프로젝트 UUID
-     * @param startTime   시작 시간
-     * @param endTime     종료 시간
+     * @param projectUuid  프로젝트 UUID
+     * @param startTimeUtc 시작 시간
+     * @param endTimeUtc   종료 시간
      * @param aggregations OpenSearch 집계 결과 리스트
      * @return LogTrendResponse
      */
     default LogTrendResponse toLogTrendResponse(
             String projectUuid,
-            LocalDateTime startTime,
-            LocalDateTime endTime,
+            LocalDateTime startTimeUtc,
+            LocalDateTime endTimeUtc,
             List<LogTrendAggregation> aggregations
     ) {
-        // 전체 시간 슬롯 생성 (24시간 / 3시간 = 8개)
-        List<LocalDateTime> timeSlots = generateTimeSlots(startTime, INTERVAL_HOURS, TREND_HOURS / INTERVAL_HOURS);
+        // UTC → KST 변환
+        LocalDateTime startTimeKst = startTimeUtc.atOffset(ZoneOffset.UTC)
+                .atZoneSameInstant(ZoneId.of(DEFAULT_TIMEZONE))
+                .toLocalDateTime();
 
-        // OpenSearch 결과를 Map으로 변환 (timestamp를 시간 단위로 truncate하여 매칭)
-        Map<LocalDateTime, LogTrendAggregation> aggMap = aggregations.stream()
-                .collect(Collectors.toMap(
-                        agg -> agg.timestamp().truncatedTo(ChronoUnit.HOURS),
-                        agg -> agg,
-                        (existing, replacement) -> existing  // 중복 시 첫 번째 값 사용
-                ));
+        LocalDateTime endTimeKst = endTimeUtc.atOffset(ZoneOffset.UTC)
+                .atZoneSameInstant(ZoneId.of(DEFAULT_TIMEZONE))
+                .toLocalDateTime();
 
-        // 각 시간 슬롯에 대해 데이터 있으면 사용, 없으면 0으로 채움
-        List<LogTrendResponse.DataPoint> dataPoints = timeSlots.stream()
-                .map(ts -> aggMap.getOrDefault(ts.truncatedTo(ChronoUnit.HOURS), createEmptyAggregation(ts)))
-                .map(this::toDataPoint)
-                .toList();
-
-        // Period 생성
-        LogTrendResponse.Period period = new LogTrendResponse.Period(
-                formatTimestamp(startTime),
-                formatTimestamp(endTime)
+        // KST 기준 슬롯 생성
+        List<LocalDateTime> timeSlots = generateTimeSlots(
+                startTimeKst, INTERVAL_HOURS, TREND_HOURS / INTERVAL_HOURS
         );
 
-        // Summary 생성 (실제 aggregations 기반)
+        // OpenSearch 결과도 KST로 변경하여 슬롯과 매핑
+        Map<LocalDateTime, LogTrendAggregation> aggMap = aggregations.stream()
+                .collect(Collectors.toMap(
+                        agg -> agg.timestamp()
+                                .atOffset(ZoneOffset.UTC)
+                                .atZoneSameInstant(ZoneId.of(DEFAULT_TIMEZONE))
+                                .toLocalDateTime()
+                                .truncatedTo(ChronoUnit.HOURS),
+                        agg -> agg,
+                        (existing, replacement) -> existing
+                ));
+
+        // 슬롯을 돌면서 매핑
+        List<LogTrendResponse.DataPoint> dataPoints =
+                timeSlots.stream()
+                        .map(ts -> aggMap.getOrDefault(ts, createEmptyAggregation(ts)))
+                        .map(this::toDataPoint)
+                        .toList();
+
+        // Period도 KST로 출력
+        LogTrendResponse.Period period = new LogTrendResponse.Period(
+                formatTimestamp(startTimeUtc), // formatTimestamp는 이미 KST로 출력함
+                formatTimestamp(endTimeUtc)
+        );
+
         LogTrendResponse.Summary summary = buildSummary(aggregations);
 
         return new LogTrendResponse(
@@ -111,9 +129,9 @@ public interface LogTrendMapper {
     /**
      * 시간 슬롯 생성
      *
-     * @param startTime 시작 시간
+     * @param startTime     시작 시간
      * @param intervalHours 간격 (시간)
-     * @param count 생성할 슬롯 개수
+     * @param count         생성할 슬롯 개수
      * @return 시간 슬롯 리스트
      */
     default List<LocalDateTime> generateTimeSlots(LocalDateTime startTime, int intervalHours, int count) {
