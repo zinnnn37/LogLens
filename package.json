@@ -45,19 +45,21 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run build:unplugin",
-    "build:unplugin": "tsc src/unplugin/index.ts --outDir unplugin --declaration --skipLibCheck",
-    "preview": "vite preview",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "build": "vite build && npm run build:babel && npm run build:unplugin",
+    "build:babel": "tsc src/babel/index.ts --outDir babel --declaration --skipLibCheck --module commonjs",
+    "build:unplugin": "tsc src/unplugin/index.ts --outDir . --declaration --skipLibCheck && (if exist unplugin\\babel rd /s /q unplugin\\babel)",
+    "preview": "vite preview"
   },
   "peerDependencies": {
-    "react": ">=16.8.0"
+    "react": ">=16.8.0",
+    "@babel/preset-typescript": "^7.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
       "optional": true
+    },
+    "@babel/preset-typescript": {
+      "optional": false
     }
   },
   "dependencies": {
@@ -65,6 +67,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
+    "@babel/preset-typescript": "^7.28.5",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@types/babel__core": "^7.20.5",

@@ -65,6 +65,15 @@ export const unplugin = createUnplugin(
           sourceMaps: options.sourcemap !== false,
           configFile: false,
           babelrc: false,
+          presets: [
+            [
+              '@babel/preset-typescript',
+              {
+                isTSX: id.endsWith('.tsx'),
+                allExtensions: true,
+              },
+            ],
+          ],
         });
 
         if (!result || !result.code) {

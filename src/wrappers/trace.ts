@@ -7,51 +7,51 @@ import type { LogLensOptions } from '../types/logTypes';
 /**
  * StackTrace에서 함수명 추출
  */
-function extractFunctionName(): string {
-  try {
-    const error = new Error();
-    const stack = error.stack;
+// function extractFunctionName(): string {
+//   try {
+//     const error = new Error();
+//     const stack = error.stack;
 
-    if (!stack) return 'anonymous';
+//     if (!stack) return 'anonymous';
 
-    const lines = stack.split('\n');
+//     const lines = stack.split('\n');
 
-    for (let i = 3; i < Math.min(lines.length, 8); i++) {
-      const line = lines[i];
+//     for (let i = 3; i < Math.min(lines.length, 8); i++) {
+//       const line = lines[i];
 
-      let match =
-        line.match(/at\s+(?:Object\.)?(\w+)\s*\(/) ||
-        line.match(/at\s+(\w+)\s/) ||
-        line.match(/^(\w+)@/);
+//       let match =
+//         line.match(/at\s+(?:Object\.)?(\w+)\s*\(/) ||
+//         line.match(/at\s+(\w+)\s/) ||
+//         line.match(/^(\w+)@/);
 
-      if (match && match[1]) {
-        const name = match[1];
+//       if (match && match[1]) {
+//         const name = match[1];
 
-        const excludePatterns = [
-          'withLogLens',
-          'extractFunctionName',
-          'runAsync',
-          'run',
-          'Object',
-          'Module',
-          'eval',
-          'anonymous',
-          'Function',
-          'mountMemo',
-          'useMemo',
-        ];
+//         const excludePatterns = [
+//           'withLogLens',
+//           'extractFunctionName',
+//           'runAsync',
+//           'run',
+//           'Object',
+//           'Module',
+//           'eval',
+//           'anonymous',
+//           'Function',
+//           'mountMemo',
+//           'useMemo',
+//         ];
 
-        if (!excludePatterns.includes(name)) {
-          return name;
-        }
-      }
-    }
+//         if (!excludePatterns.includes(name)) {
+//           return name;
+//         }
+//       }
+//     }
 
-    return 'anonymous';
-  } catch (err) {
-    return 'anonymous';
-  }
-}
+//     return 'anonymous';
+//   } catch (err) {
+//     return 'anonymous';
+//   }
+// }
 
 /**
  * 기본 로그 객체 생성
@@ -137,67 +137,97 @@ function logError(
 
 /**
  * 함수를 LogLens로 래핑 (자동 traceId 생성 및 전파)
- *
- * ✅ 진짜 최종 해결책:
  * - async 함수 감지 후 runAsync 내부에서 실행
  * - Promise 반환 함수는 run + then 체인
  * - 동기 함수는 run으로 처리
  */
+// src/wrappers/trace.ts
+
+// src/wrappers/trace.ts
+
 function withLogLens<T extends (...args: any[]) => any>(
   fn: T,
   options?: LogLensOptions,
 ): T {
-  const functionName =
-    options?.logger ||
-    (fn.name && fn.name !== 'anonymous' ? fn.name : null) ||
-    extractFunctionName();
-
-  // ✅ async 함수인지 미리 확인
+  const functionName = options?.logger || fn.name || 'anonymous';
   const isAsyncFunction = fn.constructor.name === 'AsyncFunction';
 
   return ((...args: any[]) => {
-    const traceId = crypto.randomUUID();
     const shouldLog = !options?.skipLog;
     const startTime = Date.now();
 
-    // 시작 로그
-    if (shouldLog) {
+    // ✅ 기존 traceId 확인
+    const existingTraceId = LightZone.getTraceId();
+    const traceId = existingTraceId || crypto.randomUUID();
+    const isNewTrace = !existingTraceId;
+
+    // 시작 로그 (새 trace만)
+    if (shouldLog && isNewTrace) {
       logStart(traceId, functionName, args);
     }
 
-    // ✅ async 함수: runAsync 내부에서 실행
+    // ✅ async 함수
     if (isAsyncFunction) {
-      return LightZone.runAsync({ traceId }, async () => {
-        try {
-          const value = await fn(...args);
-          const duration = Date.now() - startTime;
+      // 이미 컨텍스트 있으면 runAsync 스킵
+      if (existingTraceId) {
+        return (async () => {
+          try {
+            const value = await fn(...args);
+            const duration = Date.now() - startTime;
 
-          if (shouldLog) {
-            logSuccess(traceId, functionName, value, duration);
+            if (shouldLog && isNewTrace) {
+              logSuccess(traceId, functionName, value, duration);
+            }
+
+            return value;
+          } catch (error: any) {
+            const duration = Date.now() - startTime;
+            logError(traceId, functionName, error, duration);
+            throw error;
           }
+        })();
+      } else {
+        // 새 컨텍스트 생성
+        return LightZone.runAsync({ traceId }, async () => {
+          try {
+            const value = await fn(...args);
+            const duration = Date.now() - startTime;
 
-          return value;
-        } catch (error: any) {
-          const duration = Date.now() - startTime;
-          logError(traceId, functionName, error, duration);
-          throw error;
-        }
-      });
+            if (shouldLog) {
+              logSuccess(traceId, functionName, value, duration);
+            }
+
+            return value;
+          } catch (error: any) {
+            const duration = Date.now() - startTime;
+            logError(traceId, functionName, error, duration);
+            throw error;
+          }
+        });
+      }
     }
 
-    // ✅ 동기 또는 Promise 반환 함수: run 내부에서 실행
+    // ✅ 동기/Promise 반환 함수
     let result: any;
     let syncError: any = null;
 
-    LightZone.run({ traceId }, () => {
+    // 컨텍스트 있으면 run 스킵
+    if (existingTraceId) {
       try {
         result = fn(...args);
       } catch (error) {
         syncError = error;
       }
-    });
+    } else {
+      LightZone.run({ traceId }, () => {
+        try {
+          result = fn(...args);
+        } catch (error) {
+          syncError = error;
+        }
+      });
+    }
 
-    // 동기 에러 처리
     if (syncError) {
       const duration = Date.now() - startTime;
       logError(traceId, functionName, syncError, duration);
@@ -206,12 +236,11 @@ function withLogLens<T extends (...args: any[]) => any>(
 
     // Promise 체크
     if (result && typeof result.then === 'function') {
-      // ✅ Promise 반환 함수: then 체인으로 로깅
       return result
         .then((value: any) => {
           const duration = Date.now() - startTime;
 
-          if (shouldLog) {
+          if (shouldLog && isNewTrace) {
             logSuccess(traceId, functionName, value, duration);
           }
 
@@ -224,10 +253,10 @@ function withLogLens<T extends (...args: any[]) => any>(
         });
     }
 
-    // ✅ 동기 함수: 즉시 로깅 후 반환
+    // 동기 완료
     const duration = Date.now() - startTime;
 
-    if (shouldLog) {
+    if (shouldLog && isNewTrace) {
       logSuccess(traceId, functionName, result, duration);
     }
 
