@@ -32,11 +32,17 @@ const FrequentErrorsCard = ({ data }: FrequentErrorsCardProps) => {
           </div>
         ) : (
           <div
-            className="scrollbar-custom max-h-[500px] space-y-3 overflow-y-auto"
-            style={{
-              scrollbarWidth: 'thin',
-              scrollbarColor: '#d1d5db transparent',
-            }}
+            className="
+              max-h-[500px] 
+              space-y-3 
+              overflow-y-auto 
+              overflow-x-hidden 
+              pr-2
+              [&::-webkit-scrollbar]:w-1.5
+              [&::-webkit-scrollbar-track]:bg-transparent
+              [&::-webkit-scrollbar-thumb]:bg-slate-200
+              [&::-webkit-scrollbar-thumb]:rounded-full
+            "
           >
             {data.errors.map(error => (
               <div
@@ -45,19 +51,20 @@ const FrequentErrorsCard = ({ data }: FrequentErrorsCardProps) => {
                 onClick={() => handleErrorClick(error.message)}
               >
                 {/* 헤더: 순위 + 에러 타입 */}
-                <div className="mb-3 flex items-center gap-3">
-                  <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gray-200 text-sm font-bold text-gray-700">
+                <div className="mb-3 flex items-start gap-3">
+                  <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gray-200 text-sm font-bold text-gray-700 mt-0.5">
                     {error.rank}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {error.exceptionType}
+                    {/* .뒤에 줄바꿈 */}
+                    <p className="break-words text-sm font-semibold text-gray-900">
+                      {error.exceptionType.replace(/\./g, '.\u200B')}
                     </p>
                   </div>
                 </div>
 
                 {/* 에러 메시지 */}
-                <p className="mb-3 ml-1 text-sm text-gray-700">
+                <p className="mb-3 ml-1 break-words text-sm text-gray-700">
                   {error.message}
                 </p>
 
