@@ -82,7 +82,7 @@ logging:
 
 jwt:
   secret: ${JWT_SECRET:c3es6QmdhS7Bffn7u3ljFyWnj50RxsLqNzpgomVwJjZvbsdiIKkXunqexhnL7+ROLg+5Kxzf2ljrakWSPTsV6g==}
-  access-token-validity-in-seconds: 1800
+  access-token-validity-in-seconds: 86400
   refresh-token-validity-in-seconds: 604800
 
 management:
