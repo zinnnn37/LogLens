@@ -9,7 +9,7 @@ import type { DocumentFormat } from '@/types/analysis';
 
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, RadioTower } from 'lucide-react';
 import { toast } from 'sonner';
 
 import DetailLogSearchBox, {
@@ -57,6 +57,9 @@ const LogsPage = () => {
   const [modalPage, setModalPage] = useState<'page1' | 'page2'>('page1');
   const [isJiraConnectModalOpen, setIsJiraConnectModalOpen] = useState(false);
   const [isGeneratingDoc, setIsGeneratingDoc] = useState(false);
+
+  // 🔵 실시간 로그(SSE) 사용 여부
+  const [isRealtimeEnabled, setIsRealtimeEnabled] = useState(true);
 
   const fetchLogs = useCallback(
     async (isInitial: boolean, searchCriteria: SearchCriteria | null) => {
@@ -137,9 +140,15 @@ const LogsPage = () => {
   }, [projectUuid, searchParams]);
 
   // --- 실시간 로그 스트리밍 (SSE) ---
-
   useEffect(() => {
     console.log('SSE useEffect 실행. 현재 accessToken:', accessToken);
+    console.log('실시간 로그 사용 여부:', isRealtimeEnabled);
+
+    // 🔌 사용자가 실시간 기능을 꺼둔 경우
+    if (!isRealtimeEnabled) {
+      console.log('실시간 로그 스트리밍 비활성화 상태이므로 SSE 연결 안 함.');
+      return;
+    }
 
     if (!projectUuid || !accessToken) {
       console.warn('SSE 연결 중단. 이유:', {
@@ -195,7 +204,7 @@ const LogsPage = () => {
 
     // 하트비트
     eventSource.addEventListener('heartbeat', () => {
-      // console.log('💗'); // 너무 자주 찍히면 주석 처리
+      // console.log('💗');
     });
 
     // 에러 발생 시
@@ -209,7 +218,7 @@ const LogsPage = () => {
       console.log('SSE 연결 종료');
       eventSource.close();
     };
-  }, [projectUuid, criteria, accessToken]);
+  }, [projectUuid, criteria, accessToken, isRealtimeEnabled]);
 
   // 검색핸들러
   const handleSearch = (newCriteria: SearchCriteria) => {
@@ -406,7 +415,36 @@ const LogsPage = () => {
   return (
     <TooltipProvider>
       <div className="font-pretendard space-y-6 p-6 py-1">
-        <h1 className="font-godoM text-lg">로그 내역</h1>
+        {/* 상단 타이틀 + 실시간 토글 */}
+        <div className="mb-2 flex items-center justify-between">
+          <h1 className="font-godoM text-lg">로그 내역</h1>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant={isRealtimeEnabled ? 'default' : 'outline'}
+                className="flex items-center gap-2"
+                onClick={() =>
+                  setIsRealtimeEnabled(prev => !prev)
+                }
+              >
+                <RadioTower
+                  className={`h-4 w-4 ${isRealtimeEnabled ? 'text-emerald-300' : 'text-gray-400'
+                    }`}
+                />
+                <span className="text-xs">
+                  {isRealtimeEnabled ? '실시간 수신 ON' : '실시간 수신 OFF'}
+                </span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="bg-gray-800 text-white shadow-md">
+              실시간 로그 스트리밍을{' '}
+              {isRealtimeEnabled ? '중지' : '시작'}합니다.
+            </TooltipContent>
+          </Tooltip>
+        </div>
 
         {/* 로그 발생 추이 */}
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
