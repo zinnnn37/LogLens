@@ -12,6 +12,7 @@ import {
 import clsx from 'clsx';
 import { createProjectPath } from '@/router/route-path';
 import { useAuthStore } from '@/stores/authStore';
+import { useNotificationStore } from '@/stores/notificationStore';
 import {
   getUnreadAlertCount,
   connectAlertStream,
@@ -97,6 +98,9 @@ const HeaderLink = ({
 const Header = ({ className, ...props }: HeaderProps) => {
   const { projectUuid } = useParams<{ projectUuid: string }>();
   const { accessToken } = useAuthStore();
+  const setProjectNotification = useNotificationStore(
+    state => state.setProjectNotification,
+  );
 
   // --- 알림 상태 관리 ---
   const [unreadCount, setUnreadCount] = useState(0);
@@ -113,11 +117,14 @@ const Header = ({ className, ...props }: HeaderProps) => {
         projectUuid,
       });
       console.log('getUnreadAlertCount 응답:', response);
-      setUnreadCount(response.unreadCount || 0);
+      const count = response.unreadCount || 0;
+      setUnreadCount(count);
+      // 전역 store에 알림 상태 업데이트
+      setProjectNotification(projectUuid, count > 0);
     } catch (error) {
       console.error('안 읽은 알림 개수 조회 실패:', error);
     }
-  }, [projectUuid]);
+  }, [projectUuid, setProjectNotification]);
 
   // 페이지 진입 시 안읽은 알림 조회
   useEffect(() => {
@@ -156,9 +163,8 @@ const Header = ({ className, ...props }: HeaderProps) => {
   // 알림버튼 클릭시 팝오버 핸들러
   const handlePopoverOpenChange = (open: boolean) => {
     setIsAlertPopoverOpen(open);
-    if (open) {
-      setUnreadCount(0);
-    } else {
+    if (!open) {
+      // 팝오버를 닫을 때 서버에서 실제 알림 개수 다시 확인
       fetchUnreadCount();
     }
   };

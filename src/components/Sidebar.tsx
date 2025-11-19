@@ -40,7 +40,9 @@ import { useAuthStore } from '@/stores/authStore';
 import { ROUTE_PATH, createProjectPath } from '@/router/route-path';
 
 import { useProjectStore } from '@/stores/projectStore';
+import { useNotificationStore } from '@/stores/notificationStore';
 import { fetchProjects, createProject } from '@/services/projectService';
+import { getUnreadAlertCount } from '@/services/alertService';
 
 // --- Sidebar Props ---
 type SidebarProps = ComponentProps<'aside'> & {
@@ -83,10 +85,12 @@ const SortableProjectItem = ({
   project,
   isActive,
   onClick,
+  hasNotification,
 }: {
   project: { projectUuid: string; projectName: string };
   isActive: boolean;
   onClick: () => void;
+  hasNotification: boolean;
 }) => {
   const {
     attributes,
@@ -125,9 +129,13 @@ const SortableProjectItem = ({
         <button
           type="button"
           onClick={onClick}
-          className="flex flex-1 items-center px-1 py-2 pr-3"
+          className="flex flex-1 items-center gap-2 px-1 py-2 pr-3"
         >
           <span className="truncate">{project.projectName}</span>
+          {/* 알림 인디케이터 */}
+          {hasNotification && (
+            <span className="ml-auto block h-2 w-2 flex-shrink-0 rounded-full bg-red-500" />
+          )}
         </button>
       </div>
     </li>
@@ -148,6 +156,14 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
   const setProjectsInStore = useProjectStore(state => state.setProjects);
   const updateProjects = useProjectStore(state => state.updateProjects);
 
+  // 알림 상태(store)
+  const projectNotifications = useNotificationStore(
+    state => state.projectNotifications,
+  );
+  const setProjectNotification = useNotificationStore(
+    state => state.setProjectNotification,
+  );
+
   // 드래그 앤 드롭 센서
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -162,13 +178,31 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
       try {
         const response = await fetchProjects();
         setProjectsInStore(response);
+
+        // 각 프로젝트의 알림 상태 확인
+        response.content.forEach(async project => {
+          try {
+            const alertResponse = await getUnreadAlertCount({
+              projectUuid: project.projectUuid,
+            });
+            setProjectNotification(
+              project.projectUuid,
+              (alertResponse.unreadCount || 0) > 0,
+            );
+          } catch (error) {
+            console.error(
+              `프로젝트 ${project.projectName} 알림 조회 실패:`,
+              error,
+            );
+          }
+        });
       } catch (error) {
         // 목록 로드 실패 시 콘솔만 (UX 정책은 추후)
         console.error('프로젝트 목록 로드 실패', error);
       }
     };
     loadProjects();
-  }, [setProjectsInStore]);
+  }, [setProjectsInStore, setProjectNotification]);
 
   // 프로젝트 선택 핸들러
   const handleProjectSelect = (selectedProjectUuid: string) => {
@@ -252,11 +286,14 @@ const Sidebar = ({ className, ...props }: SidebarProps) => {
                         <ul className="flex flex-col gap-1 pl-2 text-[#6A6A6A]">
                           {projects.map(p => {
                             const isActive = projectUuid === p.projectUuid;
+                            const hasProjectNotification =
+                              projectNotifications[p.projectUuid] ?? false;
                             return (
                               <SortableProjectItem
                                 key={p.projectUuid}
                                 project={p}
                                 isActive={isActive}
+                                hasNotification={hasProjectNotification}
                                 onClick={() =>
                                   handleProjectSelect(p.projectUuid)
                                 }

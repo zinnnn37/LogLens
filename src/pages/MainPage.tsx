@@ -15,17 +15,22 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { useProjectStore } from '@/stores/projectStore';
+import { useNotificationStore } from '@/stores/notificationStore';
 import {
   fetchProjects,
   createProject,
   deleteProject,
 } from '@/services/projectService';
+import { getUnreadAlertCount } from '@/services/alertService';
 import { ApiError } from '@/types/api';
 import type { ProjectInfoDTO } from '@/types/project';
 
 const MainPage = () => {
   const projects = useProjectStore(state => state.projects);
   const setProjectsInStore = useProjectStore(state => state.setProjects);
+  const setProjectNotification = useNotificationStore(
+    state => state.setProjectNotification,
+  );
 
   const [openCreate, setOpenCreate] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,6 +45,24 @@ const MainPage = () => {
       try {
         const response = await fetchProjects();
         setProjectsInStore(response);
+
+        // 각 프로젝트의 알림 상태 확인
+        response.content.forEach(async project => {
+          try {
+            const alertResponse = await getUnreadAlertCount({
+              projectUuid: project.projectUuid,
+            });
+            setProjectNotification(
+              project.projectUuid,
+              (alertResponse.unreadCount || 0) > 0,
+            );
+          } catch (error) {
+            console.error(
+              `프로젝트 ${project.projectName} 알림 조회 실패:`,
+              error,
+            );
+          }
+        });
       } catch (error) {
         console.error('프로젝트 목록 로드 실패', error);
       } finally {
@@ -47,7 +70,7 @@ const MainPage = () => {
       }
     };
     loadProjects();
-  }, [setProjectsInStore]);
+  }, [setProjectsInStore, setProjectNotification]);
 
   useEffect(() => {
     setShowEmptyMain(!isLoading && projects.length === 0);
