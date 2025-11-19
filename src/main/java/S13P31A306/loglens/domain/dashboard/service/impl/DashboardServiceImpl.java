@@ -243,10 +243,10 @@ public class DashboardServiceImpl implements DashboardService {
             Set<Integer> neighbors = adjacencyMap.getOrDefault(currentId, Collections.emptySet());
 
             for (Integer neighborId : neighbors) {
-                if (!connected.contains(neighborId)) {
+                 if (!connected.contains(neighborId)) {
                     connected.add(neighborId);
                     queue.offer(neighborId);
-                }
+                 }
             }
         }
 
