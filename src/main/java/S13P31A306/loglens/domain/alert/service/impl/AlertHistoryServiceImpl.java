@@ -7,11 +7,16 @@ import S13P31A306.loglens.domain.alert.mapper.AlertHistoryMapper;
 import S13P31A306.loglens.domain.alert.repository.AlertHistoryRepository;
 import S13P31A306.loglens.domain.alert.service.AlertHistoryService;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
+import S13P31A306.loglens.domain.log.entity.Log;
+import S13P31A306.loglens.domain.log.mapper.LogMapper;
+import S13P31A306.loglens.domain.log.repository.LogRepository;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import S13P31A306.loglens.domain.project.service.ProjectService;
 import S13P31A306.loglens.global.exception.BusinessException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -39,6 +44,7 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
 
     private static final String LOG_PREFIX = "[AlertHistoryService]";
     private static final int POLLING_INTERVAL = 5; // 5초 간격으로 새 알림 확인
+    private static final int MAX_RELATED_LOGS = 20; // Alert당 최대 관련 로그 개수
 
     private final AlertHistoryRepository alertHistoryRepository;
     private final ProjectRepository projectRepository;
@@ -48,6 +54,9 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
     private final ScheduledExecutorService sseScheduler;
     private final long sseTimeout;
     private final AlertHistoryMapper alertHistoryMapper;
+    private final LogRepository logRepository;
+    private final LogMapper logMapper;
+    private final ObjectMapper objectMapper;
 
     public AlertHistoryServiceImpl(
             AlertHistoryRepository alertHistoryRepository,
@@ -57,7 +66,10 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
             AuthenticationHelper authHelper,
             @Qualifier("sseScheduler") ScheduledExecutorService sseScheduler,
             @Qualifier("sseTimeout") long sseTimeout,
-            AlertHistoryMapper alertHistoryMapper) {
+            AlertHistoryMapper alertHistoryMapper,
+            LogRepository logRepository,
+            LogMapper logMapper,
+            ObjectMapper objectMapper) {
         this.alertHistoryRepository = alertHistoryRepository;
         this.projectRepository = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
@@ -66,6 +78,9 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
         this.sseScheduler = sseScheduler;
         this.sseTimeout = sseTimeout;
         this.alertHistoryMapper = alertHistoryMapper;
+        this.logRepository = logRepository;
+        this.logMapper = logMapper;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -96,7 +111,62 @@ public class AlertHistoryServiceImpl implements AlertHistoryService {
 
         log.info("{} 알림 이력 조회 완료: count={}", LOG_PREFIX, histories.size());
 
-        return alertHistoryMapper.toResponseList(histories, projectUuid);
+        // 4. 각 alert에 대한 관련 로그 조회 및 매핑
+        return histories.stream()
+                .map(alert -> {
+                    try {
+                        // logReference에서 시간 범위 파싱
+                        LogReferenceData logRef = parseLogReference(alert.getLogReference());
+
+                        // OpenSearch에서 관련 ERROR 로그 조회
+                        List<Log> relatedLogs = logRepository.findErrorLogsByProjectUuidAndTimeRange(
+                                projectUuid,
+                                logRef.startTime(),
+                                logRef.endTime(),
+                                MAX_RELATED_LOGS
+                        );
+
+                        log.debug("{} Alert ID {}에 대한 관련 로그 조회 완료: {}건",
+                                LOG_PREFIX, alert.getId(), relatedLogs.size());
+
+                        // DTO 변환
+                        return alertHistoryMapper.toResponseWithLogs(
+                                alert, projectUuid, relatedLogs, logMapper
+                        );
+
+                    } catch (Exception e) {
+                        log.error("{} 관련 로그 조회 실패: alertId={}", LOG_PREFIX, alert.getId(), e);
+                        // 실패 시 빈 로그 리스트로 반환
+                        return alertHistoryMapper.toResponseWithLogs(
+                                alert, projectUuid, List.of(), logMapper
+                        );
+                    }
+                })
+                .toList();
+    }
+
+    /**
+     * logReference JSON 파싱 헬퍼 메소드
+     */
+    private LogReferenceData parseLogReference(String logReference) {
+        try {
+            JsonNode node = objectMapper.readTree(logReference);
+            return new LogReferenceData(
+                    LocalDateTime.parse(node.get("startTime").asText()),
+                    LocalDateTime.parse(node.get("endTime").asText())
+            );
+        } catch (Exception e) {
+            log.error("{} logReference 파싱 실패: {}", LOG_PREFIX, logReference, e);
+            // 파싱 실패 시 기본값 (최근 10분)
+            LocalDateTime now = LocalDateTime.now();
+            return new LogReferenceData(now.minusMinutes(10), now);
+        }
+    }
+
+    /**
+     * LogReference 데이터를 담는 내부 record
+     */
+    private record LogReferenceData(LocalDateTime startTime, LocalDateTime endTime) {
     }
 
     @Override

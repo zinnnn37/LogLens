@@ -50,6 +50,23 @@ public interface LogRepository {
     );
 
     /**
+     * Alert 발생 시간 범위 내의 ERROR 로그 목록 조회
+     * Alert 도메인에서 알림 발생 원인 로그를 조회하기 위해 사용
+     *
+     * @param projectUuid 프로젝트 UUID
+     * @param startTime   조회 시작 시간
+     * @param endTime     조회 종료 시간
+     * @param limit       최대 조회 개수
+     * @return ERROR 로그 목록
+     */
+    List<Log> findErrorLogsByProjectUuidAndTimeRange(
+            String projectUuid,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            int limit
+    );
+
+    /**
      * 시간 범위별 로그 추이 집계
      * Statistics 도메인에서 로그 발생 추이 그래프를 위해 사용
      *

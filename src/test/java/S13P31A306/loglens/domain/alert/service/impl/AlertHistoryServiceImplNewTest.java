@@ -6,11 +6,14 @@ import S13P31A306.loglens.domain.alert.exception.AlertErrorCode;
 import S13P31A306.loglens.domain.alert.mapper.AlertHistoryMapper;
 import S13P31A306.loglens.domain.alert.repository.AlertHistoryRepository;
 import S13P31A306.loglens.domain.auth.util.AuthenticationHelper;
+import S13P31A306.loglens.domain.log.mapper.LogMapper;
+import S13P31A306.loglens.domain.log.repository.LogRepository;
 import S13P31A306.loglens.domain.project.entity.Project;
 import S13P31A306.loglens.domain.project.repository.ProjectMemberRepository;
 import S13P31A306.loglens.domain.project.repository.ProjectRepository;
 import S13P31A306.loglens.domain.project.service.ProjectService;
 import S13P31A306.loglens.global.exception.BusinessException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -64,6 +67,15 @@ class AlertHistoryServiceImplNewTest {
     @Mock
     private AlertHistoryMapper alertHistoryMapper;
 
+    @Mock
+    private LogRepository logRepository;
+
+    @Mock
+    private LogMapper logMapper;
+
+    @Mock
+    private ObjectMapper objectMapper;
+
     private static final String PROJECT_UUID = "test-project-uuid";
     private static final Integer PROJECT_ID = 1;
     private static final Integer USER_ID = 100;
@@ -80,7 +92,10 @@ class AlertHistoryServiceImplNewTest {
                 authHelper,
                 sseScheduler,
                 SSE_TIMEOUT,
-                alertHistoryMapper
+                alertHistoryMapper,
+                logRepository,
+                logMapper,
+                objectMapper
         );
     }
 
@@ -98,7 +113,7 @@ class AlertHistoryServiceImplNewTest {
                     .alertMessage("에러 알림")
                     .alertTime(now)
                     .resolvedYN("N")
-                    .logReference("{\"logId\": 100}")
+                    .logReference("{\"startTime\":\"2025-11-19T10:00:00\",\"endTime\":\"2025-11-19T10:10:00\"}")
                     .alertLevel("ERROR")
                     .traceId("trace-abc-123")
                     .projectId(PROJECT_ID)
@@ -109,7 +124,7 @@ class AlertHistoryServiceImplNewTest {
                     .alertMessage("경고 알림")
                     .alertTime(now.minusMinutes(5))
                     .resolvedYN("Y")
-                    .logReference("{\"logId\": 200}")
+                    .logReference("{\"startTime\":\"2025-11-19T09:50:00\",\"endTime\":\"2025-11-19T10:00:00\"}")
                     .alertLevel("WARN")
                     .traceId("trace-def-456")
                     .projectId(PROJECT_ID)
@@ -118,10 +133,12 @@ class AlertHistoryServiceImplNewTest {
             List<AlertHistory> histories = Arrays.asList(alert1, alert2);
 
             AlertHistoryResponse response1 = new AlertHistoryResponse(
-                    1, "에러 알림", now, "N", "{\"logId\": 100}", "ERROR", "trace-abc-123", PROJECT_UUID
+                    1, "에러 알림", now, "N", "{\"logId\": 100}", "ERROR", "trace-abc-123", PROJECT_UUID,
+                    Collections.emptyList(), Collections.emptyList()
             );
             AlertHistoryResponse response2 = new AlertHistoryResponse(
-                    2, "경고 알림", now.minusMinutes(5), "Y", "{\"logId\": 200}", "WARN", "trace-def-456", PROJECT_UUID
+                    2, "경고 알림", now.minusMinutes(5), "Y", "{\"logId\": 200}", "WARN", "trace-def-456", PROJECT_UUID,
+                    Collections.emptyList(), Collections.emptyList()
             );
             List<AlertHistoryResponse> expectedResponses = Arrays.asList(response1, response2);
 
@@ -132,7 +149,54 @@ class AlertHistoryServiceImplNewTest {
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertHistoryRepository.findByProjectIdOrderByAlertTimeDesc(PROJECT_ID)).willReturn(histories);
-            given(alertHistoryMapper.toResponseList(histories, PROJECT_UUID)).willReturn(expectedResponses);
+
+            // ObjectMapper stubbing - alert1과 alert2 각각에 대해
+            try {
+                com.fasterxml.jackson.databind.JsonNode mockNode1 = org.mockito.Mockito.mock(com.fasterxml.jackson.databind.JsonNode.class);
+                com.fasterxml.jackson.databind.JsonNode startTimeNode1 = org.mockito.Mockito.mock(com.fasterxml.jackson.databind.JsonNode.class);
+                com.fasterxml.jackson.databind.JsonNode endTimeNode1 = org.mockito.Mockito.mock(com.fasterxml.jackson.databind.JsonNode.class);
+                given(startTimeNode1.asText()).willReturn("2025-11-19T10:00:00");
+                given(endTimeNode1.asText()).willReturn("2025-11-19T10:10:00");
+                given(mockNode1.get("startTime")).willReturn(startTimeNode1);
+                given(mockNode1.get("endTime")).willReturn(endTimeNode1);
+                given(objectMapper.readTree("{\"startTime\":\"2025-11-19T10:00:00\",\"endTime\":\"2025-11-19T10:10:00\"}"))
+                        .willReturn(mockNode1);
+
+                com.fasterxml.jackson.databind.JsonNode mockNode2 = org.mockito.Mockito.mock(com.fasterxml.jackson.databind.JsonNode.class);
+                com.fasterxml.jackson.databind.JsonNode startTimeNode2 = org.mockito.Mockito.mock(com.fasterxml.jackson.databind.JsonNode.class);
+                com.fasterxml.jackson.databind.JsonNode endTimeNode2 = org.mockito.Mockito.mock(com.fasterxml.jackson.databind.JsonNode.class);
+                given(startTimeNode2.asText()).willReturn("2025-11-19T09:50:00");
+                given(endTimeNode2.asText()).willReturn("2025-11-19T10:00:00");
+                given(mockNode2.get("startTime")).willReturn(startTimeNode2);
+                given(mockNode2.get("endTime")).willReturn(endTimeNode2);
+                given(objectMapper.readTree("{\"startTime\":\"2025-11-19T09:50:00\",\"endTime\":\"2025-11-19T10:00:00\"}"))
+                        .willReturn(mockNode2);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            // LogRepository stubbing
+            given(logRepository.findErrorLogsByProjectUuidAndTimeRange(
+                    org.mockito.ArgumentMatchers.eq(PROJECT_UUID),
+                    org.mockito.ArgumentMatchers.any(LocalDateTime.class),
+                    org.mockito.ArgumentMatchers.any(LocalDateTime.class),
+                    org.mockito.ArgumentMatchers.eq(20)
+            )).willReturn(Collections.emptyList());
+
+            // AlertHistoryMapper stubbing - 각 alert에 대해 toResponseWithLogs 호출
+            given(alertHistoryMapper.toResponseWithLogs(
+                    org.mockito.ArgumentMatchers.eq(alert1),
+                    org.mockito.ArgumentMatchers.eq(PROJECT_UUID),
+                    org.mockito.ArgumentMatchers.anyList(),
+                    org.mockito.ArgumentMatchers.eq(logMapper)
+            )).willReturn(response1);
+
+            given(alertHistoryMapper.toResponseWithLogs(
+                    org.mockito.ArgumentMatchers.eq(alert2),
+                    org.mockito.ArgumentMatchers.eq(PROJECT_UUID),
+                    org.mockito.ArgumentMatchers.anyList(),
+                    org.mockito.ArgumentMatchers.eq(logMapper)
+            )).willReturn(response2);
 
             // when
             List<AlertHistoryResponse> result = alertHistoryService.getAlertHistories(PROJECT_UUID, USER_ID, null);
@@ -148,7 +212,12 @@ class AlertHistoryServiceImplNewTest {
             verify(projectRepository).findById(PROJECT_ID);
             verify(projectMemberRepository).existsByProjectIdAndUserId(PROJECT_ID, USER_ID);
             verify(alertHistoryRepository).findByProjectIdOrderByAlertTimeDesc(PROJECT_ID);
-            verify(alertHistoryMapper).toResponseList(histories, PROJECT_UUID);
+            verify(alertHistoryMapper, org.mockito.Mockito.times(2)).toResponseWithLogs(
+                    org.mockito.ArgumentMatchers.any(AlertHistory.class),
+                    org.mockito.ArgumentMatchers.eq(PROJECT_UUID),
+                    org.mockito.ArgumentMatchers.anyList(),
+                    org.mockito.ArgumentMatchers.eq(logMapper)
+            );
         }
 
         @Test
@@ -161,7 +230,7 @@ class AlertHistoryServiceImplNewTest {
                     .alertMessage("읽지 않은 알림")
                     .alertTime(now)
                     .resolvedYN("N")
-                    .logReference("{}")
+                    .logReference("{\"startTime\":\"2025-11-19T11:00:00\",\"endTime\":\"2025-11-19T11:10:00\"}")
                     .alertLevel("ERROR")
                     .traceId("trace-unread")
                     .projectId(PROJECT_ID)
@@ -169,7 +238,8 @@ class AlertHistoryServiceImplNewTest {
 
             List<AlertHistory> histories = Collections.singletonList(unreadAlert);
             AlertHistoryResponse response = new AlertHistoryResponse(
-                    1, "읽지 않은 알림", now, "N", "{}", "ERROR", "trace-unread", PROJECT_UUID
+                    1, "읽지 않은 알림", now, "N", "{}", "ERROR", "trace-unread", PROJECT_UUID,
+                    Collections.emptyList(), Collections.emptyList()
             );
             List<AlertHistoryResponse> expectedResponses = Collections.singletonList(response);
 
@@ -181,7 +251,37 @@ class AlertHistoryServiceImplNewTest {
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertHistoryRepository.findByProjectIdAndResolvedYNOrderByAlertTimeDesc(PROJECT_ID, "N"))
                     .willReturn(histories);
-            given(alertHistoryMapper.toResponseList(histories, PROJECT_UUID)).willReturn(expectedResponses);
+
+            // ObjectMapper stubbing
+            try {
+                com.fasterxml.jackson.databind.JsonNode mockNode = org.mockito.Mockito.mock(com.fasterxml.jackson.databind.JsonNode.class);
+                com.fasterxml.jackson.databind.JsonNode startTimeNode = org.mockito.Mockito.mock(com.fasterxml.jackson.databind.JsonNode.class);
+                com.fasterxml.jackson.databind.JsonNode endTimeNode = org.mockito.Mockito.mock(com.fasterxml.jackson.databind.JsonNode.class);
+                given(startTimeNode.asText()).willReturn("2025-11-19T11:00:00");
+                given(endTimeNode.asText()).willReturn("2025-11-19T11:10:00");
+                given(mockNode.get("startTime")).willReturn(startTimeNode);
+                given(mockNode.get("endTime")).willReturn(endTimeNode);
+                given(objectMapper.readTree("{\"startTime\":\"2025-11-19T11:00:00\",\"endTime\":\"2025-11-19T11:10:00\"}"))
+                        .willReturn(mockNode);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            // LogRepository stubbing
+            given(logRepository.findErrorLogsByProjectUuidAndTimeRange(
+                    org.mockito.ArgumentMatchers.eq(PROJECT_UUID),
+                    org.mockito.ArgumentMatchers.any(LocalDateTime.class),
+                    org.mockito.ArgumentMatchers.any(LocalDateTime.class),
+                    org.mockito.ArgumentMatchers.eq(20)
+            )).willReturn(Collections.emptyList());
+
+            // AlertHistoryMapper stubbing
+            given(alertHistoryMapper.toResponseWithLogs(
+                    org.mockito.ArgumentMatchers.eq(unreadAlert),
+                    org.mockito.ArgumentMatchers.eq(PROJECT_UUID),
+                    org.mockito.ArgumentMatchers.anyList(),
+                    org.mockito.ArgumentMatchers.eq(logMapper)
+            )).willReturn(response);
 
             // when
             List<AlertHistoryResponse> result = alertHistoryService.getAlertHistories(PROJECT_UUID, USER_ID, "N");
@@ -205,8 +305,6 @@ class AlertHistoryServiceImplNewTest {
             given(projectRepository.findById(PROJECT_ID)).willReturn(Optional.of(project));
             given(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).willReturn(true);
             given(alertHistoryRepository.findByProjectIdOrderByAlertTimeDesc(PROJECT_ID))
-                    .willReturn(Collections.emptyList());
-            given(alertHistoryMapper.toResponseList(Collections.emptyList(), PROJECT_UUID))
                     .willReturn(Collections.emptyList());
 
             // when
@@ -259,7 +357,8 @@ class AlertHistoryServiceImplNewTest {
             ReflectionTestUtils.setField(project, "id", PROJECT_ID);
 
             AlertHistoryResponse expectedResponse = new AlertHistoryResponse(
-                    ALERT_ID, "에러 알림", alertTime, "Y", "{\"logId\": 100}", "ERROR", "trace-read-test", PROJECT_UUID
+                    ALERT_ID, "에러 알림", alertTime, "Y", "{\"logId\": 100}", "ERROR", "trace-read-test", PROJECT_UUID,
+                    Collections.emptyList(), Collections.emptyList()
             );
 
             given(alertHistoryRepository.findById(ALERT_ID)).willReturn(Optional.of(alertHistory));
@@ -304,7 +403,8 @@ class AlertHistoryServiceImplNewTest {
             ReflectionTestUtils.setField(project, "id", PROJECT_ID);
 
             AlertHistoryResponse expectedResponse = new AlertHistoryResponse(
-                    ALERT_ID, "이미 읽은 알림", alertTime, "Y", "{}", "WARN", "trace-already-read", PROJECT_UUID
+                    ALERT_ID, "이미 읽은 알림", alertTime, "Y", "{}", "WARN", "trace-already-read", PROJECT_UUID,
+                    Collections.emptyList(), Collections.emptyList()
             );
 
             given(alertHistoryRepository.findById(ALERT_ID)).willReturn(Optional.of(alertHistory));

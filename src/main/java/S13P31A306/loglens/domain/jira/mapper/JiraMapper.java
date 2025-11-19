@@ -12,7 +12,9 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
-import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -107,12 +109,15 @@ public interface JiraMapper {
 
     /**
      * 연결 테스트 응답 생성 (헬퍼 메서드)
+     * KST 시간을 UTC로 변환하여 ISO_OFFSET_DATE_TIME 형식으로 반환
      */
     default JiraConnectionTestResponse createConnectionTestResponse() {
         return new JiraConnectionTestResponse(
                 "SUCCESS",
                 "Jira 연결이 성공적으로 테스트되었습니다.",
-                LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME)
+                ZonedDateTime.now(ZoneId.of("Asia/Seoul"))
+                        .withZoneSameInstant(ZoneOffset.UTC)
+                        .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
         );
     }
 }

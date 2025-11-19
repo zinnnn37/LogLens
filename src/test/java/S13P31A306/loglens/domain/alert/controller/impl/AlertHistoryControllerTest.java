@@ -387,7 +387,9 @@ class AlertHistoryControllerTest {
                 "{\"logId\": " + id + "}",
                 alertLevel,
                 traceId,
-                PROJECT_UUID
+                PROJECT_UUID,
+                java.util.Collections.emptyList(),
+                java.util.Collections.emptyList()
         );
     }
 }

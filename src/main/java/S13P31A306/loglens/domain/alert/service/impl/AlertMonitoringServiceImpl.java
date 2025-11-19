@@ -173,6 +173,24 @@ public class AlertMonitoringServiceImpl implements AlertMonitoringService {
                 errorCount, threshold
         );
 
+        // 대표 TraceId 조회 (가장 최근 ERROR 로그의 traceId)
+        String representativeTraceId = null;
+        try {
+            List<S13P31A306.loglens.domain.log.entity.Log> errorLogs = logRepository.findErrorLogsByProjectUuidAndTimeRange(
+                    project.getProjectUuid(),
+                    startTime,
+                    endTime,
+                    1  // 가장 최근 1개만
+            );
+            if (!errorLogs.isEmpty() && errorLogs.get(0).getTraceId() != null) {
+                representativeTraceId = errorLogs.get(0).getTraceId();
+                log.debug("{} 대표 TraceId 조회 성공: projectId={}, traceId={}",
+                        LOG_PREFIX, project.getId(), representativeTraceId);
+            }
+        } catch (Exception e) {
+            log.warn("{} 대표 TraceId 조회 실패: projectId={}", LOG_PREFIX, project.getId(), e);
+        }
+
         // logReference JSON 생성
         String logReference = String.format(
                 "{\"alertType\":\"ERROR_THRESHOLD\",\"errorCount\":%d,\"threshold\":%d," +
@@ -187,13 +205,15 @@ public class AlertMonitoringServiceImpl implements AlertMonitoringService {
                 .alertTime(LocalDateTime.now())
                 .resolvedYN("N")
                 .logReference(logReference)
+                .alertLevel("ERROR")  // 레벨 설정
+                .traceId(representativeTraceId)  // 대표 TraceId 저장
                 .projectId(project.getId())
                 .build();
 
         // 저장
         alertHistoryRepository.save(alert);
 
-        log.info("{} 알림 생성 완료: projectId={}, projectUuid={}, errorCount={}, threshold={}",
-                LOG_PREFIX, project.getId(), project.getProjectUuid(), errorCount, threshold);
+        log.info("{} 알림 생성 완료: projectId={}, projectUuid={}, errorCount={}, threshold={}, traceId={}",
+                LOG_PREFIX, project.getId(), project.getProjectUuid(), errorCount, threshold, representativeTraceId);
     }
 }

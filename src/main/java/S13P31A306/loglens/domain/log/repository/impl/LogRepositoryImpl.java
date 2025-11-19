@@ -702,6 +702,63 @@ public class LogRepositoryImpl implements LogRepository {
     }
 
     @Override
+    public List<Log> findErrorLogsByProjectUuidAndTimeRange(
+            String projectUuid,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            int limit) {
+
+        log.debug("{} Alert용 ERROR 로그 목록 조회: projectUuid={}, startTime={}, endTime={}, limit={}",
+                LOG_PREFIX, projectUuid, startTime, endTime, limit);
+
+        try {
+            // 1. Bool Query 생성: project_uuid + log_level=ERROR + timestamp 범위
+            Query query = Query.of(q -> q.bool(b -> b
+                    .filter(f -> f.term(t -> t
+                            .field(OpenSearchField.PROJECT_UUID_KEYWORD.getFieldName())
+                            .value(FieldValue.of(projectUuid))))
+                    .filter(f -> f.term(t -> t
+                            .field(OpenSearchField.LOG_LEVEL.getFieldName())
+                            .value(FieldValue.of("ERROR"))))
+                    .filter(f -> f.range(r -> r
+                            .field(TIMESTAMP_FIELD)
+                            .gte(JsonData.of(startTime.atOffset(ZoneOffset.UTC).toString()))
+                            .lte(JsonData.of(endTime.atOffset(ZoneOffset.UTC).toString()))
+                    ))
+            ));
+
+            // 2. SearchRequest 생성 (최신순 정렬)
+            SearchRequest searchRequest = SearchRequest.of(s -> s
+                    .index(OpenSearchUtils.getProjectIndexPattern(projectUuid))
+                    .query(query)
+                    .size(limit)
+                    .sort(so -> so.field(f -> f
+                            .field(TIMESTAMP_FIELD)
+                            .order(SortOrder.Desc)
+                    ))
+            );
+
+            // 3. OpenSearch 쿼리 실행
+            SearchResponse<Log> response = openSearchClient.search(searchRequest, Log.class);
+
+            // 4. 결과 파싱
+            List<Log> logs = response.hits().hits().stream()
+                    .map(Hit::source)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            log.debug("{} Alert용 ERROR 로그 목록 조회 완료: projectUuid={}, 조회된 로그 개수={}",
+                    LOG_PREFIX, projectUuid, logs.size());
+
+            return logs;
+
+        } catch (IOException e) {
+            log.error("{} Alert용 ERROR 로그 목록 조회 실패: projectUuid={}", LOG_PREFIX, projectUuid, e);
+            throw new BusinessException(GlobalErrorCode.OPENSEARCH_OPERATION_FAILED, null, e);
+        }
+    }
+
+    @Override
     public List<LogTrendAggregation> aggregateLogTrendByTimeRange(
             String projectUuid,
             LocalDateTime startTime,
