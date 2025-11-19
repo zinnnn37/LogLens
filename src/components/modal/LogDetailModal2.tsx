@@ -69,9 +69,7 @@ const LogDetailModal2 = ({ log, onGoBack, onSubmit }: LogDetailModal2Props) => {
   const [description, setDescription] = useState(
     `[로그 상세 정보]\n- TraceID: ${log.traceId}\n- Level: ${
       log.logLevel
-    }\n- System: ${log.sourceType}\n- Date: ${new Date(
-      log.timestamp,
-    ).toLocaleString()}\n\n[Message]\n${log.message}`,
+    }\n- System: ${log.sourceType}\n- Date: ${new Date(log.timestamp).toLocaleString('ko-KR', { timeZone: 'UTC' })}\n\n[Message]\n${log.message}`,
   );
   const [issueType, setIssueType] = useState<JiraIssueType>('Bug');
   const [priority, setPriority] = useState<JiraIssuePriority>('Medium');
