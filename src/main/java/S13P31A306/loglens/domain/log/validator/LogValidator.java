@@ -92,12 +92,12 @@ public class LogValidator {
     private void validateTimeRange(LogSearchRequest request) {
         log.debug("{} 시간 범위 검증: startTime={}, endTime={}", LOG_PREFIX,
                 request.getStartTime(), request.getEndTime());
-        if (Objects.nonNull(request.getStartTime()) && Objects.nonNull(request.getEndTime())) {
-            if (request.getStartTime().isAfter(request.getEndTime())) {
-                log.warn("{} 시간 범위 유효성 실패: 시작 시간이 종료 시간보다 늦음", LOG_PREFIX);
-                throw new BusinessException(LogErrorCode.INVALID_TIME_RANGE);
-            }
-        }
+//        if (Objects.nonNull(request.getStartTime()) && Objects.nonNull(request.getEndTime())) {
+//            if (request.getStartTime().isAfter(request.getEndTime())) {
+//                log.warn("{} 시간 범위 유효성 실패: 시작 시간이 종료 시간보다 늦음", LOG_PREFIX);
+//                throw new BusinessException(LogErrorCode.INVALID_TIME_RANGE);
+//            }
+//        }
         log.debug("{} 시간 범위 검증 완료", LOG_PREFIX);
     }
 
