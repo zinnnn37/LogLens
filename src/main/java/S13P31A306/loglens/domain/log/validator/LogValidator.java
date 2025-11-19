@@ -113,14 +113,14 @@ public class LogValidator {
         }
 
         log.debug("{} 로그 레벨 검증: {}", LOG_PREFIX, logLevels);
-//        for (String level : logLevels) {
-//            boolean isValid = Arrays.stream(LogLevel.values())
-//                    .anyMatch(e -> e.name().equalsIgnoreCase(level));
-//            if (!isValid) {
-//                log.warn("{} 유효하지 않은 로그 레벨: {}", LOG_PREFIX, level);
-//                throw new BusinessException(LogErrorCode.INVALID_LOG_LEVEL);
-//            }
-//        }
+        for (String level : logLevels) {
+            boolean isValid = Arrays.stream(LogLevel.values())
+                    .anyMatch(e -> e.name().equalsIgnoreCase(level));
+            if (!isValid) {
+                log.warn("{} 유효하지 않은 로그 레벨: {}", LOG_PREFIX, level);
+                throw new BusinessException(LogErrorCode.INVALID_LOG_LEVEL);
+            }
+        }
         log.debug("{} 로그 레벨 검증 완료", LOG_PREFIX);
     }
 
