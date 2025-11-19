@@ -109,7 +109,9 @@ const LogResultsTable = memo(
                       </div>
                     </td>
                     <td className="py-3 pr-5 text-left align-top whitespace-nowrap tabular-nums">
-                      {new Date(row.date).toLocaleString()}
+                      {new Date(row.date).toLocaleString('ko-KR', {
+                        timeZone: 'UTC',
+                      })}
                     </td>
                   </tr>
                 ))}

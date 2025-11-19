@@ -181,7 +181,10 @@ const RequestFlowPage = () => {
                   {traceData.request.message}
                 </p>
                 <p className="mt-1 text-xs text-gray-500">
-                  {new Date(traceData.request.timestamp).toLocaleString()}
+                  {new Date(traceData.request.timestamp).toLocaleString(
+                    'ko-KR',
+                    { timeZone: 'UTC' },
+                  )}
                 </p>
                 <p className="text-xs text-gray-500">
                   {traceData.request.componentName} -{' '}
@@ -196,7 +199,10 @@ const RequestFlowPage = () => {
                   {traceData.response.message}
                 </p>
                 <p className="mt-1 text-xs text-gray-500">
-                  {new Date(traceData.response.timestamp).toLocaleString()}
+                  {new Date(traceData.response.timestamp).toLocaleString(
+                    'ko-KR',
+                    { timeZone: 'UTC' },
+                  )}
                 </p>
                 <p className="text-xs text-gray-500">
                   {traceData.response.componentName} -{' '}
@@ -251,7 +257,9 @@ const RequestFlowPage = () => {
                   )}
                   {log.timestamp && (
                     <span className="text-xs text-gray-500">
-                      {new Date(log.timestamp).toLocaleString()}
+                      {new Date(log.timestamp).toLocaleString('ko-KR', {
+                        timeZone: 'UTC',
+                      })}
                     </span>
                   )}
                 </div>
