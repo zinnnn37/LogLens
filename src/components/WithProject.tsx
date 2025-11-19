@@ -7,6 +7,7 @@ import MemberInviteModal from './modal/MemberInviteModal';
 import { AnimatePresence, motion } from 'framer-motion';
 import { JiraIntegrationModal } from '@/components/modal/JiraIntegrationModal';
 import { createProjectPath } from '@/router/route-path';
+import { useNotificationStore } from '@/stores/notificationStore';
 import type { ProjectInfoDTO } from '@/types/project';
 
 export interface WithProjectProps {
@@ -32,6 +33,11 @@ const WithProject = ({
 
   const becameEmptyRef = useRef(false);
   const prevLenRef = useRef(list.length);
+
+  // 알림 상태 조회
+  const projectNotifications = useNotificationStore(
+    state => state.projectNotifications,
+  );
 
   const handleProjectSelect = (projectUuid: string) => {
     // 기본적으로 대시보드 페이지로 이동
@@ -97,6 +103,10 @@ const WithProject = ({
                             <p className="text-foreground truncate font-semibold">
                               {p.projectName}
                             </p>
+                            {/* 알림 인디케이터 */}
+                            {(projectNotifications[p.projectUuid] ?? false) && (
+                              <span className="block h-2.5 w-2.5 shrink-0 rounded-full bg-red-500" />
+                            )}
                             {p.jiraConnectionExist && (
                               <Link
                                 className="h-4 w-4 shrink-0 text-blue-600"

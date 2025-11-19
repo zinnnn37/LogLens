@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getAlertHistory, readAlert } from '@/services/alertService';
+import { useNotificationStore } from '@/stores/notificationStore';
 import type { AlertHistoryItem, AlertHistoryResponse } from '@/types/alert';
 import { Settings, BellRing } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,21 @@ const NotificationList = ({ projectUuid }: NotificationListProps) => {
   const [error, setError] = useState<Error | null>(null);
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+  const setProjectNotification = useNotificationStore(
+    state => state.setProjectNotification,
+  );
+
+  // alerts가 변경될 때마다 store 업데이트
+  useEffect(() => {
+    if (!isLoading) {
+      const hasAlerts = alerts.length > 0;
+      console.log(
+        `🔔 NotificationList: alerts 변경됨. 개수: ${alerts.length}, store 업데이트: ${hasAlerts}`,
+      );
+      setProjectNotification(projectUuid, hasAlerts);
+    }
+  }, [alerts, projectUuid, setProjectNotification, isLoading]);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -66,9 +82,23 @@ const NotificationList = ({ projectUuid }: NotificationListProps) => {
       await readAlert({ alertId: alertId });
       console.log(`${alertId} 읽음 처리 성공`);
 
+      // 알림 목록에서 제거 (useEffect가 자동으로 store 업데이트)
       setAlerts(prevAlerts => prevAlerts.filter(a => a.id !== alertId));
     } catch (error) {
       console.error('알림 읽음 처리 실패:', error);
+    }
+  };
+
+  const handleReadAllAlerts = async () => {
+    try {
+      // 모든 알림에 대해 읽음 처리
+      await Promise.all(alerts.map(alert => readAlert({ alertId: alert.id })));
+      console.log('모든 알림 읽음 처리 성공');
+
+      // 알림 목록 비우기 (useEffect가 자동으로 store 업데이트)
+      setAlerts([]);
+    } catch (error) {
+      console.error('모든 알림 읽음 처리 실패:', error);
     }
   };
 
@@ -151,6 +181,14 @@ const NotificationList = ({ projectUuid }: NotificationListProps) => {
         </ul>
 
         <div className="flex items-center justify-between border-t p-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleReadAllAlerts}
+            className="text-xs"
+          >
+            모두 읽음
+          </Button>
           <Button
             variant="ghost"
             size="icon"
