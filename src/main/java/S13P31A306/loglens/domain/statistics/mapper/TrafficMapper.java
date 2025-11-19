@@ -44,11 +44,11 @@ public interface TrafficMapper {
             LocalDateTime endTime,
             List<TrafficAggregation> aggregations
     ) {
-        log.info("[TrafficMapper] ==================================================");
-        log.info("[TrafficMapper] TrafficResponse 매핑 시작");
-        log.info("[TrafficMapper] projectUuid={}", projectUuid);
-        log.info("[TrafficMapper] start(KST)={}, end(KST)={}", startTime, endTime);
-        log.info("[TrafficMapper] 입력 Aggregation 개수={}", aggregations.size());
+        log.debug("[TrafficMapper] ==================================================");
+        log.debug("[TrafficMapper] TrafficResponse 매핑 시작");
+        log.debug("[TrafficMapper] projectUuid={}", projectUuid);
+        log.debug("[TrafficMapper] start(KST)={}, end(KST)={}", startTime, endTime);
+        log.debug("[TrafficMapper] 입력 Aggregation 개수={}", aggregations.size());
 
         // 1. 전체 시간 슬롯 생성 (24시간 / 3시간 = 8개)
         // bucket 첫 timestamp(KST) → bucket end timestamp 기준
@@ -63,14 +63,14 @@ public interface TrafficMapper {
                 INTERVAL_HOURS,
                 TREND_HOURS / INTERVAL_HOURS
         );
-        log.info("[TrafficMapper] 생성된 timeSlots(KST)={}", timeSlots);
+        log.debug("[TrafficMapper] 생성된 timeSlots(KST)={}", timeSlots);
 
         // 2. OpenSearch bucket(timestamp + 3h)를 END 기준으로 변환
         Map<LocalDateTime, TrafficAggregation> aggMap = aggregations.stream()
                 .collect(Collectors.toMap(
                         agg -> {
                             LocalDateTime endTs = agg.timestamp().plusHours(INTERVAL_HOURS);
-                            log.info("[TrafficMapper] Bucket START={}, END(after interval)={}", agg.timestamp(), endTs);
+                            log.debug("[TrafficMapper] Bucket START={}, END(after interval)={}", agg.timestamp(), endTs);
                             return endTs.truncatedTo(ChronoUnit.HOURS);
                         },
                         agg -> agg,
@@ -78,10 +78,10 @@ public interface TrafficMapper {
                 ));
 
         // DEBUG: 매핑 테이블 출력
-        log.info("[TrafficMapper] =========== Bucket 매핑 테이블 (END 시각 기준) ===========");
-        aggMap.forEach((k, v) -> log.info("[BucketMap] {} => total={}, FE={}, BE={}",
+        log.debug("[TrafficMapper] =========== Bucket 매핑 테이블 (END 시각 기준) ===========");
+        aggMap.forEach((k, v) -> log.debug("[BucketMap] {} => total={}, FE={}, BE={}",
                 k, v.totalCount(), v.feCount(), v.beCount()));
-        log.info("[TrafficMapper] =======================================================");
+        log.debug("[TrafficMapper] =======================================================");
 
         // 3. 최종 DataPoint 생성
         List<DataPoint> dataPoints = timeSlots.stream()
@@ -90,10 +90,10 @@ public interface TrafficMapper {
                     TrafficAggregation matched = aggMap.get(truncated);
 
                     if (matched != null) {
-                        log.info("[TrafficMapper] 슬롯 {} → 매칭된 bucket END {} (total={})",
+                        log.debug("[TrafficMapper] 슬롯 {} → 매칭된 bucket END {} (total={})",
                                 ts, truncated, matched.totalCount());
                     } else {
-                        log.info("[TrafficMapper] 슬롯 {} → 매칭 없음 → 0으로 채움", ts);
+                        log.debug("[TrafficMapper] 슬롯 {} → 매칭 없음 → 0으로 채움", ts);
                     }
 
                     return matched != null ? matched : createEmptyAggregation(ts);
@@ -110,9 +110,9 @@ public interface TrafficMapper {
         // 5. Summary 생성
         Summary summary = buildSummary(aggregations);
 
-        log.info("[TrafficMapper] 최종 dataPoints 개수={}", dataPoints.size());
-        log.info("[TrafficMapper] TrafficResponse 매핑 완료");
-        log.info("[TrafficMapper] ==================================================");
+        log.debug("[TrafficMapper] 최종 dataPoints 개수={}", dataPoints.size());
+        log.debug("[TrafficMapper] TrafficResponse 매핑 완료");
+        log.debug("[TrafficMapper] ==================================================");
 
         return new TrafficResponse(
                 projectUuid,
