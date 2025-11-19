@@ -35,12 +35,12 @@ public class LogValidator {
      */
     public void validate(LogSearchRequest request) {
         log.debug("{} 로그 검색 요청 검증 시작", LOG_PREFIX);
-//        validateProjectUuid(request.getProjectUuid());
-//        validateSize(request.getSize());
-//        validateTimeRange(request);
-//        validateLogLevel(request.getLogLevel());
-//        validateSourceType(request.getSourceType());
-//        validateSort(request.getSort());
+        validateProjectUuid(request.getProjectUuid());
+        validateSize(request.getSize());
+        validateTimeRange(request);
+        validateLogLevel(request.getLogLevel());
+        validateSourceType(request.getSourceType());
+        validateSort(request.getSort());
         log.debug("{} 로그 검색 요청 검증 완료", LOG_PREFIX);
     }
 
