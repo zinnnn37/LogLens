@@ -1,0 +1,28 @@
+stages:
+  - test
+
+default:
+  image:
+    name: python:3.11-slim
+    # GitLab Runner 버전(18.3.1) 에서는 pull_policy: if-not-present 옵션을 지원하지 않음
+    # pull_policy: if-not-present
+
+AI:run-test:
+  stage: test
+  tags:
+    - docker  # Runner에 설정된 태그 추가
+  before_script:
+    - cd $CI_PROJECT_DIR
+    - pip install --upgrade pip
+    - pip install -r requirements.txt
+  script:
+    # 명시적으로 단위 테스트 파일만 지정 (고정된 스코프)
+    - python -m pytest tests/test_news_crawler/test_service.py -v || [ $? -eq 5 ] && echo "No tests collected, but that's OK"
+    - echo "✅ GitLab CI는 고정된 단위 테스트만 실행합니다"
+  rules:
+    # merge request 파이프라인일 때 실행
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # ai/* 브랜치 push 일 때 실행
+    - if: $CI_COMMIT_BRANCH =~ /^ai\//
+    # ai/develop 브랜치 push 일 때 실행
+    - if: $CI_COMMIT_BRANCH == "ai/develop"
