@@ -1,0 +1,130 @@
+# ===================================================================
+# 'test' 프로필 전용 설정
+# 통합 테스트 및 단위 테스트 환경에서 사용됩니다.
+# ===================================================================
+spring:
+  application:
+    name: osm
+
+  # ===================================================================
+  # 데이터 소스 설정 (H2 In-Memory DataSource Configuration)
+  # ===================================================================
+  datasource:
+    # H2 DB를 MySQL 모드로 실행. 테스트 종료 후에도 데이터베이스 유지(DB_CLOSE_DELAY=-1)
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+    # Hikari Connection Pool 설정 (테스트용 최소 설정)
+    hikari:
+      maximum-pool-size: 2 # 최대 커넥션 수
+      minimum-idle: 1      # 최소 유휴 커넥션 수
+
+  # ===================================================================
+  # JPA 및 Hibernate 설정 (JPA & Hibernate Configuration)
+  # ===================================================================
+  jpa:
+    # SQL 쿼리 출력 비활성화 (필요시 true로 변경)
+    show-sql: false
+    # DDL 자동 생성 전략: 테스트 시작 시 스키마 생성, 종료 시 삭제
+    hibernate:
+      ddl-auto: create-drop
+    # Hibernate 관련 추가 프로퍼티
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect # H2 데이터베이스 방언 사용
+        format_sql: true                         # SQL을 보기 좋게 포맷팅
+
+  # ===================================================================
+  # SQL 스크립트 초기화 설정
+  # ===================================================================
+  sql:
+    init:
+      mode: never  # data.sql 실행 비활성화 (dev 프로필 전용)
+
+  # ===================================================================
+  # H2 데이터베이스 콘솔 설정
+  # ===================================================================
+  h2:
+    console:
+      enabled: false # H2 콘솔 비활성화 (보안 및 테스트 성능)
+
+# ===================================================================
+# 서버 설정 (Server Configuration)
+# ===================================================================
+server:
+  # 사용 가능한 랜덤 포트를 사용 (테스트 간 포트 충돌 방지)
+  port: 0
+  # 우아한 종료(Graceful Shutdown) 활성화
+  shutdown: graceful
+
+# ===================================================================
+# Spring Boot Actuator 설정 (최소화)
+# ===================================================================
+management:
+  # 모든 Actuator 엔드포인트를 기본적으로 비활성화 (테스트 성능 향상)
+  endpoints:
+    enabled-by-default: false
+    web:
+      exposure:
+        # 'health' 엔드포인트만 노출하여 상태 확인
+        include: health
+  endpoint:
+    health:
+      enabled: true
+  # Actuator용 관리 서버 비활성화
+  server:
+    port: -1
+
+# ===================================================================
+# JWT 설정 (JWT Configuration for Test)
+# ===================================================================
+jwt:
+  # 테스트용 Base64 인코딩된 256비트 시크릿 키
+  secret: dGVzdGp3dHNlY3JldGtleWZvcnRlc3RpbmcyNTZiaXRzdHJpbmdmb3JobWFjc2hhNTEyYWRkZWRtb3JlY2hhcmFjdGVycw==
+  access-token-validity-in-seconds: 3600    # 1시간
+  refresh-token-validity-in-seconds: 604800 # 7일
+
+# ===================================================================
+# 암호화 설정 (Encryption Configuration for Test)
+# ===================================================================
+encryption:
+  # 테스트용 암호화 시크릿 키 (32자)
+  secret-key: test-encryption-secret-key-32
+
+# ===================================================================
+# 로깅 설정 (Logging Configuration)
+# ===================================================================
+logging:
+  level:
+    # 애플리케이션 패키지는 DEBUG 레벨로 설정
+    S13P31A306.loglens: DEBUG
+    # Hibernate가 실행하는 SQL은 DEBUG 레벨로 출력
+    org.hibernate.SQL: DEBUG
+    # Spring 테스트 관련 로그는 INFO 레벨로 설정
+    org.springframework.test: INFO
+
+# ===================================================================
+# AI 서비스 설정 (테스트용)
+# ===================================================================
+ai:
+  service:
+    base-url: http://localhost:8888  # 테스트용 더미 URL
+    timeout: 30000
+
+# ===================================================================
+# LogLens Dependency Logger 설정 (테스트용)
+# ===================================================================
+dependency:
+  logger:
+    # 테스트용 더미 API 키 (실제 로그 수집 없음)
+    api-key: test-api-key-for-testing-purposes-only
+
+    collector:
+      url: http://localhost:8888  # 테스트용 더미 URL
+
+    # 테스트 환경에서는 로그 수집 비활성화
+    enabled: false
+
+    stacktrace:
+      max-lines: 3
