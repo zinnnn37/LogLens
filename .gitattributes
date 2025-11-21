@@ -1,0 +1,27 @@
+# Auto-detect text files and normalize line endings to LF on checkin
+* text=auto
+
+# Shell scripts should always use LF (Linux/Unix line endings)
+*.sh text eol=lf
+
+# Python files should use LF
+*.py text eol=lf
+
+# Dockerfile should use LF
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+
+# YAML files should use LF
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Groovy files (Jenkins) should use LF
+*.groovy text eol=lf
+
+# Ensure binary files are not modified
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
