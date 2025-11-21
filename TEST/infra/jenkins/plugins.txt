@@ -1,0 +1,156 @@
+# ============================================
+# Jenkins Plugin List
+# ============================================
+# Format: plugin-id:version or plugin-id:latest
+# This file is used by jenkins-plugin-cli to install plugins during image build
+# ============================================
+
+# ============================================
+# PIPELINE & WORKFLOW (필수)
+# ============================================
+# Core pipeline functionality with all essential pipeline plugins
+workflow-aggregator:latest
+pipeline-stage-view:latest
+pipeline-graph-analysis:latest
+pipeline-build-step:latest
+pipeline-input-step:latest
+pipeline-milestone-step:latest
+pipeline-model-definition:latest
+pipeline-utility-steps:latest
+
+# ============================================
+# SOURCE CONTROL MANAGEMENT
+# ============================================
+# Git integration for source code management
+git:latest
+git-client:latest
+git-server:latest
+
+# GitLab integration (your project uses GitLab)
+gitlab-plugin:latest
+
+# GitHub (for public repositories or GitHub integration)
+github:latest
+github-branch-source:latest
+
+# ============================================
+# DOCKER SUPPORT
+# ============================================
+# Docker integration for building and running containers in pipelines
+docker-workflow:latest
+docker-plugin:latest
+docker-commons:latest
+docker-build-step:latest
+
+# ============================================
+# CREDENTIALS & SECURITY
+# ============================================
+# Credential management for storing secrets
+credentials:latest
+credentials-binding:latest
+plain-credentials:latest
+ssh-credentials:latest
+ssh-agent:latest
+
+# Matrix-based security
+matrix-auth:latest
+
+# ============================================
+# BUILD & ARTIFACT MANAGEMENT
+# ============================================
+# Copy artifacts between jobs (used in your pipelines)
+copyartifact:latest
+
+# JUnit test result reporting
+junit:latest
+
+# Archive artifacts
+artifact-manager-s3:latest
+
+# ============================================
+# NOTIFICATION & REPORTING
+# ============================================
+# Email notifications with extended features
+email-ext:latest
+mailer:latest
+
+# Slack integration for build notifications
+slack:latest
+
+# ============================================
+# UI & VISUALIZATION
+# ============================================
+# Blue Ocean modern UI
+blueocean:latest
+
+# Dashboard view
+dashboard-view:latest
+
+# Build monitor
+build-monitor-plugin:latest
+
+# ============================================
+# UTILITY PLUGINS
+# ============================================
+# Add timestamps to console output
+timestamper:latest
+
+# Colorize console output
+ansicolor:latest
+
+# Clean workspace before/after builds
+ws-cleanup:latest
+
+# Set timeout for builds
+build-timeout:latest
+
+# Environment variables plugin
+envinject:latest
+
+# Config file provider
+config-file-provider:latest
+
+# Job DSL for programmatic job creation
+job-dsl:latest
+
+# ============================================
+# PERFORMANCE & MONITORING
+# ============================================
+# Build metrics and monitoring
+prometheus:latest
+
+# Job configuration history
+jobConfigHistory:latest
+
+# Disk usage plugin
+disk-usage:latest
+
+# ============================================
+# AWS INTEGRATION (for deployment)
+# ============================================
+# AWS SDK for AWS CLI operations
+aws-java-sdk:latest
+
+# ============================================
+# ADDITIONAL RECOMMENDED
+# ============================================
+# HTTP Request plugin for API calls
+http_request:latest
+
+# JSON path plugin for parsing JSON
+json-path-api:latest
+
+# Locale plugin for internationalization
+locale:latest
+
+# Sidebar link plugin for custom links
+sidebar-link:latest
+
+# Rebuild plugin to rebuild previous builds
+rebuild:latest
+
+# Parameterized trigger plugin
+parameterized-trigger:latest
+
+# Build name setter
+build-name-setter:latest
