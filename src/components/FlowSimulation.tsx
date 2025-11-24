@@ -599,18 +599,16 @@ const FlowSimulation = ({
           return;
         }
 
-        // 사각형 particle 생성
+        // 원형 particle 생성
         const particle = d3
           .select(edge.parentNode as SVGGElement)
-          .append('rect')
-          .attr('width', 16*2)
-          .attr('height', 10*3)
-          .attr('rx', 2)
+          .append('circle')
+          .attr('r', 16)
           .attr('fill', color)
           .attr('stroke', 'white')
-          .attr('stroke-width', 1)
+          .attr('stroke-width', 2)
           .attr('opacity', 0.95)
-          .style('filter', `drop-shadow(0 0 8px ${color})`);
+          .style('filter', `drop-shadow(0 0 14px ${color})`);
 
         const t0 = performance.now();
         const loop = (now: number) => {
@@ -618,17 +616,8 @@ const FlowSimulation = ({
           const len = forward ? t * L : (1 - t) * L;
           const pt = edge.getPointAtLength(Math.max(0, Math.min(L, len)));
 
-          // 경로의 방향 계산
-          const nextLen = forward ? Math.min(L, len + 1) : Math.max(0, len - 1);
-          const nextPt = edge.getPointAtLength(nextLen);
-          const angle =
-            (Math.atan2(nextPt.y - pt.y, nextPt.x - pt.x) * 180) / Math.PI;
-
-          // 사각형 위치 및 회전 업데이트
-          particle
-            .attr('x', pt.x - 8)
-            .attr('y', pt.y - 5)
-            .attr('transform', `rotate(${angle}, ${pt.x}, ${pt.y})`);
+          // 원형 위치 업데이트 (회전 불필요)
+          particle.attr('cx', pt.x).attr('cy', pt.y);
 
           if (t < 1) {
             requestAnimationFrame(loop);
