@@ -603,8 +603,8 @@ const FlowSimulation = ({
         const particle = d3
           .select(edge.parentNode as SVGGElement)
           .append('rect')
-          .attr('width', 16)
-          .attr('height', 10)
+          .attr('width', 16*2)
+          .attr('height', 10*3)
           .attr('rx', 2)
           .attr('fill', color)
           .attr('stroke', 'white')
