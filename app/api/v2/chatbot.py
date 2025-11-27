@@ -261,13 +261,21 @@ async def ask_chatbot_v2(request: ChatRequest):
     data: **ERROR 3건** 발생했습니다.\\n\\n
     data: 주요 에러:\\n
     data: 1. DatabaseTimeout (payment-service)\\n
+    event: sources
+    data: [{"log_id": "12345", "level": "ERROR", "message": "...", ...}]
+
+    event: validation
+    data: {"confidence": 85, "sample_count": 10, "sampling_strategy": "proportional_vector_knn", ...}
+
     data: [DONE]
     ```
 
-    - 각 청크는 `data: ` 접두사로 시작
-    - 줄바꿈은 `\\n`으로 이스케이프됨 (프론트엔드에서 `\\n` → `\n` 변환)
-    - 완료 시그널: `data: [DONE]`
-    - 에러 발생 시: `data: [ERROR]` 후 에러 정보
+    **이벤트 타입:**
+    - `data: <chunk>`: 답변 텍스트 청크 (줄바꿈은 `\\n`으로 이스케이프됨)
+    - `event: sources` + `data: <json>`: V2 출처 로그 (LogSource 배열)
+    - `event: validation` + `data: <json>`: V2 검증 정보 (ValidationInfo)
+    - `data: [DONE]`: 완료 신호
+    - `data: [ERROR]`: 에러 발생
 
     ## V1 vs V2 스트리밍 비교
 
@@ -340,6 +348,14 @@ async def ask_chatbot_v2_stream(
                     # 청크 데이터 스트리밍
                     escaped_content = content.replace("\n", "\\n")
                     yield f"data: {escaped_content}\n\n"
+                elif event_type == "sources":
+                    # V2: 출처 로그 전송 (LogSource 리스트)
+                    sources_json = json.dumps([s.model_dump() for s in content])
+                    yield f"event: sources\ndata: {sources_json}\n\n"
+                elif event_type == "validation":
+                    # V2: 검증 정보 전송 (ValidationInfo)
+                    validation_json = json.dumps(content.model_dump())
+                    yield f"event: validation\ndata: {validation_json}\n\n"
                 elif event_type == "done":
                     # 완료 신호
                     yield "data: [DONE]\n\n"

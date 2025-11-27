@@ -649,6 +649,15 @@ class ChatbotServiceV2:
                     if tool_summary != "No tool calls yet.":
                         print(f"📊 도구 호출 통계:\n{tool_summary}")
 
+                    # V2 필드 전송 (sources, validation)
+                    top_sources = sources_tracker.get_top_sources(limit=10)
+                    validation_info = sources_tracker.get_validation_info()
+
+                    if top_sources:
+                        yield ("sources", top_sources)
+                    if validation_info:
+                        yield ("validation", validation_info)
+
                 yield ("done", "")
 
             except AttributeError:
@@ -677,6 +686,16 @@ class ChatbotServiceV2:
                     await asyncio.sleep(0.05)
 
                 agent_logger.log_completion(True, len(validated_answer))
+
+                # V2 필드 전송 (fallback 경로)
+                top_sources = sources_tracker.get_top_sources(limit=10)
+                validation_info = sources_tracker.get_validation_info()
+
+                if top_sources:
+                    yield ("sources", top_sources)
+                if validation_info:
+                    yield ("validation", validation_info)
+
                 yield ("done", "")
 
         except asyncio.TimeoutError:
