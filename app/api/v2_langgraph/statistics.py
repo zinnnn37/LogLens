@@ -17,6 +17,7 @@ from app.tools.statistics_comparison_tools import (
     _llm_estimate_statistics,
     _calculate_accuracy
 )
+from app.tools.sampling_strategies import sample_two_stage_rare_aware
 
 logger = logging.getLogger(__name__)
 
@@ -147,15 +148,19 @@ async def compare_ai_vs_db(
                 detail=f"최근 {time_hours}시간 동안 로그 데이터가 없습니다."
             )
 
-        # 2. 로그 샘플 추출 (Vector KNN 층화 샘플링 사용)
-        logger.debug(f"2단계: Vector KNN 층화 로그 샘플 추출 시작")
-        level_counts = {
-            "ERROR": db_stats["error_count"],
-            "WARN": db_stats["warn_count"],
-            "INFO": db_stats["info_count"]
-        }
-        log_samples = await _get_stratified_log_samples(project_uuid, time_hours, sample_size, level_counts)
-        logger.info(f"✅ 층화 로그 샘플 추출 완료: sample_count={len(log_samples)}")
+        # 2. 로그 샘플 추출 (2단계 희소 이벤트 인식 샘플링 + IPW 가중치)
+        logger.debug(f"2단계: 2단계 희소 이벤트 인식 샘플링 시작")
+        log_samples, sample_metadata = await sample_two_stage_rare_aware(
+            project_uuid=project_uuid,
+            total_k=sample_size,
+            time_hours=time_hours,
+            rare_threshold=100  # 100개 미만이면 희소 이벤트로 간주
+        )
+        logger.info(
+            f"✅ 2단계 샘플링 완료: sample_count={len(log_samples)}, "
+            f"weights={sample_metadata.get('weights', {})}, "
+            f"rare_levels={sample_metadata.get('rare_levels', [])}"
+        )
 
         if not log_samples:
             logger.error(f"🔴 로그 샘플 추출 실패: project_uuid={project_uuid}")
@@ -164,9 +169,15 @@ async def compare_ai_vs_db(
                 detail="로그 샘플을 추출할 수 없습니다."
             )
 
-        # 3. LLM 기반 통계 추론 (샘플만으로 추론 - DB 힌트 없음)
-        logger.debug(f"3단계: LLM 통계 추론 시작")
-        ai_stats = _llm_estimate_statistics(log_samples, db_stats["total_logs"], time_hours, None)  # Vector 샘플만으로 추론
+        # 3. LLM 기반 통계 추론 (샘플 + IPW 가중치 메타데이터)
+        logger.debug(f"3단계: LLM 통계 추론 시작 (IPW 가중치 포함)")
+        ai_stats = _llm_estimate_statistics(
+            log_samples,
+            db_stats["total_logs"],
+            time_hours,
+            None,  # Inference Mode: DB 힌트 없음
+            sample_metadata  # IPW 가중치 메타데이터 전달
+        )
         logger.info(f"✅ LLM 추론 완료: estimated_total={ai_stats.get('estimated_total_logs', 0)}, confidence={ai_stats.get('confidence_score', 0)}")
 
         # 4. 정확도 계산

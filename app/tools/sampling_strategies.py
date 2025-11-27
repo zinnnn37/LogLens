@@ -387,3 +387,138 @@ async def sample_proportional_random(
 
     # 3. 레벨별 랜덤 샘플링
     return await sample_random_stratified(project_uuid, k_per_level, time_hours)
+
+
+# ============================================================================
+# 전략 6: 2단계 희소 이벤트 인식 샘플링 (IPW 가중치 포함)
+# ============================================================================
+
+async def sample_two_stage_rare_aware(
+    project_uuid: str,
+    total_k: int,
+    time_hours: int = 24,
+    rare_threshold: int = 100
+) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """
+    희소 이벤트 인식 2단계 샘플링 + IPW 가중치 메타데이터
+
+    목적:
+    - 희소 이벤트(ERROR/WARN)의 과대표현 문제 해결
+    - Inverse Probability Weighting으로 정확한 추론 지원
+
+    알고리즘:
+    1. 실제 레벨 분포 조회 (aggregation)
+    2. 희소/정상 이벤트 분류 (rare_threshold 기준)
+    3. 희소 이벤트: 50% 샘플링 또는 전수조사 (census)
+    4. 정상 이벤트: 비례 샘플링
+    5. IPW 가중치 계산: weight = actual_count / sample_count
+
+    Args:
+        project_uuid: 프로젝트 UUID
+        total_k: 목표 샘플 크기
+        time_hours: 분석 기간 (시간)
+        rare_threshold: 희소 이벤트 임계값 (기본: 100)
+
+    Returns:
+        (samples, metadata)
+        samples: 샘플 로그 리스트
+        metadata: {
+            "weights": {"ERROR": 2.5, "WARN": 1.8, "INFO": 1.2},
+            "level_counts": {"ERROR": 50, "WARN": 90, "INFO": 10000},
+            "sample_counts": {"ERROR": 20, "WARN": 50, "INFO": 8333},
+            "sampling_strategy": "two_stage_rare_aware",
+            "rare_threshold": 100,
+            "rare_levels": ["ERROR"]
+        }
+
+    Example:
+        # 실제: ERROR 50개, WARN 200개, INFO 100,000개
+        # 샘플 100개 요청 시:
+        # - ERROR: 50개 (전수) → weight = 50/50 = 1.0
+        # - WARN: 100개 (50% 샘플링) → weight = 200/100 = 2.0
+        # - INFO: 비례 (0.1%) → weight = 100,000/100 = 1000.0
+    """
+    # 1. 실제 레벨 분포 조회
+    level_counts = await _get_level_distribution(project_uuid, time_hours)
+
+    if not level_counts:
+        return [], {
+            "weights": {},
+            "level_counts": {},
+            "sample_counts": {},
+            "sampling_strategy": "two_stage_rare_aware",
+            "rare_threshold": rare_threshold,
+            "rare_levels": [],
+            "error": "No logs found"
+        }
+
+    total_logs = sum(level_counts.values())
+
+    # 2. 희소/정상 이벤트 분류
+    rare_levels = []
+    k_per_level = {}
+
+    for level in ["ERROR", "WARN", "INFO"]:
+        actual_count = level_counts.get(level, 0)
+
+        if actual_count == 0:
+            k_per_level[level] = 0
+            continue
+
+        # 희소 이벤트 판정 (count < rare_threshold)
+        if actual_count < rare_threshold:
+            rare_levels.append(level)
+            # 희소: 50% 샘플링 또는 전수 (census)
+            # 최소 10개 보장, 최대 actual_count
+            k_level = min(actual_count, max(10, int(actual_count * 0.5)))
+        else:
+            # 정상: 비례 샘플링
+            ratio = actual_count / total_logs
+            k_level = int(total_k * ratio)
+            # 최소 5개 보장 (있다면)
+            k_level = max(5, k_level)
+
+        # 실제 개수를 초과할 수 없음
+        k_per_level[level] = min(k_level, actual_count)
+
+    # 3. 총 샘플 수 조정 (total_k 초과 시)
+    total_allocated = sum(k_per_level.values())
+    if total_allocated > total_k:
+        # INFO에서 우선 조정
+        excess = total_allocated - total_k
+        info_k = k_per_level.get("INFO", 0)
+        k_per_level["INFO"] = max(0, info_k - excess)
+
+    # 4. Vector KNN 샘플링 실행
+    samples = await sample_stratified_vector_knn(project_uuid, k_per_level, time_hours)
+
+    # 5. 실제 샘플 개수 확인 (Vector KNN이 부족할 수 있음)
+    actual_sample_counts = {"ERROR": 0, "WARN": 0, "INFO": 0}
+    for sample in samples:
+        level = sample.get("level", "INFO")
+        actual_sample_counts[level] = actual_sample_counts.get(level, 0) + 1
+
+    # 6. IPW 가중치 계산
+    weights = {}
+    for level in ["ERROR", "WARN", "INFO"]:
+        actual = level_counts.get(level, 0)
+        sampled = actual_sample_counts.get(level, 0)
+
+        if sampled > 0:
+            weights[level] = round(actual / sampled, 2)
+        else:
+            weights[level] = 0.0
+
+    # 7. 메타데이터 구성
+    metadata = {
+        "weights": weights,
+        "level_counts": level_counts,
+        "sample_counts": actual_sample_counts,
+        "sampling_strategy": "two_stage_rare_aware",
+        "rare_threshold": rare_threshold,
+        "rare_levels": rare_levels,
+        "total_logs": total_logs,
+        "total_samples": len(samples)
+    }
+
+    return samples, metadata

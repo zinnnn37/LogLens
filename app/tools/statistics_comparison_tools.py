@@ -293,7 +293,8 @@ def _llm_estimate_statistics(
     log_samples: List[Dict[str, Any]],
     total_sample_count: int,
     time_hours: int,
-    actual_level_counts: Optional[Dict[str, int]] = None
+    actual_level_counts: Optional[Dict[str, int]] = None,
+    sample_metadata: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     LLM에게 로그 샘플을 주고 전체 통계를 검증하게 함 (힌트 기반)
@@ -303,6 +304,7 @@ def _llm_estimate_statistics(
         total_sample_count: 실제 총 로그 수
         time_hours: 분석 기간 (시간)
         actual_level_counts: DB에서 조회한 실제 레벨별 개수 (힌트)
+        sample_metadata: 샘플링 메타데이터 (IPW 가중치 포함)
     """
     # 샘플 요약
     sample_level_counts = {}
@@ -322,6 +324,36 @@ def _llm_estimate_statistics(
         "level_distribution": sample_level_counts,
         "hourly_distribution": hourly_counts
     }
+
+    # IPW 가중치 테이블 생성 (sample_metadata가 제공된 경우)
+    weight_table_section = ""
+    if sample_metadata and "weights" in sample_metadata:
+        weights = sample_metadata["weights"]
+        level_counts = sample_metadata.get("level_counts", {})
+        sample_counts = sample_metadata.get("sample_counts", {})
+
+        weight_table = "## 📊 가중 샘플링 정보 (Inverse Probability Weighting)\n\n"
+        weight_table += "**중요**: 이 샘플은 희소 이벤트 인식 2단계 샘플링으로 수집되었습니다.\n"
+        weight_table += "각 샘플이 대표하는 실제 로그 수(가중치)를 고려하여 추론하세요.\n\n"
+        weight_table += "| 레벨 | 실제 개수 | 샘플 개수 | 가중치 (IPW) | 의미 |\n"
+        weight_table += "|------|-----------|-----------|--------------|------|\n"
+
+        for level in ["ERROR", "WARN", "INFO"]:
+            actual = level_counts.get(level, 0)
+            sampled = sample_counts.get(level, 0)
+            weight = weights.get(level, 0.0)
+
+            if sampled > 0:
+                meaning = f"샘플 1개 = 실제 {weight:.1f}개"
+            else:
+                meaning = "샘플 없음"
+
+            weight_table += f"| {level} | {actual:,} | {sampled} | ×{weight:.2f} | {meaning} |\n"
+
+        weight_table += "\n**추론 방법**: 각 레벨의 샘플 개수에 해당 가중치를 곱하면 실제 개수가 됩니다.\n"
+        weight_table += f"- 예: ERROR {sample_counts.get('ERROR', 0)}개 × {weights.get('ERROR', 0):.2f} = {level_counts.get('ERROR', 0):,}개\n\n"
+
+        weight_table_section = weight_table
 
     # 실제 레벨별 개수가 제공된 경우: LLM이 검증만 수행
     if actual_level_counts:
@@ -413,6 +445,19 @@ def _llm_estimate_statistics(
 
     prompt = f"""당신은 로그 데이터 분석 전문가입니다. 층화 샘플링된 데이터를 기반으로 전체 통계를 추론해야 합니다.
 
+## ⚠️ 중요: 샘플링 편향 주의!
+
+이 샘플은 층화 샘플링으로 수집되었으며, **희소 이벤트(ERROR/WARN)는 충분한 대표성 확보를 위해
+최소 5개씩 보장되어 과대표현(oversampling)되었습니다.**
+
+### 실제 프로덕션 로그의 일반적 특성
+- **ERROR**: 일반적으로 전체의 0.3~1% (건강한 시스템 기준)
+- **WARN**: 일반적으로 전체의 0.01~0.3% (매우 희소)
+- **INFO**: 대부분의 로그를 차지 (98~99%+)
+
+**경고**: 샘플에서 ERROR가 5%라고 해서 전체의 5%가 아닙니다!
+최소 보장(minimum guarantee) 때문에 실제보다 10~100배 과대표현되었을 수 있습니다.
+
 ## 힌트 정보 (DB에서 제공)
 - 실제 총 로그 수: {total_sample_count:,}개
 - 분석 기간: 최근 {time_hours}시간
@@ -420,11 +465,29 @@ def _llm_estimate_statistics(
 ## 층화 샘플 데이터
 - 샘플 크기: {sample_summary['sample_size']}개
 - 레벨별 분포 (샘플): {json.dumps(sample_summary['level_distribution'], ensure_ascii=False)}
-- 샘플링 방식: 레벨별 비율에 맞게 랜덤 추출 (희소 이벤트 최소 보장)
+- 샘플링 방식: 레벨별 비율 기반 + 희소 이벤트 최소 5개 보장
 
-## 추론 작업
-총 로그 수({total_sample_count:,}개)는 이미 알려져 있습니다.
-샘플의 레벨별 비율을 전체에 적용하여 각 레벨별 개수를 추론하세요.
+{weight_table_section}
+
+## 추론 가이드라인
+
+{"**우선순위**: 위의 가중치 테이블이 제공된 경우, 해당 가중치를 사용하여 정확히 계산하세요!" if weight_table_section else ""}
+
+1. **ERROR 로그 추론**:
+   - {"가중치 테이블 사용: ERROR 샘플 개수 × 가중치 = 실제 ERROR 개수" if weight_table_section else "샘플에 ERROR가 많더라도 실제는 0.3~1% 범위일 가능성 높음"}
+   - 샘플 비율을 그대로 적용하지 말고, 일반적 범위를 고려하여 보수적으로 추론
+
+2. **WARN 로그 추론**:
+   - {"가중치 테이블 사용: WARN 샘플 개수 × 가중치 = 실제 WARN 개수" if weight_table_section else "WARN은 ERROR보다 더 희소 (0.01~0.3% 범위)"}
+   - 샘플에 존재한다면 최소 보장으로 인한 과대표현일 가능성 높음
+
+3. **INFO 로그 추론**:
+   - {"가중치 테이블 사용: INFO 샘플 개수 × 가중치 = 실제 INFO 개수" if weight_table_section else "대부분의 로그는 INFO (전체의 98~99%+)"}
+   - INFO = 총 로그 수 - ERROR - WARN
+
+{"가중치 테이블이 제공된 경우 우선적으로 사용하되," if weight_table_section else ""}
+총 로그 수({total_sample_count:,}개)는 확정되어 있으므로,
+샘플의 **상대적 비율**은 참고하되 **절대적 비율**은 프로덕션 환경의 일반적 특성에 맞게 조정하세요.
 
 반드시 아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
 {{
@@ -439,7 +502,8 @@ def _llm_estimate_statistics(
 
 중요:
 - 총 로그 수는 {total_sample_count}으로 고정입니다.
-- 샘플 비율을 전체에 적용하여 레벨별 개수를 계산하세요.
+- 샘플 비율을 무비판적으로 적용하지 마세요! 희소 이벤트는 과대표현되었습니다.
+- ERROR는 보통 0.3~1%, WARN은 0.01~0.3% 범위로 보수적으로 추론하세요.
 - ERROR + WARN + INFO = 총 로그 수가 되어야 합니다."""
 
     try:
