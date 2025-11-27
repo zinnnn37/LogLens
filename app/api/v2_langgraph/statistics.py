@@ -164,10 +164,10 @@ async def compare_ai_vs_db(
                 detail="로그 샘플을 추출할 수 없습니다."
             )
 
-        # 3. LLM 기반 통계 검증 (실제 개수 힌트 제공)
-        logger.debug(f"3단계: LLM 통계 검증 시작")
-        ai_stats = _llm_estimate_statistics(log_samples, db_stats["total_logs"], time_hours, level_counts)
-        logger.info(f"✅ LLM 검증 완료: estimated_total={ai_stats.get('estimated_total_logs', 0)}, confidence={ai_stats.get('confidence_score', 0)}")
+        # 3. LLM 기반 통계 추론 (샘플만으로 추론 - DB 힌트 없음)
+        logger.debug(f"3단계: LLM 통계 추론 시작")
+        ai_stats = _llm_estimate_statistics(log_samples, db_stats["total_logs"], time_hours, None)  # Vector 샘플만으로 추론
+        logger.info(f"✅ LLM 추론 완료: estimated_total={ai_stats.get('estimated_total_logs', 0)}, confidence={ai_stats.get('confidence_score', 0)}")
 
         # 4. 정확도 계산
         logger.debug(f"4단계: 정확도 계산 시작")
