@@ -5,6 +5,7 @@ AI vs DB 통계 비교 도구 (Statistics Comparison Tools)
 """
 
 import json
+import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 from langchain_core.tools import tool
@@ -12,6 +13,9 @@ from langchain_openai import ChatOpenAI
 
 from app.core.opensearch import opensearch_client
 from app.core.config import settings
+from app.tools.sampling_strategies import sample_stratified_vector_knn
+
+logger = logging.getLogger(__name__)
 
 
 def _get_db_statistics(project_uuid: str, time_hours: int = 24) -> Dict[str, Any]:
@@ -148,14 +152,48 @@ def _get_log_samples(project_uuid: str, time_hours: int = 24, sample_size: int =
     return samples
 
 
-def _get_stratified_log_samples(
+async def _get_stratified_log_samples(
     project_uuid: str,
     time_hours: int = 24,
     sample_size: int = 100,
     level_counts: Dict[str, int] = None
 ) -> List[Dict[str, Any]]:
     """
-    층화 샘플링: 레벨별 비율에 맞게 샘플 추출
+    Vector KNN 기반 층화 샘플링 (embedding 활용)
+
+    폴백: Vector 검색 실패 시 랜덤 샘플링
+    """
+    try:
+        # Vector KNN 샘플링 시도
+        logger.info(f"Vector KNN 샘플링 시작: project={project_uuid}, size={sample_size}")
+
+        samples = await sample_stratified_vector_knn(
+            opensearch_client=opensearch_client,
+            project_uuid=project_uuid,
+            time_hours=time_hours,
+            k=sample_size,
+            k_per_level=level_counts
+        )
+
+        logger.info(f"✅ Vector KNN 샘플링 완료: {len(samples)}개")
+        return samples
+
+    except Exception as e:
+        # 폴백: 랜덤 샘플링
+        logger.warning(f"⚠️ Vector KNN 실패, 랜덤 샘플링으로 폴백: {e}")
+        return _get_stratified_log_samples_random(
+            project_uuid, time_hours, sample_size, level_counts
+        )
+
+
+def _get_stratified_log_samples_random(
+    project_uuid: str,
+    time_hours: int = 24,
+    sample_size: int = 100,
+    level_counts: Dict[str, int] = None
+) -> List[Dict[str, Any]]:
+    """
+    랜덤 층화 샘플링 (폴백용): 레벨별 비율에 맞게 샘플 추출
     희소 이벤트(ERROR/WARN)도 반드시 포함
     """
     index_pattern = f"{project_uuid.replace('-', '_')}_*"

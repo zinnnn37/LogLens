@@ -32,6 +32,7 @@ class SourcesTrackerCallback(BaseCallbackHandler):
             sources_tracker: SourcesTracker 인스턴스 (공유)
         """
         self.sources_tracker = sources_tracker
+        self.current_tool_name = None  # 현재 실행 중인 도구 이름 저장
 
     def on_tool_start(
         self,
@@ -47,6 +48,7 @@ class SourcesTrackerCallback(BaseCallbackHandler):
             input_str: 도구 입력 (JSON 문자열)
         """
         tool_name = serialized.get("name", "unknown")
+        self.current_tool_name = tool_name  # 도구 이름 저장
 
         # 입력 파싱 (JSON 형식)
         try:
@@ -68,6 +70,21 @@ class SourcesTrackerCallback(BaseCallbackHandler):
         Args:
             output: 도구 출력 (문자열)
         """
+        # 통계/집계 도구는 로그가 아닌 집계 결과를 반환하므로 로그 추출 스킵
+        AGGREGATION_TOOLS = {
+            "get_traffic_by_time",
+            "get_log_statistics",
+            "get_slowest_apis",
+            "analyze_http_error_matrix",
+            "get_error_rate_trend",
+            "get_service_health_status",
+            "get_recent_errors_summary"
+        }
+
+        if self.current_tool_name in AGGREGATION_TOOLS:
+            # 통계 도구는 마크다운 테이블을 반환하므로 로그 추출하지 않음
+            return
+
         # 출력이 JSON인지 확인
         logs = self._extract_logs_from_output(output)
 

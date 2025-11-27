@@ -147,14 +147,14 @@ async def compare_ai_vs_db(
                 detail=f"최근 {time_hours}시간 동안 로그 데이터가 없습니다."
             )
 
-        # 2. 로그 샘플 추출 (층화 샘플링 사용)
-        logger.debug(f"2단계: 층화 로그 샘플 추출 시작")
+        # 2. 로그 샘플 추출 (Vector KNN 층화 샘플링 사용)
+        logger.debug(f"2단계: Vector KNN 층화 로그 샘플 추출 시작")
         level_counts = {
             "ERROR": db_stats["error_count"],
             "WARN": db_stats["warn_count"],
             "INFO": db_stats["info_count"]
         }
-        log_samples = _get_stratified_log_samples(project_uuid, time_hours, sample_size, level_counts)
+        log_samples = await _get_stratified_log_samples(project_uuid, time_hours, sample_size, level_counts)
         logger.info(f"✅ 층화 로그 샘플 추출 완료: sample_count={len(log_samples)}")
 
         if not log_samples:

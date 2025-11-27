@@ -3,7 +3,7 @@
 Periodic Enrichment Scheduler for ERROR Log Vectorization
 
 This service:
-1. Runs every 10 minutes
+1. Runs every 10 seconds (configurable for testing/production)
 2. Queries OpenSearch for ERROR logs without log_vector field
 3. Processes 100 logs at a time
 4. Generates embeddings using text-embedding-3-large model
@@ -50,13 +50,13 @@ class PeriodicEnrichmentScheduler:
     """
     Scheduler that periodically vectorizes ERROR logs
 
-    Runs every 10 minutes and processes up to 100 ERROR logs
+    Runs every 10 seconds and processes up to 100 ERROR logs
     that don't have log_vector field yet.
     """
 
     def __init__(self):
         self.batch_size = 100  # Process 100 logs per run
-        self.interval_minutes = 10  # Run every 10 minutes
+        self.interval_seconds = 10  # Run every 10 seconds (for testing/development)
 
         # Performance metrics
         self.stats = {
@@ -68,7 +68,7 @@ class PeriodicEnrichmentScheduler:
 
         logger.info("Initializing Periodic Enrichment Scheduler")
         logger.info(f"  Batch size: {self.batch_size} logs")
-        logger.info(f"  Interval: {self.interval_minutes} minutes")
+        logger.info(f"  Interval: {self.interval_seconds} seconds")
         logger.info(f"  Model: text-embedding-3-large (1536 dimensions)")
 
     async def find_error_logs_without_vectors(self) -> List[Dict[str, Any]]:
@@ -288,10 +288,10 @@ class PeriodicEnrichmentScheduler:
         """
         Start the periodic scheduler
 
-        Runs every 10 minutes indefinitely until interrupted.
+        Runs every 10 seconds indefinitely until interrupted.
         """
         logger.info("🚀 Starting Periodic Enrichment Scheduler")
-        logger.info(f"   Schedule: Every {self.interval_minutes} minutes")
+        logger.info(f"   Schedule: Every {self.interval_seconds} seconds")
         logger.info(f"   Batch size: {self.batch_size} logs per cycle")
         logger.info(f"   Model: text-embedding-3-large")
         logger.info("")
@@ -299,10 +299,10 @@ class PeriodicEnrichmentScheduler:
         # Create scheduler
         scheduler = AsyncIOScheduler()
 
-        # Add job (run every 10 minutes)
+        # Add job (run every 10 seconds)
         scheduler.add_job(
             self.run_enrichment_cycle,
-            trigger=IntervalTrigger(minutes=self.interval_minutes),
+            trigger=IntervalTrigger(seconds=self.interval_seconds),
             id='periodic_enrichment',
             name='Periodic ERROR Log Enrichment',
             replace_existing=True
