@@ -150,23 +150,56 @@ async def compare_ai_vs_db(
 
         # 2. 로그 샘플 추출 (2단계 희소 이벤트 인식 샘플링 + IPW 가중치)
         logger.debug(f"2단계: 2단계 희소 이벤트 인식 샘플링 시작")
-        log_samples, sample_metadata = await sample_two_stage_rare_aware(
-            project_uuid=project_uuid,
-            total_k=sample_size,
-            time_hours=time_hours,
-            rare_threshold=100  # 100개 미만이면 희소 이벤트로 간주
-        )
-        logger.info(
-            f"✅ 2단계 샘플링 완료: sample_count={len(log_samples)}, "
-            f"weights={sample_metadata.get('weights', {})}, "
-            f"rare_levels={sample_metadata.get('rare_levels', [])}"
-        )
+        sample_metadata = None
+        try:
+            log_samples, sample_metadata = await sample_two_stage_rare_aware(
+                project_uuid=project_uuid,
+                total_k=sample_size,
+                time_hours=time_hours,
+                rare_threshold=100  # 100개 미만이면 희소 이벤트로 간주
+            )
+            sampling_method = sample_metadata.get('sampling_method', 'unknown')
+            logger.info(
+                f"✅ 2단계 샘플링 완료: sample_count={len(log_samples)}, "
+                f"method={sampling_method}, "
+                f"weights={sample_metadata.get('weights', {})}, "
+                f"rare_levels={sample_metadata.get('rare_levels', [])}"
+            )
+        except Exception as e:
+            logger.warning(f"⚠️ 2단계 샘플링 실패, 기존 방식으로 폴백: {type(e).__name__}: {str(e)}")
+            # 폴백: 기존 샘플링 방식 사용
+            level_counts = {
+                "ERROR": db_stats["error_count"],
+                "WARN": db_stats["warn_count"],
+                "INFO": db_stats["info_count"]
+            }
+            log_samples = await _get_stratified_log_samples(project_uuid, time_hours, sample_size, level_counts)
+            sample_metadata = None  # 기존 방식은 메타데이터 없음
+            logger.info(f"✅ 폴백 샘플링 완료: sample_count={len(log_samples)}")
 
         if not log_samples:
-            logger.error(f"🔴 로그 샘플 추출 실패: project_uuid={project_uuid}")
+            error_msg = f"로그 샘플 추출 실패: project_uuid={project_uuid}"
+            if sample_metadata:
+                error_detail = sample_metadata.get("error", "Unknown error")
+                level_counts = sample_metadata.get("level_counts", {})
+                logger.error(
+                    f"🔴 {error_msg}, error={error_detail}, level_counts={level_counts}"
+                )
+
+                # 진단 메시지 생성
+                if not level_counts or sum(level_counts.values()) == 0:
+                    detail = f"최근 {time_hours}시간 동안 로그가 없습니다."
+                else:
+                    detail = f"로그는 존재하지만 (ERROR: {level_counts.get('ERROR', 0)}, " \
+                             f"WARN: {level_counts.get('WARN', 0)}, INFO: {level_counts.get('INFO', 0)}), " \
+                             f"Vector 샘플링이 실패했습니다."
+            else:
+                logger.error(f"🔴 {error_msg}")
+                detail = f"최근 {time_hours}시간 동안 로그를 찾을 수 없습니다."
+
             raise HTTPException(
                 status_code=500,
-                detail="로그 샘플을 추출할 수 없습니다."
+                detail=detail
             )
 
         # 3. LLM 기반 통계 추론 (샘플 + IPW 가중치 메타데이터)

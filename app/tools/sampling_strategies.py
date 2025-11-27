@@ -489,10 +489,23 @@ async def sample_two_stage_rare_aware(
         info_k = k_per_level.get("INFO", 0)
         k_per_level["INFO"] = max(0, info_k - excess)
 
-    # 4. Vector KNN 샘플링 실행
-    samples = await sample_stratified_vector_knn(project_uuid, k_per_level, time_hours)
+    # 4. Vector KNN 샘플링 실행 (폴백: 벡터 없으면 랜덤 샘플링)
+    sampling_method = "vector_knn"
+    try:
+        samples = await sample_stratified_vector_knn(project_uuid, k_per_level, time_hours)
 
-    # 5. 실제 샘플 개수 확인 (Vector KNN이 부족할 수 있음)
+        # Vector 샘플링이 빈 결과를 반환하면 랜덤 샘플링으로 폴백
+        if not samples:
+            print(f"⚠️ Vector KNN returned empty (no log_vector field?), using random sampling")
+            samples = await sample_random_stratified(project_uuid, k_per_level, time_hours)
+            sampling_method = "random_fallback"
+    except Exception as e:
+        # Vector 샘플링 실패 시 랜덤 샘플링으로 폴백
+        print(f"⚠️ Vector KNN failed ({type(e).__name__}: {str(e)}), using random sampling")
+        samples = await sample_random_stratified(project_uuid, k_per_level, time_hours)
+        sampling_method = "random_fallback"
+
+    # 5. 실제 샘플 개수 확인 (샘플링이 부족할 수 있음)
     actual_sample_counts = {"ERROR": 0, "WARN": 0, "INFO": 0}
     for sample in samples:
         level = sample.get("level", "INFO")
@@ -515,6 +528,7 @@ async def sample_two_stage_rare_aware(
         "level_counts": level_counts,
         "sample_counts": actual_sample_counts,
         "sampling_strategy": "two_stage_rare_aware",
+        "sampling_method": sampling_method,  # vector_knn 또는 random_fallback
         "rare_threshold": rare_threshold,
         "rare_levels": rare_levels,
         "total_logs": total_logs,
