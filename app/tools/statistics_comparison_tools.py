@@ -1124,3 +1124,163 @@ def _calculate_error_accuracy(
         "error_rate_accuracy": error_rate_acc,
         "overall_accuracy": overall_acc
     }
+
+
+async def _vector_estimate_error_count(
+    error_samples: List[Dict],
+    project_uuid: str,
+    time_hours: int,
+    total_logs: int,
+    similarity_threshold: float = 0.8
+) -> Dict[str, Any]:
+    """
+    Vector 유사도 기반 ERROR-like 로그 counting
+
+    ERROR 샘플들의 centroid(평균 벡터)를 계산하고,
+    전체 로그에서 centroid와 유사도가 threshold 이상인 로그를 counting합니다.
+
+    Args:
+        error_samples: 벡터가 있는 ERROR 로그 샘플들
+        project_uuid: 프로젝트 UUID
+        time_hours: 분석 기간
+        total_logs: 전체 로그 수 (error_rate 계산용)
+        similarity_threshold: 유사도 임계값 (기본 0.8)
+
+    Returns:
+        {
+            "estimated_total_errors": int,
+            "estimated_error_rate": float,
+            "confidence_score": int,
+            "reasoning": str
+        }
+    """
+    import numpy as np
+
+    # 1. ERROR 샘플들의 벡터 추출
+    vectors = [s.get('log_vector') for s in error_samples if s.get('log_vector')]
+
+    if not vectors:
+        logger.warning("No vectorized ERROR samples available for centroid calculation")
+        return {
+            "estimated_total_errors": 0,
+            "estimated_error_rate": 0.0,
+            "confidence_score": 0,
+            "reasoning": "벡터화된 ERROR 샘플 없음"
+        }
+
+    logger.info(f"📊 Vector estimation: {len(vectors)} ERROR samples with vectors")
+
+    # 2. Centroid 계산 (평균 벡터)
+    centroid = np.mean(vectors, axis=0).tolist()
+    logger.info(f"📊 Centroid calculated from {len(vectors)} vectors")
+
+    # 3. OpenSearch KNN 검색 (전체 로그 대상, 유사도 threshold 적용)
+    index_pattern = f"{project_uuid.replace('-', '_')}_*"
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(hours=time_hours)
+
+    try:
+        # KNN 쿼리로 유사한 로그 검색
+        knn_query = {
+            "size": 0,  # count만 필요
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "script_score": {
+                                "query": {
+                                    "bool": {
+                                        "filter": [
+                                            {"range": {"timestamp": {
+                                                "gte": start_time.isoformat() + 'Z',
+                                                "lte": end_time.isoformat() + 'Z'
+                                            }}},
+                                            {"exists": {"field": "log_vector"}}
+                                        ]
+                                    }
+                                },
+                                "script": {
+                                    "source": "cosineSimilarity(params.query_vector, 'log_vector') + 1.0",
+                                    "params": {"query_vector": centroid}
+                                }
+                            }
+                        }
+                    ],
+                    "filter": [
+                        {"range": {"_score": {"gte": similarity_threshold + 1.0}}}  # +1.0 because cosineSimilarity returns [-1, 1] + 1 = [0, 2]
+                    ]
+                }
+            },
+            "track_total_hits": True
+        }
+
+        # 먼저 전체 유사 로그 수를 aggregation으로 계산
+        # script_score는 filter에서 사용 불가하므로, 대안 접근법 사용
+        # OpenSearch에서는 min_score를 사용
+
+        # 대안: KNN으로 top-k 검색 후 threshold 이상만 count
+        knn_search_query = {
+            "size": 10000,  # 충분히 큰 값
+            "min_score": similarity_threshold,  # 유사도 threshold
+            "query": {
+                "script_score": {
+                    "query": {
+                        "bool": {
+                            "filter": [
+                                {"range": {"timestamp": {
+                                    "gte": start_time.isoformat() + 'Z',
+                                    "lte": end_time.isoformat() + 'Z'
+                                }}},
+                                {"exists": {"field": "log_vector"}}
+                            ]
+                        }
+                    },
+                    "script": {
+                        "source": "cosineSimilarity(params.query_vector, 'log_vector') + 1.0",
+                        "params": {"query_vector": centroid}
+                    }
+                }
+            },
+            "_source": False,  # 문서 내용 불필요, count만
+            "track_total_hits": True
+        }
+
+        result = opensearch_client.search(
+            index=index_pattern,
+            body=knn_search_query
+        )
+
+        # 4. Counting - threshold 이상인 결과만
+        hits = result.get('hits', {}).get('hits', [])
+        # min_score가 제대로 작동하지 않을 수 있으므로 수동 필터링
+        similar_count = sum(1 for hit in hits if hit.get('_score', 0) >= similarity_threshold + 1.0)
+
+        # total_hits 사용 (더 정확할 수 있음)
+        total_hits = result.get('hits', {}).get('total', {})
+        if isinstance(total_hits, dict):
+            reported_count = total_hits.get('value', 0)
+        else:
+            reported_count = total_hits
+
+        # 더 큰 값 사용 (size 제한으로 인한 손실 방지)
+        similar_count = max(similar_count, reported_count)
+
+        logger.info(f"📊 Vector KNN search: {similar_count} logs with similarity >= {similarity_threshold}")
+
+    except Exception as e:
+        logger.error(f"Vector KNN search failed: {e}")
+        # 폴백: 샘플 기반 추정
+        similar_count = len(error_samples)
+
+    # 5. 결과 계산
+    error_rate = (similar_count / total_logs * 100) if total_logs > 0 else 0.0
+
+    # 신뢰도: 샘플 수 기반
+    confidence = min(100, len(vectors) * 2)
+
+    return {
+        "estimated_total_errors": similar_count,
+        "estimated_error_rate": round(error_rate, 2),
+        "confidence_score": confidence,
+        "reasoning": f"ERROR centroid 기준 유사도 {similarity_threshold} 이상 로그 {similar_count}개 (샘플 {len(vectors)}개 기반)"
+    }

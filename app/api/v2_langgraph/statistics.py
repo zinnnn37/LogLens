@@ -18,7 +18,7 @@ from app.tools.statistics_comparison_tools import (
     _calculate_accuracy,
     _get_db_error_statistics,
     _sample_errors_with_vector,
-    _llm_estimate_error_statistics,
+    _vector_estimate_error_count,
     _calculate_error_accuracy
 )
 from app.tools.sampling_strategies import sample_two_stage_rare_aware
@@ -481,14 +481,16 @@ async def compare_error_statistics(
                 detail="ERROR 로그 샘플링 실패"
             )
 
-        # Step 3: LLM으로 ERROR 추정
-        ai_stats = _llm_estimate_error_statistics(
+        # Step 3: Vector 유사도로 ERROR 추정
+        ai_stats = await _vector_estimate_error_count(
             error_samples,
+            project_uuid,
+            time_hours,
             db_stats["total_logs"],
-            time_hours
+            similarity_threshold=0.8
         )
         logger.info(
-            f"✅ AI ERROR 추정: estimated_errors={ai_stats['estimated_total_errors']}, "
+            f"✅ AI ERROR 추정 (Vector): estimated_errors={ai_stats['estimated_total_errors']}, "
             f"confidence={ai_stats['confidence_score']}"
         )
 
