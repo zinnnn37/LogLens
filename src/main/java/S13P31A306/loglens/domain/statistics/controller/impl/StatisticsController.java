@@ -3,6 +3,7 @@ package S13P31A306.loglens.domain.statistics.controller.impl;
 import S13P31A306.loglens.domain.statistics.constants.StatisticsSuccessCode;
 import S13P31A306.loglens.domain.statistics.controller.StatisticsApi;
 import S13P31A306.loglens.domain.statistics.dto.response.AIComparisonResponse;
+import S13P31A306.loglens.domain.statistics.dto.response.ErrorComparisonResponse;
 import S13P31A306.loglens.domain.statistics.dto.response.LogTrendResponse;
 import S13P31A306.loglens.domain.statistics.dto.response.TrafficResponse;
 import S13P31A306.loglens.domain.statistics.service.LogTrendService;
@@ -104,6 +105,34 @@ public class StatisticsController implements StatisticsApi {
 
         return ApiResponseFactory.success(
                 StatisticsSuccessCode.AI_COMPARISON_RETRIEVED,
+                response
+        );
+    }
+
+    @Override
+    @GetMapping("/error-comparison")
+    public ResponseEntity<? extends BaseResponse> getErrorComparison(
+            @ValidUuid @RequestParam String projectUuid,
+            @RequestParam(defaultValue = "24") Integer timeHours,
+            @RequestParam(defaultValue = "100") Integer sampleSize
+    ) {
+        log.info("{} ERROR 로그 비교 API 호출: projectUuid={}, timeHours={}, sampleSize={}",
+                LOG_PREFIX, projectUuid, timeHours, sampleSize);
+
+        ErrorComparisonResponse response = aiServiceClient.compareErrorStatistics(
+                projectUuid, timeHours, sampleSize);
+
+        if (response == null) {
+            log.error("{} AI 서비스 호출 실패: projectUuid={}", LOG_PREFIX, projectUuid);
+            throw new BusinessException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
+        }
+
+        log.info("{} ERROR 로그 비교 완료: overallAccuracy={}%",
+                LOG_PREFIX,
+                response.accuracyMetrics() != null ? response.accuracyMetrics().overallAccuracy() : null);
+
+        return ApiResponseFactory.success(
+                StatisticsSuccessCode.ERROR_COMPARISON_RETRIEVED,
                 response
         );
     }

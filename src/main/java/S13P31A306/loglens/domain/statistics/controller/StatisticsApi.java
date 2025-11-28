@@ -1,6 +1,7 @@
 package S13P31A306.loglens.domain.statistics.controller;
 
 import S13P31A306.loglens.domain.statistics.dto.response.AIComparisonResponse;
+import S13P31A306.loglens.domain.statistics.dto.response.ErrorComparisonResponse;
 import S13P31A306.loglens.domain.statistics.dto.response.LogTrendResponse;
 import S13P31A306.loglens.domain.statistics.dto.response.TrafficResponse;
 import S13P31A306.loglens.global.annotation.ValidUuid;
@@ -469,6 +470,102 @@ public interface StatisticsApi {
             }
     )
     ResponseEntity<? extends BaseResponse> getAiComparison(
+            @Parameter(description = "프로젝트 UUID", required = true, example = "3a73c7d4-8176-3929-b72f-d5b921daae67")
+            @ValidUuid
+            @RequestParam String projectUuid,
+
+            @Parameter(description = "분석 기간 (시간)", example = "24")
+            @RequestParam(defaultValue = "24") Integer timeHours,
+
+            @Parameter(description = "AI 분석용 샘플 크기", example = "100")
+            @RequestParam(defaultValue = "100") Integer sampleSize
+    );
+
+    @Operation(
+            summary = "ERROR 로그 비교 검증",
+            description = "Vector KNN 샘플링을 활용한 ERROR 로그 통계 비교 검증",
+            security = @SecurityRequirement(name = SwaggerMessages.BEARER_AUTH),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "ERROR 로그 비교 검증 성공",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorComparisonResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "ErrorComparisonSuccess",
+                                            summary = "ERROR 로그 비교 성공 예시",
+                                            value = """
+                                                    {
+                                                      "code": "STATISTICS_2004",
+                                                      "message": "ERROR 로그 비교 검증 성공",
+                                                      "status": 200,
+                                                      "data": {
+                                                        "projectUuid": "3a73c7d4-8176-3929-b72f-d5b921daae67",
+                                                        "analysisPeriodHours": 24,
+                                                        "sampleSize": 100,
+                                                        "analyzedAt": "2025-11-14T15:30:00",
+                                                        "dbErrorStats": {
+                                                          "totalErrors": 342,
+                                                          "errorRate": 2.22,
+                                                          "peakErrorHour": "2025-11-14T12",
+                                                          "peakErrorCount": 45
+                                                        },
+                                                        "aiErrorStats": {
+                                                          "estimatedTotalErrors": 338,
+                                                          "estimatedErrorRate": 2.20,
+                                                          "confidenceScore": 85,
+                                                          "reasoning": "샘플 100개 중 ERROR 패턴 분석 기반 추론"
+                                                        },
+                                                        "accuracyMetrics": {
+                                                          "errorCountAccuracy": 98.83,
+                                                          "errorRateAccuracy": 99.80,
+                                                          "overallAccuracy": 99.28
+                                                        },
+                                                        "vectorAnalysis": {
+                                                          "vectorizedErrorCount": 280,
+                                                          "vectorizationRate": 81.87,
+                                                          "samplingMethod": "vector_knn",
+                                                          "sampleDistribution": "5 clusters with avg 20 samples each"
+                                                        }
+                                                      },
+                                                      "timestamp": "2025-11-14T15:30:00Z"
+                                                    }
+                                                    """
+                                    )
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "잘못된 요청 (UUID 형식 오류)",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "ERROR 로그 없음",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ErrorResponse.class),
+                                    examples = @ExampleObject(
+                                            name = "NoErrorLogs",
+                                            summary = "ERROR 로그 없음",
+                                            value = """
+                                                    {
+                                                      "code": "G404",
+                                                      "message": "최근 24시간 동안 ERROR 로그가 없습니다.",
+                                                      "status": 404,
+                                                      "timestamp": "2025-11-14T15:30:00Z"
+                                                    }
+                                                    """
+                                    )
+                            )
+                    )
+            }
+    )
+    ResponseEntity<? extends BaseResponse> getErrorComparison(
             @Parameter(description = "프로젝트 UUID", required = true, example = "3a73c7d4-8176-3929-b72f-d5b921daae67")
             @ValidUuid
             @RequestParam String projectUuid,
