@@ -2,6 +2,7 @@
 FastAPI application entry point
 """
 
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +15,10 @@ from app.api.v2_langgraph.statistics import router as v2_langgraph_statistics_ro
 from app.api.v2_langgraph.experiments import router as v2_langgraph_experiments_router
 
 
+# Global scheduler task reference
+_scheduler_task = None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -21,6 +26,8 @@ async def lifespan(app: FastAPI):
 
     Handles startup and shutdown tasks
     """
+    global _scheduler_task
+
     # Startup
     print(f"🚀 Starting {settings.APP_NAME} v{settings.APP_VERSION}")
     print(f"📊 Environment: {settings.ENVIRONMENT}")
@@ -48,10 +55,57 @@ async def lifespan(app: FastAPI):
         print(f"⚠️ OpenSearch indices check failed: {e}")
         print("   Application will continue, but some features may not work")
 
+    # Start Periodic Enrichment Scheduler for ERROR log vectorization
+    try:
+        print("🔧 Starting Periodic Enrichment Scheduler...")
+        import sys
+        import os
+
+        # Add project root to path for periodic_enrichment_scheduler import
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+
+        from periodic_enrichment_scheduler import PeriodicEnrichmentScheduler
+
+        scheduler = PeriodicEnrichmentScheduler()
+
+        async def run_scheduler():
+            """Run scheduler as background task"""
+            try:
+                await scheduler.start()
+            except asyncio.CancelledError:
+                print("⚠️ Scheduler task cancelled")
+            except Exception as e:
+                print(f"🔴 Scheduler error: {e}")
+
+        # Start scheduler as background task
+        _scheduler_task = asyncio.create_task(run_scheduler())
+        print("✅ Periodic Enrichment Scheduler started in background")
+        print("   ERROR logs will be automatically vectorized every 10 seconds")
+
+    except ImportError as e:
+        print(f"⚠️ Periodic Enrichment Scheduler not available: {e}")
+        print("   ERROR logs will not be auto-vectorized (run scheduler manually)")
+    except Exception as e:
+        print(f"⚠️ Failed to start Periodic Enrichment Scheduler: {e}")
+        print("   ERROR logs will not be auto-vectorized")
+
     yield
 
     # Shutdown
     print("🛑 Shutting down...")
+
+    # Stop scheduler if running
+    if _scheduler_task is not None:
+        print("🔧 Stopping Periodic Enrichment Scheduler...")
+        _scheduler_task.cancel()
+        try:
+            await _scheduler_task
+        except asyncio.CancelledError:
+            pass
+        print("✅ Scheduler stopped")
+
     print("✅ Shutdown complete")
 
 
