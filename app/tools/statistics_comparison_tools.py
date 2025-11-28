@@ -1125,12 +1125,61 @@ def _calculate_error_accuracy(
     }
 
 
+def _calculate_dynamic_threshold(vectors: List[List[float]], min_threshold: float = 0.3) -> float:
+    """
+    ERROR 샘플 간 유사도를 기반으로 동적 threshold 계산
+
+    Args:
+        vectors: ERROR 샘플들의 벡터 리스트
+        min_threshold: 최소 threshold (기본 0.3)
+
+    Returns:
+        동적으로 계산된 threshold
+    """
+    import numpy as np
+
+    if len(vectors) < 2:
+        return 0.5  # 샘플 부족 시 기본값
+
+    # numpy로 cosine similarity 직접 계산
+    vectors_array = np.array(vectors)
+
+    # 정규화 (L2 norm)
+    norms = np.linalg.norm(vectors_array, axis=1, keepdims=True)
+    normalized = vectors_array / norms
+
+    # Pairwise cosine similarity = dot product of normalized vectors
+    sim_matrix = np.dot(normalized, normalized.T)
+
+    # 대각선 제외 (자기 자신과의 유사도 = 1.0)
+    n = len(vectors)
+    similarities = []
+    for i in range(n):
+        for j in range(i + 1, n):
+            similarities.append(sim_matrix[i][j])
+
+    if not similarities:
+        return 0.5
+
+    # 통계 계산
+    mean_sim = np.mean(similarities)
+    std_sim = np.std(similarities)
+
+    # threshold = mean - 1.5 * std (더 많은 유사 로그 포함)
+    dynamic_threshold = mean_sim - 1.5 * std_sim
+
+    logger.info(f"📊 Dynamic threshold: mean={mean_sim:.3f}, std={std_sim:.3f}, threshold={dynamic_threshold:.3f}")
+
+    # 최소값 클램핑
+    return max(dynamic_threshold, min_threshold)
+
+
 async def _vector_estimate_error_count(
     error_samples: List[Dict],
     project_uuid: str,
     time_hours: int,
     total_logs: int,
-    similarity_threshold: float = 0.8
+    similarity_threshold: float = None  # None이면 동적 계산
 ) -> Dict[str, Any]:
     """
     Vector 유사도 기반 ERROR-like 로그 counting
@@ -1143,7 +1192,7 @@ async def _vector_estimate_error_count(
         project_uuid: 프로젝트 UUID
         time_hours: 분석 기간
         total_logs: 전체 로그 수 (error_rate 계산용)
-        similarity_threshold: 유사도 임계값 (기본 0.8)
+        similarity_threshold: 유사도 임계값 (None이면 동적 계산)
 
     Returns:
         {
@@ -1166,6 +1215,11 @@ async def _vector_estimate_error_count(
             "confidence_score": 0,
             "reasoning": "벡터화된 ERROR 샘플 없음"
         }
+
+    # 2. 동적 threshold 계산 (None이면)
+    if similarity_threshold is None:
+        similarity_threshold = _calculate_dynamic_threshold(vectors)
+        logger.info(f"📊 Using dynamic threshold: {similarity_threshold:.3f}")
 
     logger.info(f"📊 Vector estimation: {len(vectors)} ERROR samples with vectors")
 
