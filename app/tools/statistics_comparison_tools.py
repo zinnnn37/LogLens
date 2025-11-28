@@ -4,16 +4,17 @@ AI vs DB 통계 비교 도구 (Statistics Comparison Tools)
 - LLM이 DB 쿼리를 대체할 수 있는 역량을 수치로 증명
 """
 
+import asyncio
 import json
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timedelta
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 
 from app.core.opensearch import opensearch_client
 from app.core.config import settings
-from app.tools.sampling_strategies import sample_stratified_vector_knn
+from app.tools.sampling_strategies import sample_stratified_vector_knn, sample_random_stratified
 
 logger = logging.getLogger(__name__)
 
@@ -788,3 +789,339 @@ async def get_hourly_comparison(
 
     except Exception as e:
         return f"시간대별 통계 조회 중 오류 발생: {str(e)}"
+
+
+# ========== ERROR 전용 비교 함수들 ==========
+
+async def _get_db_error_statistics(
+    project_uuid: str,
+    time_hours: int = 24
+) -> Dict[str, Any]:
+    """
+    OpenSearch에서 ERROR 로그 통계 조회
+
+    Returns:
+        {
+            "total_logs": int,        # 전체 로그 수
+            "total_errors": int,      # ERROR 로그 수
+            "error_rate": float,      # ERROR 비율 (%)
+            "peak_error_hour": str,   # ERROR 최다 발생 시간
+            "peak_error_count": int   # 최다 시간 ERROR 수
+        }
+    """
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(hours=time_hours)
+    index_pattern = f"{project_uuid.replace('-', '_')}_*"
+
+    query = {
+        "size": 0,
+        "query": {
+            "range": {
+                "timestamp": {
+                    "gte": start_time.isoformat() + "Z",
+                    "lte": end_time.isoformat() + "Z"
+                }
+            }
+        },
+        "aggs": {
+            # ERROR 로그 수
+            "error_logs": {
+                "filter": {"term": {"level": "ERROR"}}
+            },
+            # 시간대별 ERROR 분포
+            "error_by_hour": {
+                "filter": {"term": {"level": "ERROR"}},
+                "aggs": {
+                    "hours": {
+                        "date_histogram": {
+                            "field": "timestamp",
+                            "fixed_interval": "1h",
+                            "time_zone": "Asia/Seoul"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    result = await asyncio.to_thread(
+        opensearch_client.search,
+        index=index_pattern,
+        body=query,
+        track_total_hits=True
+    )
+
+    total_logs = result["hits"]["total"]["value"]
+    total_errors = result["aggregations"]["error_logs"]["doc_count"]
+    error_rate = (total_errors / total_logs * 100) if total_logs > 0 else 0.0
+
+    # Peak ERROR hour 찾기
+    hour_buckets = result["aggregations"]["error_by_hour"]["hours"]["buckets"]
+    peak_hour = None
+    peak_count = 0
+    if hour_buckets:
+        peak_bucket = max(hour_buckets, key=lambda b: b["doc_count"])
+        peak_hour = peak_bucket["key_as_string"]
+        peak_count = peak_bucket["doc_count"]
+
+    return {
+        "total_logs": total_logs,
+        "total_errors": total_errors,
+        "error_rate": round(error_rate, 2),
+        "peak_error_hour": peak_hour,
+        "peak_error_count": peak_count
+    }
+
+
+async def _sample_errors_with_vector(
+    project_uuid: str,
+    time_hours: int,
+    sample_size: int
+) -> Tuple[List[Dict], Optional[Dict]]:
+    """
+    Vector KNN으로 ERROR 로그 샘플링 + 그룹핑 정보
+
+    Returns:
+        (samples, vector_info)
+        - samples: ERROR 로그 샘플 리스트
+        - vector_info: Vector 그룹핑 메타데이터
+    """
+    # 벡터화된 ERROR 로그 개수 확인
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(hours=time_hours)
+    index_pattern = f"{project_uuid.replace('-', '_')}_*"
+
+    vector_check_query = {
+        "size": 0,
+        "query": {
+            "bool": {
+                "must": [
+                    {"term": {"level": "ERROR"}},
+                    {"exists": {"field": "log_vector"}},
+                    {"range": {"timestamp": {
+                        "gte": start_time.isoformat() + "Z",
+                        "lte": end_time.isoformat() + "Z"
+                    }}}
+                ]
+            }
+        }
+    }
+
+    vector_result = await asyncio.to_thread(
+        opensearch_client.search,
+        index=index_pattern,
+        body=vector_check_query,
+        track_total_hits=True
+    )
+
+    vectorized_count = vector_result["hits"]["total"]["value"]
+
+    # 전체 ERROR 수 조회
+    total_error_query = {
+        "size": 0,
+        "query": {
+            "bool": {
+                "must": [
+                    {"term": {"level": "ERROR"}},
+                    {"range": {"timestamp": {
+                        "gte": start_time.isoformat() + "Z",
+                        "lte": end_time.isoformat() + "Z"
+                    }}}
+                ]
+            }
+        }
+    }
+
+    total_error_result = await asyncio.to_thread(
+        opensearch_client.search,
+        index=index_pattern,
+        body=total_error_query,
+        track_total_hits=True
+    )
+
+    total_errors = total_error_result["hits"]["total"]["value"]
+    vectorization_rate = (vectorized_count / total_errors * 100) if total_errors > 0 else 0.0
+
+    # Vector KNN 샘플링 시도
+    samples = []
+    sampling_method = "vector_knn"
+
+    if vectorized_count >= sample_size * 0.5:  # 벡터화율 50% 이상
+        try:
+            samples = await sample_stratified_vector_knn(
+                project_uuid=project_uuid,
+                k_per_level={"ERROR": sample_size},
+                time_hours=time_hours,
+                level_counts={"ERROR": total_errors}
+            )
+            logger.info(f"✅ Vector KNN 샘플링 완료: {len(samples)}개 ERROR 샘플")
+        except Exception as e:
+            logger.warning(f"⚠️ Vector KNN 실패, 랜덤 샘플링으로 폴백: {e}")
+            sampling_method = "random_fallback"
+    else:
+        logger.info(f"⚠️ 벡터화율 낮음 ({vectorization_rate:.1f}%), 랜덤 샘플링 사용")
+        sampling_method = "random_fallback"
+
+    # 폴백: 랜덤 샘플링
+    if not samples:
+        samples = await sample_random_stratified(
+            project_uuid=project_uuid,
+            k_per_level={"ERROR": sample_size},
+            time_hours=time_hours
+        )
+
+    vector_info = {
+        "vectorized_error_count": vectorized_count,
+        "vectorization_rate": round(vectorization_rate, 1),
+        "sampling_method": sampling_method,
+        "sample_distribution": f"{len(samples)}개 ERROR 로그 샘플"
+    }
+
+    return samples, vector_info
+
+
+async def _llm_estimate_error_statistics(
+    error_samples: List[Dict],
+    total_logs: int,
+    time_hours: int
+) -> Dict[str, Any]:
+    """
+    LLM으로 ERROR 통계 추정
+
+    Returns:
+        {
+            "estimated_total_errors": int,
+            "estimated_error_rate": float,
+            "confidence_score": int,
+            "reasoning": str
+        }
+    """
+    from app.services.llm_service import llm_service
+
+    sample_count = len(error_samples)
+
+    # 샘플 요약 (메시지만, 최대 200자)
+    sample_summaries = []
+    for i, log in enumerate(error_samples[:50], 1):  # 최대 50개만
+        msg = log.get("message", "")[:200]
+        sample_summaries.append(f"{i}. {msg}")
+
+    prompt = f"""당신은 로그 분석 전문가입니다. 최근 {time_hours}시간 동안 수집된 ERROR 로그 샘플을 분석하여 전체 ERROR 통계를 추정하세요.
+
+## 주어진 정보
+
+**전체 로그 수**: {total_logs:,}개
+**ERROR 샘플 수**: {sample_count}개 (전체 ERROR 로그에서 샘플링됨)
+
+**ERROR 샘플 메시지** (최대 50개):
+{chr(10).join(sample_summaries)}
+
+## 추정 과제
+
+1. **전체 ERROR 로그 개수 추정**
+   - 샘플 비율을 고려하여 전체 ERROR 수 추정
+   - 건강한 시스템: ERROR 0.3~1%
+   - 문제 있는 시스템: ERROR 1~5%+
+
+2. **ERROR 발생률 추정** (%)
+   - ERROR 로그 / 전체 로그 * 100
+
+3. **신뢰도 점수** (0~100)
+   - 샘플이 충분한가?
+   - 샘플 품질이 좋은가?
+
+4. **추론 근거**
+   - 왜 이렇게 추정했는지 간단히 설명
+
+## 출력 형식 (JSON만)
+
+{{
+  "estimated_total_errors": <숫자>,
+  "estimated_error_rate": <소수점 2자리>,
+  "confidence_score": <0~100 정수>,
+  "reasoning": "<추론 근거, 2-3문장>"
+}}
+
+JSON만 출력하세요."""
+
+    response = await llm_service.agenerate(
+        prompt=prompt,
+        model=settings.LLM_MODEL,
+        temperature=0.1
+    )
+
+    result_text = response.strip()
+
+    # JSON 파싱
+    try:
+        # JSON 블록 추출
+        if "```json" in result_text:
+            result_text = result_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in result_text:
+            result_text = result_text.split("```")[1].split("```")[0].strip()
+
+        result = json.loads(result_text)
+
+        return {
+            "estimated_total_errors": result["estimated_total_errors"],
+            "estimated_error_rate": round(result["estimated_error_rate"], 2),
+            "confidence_score": result["confidence_score"],
+            "reasoning": result["reasoning"]
+        }
+
+    except Exception as e:
+        logger.error(f"LLM 응답 파싱 실패: {e}, 응답: {result_text[:500]}")
+
+        # 폴백: 단순 비율 계산
+        estimated_errors = int(sample_count * (total_logs / sample_count)) if sample_count > 0 else 0
+        estimated_rate = (estimated_errors / total_logs * 100) if total_logs > 0 else 0.0
+
+        return {
+            "estimated_total_errors": estimated_errors,
+            "estimated_error_rate": round(estimated_rate, 2),
+            "confidence_score": 50,
+            "reasoning": "LLM 추론 실패, 단순 비율로 추정"
+        }
+
+
+def _calculate_error_accuracy(
+    db_stats: Dict[str, Any],
+    ai_stats: Dict[str, Any]
+) -> Dict[str, float]:
+    """
+    ERROR 통계 정확도 계산
+
+    Returns:
+        {
+            "error_count_accuracy": float,
+            "error_rate_accuracy": float,
+            "overall_accuracy": float
+        }
+    """
+    def accuracy_percentage(actual, predicted):
+        if actual == 0:
+            return 100.0 if predicted == 0 else 0.0
+        error = abs(actual - predicted)
+        return max(0, round((1 - error / actual) * 100, 2))
+
+    # ERROR 개수 정확도
+    error_count_acc = accuracy_percentage(
+        db_stats["total_errors"],
+        ai_stats["estimated_total_errors"]
+    )
+
+    # ERROR 비율 정확도 (10점 per 1% 차이)
+    rate_diff = abs(db_stats["error_rate"] - ai_stats["estimated_error_rate"])
+    error_rate_acc = max(0, round(100 - rate_diff * 10, 2))
+
+    # 종합 정확도 (가중 평균)
+    overall_acc = round(
+        error_count_acc * 0.6 + error_rate_acc * 0.4,
+        2
+    )
+
+    return {
+        "error_count_accuracy": error_count_acc,
+        "error_rate_accuracy": error_rate_acc,
+        "overall_accuracy": overall_acc
+    }

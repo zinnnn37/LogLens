@@ -15,7 +15,11 @@ from app.tools.statistics_comparison_tools import (
     _get_log_samples,
     _get_stratified_log_samples,
     _llm_estimate_statistics,
-    _calculate_accuracy
+    _calculate_accuracy,
+    _get_db_error_statistics,
+    _sample_errors_with_vector,
+    _llm_estimate_error_statistics,
+    _calculate_error_accuracy
 )
 from app.tools.sampling_strategies import sample_two_stage_rare_aware
 
@@ -80,6 +84,50 @@ class AIvsDBComparisonResponse(BaseModel):
     verdict: ComparisonVerdict = Field(..., description="검증 결론")
 
     technical_highlights: List[str] = Field(..., description="기술적 어필 포인트")
+
+
+# ERROR 비교 전용 Response Models
+class DBErrorStats(BaseModel):
+    """DB에서 조회한 ERROR 통계"""
+    total_errors: int = Field(..., description="ERROR 로그 수")
+    error_rate: float = Field(..., description="ERROR 비율 (%)")
+    peak_error_hour: Optional[str] = Field(None, description="ERROR 최다 발생 시간")
+    peak_error_count: Optional[int] = Field(None, description="최다 시간 ERROR 수")
+
+
+class AIErrorStats(BaseModel):
+    """AI 추정 ERROR 통계"""
+    estimated_total_errors: int = Field(..., description="추정 ERROR 로그 수")
+    estimated_error_rate: float = Field(..., description="추정 ERROR 비율 (%)")
+    confidence_score: int = Field(..., description="AI 신뢰도 (0-100)")
+    reasoning: str = Field(..., description="추론 근거")
+
+
+class ErrorAccuracyMetrics(BaseModel):
+    """ERROR 정확도 메트릭"""
+    error_count_accuracy: float = Field(..., description="ERROR 수 일치율 (%)")
+    error_rate_accuracy: float = Field(..., description="ERROR 비율 정확도 (%)")
+    overall_accuracy: float = Field(..., description="종합 정확도 (%)")
+
+
+class VectorGroupingInfo(BaseModel):
+    """Vector KNN 그룹핑 정보"""
+    vectorized_error_count: int = Field(..., description="log_vector 있는 ERROR 개수")
+    vectorization_rate: float = Field(..., description="벡터화율 (%)")
+    sampling_method: str = Field(..., description="샘플링 방법 (vector_knn 또는 random_fallback)")
+    sample_distribution: str = Field(..., description="샘플 분포 설명")
+
+
+class ErrorComparisonResponse(BaseModel):
+    """ERROR 로그 비교 결과"""
+    project_uuid: str = Field(..., description="프로젝트 UUID")
+    analysis_period_hours: int = Field(..., description="분석 기간 (시간)")
+    sample_size: int = Field(..., description="사용된 샘플 크기")
+    analyzed_at: datetime = Field(..., description="분석 시점")
+    db_error_stats: DBErrorStats = Field(..., description="DB ERROR 통계")
+    ai_error_stats: AIErrorStats = Field(..., description="AI ERROR 추정")
+    accuracy_metrics: ErrorAccuracyMetrics = Field(..., description="정확도 지표")
+    vector_analysis: Optional[VectorGroupingInfo] = Field(None, description="Vector 샘플링 정보")
 
 
 class HourlyDataPoint(BaseModel):
@@ -377,4 +425,116 @@ async def get_hourly_statistics(
         raise HTTPException(
             status_code=500,
             detail=f"시간대별 통계 조회 중 오류 발생: {str(e)}"
+        )
+
+
+@router.get("/statistics/compare-errors", response_model=ErrorComparisonResponse)
+async def compare_error_statistics(
+    project_uuid: str = Query(..., description="프로젝트 UUID"),
+    time_hours: int = Query(24, ge=1, le=168, description="분석 기간 (시간, 기본 24시간)"),
+    sample_size: int = Query(100, ge=10, le=500, description="AI 분석용 샘플 크기")
+) -> ErrorComparisonResponse:
+    """
+    ERROR 로그 전용 DB vs AI 통계 비교
+
+    Vector KNN 샘플링을 활용하여 유사한 ERROR 패턴을 그룹핑하고,
+    LLM으로 ERROR 통계를 추정하여 정확도를 검증합니다.
+
+    **특징:**
+    - ERROR 로그만 집중 분석
+    - Vector KNN으로 유사 ERROR 그룹핑
+    - log_vector 필드 활용 (벡터화된 ERROR만)
+    - 벡터화율 50% 미만 시 자동 랜덤 샘플링 폴백
+
+    **정확도 지표:**
+    - ERROR 개수 정확도
+    - ERROR 비율 정확도
+    - 종합 정확도 (가중 평균)
+    """
+    logger.info(f"ERROR 비교 시작: project={project_uuid}, hours={time_hours}, sample_size={sample_size}")
+
+    try:
+        # Step 1: DB에서 ERROR 통계 조회
+        db_stats = await _get_db_error_statistics(project_uuid, time_hours)
+        logger.info(f"✅ DB ERROR 통계: total_errors={db_stats['total_errors']}, rate={db_stats['error_rate']}%")
+
+        if db_stats["total_errors"] == 0:
+            logger.warning(f"⚠️ ERROR 로그 없음: project_uuid={project_uuid}")
+            raise HTTPException(
+                status_code=404,
+                detail=f"최근 {time_hours}시간 동안 ERROR 로그가 없습니다."
+            )
+
+        # Step 2: Vector 샘플링 (ERROR만)
+        error_samples, vector_info = await _sample_errors_with_vector(
+            project_uuid, time_hours, sample_size
+        )
+        logger.info(
+            f"✅ ERROR 샘플링 완료: count={len(error_samples)}, "
+            f"method={vector_info['sampling_method']}, "
+            f"vectorization_rate={vector_info['vectorization_rate']}%"
+        )
+
+        if not error_samples:
+            raise HTTPException(
+                status_code=500,
+                detail="ERROR 로그 샘플링 실패"
+            )
+
+        # Step 3: LLM으로 ERROR 추정
+        ai_stats = await _llm_estimate_error_statistics(
+            error_samples,
+            db_stats["total_logs"],
+            time_hours
+        )
+        logger.info(
+            f"✅ AI ERROR 추정: estimated_errors={ai_stats['estimated_total_errors']}, "
+            f"confidence={ai_stats['confidence_score']}"
+        )
+
+        # Step 4: 정확도 계산
+        accuracy = _calculate_error_accuracy(db_stats, ai_stats)
+        logger.info(f"✅ 정확도 계산: overall={accuracy['overall_accuracy']:.1f}%")
+
+        # Step 5: 응답 구성
+        response = ErrorComparisonResponse(
+            project_uuid=project_uuid,
+            analysis_period_hours=time_hours,
+            sample_size=len(error_samples),
+            analyzed_at=datetime.utcnow(),
+            db_error_stats=DBErrorStats(
+                total_errors=db_stats["total_errors"],
+                error_rate=db_stats["error_rate"],
+                peak_error_hour=db_stats["peak_error_hour"],
+                peak_error_count=db_stats["peak_error_count"]
+            ),
+            ai_error_stats=AIErrorStats(
+                estimated_total_errors=ai_stats["estimated_total_errors"],
+                estimated_error_rate=ai_stats["estimated_error_rate"],
+                confidence_score=ai_stats["confidence_score"],
+                reasoning=ai_stats["reasoning"]
+            ),
+            accuracy_metrics=ErrorAccuracyMetrics(
+                error_count_accuracy=accuracy["error_count_accuracy"],
+                error_rate_accuracy=accuracy["error_rate_accuracy"],
+                overall_accuracy=accuracy["overall_accuracy"]
+            ),
+            vector_analysis=VectorGroupingInfo(
+                vectorized_error_count=vector_info["vectorized_error_count"],
+                vectorization_rate=vector_info["vectorization_rate"],
+                sampling_method=vector_info["sampling_method"],
+                sample_distribution=vector_info["sample_distribution"]
+            ) if vector_info else None
+        )
+
+        logger.info(f"✅ ERROR 비교 완료: accuracy={accuracy['overall_accuracy']:.1f}%")
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"🔴 ERROR 비교 실패: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"ERROR 비교 중 오류 발생: {str(e)}"
         )
