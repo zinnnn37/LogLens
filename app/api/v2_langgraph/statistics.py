@@ -482,7 +482,7 @@ async def compare_error_statistics(
             )
 
         # Step 3: LLM으로 ERROR 추정
-        ai_stats = await _llm_estimate_error_statistics(
+        ai_stats = _llm_estimate_error_statistics(
             error_samples,
             db_stats["total_logs"],
             time_hours

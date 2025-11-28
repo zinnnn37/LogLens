@@ -980,7 +980,7 @@ async def _sample_errors_with_vector(
     return samples, vector_info
 
 
-async def _llm_estimate_error_statistics(
+def _llm_estimate_error_statistics(
     error_samples: List[Dict],
     total_logs: int,
     time_hours: int
@@ -996,8 +996,6 @@ async def _llm_estimate_error_statistics(
             "reasoning": str
         }
     """
-    from app.services.llm_service import llm_service
-
     sample_count = len(error_samples)
 
     # 샘플 요약 (메시지만, 최대 200자)
@@ -1044,13 +1042,14 @@ async def _llm_estimate_error_statistics(
 
 JSON만 출력하세요."""
 
-    response = await llm_service.agenerate(
-        prompt=prompt,
+    llm = ChatOpenAI(
         model=settings.LLM_MODEL,
-        temperature=0.1
+        temperature=0.1,
+        openai_api_key=settings.OPENAI_API_KEY,
+        base_url=settings.OPENAI_BASE_URL
     )
-
-    result_text = response.strip()
+    response = llm.invoke(prompt)
+    result_text = response.content.strip()
 
     # JSON 파싱
     try:
