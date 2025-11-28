@@ -1127,7 +1127,11 @@ def _calculate_error_accuracy(
 
 def _calculate_dynamic_threshold(vectors: List[List[float]], min_threshold: float = 0.3) -> float:
     """
-    ERROR 샘플 간 유사도를 기반으로 동적 threshold 계산
+    Centroid 기반 동적 threshold 계산
+
+    각 ERROR 샘플과 centroid의 유사도를 계산하고,
+    최소 유사도 - margin을 threshold로 설정하여
+    모든 ERROR 샘플이 threshold 이상이 되도록 보장합니다.
 
     Args:
         vectors: ERROR 샘플들의 벡터 리스트
@@ -1141,34 +1145,33 @@ def _calculate_dynamic_threshold(vectors: List[List[float]], min_threshold: floa
     if len(vectors) < 2:
         return 0.5  # 샘플 부족 시 기본값
 
-    # numpy로 cosine similarity 직접 계산
     vectors_array = np.array(vectors)
 
-    # 정규화 (L2 norm)
+    # 1. Centroid 계산 (평균 벡터)
+    centroid = np.mean(vectors_array, axis=0)
+
+    # 2. Centroid 정규화
+    centroid_norm = centroid / np.linalg.norm(centroid)
+
+    # 3. 각 샘플 정규화
     norms = np.linalg.norm(vectors_array, axis=1, keepdims=True)
     normalized = vectors_array / norms
 
-    # Pairwise cosine similarity = dot product of normalized vectors
-    sim_matrix = np.dot(normalized, normalized.T)
+    # 4. 각 샘플과 centroid의 cosine similarity 계산
+    similarities_to_centroid = np.dot(normalized, centroid_norm)
 
-    # 대각선 제외 (자기 자신과의 유사도 = 1.0)
-    n = len(vectors)
-    similarities = []
-    for i in range(n):
-        for j in range(i + 1, n):
-            similarities.append(sim_matrix[i][j])
+    # 5. 최소 유사도 - margin을 threshold로 설정
+    min_sim = np.min(similarities_to_centroid)
+    mean_sim = np.mean(similarities_to_centroid)
+    margin = 0.05  # 약간의 여유 마진
 
-    if not similarities:
-        return 0.5
+    dynamic_threshold = min_sim - margin
 
-    # 통계 계산
-    mean_sim = np.mean(similarities)
-    std_sim = np.std(similarities)
-
-    # threshold = mean - 1.5 * std (더 많은 유사 로그 포함)
-    dynamic_threshold = mean_sim - 1.5 * std_sim
-
-    logger.info(f"📊 Dynamic threshold: mean={mean_sim:.3f}, std={std_sim:.3f}, threshold={dynamic_threshold:.3f}")
+    logger.info(
+        f"📊 Centroid-based threshold: "
+        f"min_sim={min_sim:.3f}, mean_sim={mean_sim:.3f}, "
+        f"margin={margin}, threshold={dynamic_threshold:.3f}"
+    )
 
     # 최소값 클램핑
     return max(dynamic_threshold, min_threshold)
