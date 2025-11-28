@@ -481,13 +481,13 @@ async def compare_error_statistics(
                 detail="ERROR 로그 샘플링 실패"
             )
 
-        # Step 3: Vector 유사도로 ERROR 추정 (동적 threshold)
+        # Step 3: Vector 유사도로 ERROR 추정 (고정 threshold 0.5)
         ai_stats = await _vector_estimate_error_count(
             error_samples,
             project_uuid,
             time_hours,
-            db_stats["total_logs"]
-            # similarity_threshold=None -> 동적 계산
+            db_stats["total_logs"],
+            similarity_threshold=0.5  # 고정값 (동적 계산 실패로 인한 폴백)
         )
         logger.info(
             f"✅ AI ERROR 추정 (Vector): estimated_errors={ai_stats['estimated_total_errors']}, "
