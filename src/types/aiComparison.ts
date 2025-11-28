@@ -58,3 +58,48 @@ export interface AIComparisonResponse {
   verdict: ComparisonVerdict;
   technical_highlights: string[] | null;
 }
+
+// ERROR 비교 전용 타입
+export interface ErrorComparisonParams {
+  projectUuid: string;
+  timeHours?: number;
+  sampleSize?: number;
+}
+
+export interface DBErrorStats {
+  total_errors: number;
+  error_rate: number;
+  peak_error_hour: string | null;
+  peak_error_count: number | null;
+}
+
+export interface AIErrorStats {
+  estimated_total_errors: number;
+  estimated_error_rate: number;
+  confidence_score: number;
+  reasoning: string;
+}
+
+export interface ErrorAccuracyMetrics {
+  error_count_accuracy: number;
+  error_rate_accuracy: number;
+  overall_accuracy: number;
+}
+
+export interface VectorGroupingInfo {
+  vectorized_error_count: number;
+  vectorization_rate: number;
+  sampling_method: string;
+  sample_distribution: string;
+}
+
+export interface ErrorComparisonResponse {
+  project_uuid: string;
+  analysis_period_hours: number;
+  sample_size: number;
+  analyzed_at: string;
+  db_error_stats: DBErrorStats;
+  ai_error_stats: AIErrorStats;
+  accuracy_metrics: ErrorAccuracyMetrics;
+  vector_analysis: VectorGroupingInfo | null;
+}

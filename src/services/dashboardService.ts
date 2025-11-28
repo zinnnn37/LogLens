@@ -13,6 +13,8 @@ import type {
 import type {
   AIComparisonParams,
   AIComparisonResponse,
+  ErrorComparisonParams,
+  ErrorComparisonResponse,
 } from '@/types/aiComparison';
 
 /**
@@ -76,6 +78,20 @@ export const getAIComparison = async (
 ): Promise<AIComparisonResponse> => {
   const response = await apiClient.get<AIComparisonResponse>(
     API_PATH.AI_COMPARISON,
+    params,
+  );
+  return response;
+};
+
+/**
+ * ERROR 로그 전용 비교 API
+ * Vector KNN 샘플링으로 ERROR 패턴 분석
+ */
+export const getErrorComparison = async (
+  params: ErrorComparisonParams,
+): Promise<ErrorComparisonResponse> => {
+  const response = await apiClient.get<ErrorComparisonResponse>(
+    API_PATH.ERROR_COMPARISON,
     params,
   );
   return response;

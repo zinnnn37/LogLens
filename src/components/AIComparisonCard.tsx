@@ -6,11 +6,16 @@ import {
   Database,
   TrendingUp,
   AlertTriangle,
+  AlertCircle,
 } from 'lucide-react';
-import type { AIComparisonResponse } from '@/types/aiComparison';
+import type {
+  AIComparisonResponse,
+  ErrorComparisonResponse,
+} from '@/types/aiComparison';
 
 interface AIComparisonCardProps {
   data: AIComparisonResponse;
+  errorComparison?: ErrorComparisonResponse | null;
 }
 
 const formatNumber = (value: number) => value.toLocaleString('ko-KR');
@@ -45,7 +50,10 @@ const getAccuracyColor = (accuracy: number) => {
   return 'text-red-600';
 };
 
-const AIComparisonCard: React.FC<AIComparisonCardProps> = ({ data }) => {
+const AIComparisonCard: React.FC<AIComparisonCardProps> = ({
+  data,
+  errorComparison,
+}) => {
   const {
     analysis_period_hours,
     sample_size,
@@ -315,6 +323,122 @@ const AIComparisonCard: React.FC<AIComparisonCardProps> = ({ data }) => {
               <li key={idx}>{highlight}</li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* ERROR 상세 분석 섹션 */}
+      {errorComparison && (
+        <div className="mt-6 border-t border-slate-200 pt-6">
+          <h4 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <AlertCircle className="h-4 w-4 text-red-500" />
+            ERROR 로그 상세 분석 (Vector DB 활용)
+          </h4>
+
+          {/* ERROR 비교 통계 */}
+          <div className="mb-4 grid grid-cols-2 gap-4">
+            {/* DB ERROR */}
+            <div className="rounded-md bg-slate-50 p-4">
+              <div className="mb-1 text-xs text-slate-600">DB 실제 ERROR</div>
+              <div className="text-2xl font-bold text-slate-900">
+                {formatNumber(errorComparison.db_error_stats.total_errors)}
+              </div>
+              <div className="mt-1 text-xs text-slate-500">
+                비율: {formatPercent(errorComparison.db_error_stats.error_rate)}
+              </div>
+            </div>
+
+            {/* AI ERROR 추정 */}
+            <div className="rounded-md bg-blue-50 p-4">
+              <div className="mb-1 text-xs text-blue-600">AI 추정 ERROR</div>
+              <div className="text-2xl font-bold text-blue-900">
+                {formatNumber(
+                  errorComparison.ai_error_stats.estimated_total_errors,
+                )}
+              </div>
+              <div className="mt-1 text-xs text-blue-500">
+                비율:{' '}
+                {formatPercent(
+                  errorComparison.ai_error_stats.estimated_error_rate,
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ERROR 정확도 */}
+          <div className="mb-4 rounded-md bg-gradient-to-r from-red-50 to-orange-50 p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-medium text-slate-700">
+                ERROR 추정 정확도
+              </span>
+              <span
+                className={`text-2xl font-bold ${getAccuracyColor(errorComparison.accuracy_metrics.overall_accuracy)}`}
+              >
+                {formatPercent(
+                  errorComparison.accuracy_metrics.overall_accuracy,
+                  1,
+                )}
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-slate-200">
+              <div
+                className="h-2 rounded-full bg-red-500 transition-all duration-500"
+                style={{
+                  width: `${errorComparison.accuracy_metrics.overall_accuracy}%`,
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Vector 샘플링 정보 */}
+          {errorComparison.vector_analysis && (
+            <div className="mb-4 rounded-md bg-purple-50 p-4">
+              <div className="mb-2 text-xs font-semibold text-purple-800">
+                Vector 샘플링 정보
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-600">벡터화된 ERROR:</span>
+                  <span className="ml-2 font-medium text-slate-900">
+                    {formatNumber(
+                      errorComparison.vector_analysis.vectorized_error_count,
+                    )}
+                    개
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-600">벡터화율:</span>
+                  <span className="ml-2 font-medium text-slate-900">
+                    {formatPercent(
+                      errorComparison.vector_analysis.vectorization_rate,
+                      1,
+                    )}
+                  </span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-slate-600">샘플링 방법:</span>
+                  <span
+                    className={`ml-2 font-medium ${
+                      errorComparison.vector_analysis.sampling_method ===
+                      'vector_knn'
+                        ? 'text-green-600'
+                        : 'text-amber-600'
+                    }`}
+                  >
+                    {errorComparison.vector_analysis.sampling_method ===
+                    'vector_knn'
+                      ? 'Vector KNN (유사도 기반)'
+                      : 'Random (폴백)'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* AI 추론 근거 */}
+          <div className="rounded-md bg-slate-50 p-4 text-sm text-slate-700">
+            <div className="mb-1 font-medium text-slate-900">AI 추론 근거:</div>
+            {errorComparison.ai_error_stats.reasoning}
+          </div>
         </div>
       )}
     </div>

@@ -86,6 +86,7 @@ export const API_PATH = {
 
   // AI vs DB 통계 비교
   AI_COMPARISON: '/api/statistics/ai-comparison',
+  ERROR_COMPARISON: '/api/statistics/error-comparison',
 
   // 챗봇 스트리밍 API
   CHATBOT_STREAM: '/api/v2/chatbot/ask/stream',

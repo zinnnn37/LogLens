@@ -23,6 +23,7 @@ import {
   getLogHeatmap,
   getDashboardApiStats,
   getAIComparison,
+  getErrorComparison,
 } from '@/services/dashboardService';
 import { getRecentAlerts } from '@/services/alertService';
 import type {
@@ -31,7 +32,10 @@ import type {
   HeatmapResponse,
   DashboardApiStatsData,
 } from '@/types/dashboard';
-import type { AIComparisonResponse } from '@/types/aiComparison';
+import type {
+  AIComparisonResponse,
+  ErrorComparisonResponse,
+} from '@/types/aiComparison';
 import type { Alert } from '@/types/alert';
 import ApiStatsCard from '@/components/ApiStatsCard';
 
@@ -72,6 +76,8 @@ const DashboardPage = () => {
   );
   const [aiComparisonLoading, setAIComparisonLoading] = useState(false);
   const [aiComparisonError, setAIComparisonError] = useState(false);
+  const [errorComparison, setErrorComparison] =
+    useState<ErrorComparisonResponse | null>(null);
 
   // AI 비교 데이터 조회 함수
   const fetchAIComparison = async () => {
@@ -82,12 +88,21 @@ const DashboardPage = () => {
     setAIComparisonLoading(true);
     setAIComparisonError(false);
     try {
+      // 기존 전체 비교 API
       const response = await getAIComparison({
         projectUuid,
         timeHours: 24,
         sampleSize: 100,
       });
       setAIComparison(response);
+
+      // ERROR 전용 비교 API 추가
+      const errorResponse = await getErrorComparison({
+        projectUuid,
+        timeHours: 24,
+        sampleSize: 100,
+      });
+      setErrorComparison(errorResponse);
     } catch (e) {
       console.error('AI 비교 데이터 조회 실패:', e);
       toast.error('AI 비교 데이터를 불러오지 못했습니다.');
@@ -248,7 +263,10 @@ const DashboardPage = () => {
               AI 비교 데이터를 불러올 수 없습니다.
             </div>
           ) : aiComparison ? (
-            <AIComparisonCard data={aiComparison} />
+            <AIComparisonCard
+              data={aiComparison}
+              errorComparison={errorComparison}
+            />
           ) : (
             <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-gray-500">
               AI 비교 데이터가 없습니다.
