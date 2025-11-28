@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-Periodic Enrichment Scheduler for ERROR Log Vectorization
+Periodic Enrichment Scheduler for All Log Vectorization
 
 This service:
-1. Runs every 10 seconds (configurable for testing/production)
-2. Queries OpenSearch for ERROR logs without log_vector field
-3. Processes 100 logs at a time
+1. Runs every 60 seconds (configurable for testing/production)
+2. Queries OpenSearch for logs without log_vector field (all levels)
+3. Processes 100 logs at a time (newest first)
 4. Generates embeddings using text-embedding-3-large model
 5. Updates OpenSearch documents with log_vector field
 
 Unlike enrichment_consumer.py (event-driven via Kafka),
-this scheduler proactively processes existing ERROR logs
+this scheduler proactively processes existing logs
 that don't have vectors yet.
 
 Usage:
@@ -48,9 +48,9 @@ logger = logging.getLogger(__name__)
 
 class PeriodicEnrichmentScheduler:
     """
-    Scheduler that periodically vectorizes ERROR logs
+    Scheduler that periodically vectorizes all logs
 
-    Runs every 10 seconds and processes up to 100 ERROR logs
+    Runs every 60 seconds and processes up to 100 logs (newest first)
     that don't have log_vector field yet.
     """
 
@@ -71,12 +71,12 @@ class PeriodicEnrichmentScheduler:
         logger.info(f"  Interval: {self.interval_seconds} seconds")
         logger.info(f"  Model: text-embedding-3-large (1536 dimensions)")
 
-    async def find_error_logs_without_vectors(self) -> List[Dict[str, Any]]:
+    async def find_logs_without_vectors(self) -> List[Dict[str, Any]]:
         """
-        Query OpenSearch for ERROR logs without log_vector field
+        Query OpenSearch for logs without log_vector field (all levels)
 
         Returns:
-            List of ERROR log documents (max 100)
+            List of log documents (max 100, newest first)
         """
         try:
             # Search across all indices with wildcard
@@ -85,9 +85,6 @@ class PeriodicEnrichmentScheduler:
                 "size": self.batch_size,
                 "query": {
                     "bool": {
-                        "must": [
-                            {"term": {"level": "ERROR"}}
-                        ],
                         "must_not": [
                             {"exists": {"field": "log_vector"}}
                         ]
@@ -117,7 +114,7 @@ class PeriodicEnrichmentScheduler:
                 source['_id'] = hit['_id']  # Store document ID for update
                 logs.append(source)
 
-            logger.info(f"  Found {len(logs)} ERROR logs without vectors")
+            logger.info(f"  Found {len(logs)} logs without vectors")
             return logs
 
         except Exception as e:
@@ -223,12 +220,12 @@ class PeriodicEnrichmentScheduler:
         start_time = time.time()
 
         try:
-            # Step 1: Find ERROR logs without vectors
-            logger.info("[1/3] Querying OpenSearch for ERROR logs without vectors...")
-            logs = await self.find_error_logs_without_vectors()
+            # Step 1: Find logs without vectors
+            logger.info("[1/3] Querying OpenSearch for logs without vectors...")
+            logs = await self.find_logs_without_vectors()
 
             if not logs:
-                logger.info("  ✅ No ERROR logs need vectorization (all up to date)")
+                logger.info("  ✅ No logs need vectorization (all up to date)")
                 logger.info("=" * 80)
                 return
 
@@ -299,12 +296,12 @@ class PeriodicEnrichmentScheduler:
         # Create scheduler
         scheduler = AsyncIOScheduler()
 
-        # Add job (run every 10 seconds)
+        # Add job (run every 60 seconds)
         scheduler.add_job(
             self.run_enrichment_cycle,
             trigger=IntervalTrigger(seconds=self.interval_seconds),
             id='periodic_enrichment',
-            name='Periodic ERROR Log Enrichment',
+            name='Periodic Log Enrichment (All Levels)',
             replace_existing=True
         )
 
