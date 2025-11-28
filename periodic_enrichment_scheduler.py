@@ -56,7 +56,7 @@ class PeriodicEnrichmentScheduler:
 
     def __init__(self):
         self.batch_size = 100  # Process 100 logs per run
-        self.interval_seconds = 10  # Run every 10 seconds (for testing/development)
+        self.interval_seconds = 60  # Run every 60 seconds (1 minute)
 
         # Performance metrics
         self.stats = {
