@@ -1277,7 +1277,7 @@ async def _vector_estimate_error_count(
         # 대안: KNN으로 top-k 검색 후 threshold 이상만 count
         knn_search_query = {
             "size": 10000,  # 충분히 큰 값
-            "min_score": similarity_threshold,  # 유사도 threshold
+            "min_score": similarity_threshold + 1.0,  # cosineSimilarity + 1.0 스코어에 맞춤 (0.5 → 1.5)
             "query": {
                 "script_score": {
                     "query": {
