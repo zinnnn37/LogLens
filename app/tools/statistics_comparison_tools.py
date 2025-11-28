@@ -942,32 +942,15 @@ async def _sample_errors_with_vector(
     total_errors = total_error_result["hits"]["total"]["value"]
     vectorization_rate = (vectorized_count / total_errors * 100) if total_errors > 0 else 0.0
 
-    # Vector KNN 샘플링 시도
-    samples = []
-    sampling_method = "vector_knn"
-
-    if vectorized_count >= sample_size * 0.5:  # 벡터화율 50% 이상
-        try:
-            samples = await sample_stratified_vector_knn(
-                project_uuid=project_uuid,
-                k_per_level={"ERROR": sample_size},
-                time_hours=time_hours
-            )
-            logger.info(f"✅ Vector KNN 샘플링 완료: {len(samples)}개 ERROR 샘플")
-        except Exception as e:
-            logger.warning(f"⚠️ Vector KNN 실패, 랜덤 샘플링으로 폴백: {e}")
-            sampling_method = "random_fallback"
-    else:
-        logger.info(f"⚠️ 벡터화율 낮음 ({vectorization_rate:.1f}%), 랜덤 샘플링 사용")
-        sampling_method = "random_fallback"
-
-    # 폴백: 랜덤 샘플링
-    if not samples:
-        samples = await sample_random_stratified(
-            project_uuid=project_uuid,
-            k_per_level={"ERROR": sample_size},
-            time_hours=time_hours
-        )
+    # 다양성을 위해 항상 랜덤 샘플링 사용
+    # (Vector KNN은 특정 쿼리와 유사한 것만 선택하여 편향됨)
+    samples = await sample_random_stratified(
+        project_uuid=project_uuid,
+        k_per_level={"ERROR": sample_size},
+        time_hours=time_hours
+    )
+    sampling_method = "random_diverse"
+    logger.info(f"✅ 랜덤 샘플링으로 다양한 ERROR 확보: {len(samples)}개")
 
     vector_info = {
         "vectorized_error_count": vectorized_count,
