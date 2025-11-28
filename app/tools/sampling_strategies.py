@@ -107,7 +107,7 @@ async def sample_simple_vector_knn(
                 ]
             }
         },
-        "_source": ["level", "message", "timestamp", "service_name", "log_id"]
+        "_source": ["level", "message", "timestamp", "service_name", "log_id", "log_vector"]
     }
 
     results = await asyncio.to_thread(
@@ -124,7 +124,8 @@ async def sample_simple_vector_knn(
             "message": source.get("message", ""),
             "timestamp": source.get("timestamp", ""),
             "service_name": source.get("service_name", "unknown"),
-            "log_id": source.get("log_id")
+            "log_id": source.get("log_id"),
+            "log_vector": source.get("log_vector")
         })
 
     return samples
@@ -192,7 +193,7 @@ async def sample_stratified_vector_knn(
                     ]
                 }
             },
-            "_source": ["level", "message", "timestamp", "service_name", "log_id"]
+            "_source": ["level", "message", "timestamp", "service_name", "log_id", "log_vector"]
         }
 
         results = await asyncio.to_thread(
@@ -208,7 +209,8 @@ async def sample_stratified_vector_knn(
                 "message": source.get("message", ""),
                 "timestamp": source.get("timestamp", ""),
                 "service_name": source.get("service_name", "unknown"),
-                "log_id": source.get("log_id")
+                "log_id": source.get("log_id"),
+                "log_vector": source.get("log_vector")
             })
 
     return all_samples
@@ -303,6 +305,7 @@ async def sample_random_stratified(
                         "bool": {
                             "filter": [
                                 {"term": {"level": level}},
+                                {"exists": {"field": "log_vector"}},  # 벡터가 있는 로그만
                                 {
                                     "range": {
                                         "timestamp": {
@@ -317,7 +320,7 @@ async def sample_random_stratified(
                     "random_score": {"seed": 42, "field": "_seq_no"}
                 }
             },
-            "_source": ["level", "message", "timestamp", "service_name", "log_id"]
+            "_source": ["level", "message", "timestamp", "service_name", "log_id", "log_vector"]
         }
 
         results = await asyncio.to_thread(
@@ -333,7 +336,8 @@ async def sample_random_stratified(
                 "message": source.get("message", ""),
                 "timestamp": source.get("timestamp", ""),
                 "service_name": source.get("service_name", "unknown"),
-                "log_id": source.get("log_id")
+                "log_id": source.get("log_id"),
+                "log_vector": source.get("log_vector")
             })
 
     return all_samples

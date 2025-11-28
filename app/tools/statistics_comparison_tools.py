@@ -951,8 +951,7 @@ async def _sample_errors_with_vector(
             samples = await sample_stratified_vector_knn(
                 project_uuid=project_uuid,
                 k_per_level={"ERROR": sample_size},
-                time_hours=time_hours,
-                level_counts={"ERROR": total_errors}
+                time_hours=time_hours
             )
             logger.info(f"✅ Vector KNN 샘플링 완료: {len(samples)}개 ERROR 샘플")
         except Exception as e:
