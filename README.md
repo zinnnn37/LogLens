@@ -32,6 +32,12 @@ Spring Boot 앱 (LogLens Starter)
             Redis (캐시), MySQL (메타데이터)
 ```
 
+### 시스템 아키텍처
+![시스템 아키텍처](https://i.imgur.com/IScLo4U.png)
+
+### 인프라 아키텍처
+![인프라 아키텍처](https://i.imgur.com/ZHEIZIZ.png)
+
 ---
 
 ## 로컬 빠른 시작
